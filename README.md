@@ -1,2 +1,1 @@
-# dislib
 Distributed computing library
