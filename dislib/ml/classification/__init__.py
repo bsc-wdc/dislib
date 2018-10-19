@@ -1,3 +1,3 @@
-from csvm.base import CascadeSVM
+from .csvm.base import CascadeSVM
 
 all = ['CascadeSVM']

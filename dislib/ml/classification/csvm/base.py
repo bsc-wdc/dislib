@@ -1,9 +1,6 @@
-from __future__ import print_function
-
 import mmap
 import os
 from collections import deque
-from exceptions import AttributeError
 from itertools import islice
 from time import time
 
@@ -13,7 +10,7 @@ from pycompss.api.api import compss_delete_object
 from pycompss.api.api import compss_wait_on
 from pycompss.api.parameter import *
 from pycompss.api.task import task
-from scipy.sparse import vstack, issparse, lil_matrix
+from scipy.sparse import vstack, issparse
 from sklearn.datasets import load_svmlight_file
 from sklearn.svm import SVC
 from uuid import uuid4
@@ -467,7 +464,7 @@ def read_chunk(filename, start=None, stop=None, data_format=None, n_features=Non
         X, y = vecs[:, :-1], vecs[:, -1]
 
     # create array of unique identifiers for each vector
-    idx = np.array([uuid4().int for _ in xrange(X.shape[0])])
+    idx = np.array([uuid4().int for _ in range(X.shape[0])])
 
     return X, y, idx
 
