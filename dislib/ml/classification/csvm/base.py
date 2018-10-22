@@ -43,21 +43,7 @@ class CascadeSVM(object):
         self._data = []
         self._clf_params = []
         self._kernel_f = []
-
-    # def __str__(self):
-    # return (" * CascadeSVM\n"
-    # "\t- Gamma:  %s\n"
-    # "\t- Kernel: %s\n"
-    # "\t- Arity:  %s\n"
-    # "\t- Chunks:  %s\n"
-    # "\t- Max iterations: %s\n"
-    # "\t- C: %s\n") \
-    # % (self._clf_params["gamma"],
-    # self._clf_params["kernel"],
-    # self._cascade_arity,
-    # self._nchunks,
-    # self._max_iterations,
-    # self._clf_params["C"])
+        
 
     def fit(self, check_convergence=True):
         """
@@ -212,7 +198,8 @@ class CascadeSVM(object):
 
     def score(self, X, y, i=0):
         """
-        Returns the mean accuracy on the given test data and labels using model i.
+        Returns the mean accuracy on the given test data and labels using model
+        i.
         
         :param X: array-like, shape = (n_samples, n_features)
             Test samples.

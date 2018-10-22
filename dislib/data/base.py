@@ -52,7 +52,7 @@ def load_file(path, part_size, fmt="labeled", n_features=None, use_array=False):
     return partitions
 
 
-def load_dir(path, fmt="labeled", n_features=None, use_array=False):
+def load_files(path, fmt="labeled", n_features=None, use_array=False):
     """
     Loads a set of text files in a distributed way.
 
