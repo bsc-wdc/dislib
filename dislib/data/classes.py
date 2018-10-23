@@ -5,8 +5,31 @@ from scipy.sparse import issparse, vstack
 
 
 class Dataset(object):
+    """
+    Set of vectors with or without labels.
+
+    Attributes
+    ----------
+    vectors : NumPy array.
+
+    labels : NumPy array.
+
+    Methods
+    -------
+    concatenate(data, remove_duplicates=False)
+        Vertically concatenates this Dataset to another.
+    """
 
     def __init__(self, vectors, labels=None):
+        """
+
+        Parameters
+        ----------
+        vectors : array
+            Array of shape (n_vectors, n_features).
+        labels : array, optional
+            Array of shape (n_vectors)
+        """
         self.vectors = vectors
         self.labels = labels
 
@@ -14,6 +37,16 @@ class Dataset(object):
         self._ids = np.array(idx)
 
     def concatenate(self, data, remove_duplicates=False):
+        """
+        Vertically concatenates this Dataset to another.
+
+        Parameters
+        ----------
+        data : Dataset
+            Dataset to concatenate.
+        remove_duplicates : boolean, optional (default=False)
+            Whether to remove duplicate vectors.
+        """
         assert issparse(self.vectors) == issparse(data.vectors), \
             "Cannot concatenate sparse data with non-sparse data."
         assert (self.labels is None) == (data.labels is None), \

@@ -37,14 +37,14 @@ class CascadeSVM(object):
         self._clf_params = []
         self._kernel_f = []
 
-    def fit(self, X, cascade_arity=None, cascade_iterations=None, tol=None,
+    def fit(self, data, cascade_arity=None, cascade_iterations=None, tol=None,
             kernel=None, c=None, gamma=None, check_convergence=True):
         """
         Fits one or more models using training data. The training process of
         each dataset is performed in parallel. The resulting models are stored
         in self._clf.
 
-        :param X: list
+        :param data: list
             List of datasets
         :param cascade_arity: list (int), optional (default=2)
             Arities of the reductions of the input datasets X.
@@ -67,8 +67,8 @@ class CascadeSVM(object):
             negatively affect performance if multiple datasets are fit in
             parallel.
         """
-        self._data = X
-        ndata = len(X)
+        self._data = data
+        ndata = len(data)
         self._set_defaults(ndata, cascade_arity, cascade_iterations, tol,
                            kernel, c, gamma)
         self.iterations = [0] * ndata
