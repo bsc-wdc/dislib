@@ -76,19 +76,12 @@ def main():
                                   fmt=fmt, n_features=args.f,
                                   use_array=args.dense))
 
-    n = len(data)
-    arity = [args.a] * n
-    iters = [args.i] * n
-    c = [args.c] * n
-    gamma = [gamma] * n
+    csvm = CascadeSVM(cascade_arity=args.a, cascade_iterations=args.i, c=args.c,
+                      gamma=gamma, check_convergence=args.convergence)
+    csvm.fit(data[0])
 
-    csvm = CascadeSVM(split_times=args.detailed_times)
-    csvm.fit(data, cascade_arity=arity, cascade_iterations=iters, c=c,
-             gamma=gamma, check_convergence=args.convergence)
-
-    out = [args.k, args.a, args.p, csvm._clf_params[0]["gamma"], args.c,
-           csvm.iterations[0], csvm.converged[0],
-           csvm.read_time, csvm.fit_time, csvm.total_time]
+    out = [args.k, args.a, args.p, csvm._clf_params["gamma"], args.c,
+           csvm.iterations, csvm.converged]
 
     if os.path.isdir(train_data):
         n_files = os.listdir(train_data)

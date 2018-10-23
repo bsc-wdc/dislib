@@ -1,7 +1,4 @@
-from time import time
-
 import numpy as np
-from pycompss.api.api import compss_barrier as barrier
 from pycompss.api.api import compss_delete_object
 from pycompss.api.api import compss_wait_on
 from pycompss.api.task import task
@@ -12,40 +9,10 @@ from sklearn.svm import SVC
 class CascadeSVM(object):
     name_to_kernel = {"linear": "_linear_kernel", "rbf": "_rbf_kernel"}
 
-    def __init__(self, split_times=False):
+    def __init__(self, cascade_arity=2, cascade_iterations=5, tol=1 ** -3,
+                 kernel="rbf", c=1, gamma="scale", check_convergence=True):
         """
 
-        :param split_times: boolean, optional (default=False)
-            Whether to compute read and fit times separately.
-        """
-
-        self.iterations = []
-        self.converged = []
-
-        self.read_time = 0
-        self.fit_time = 0
-        self.total_time = 0
-
-        self._split_times = split_times
-        self._cascade_arity = []
-        self._max_iterations = []
-        self._nchunks = []
-        self._tol = []
-        self._last_w = []
-        self._clf = []
-        self._data = []
-        self._clf_params = []
-        self._kernel_f = []
-
-    def fit(self, data, cascade_arity=None, cascade_iterations=None, tol=None,
-            kernel=None, c=None, gamma=None, check_convergence=True):
-        """
-        Fits one or more models using training data. The training process of
-        each dataset is performed in parallel. The resulting models are stored
-        in self._clf.
-
-        :param data: list
-            List of datasets
         :param cascade_arity: list (int), optional (default=2)
             Arities of the reductions of the input datasets X.
         :param cascade_iterations: list (int), optional (default=5)
@@ -67,51 +34,76 @@ class CascadeSVM(object):
             negatively affect performance if multiple datasets are fit in
             parallel.
         """
-        self._data = data
-        ndata = len(data)
-        self._set_defaults(ndata, cascade_arity, cascade_iterations, tol,
-                           kernel, c, gamma)
-        self.iterations = [0] * ndata
-        self.converged = [False] * ndata
-        self._last_w = [None] * ndata
-        self._clf = [None] * ndata
 
-        if self._split_times:
-            barrier()
-            self.read_time = time() - self.read_time
-            self.fit_time = time()
+        assert (gamma is "auto" or gamma is "scale" or type(gamma) == float
+                or type(float(gamma)) == float), "Invalid gamma"
+        assert (kernel is None or kernel in self.name_to_kernel.keys()), \
+            "Incorrect kernel value [%s], available kernels are %s" % (
+                kernel, self.name_to_kernel.keys())
+        assert (c is None or type(c) == float or type(float(c)) == float), \
+            "Incorrect C type [%s], type : %s" % (c, type(c))
+        assert (type(tol) == float or type(float(tol)) == float), \
+            "Incorrect tol type [%s], type : %s" % (tol, type(tol))
+        assert cascade_arity > 1, "Cascade arity must be greater than 1"
+        assert cascade_iterations > 0, "Max iterations must be greater than 0"
+        assert type(check_convergence) == bool, "Invalid value in " \
+                                                "check_convergence"
 
-        self._do_fit(check_convergence)
+        self._reset_model()
 
-        barrier()
+        self._cascade_arity = cascade_arity
+        self._max_iterations = cascade_iterations
+        self._tol = tol
+        self._check_convergence = check_convergence
+        self._clf_params = {"kernel": kernel, "C": c, "gamma": gamma}
 
-        if self._split_times:
-            self.fit_time = time() - self.fit_time
+        try:
+            self._kernel_f = getattr(self, CascadeSVM.name_to_kernel[kernel])
+        except AttributeError:
+            self._kernel_f = getattr(self, "_rbf_kernel")
 
-        self.total_time = time() - self.total_time
+    def fit(self, data):
+        """
+        Fits one or more models using training data. The training process of
+        each dataset is performed in parallel. The resulting models are stored
+        in self._clf.
 
-    def predict(self, X, i=0):
+        :param data: Dataset
+            Dataset
+        """
+        self._reset_model()
+
+        while not self._check_finished():
+            self._do_iteration(data)
+
+            if self._check_convergence:
+                self._check_convergence_and_update_w()
+                self._print_iteration()
+
+    def predict(self, x):
         """
         Perform classification on samples in X using model i.
         
-        :param X: array-like, shape (n_samples, n_features)
+        :param x: array-like, shape (n_samples, n_features)
         :param i: int, optional (default=0)
             Model index in case multiple models have been built in parallel. 
         :return y_pred: array, shape (n_samples,)
             Class labels for samples in X.
         """
 
-        if len(self._clf) > i and self._clf[i]:
-            return self._clf[i].predict(X)
-        else:
-            raise Exception("Model %s has not been initialized. Try calling "
-                            "fit first." % i)
+        assert (self._clf is not None or self._feedback is not None), \
+            "Model has not been initialized. Call fit() first."
 
-    def decision_function(self, X, i=0):
+        if self._clf is None:
+            self._retrieve_clf()
+
+        return self._clf.predict(x)
+
+    def decision_function(self, x):
         """
-        Distance of the samples X to the ith separating hyperplane.
+        Distance of the samples x to the ith separating hyperplane.
         
-        :param X: array-like, shape (n_samples, n_features)
+        :param x: array-like, shape (n_samples, n_features)
         :param i: int, optional (default=0)
             Model index in case multiple models have been built in parallel. 
         :return: array-like, shape (n_samples, n_classes * (n_classes-1) / 2)        
@@ -119,18 +111,20 @@ class CascadeSVM(object):
             ith model.
         """
 
-        if len(self._clf) > i and self._clf[i]:
-            return self._clf[i].decision_function(X)
-        else:
-            raise Exception("Model %s has not been initialized. Try calling "
-                            "fit first." % i)
+        assert (self._clf is not None or self._feedback is not None), \
+            "Model has not been initialized. Call fit() first."
 
-    def score(self, X, y, i=0):
+        if self._clf is None:
+            self._retrieve_clf()
+
+        return self._clf.decision_function(x)
+
+    def score(self, x, y):
         """
         Returns the mean accuracy on the given test data and labels using model
         i.
         
-        :param X: array-like, shape = (n_samples, n_features)
+        :param x: array-like, shape = (n_samples, n_features)
             Test samples.
         :param y: array-like, shape = (n_samples) or (n_samples, n_outputs)
             True labels for X.  
@@ -139,76 +133,35 @@ class CascadeSVM(object):
         :return score: Mean accuracy of self.predict(X, i) wrt. y.
         """
 
-        if len(self._clf) > i and self._clf[i]:
-            return self._clf[i].score(X, y)
-        else:
-            raise Exception("Model %s has not been initialized. Try calling "
-                            "fit first." % i)
+        assert (self._clf is not None or self._feedback is not None), \
+            "Model has not been initialized. Call fit() first."
 
-    def _set_defaults(self, len, cascade_arity, cascade_iterations, tol,
-                      kernel, c, gamma):
-        if cascade_arity:
-            self._cascade_arity = cascade_arity
-        else:
-            self._cascade_arity = [2] * len
-        if cascade_iterations:
-            self._max_iterations = cascade_iterations
-        else:
-            self._max_iterations = [5] * len
-        if tol:
-            self._tol = tol
-        else:
-            self._tol = [1 ** -3] * len
-        if not c:
-            c = [1] * len
-        if not gamma:
-            gamma = ["auto"] * len
-        if not kernel:
-            kernel = ["rbf"] * len
+        if self._clf is None:
+            self._retrieve_clf()
 
-        for k, z, g in zip(kernel, c, gamma):
-            self._clf_params.append({"kernel": k, "C": z, "gamma": g})
+        return self._clf.score(x, y)
 
-            try:
-                k_func = CascadeSVM.name_to_kernel[k]
-                self._kernel_f.append(getattr(self, k_func))
-            except AttributeError:
-                self._kernel_f.append(getattr(self, "_rbf_kernel"))
+    def _reset_model(self):
+        self.iterations = 0
+        self.converged = False
+        self._last_w = None
+        self._clf = None
+        self._feedback = None
 
-    def _do_fit(self, check_convergence):
-        feedback = [None] * len(self._data)
-        finished = [False] * len(self._data)
+    def _retrieve_clf(self):
+        self._feedback, self._clf = compss_wait_on(self._feedback)
 
-        while not np.array(finished).all():
-            for idx, chunks in enumerate(self._data):
-                if not finished[idx]:
-                    self._do_iteration(check_convergence, chunks, feedback, idx)
+    def _print_iteration(self):
+        print("Iteration %s of %s." % (self.iterations, self._max_iterations))
 
-                    if check_convergence:
-                        self._check_convergence_and_update_w(feedback[idx], idx)
-                        self._print_iteration(idx)
-
-                    finished[idx] = self._check_finished(idx)
-
-        if not check_convergence:
-            self._retrieve_clf(feedback)
-
-    def _retrieve_clf(self, feedback):
-        for idx, fb in enumerate(feedback):
-            _ignore, self._clf[idx] = compss_wait_on(fb)
-
-    def _print_iteration(self, idx):
-        print("Dataset %s iteration %s of %s. \n" % (idx, self.iterations[idx],
-                                                     self._max_iterations[idx]))
-
-    def _do_iteration(self, check_convergence, chunks, feedback, idx):
+    def _do_iteration(self, data):
         q = []
-        arity = self._cascade_arity[idx]
-        params = self._clf_params[idx]
+        arity = self._cascade_arity
+        params = self._clf_params
 
         # first level
-        for chunk in chunks:
-            data = filter(None, [chunk, feedback[idx]])
+        for partition in data:
+            data = filter(None, [partition, self._feedback])
             q.append(_train(False, *data, **params))
 
         # reduction
@@ -223,22 +176,17 @@ class CascadeSVM(object):
                 compss_delete_object(d)
 
         # last layer
-        if check_convergence:
-            result = _train(True, *q, **params)
-            feedback[idx], self._clf[idx] = compss_wait_on(result)
-        else:
-            feedback[idx] = _train(self._is_last_iteration(idx), *q, **params)
+        get_clf = (self._check_convergence or self._is_last_iteration())
+        self._feedback = _train(get_clf, *q, **params)
+        self.iterations += 1
 
-        self.iterations[idx] += 1
+    def _is_last_iteration(self):
+        return self.iterations == self._max_iterations - 1
 
-    def _is_last_iteration(self, idx):
-        return self.iterations[idx] == self._max_iterations[idx] - 1
+    def _check_finished(self):
+        return self.iterations >= self._max_iterations or self.converged
 
-    def _check_finished(self, idx):
-        return self.iterations[idx] >= self._max_iterations[idx] or \
-               self.converged[idx]
-
-    def _lagrangian_fast(self, vectors, labels, coef, idx):
+    def _lagrangian_fast(self, vectors, labels, coef):
         set_sl = set(labels)
         assert len(set_sl) == 2, "Only binary problem can be handled"
         new_sl = labels.copy()
@@ -249,38 +197,36 @@ class CascadeSVM(object):
 
         c1, c2 = np.meshgrid(coef, coef)
         l1, l2 = np.meshgrid(new_sl, new_sl)
-        double_sum = c1 * c2 * l1 * l2 * self._kernel_f[idx](vectors, idx)
+        double_sum = c1 * c2 * l1 * l2 * self._kernel_f(vectors)
         double_sum = double_sum.sum()
         w = -0.5 * double_sum + coef.sum()
 
         return w
 
-    def _check_convergence_and_update_w(self, sv, idx):
-        vectors = sv.vectors
-        labels = sv.labels
-        self.converged[idx] = False
-        clf = self._clf[idx]
-        print("Checking convergence for model %s:" % idx)
+    def _check_convergence_and_update_w(self):
+        self._retrieve_clf()
+        vectors = self._feedback.vectors
+        labels = self._feedback.labels
 
-        if clf:
-            w = self._lagrangian_fast(vectors, labels, clf.dual_coef_, idx)
-            print("     Computed W %s" % w)
+        print("Checking convergence...")
+        w = self._lagrangian_fast(vectors, labels, self._clf.dual_coef_)
+        print("     Computed W %s" % w)
 
-            if self._last_w[idx]:
-                delta = np.abs((w - self._last_w[idx]) / self._last_w[idx])
-                if delta < self._tol[idx]:
-                    print("     Converged with delta: %s " % delta)
-                    self.converged[idx] = True
-                else:
-                    print("     No convergence with delta: %s " % delta)
+        if self._last_w:
+            delta = np.abs((w - self._last_w) / self._last_w)
+            if delta < self._tol:
+                print("     Converged with delta: %s " % delta)
+                self.converged = True
             else:
-                print("     First iteration, not testing convergence.")
-            self._last_w[idx] = w
-            print()
+                print("     No convergence with delta: %s " % delta)
+        else:
+            print("     First iteration, not testing convergence.")
+        self._last_w = w
+        print()
 
-    def _rbf_kernel(self, x, idx):
+    def _rbf_kernel(self, x):
         # Trick: || x - y || ausmultipliziert
-        sigmaq = -1 / (2 * self._clf_params[idx]["gamma"])
+        sigmaq = -1 / (2 * self._clf_params["gamma"])
         n = x.shape[0]
         k = x.dot(x.T) / sigmaq
 

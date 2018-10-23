@@ -11,3 +11,4 @@ jupyter-console==5.1.0
 jupyter-core==4.3.0
 pandas==0.20.1
 pycompss==2.3
+numpydoc==0.8.0
