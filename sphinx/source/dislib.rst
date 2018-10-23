@@ -1,2 +1,2 @@
 .. automodule:: dislib
-    :members:
+   :members:
