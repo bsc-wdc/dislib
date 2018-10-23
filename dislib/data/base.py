@@ -121,7 +121,7 @@ def _read_libsvm(lines, n_features, use_array):
     from sklearn.datasets import load_svmlight_file
     # Creating a tmp file to use load_svmlight_file method should be more
     # efficient than parsing the lines manually
-    tmp_file = SpooledTemporaryFile(mode="w+", max_size=2e8)
+    tmp_file = SpooledTemporaryFile(mode="wb+", max_size=2e8)
     tmp_file.writelines(lines)
     tmp_file.seek(0)
     x, y = load_svmlight_file(tmp_file, n_features)

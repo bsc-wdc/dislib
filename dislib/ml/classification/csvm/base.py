@@ -1,4 +1,3 @@
-from collections import deque
 from time import time
 
 import numpy as np
@@ -191,39 +190,49 @@ class CascadeSVM(object):
 
                     finished[idx] = self._check_finished(idx)
 
+        if not check_convergence:
+            self._retrieve_clf(feedback)
+
+    def _retrieve_clf(self, feedback):
+        for idx, fb in enumerate(feedback):
+            _ignore, self._clf[idx] = compss_wait_on(fb)
+
     def _print_iteration(self, idx):
         print("Dataset %s iteration %s of %s. \n" % (idx, self.iterations[idx],
                                                      self._max_iterations[idx]))
 
     def _do_iteration(self, check_convergence, chunks, feedback, idx):
-        q = deque()
+        q = []
+        arity = self._cascade_arity[idx]
+        params = self._clf_params[idx]
 
         # first level
         for chunk in chunks:
             data = filter(None, [chunk, feedback[idx]])
-            q.append(_train(False, *data, **self._clf_params[idx]))
+            q.append(_train(False, *data, **params))
 
         # reduction
-        while len(q) > 1:
-            data = []
+        while len(q) > arity:
+            data = q[:arity]
+            del q[:arity]
 
-            while q and len(data) < self._cascade_arity[idx]:
-                data.append(q.popleft())
-
-            if q or not check_convergence:
-                q.append(
-                    _train(False, *data, **self._clf_params[idx]))
-            elif not q:
-                sv, self._clf[idx] = compss_wait_on(
-                    _train(True, *data, **self._clf_params[idx]))
-                q.append(sv)
+            q.append(_train(False, *data, **params))
 
             # delete partial results
             for d in data:
                 compss_delete_object(d)
 
-        feedback[idx] = q.popleft()
+        # last layer
+        if check_convergence:
+            result = _train(True, *q, **params)
+            feedback[idx], self._clf[idx] = compss_wait_on(result)
+        else:
+            feedback[idx] = _train(self._is_last_iteration(idx), *q, **params)
+
         self.iterations[idx] += 1
+
+    def _is_last_iteration(self, idx):
+        return self.iterations[idx] == self._max_iterations[idx] - 1
 
     def _check_finished(self, idx):
         return self.iterations[idx] >= self._max_iterations[idx] or \
