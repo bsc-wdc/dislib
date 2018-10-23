@@ -11,7 +11,7 @@ Welcome to dislib's documentation!
    :caption: Contents:
 
 .. automodule:: dislib
-   :member:
+   :members:
 
 
 Indices and tables
