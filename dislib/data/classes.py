@@ -5,14 +5,13 @@ from scipy.sparse import issparse, vstack
 
 
 class Dataset(object):
-    """
-    Set of vectors with or without labels.
+    """ Set of vectors with or without labels.
 
     Attributes
     ----------
-    vectors : NumPy array.
+    vectors : ndarray.
 
-    labels : NumPy array.
+    labels : ndarray.
 
     Methods
     -------
@@ -25,9 +24,9 @@ class Dataset(object):
 
         Parameters
         ----------
-        vectors : array
+        vectors : ndarray
             Array of shape (n_vectors, n_features).
-        labels : array, optional
+        labels : ndarray, optional
             Array of shape (n_vectors)
         """
         self.vectors = vectors
@@ -37,8 +36,7 @@ class Dataset(object):
         self._ids = np.array(idx)
 
     def concatenate(self, data, remove_duplicates=False):
-        """
-        Vertically concatenates this Dataset to another.
+        """ Vertically concatenates this Dataset to another.
 
         Parameters
         ----------

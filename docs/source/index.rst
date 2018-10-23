@@ -10,14 +10,13 @@ Welcome to dislib's documentation!
    :maxdepth: 2
    :caption: Contents:
 
-.. automodule:: dislib.ml
+
+Submodules
+----------
+
+.. autoclass:: dislib.data.Dataset
    :members:
 
-.. automodule:: dislib.data
-   :members:
-
-.. automodule:: dislib.math
-   :members:
 
 
 Indices and tables
