@@ -17,6 +17,9 @@ compss/runtime/config/xml/resources/src/main/java/es/bsc/compss/types/resources/
 .idea/
 *.iml
 
+# Ignore Sphinx files
+docs/build
+
 # ========== Java ignores =================
 
 
