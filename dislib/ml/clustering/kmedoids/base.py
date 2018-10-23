@@ -31,7 +31,7 @@ def parse_arguments():
     """
     import argparse
     parser = argparse.ArgumentParser(
-        description='PyCOMPSs Kmeans implementation.')
+        description='A PyCOMPSs Kmedoids implementation.')
     parser.add_argument('-s', '--seed', type=int, default=0,
                         help='Pseudo-random seed. Default = 0'
                         )
@@ -50,7 +50,7 @@ def parse_arguments():
     parser.add_argument('-e', '--epsilon', type=float, default=1e-9,
                         help='Epsilon. Kmeans will stop when |old - new| < epsilon.'
                         )
-    parser.add_argument('--num_fragments', type=int, default=4,
+    parser.add_argument('-f', '--num_fragments', type=int, default=4,
                         help='Total number of fragments')
     parser.add_argument('--distributed_read', action='store_true',
                         help='Boolean indicating if data should be read distributed.'
@@ -164,38 +164,69 @@ def reduce_centers(a, b):
     return a
 
 
-def has_converged(centers, old_centers, epsilon, iter, max_iterations):
-    if iter >= max_iterations or \
-            (old_centers and sum([np.linalg.norm(old_centers[i] - centers[
-                i]) for i in range(len(centers))]) < epsilon * epsilon):
+def has_converged(medoids: list, old_medoids: list, iter: int,
+                  max_iterations: int):
+    if iter > max_iterations or np.array_equal(old_medoids, medoids):
         return True
     return False
 
 
-def kmeans(X, num_points, num_centers, dimensions, epsilon, max_iterations,
-           num_fragments, seed):
+@task(returns=np.array)
+def get_fragment_medoids(fragment_points, cluster_means):
+    return [fragment_points[i] for i in
+            [np.argmin([np.linalg.norm(x - m) for x in fragment_points])
+             for m in cluster_means]]
+
+
+def get_medoids(X: list, cluster_means: np.array, num_fragments: int,
+                num_centers: int):
+    # print("CM: %s" % cluster_means)
+    fragment_medoids = [None] * num_fragments
+    for f in range(num_fragments):
+        fragment_medoids[f] = get_fragment_medoids(X[f], cluster_means)
+
+    fragment_medoids = compss_wait_on(fragment_medoids)
+
+    indices = [
+        (np.argmin(
+            [np.linalg.norm(cluster_means[j] - fragment_medoids[i][j]) for i in
+             range(num_fragments)]), j)
+        for j in range(num_centers)]
+
+    return [fragment_medoids[i][j] for i, j in indices]
+
+
+def kmedoids(X, num_points, num_centers, dimensions, epsilon, max_iterations,
+             num_fragments, seed):
     size = int(num_points / num_fragments)
-    centers = init_centers_random(dimensions, num_centers, seed)
-    old_centers = []
+    cluster_means = init_centers_random(dimensions, num_centers, seed)
+    old_medoids = []
     it = 0
     startTime = time.time()
 
-    while not has_converged(centers, old_centers, epsilon, it, max_iterations):
-        old_centers = centers
-        partialResult = []
+    medoids = get_medoids(X, cluster_means, num_fragments, num_centers)
+
+    while not has_converged(medoids, old_medoids, it, max_iterations):
+        old_medoids = medoids
+        partial_result = []
         # clusters = []
         for f in range(num_fragments):
-            partialResult.append(cluster_points_sum(X[f], centers, f * size))
+            partial_result.append(
+                cluster_points_sum(X[f], cluster_means, f * size))
 
-        centers = merge_reduce(partialResult, chunk=50)
-        centers = compss_wait_on(centers)
-        centers = [centers[c][1] / centers[c][0] for c in centers]
+        cluster_means = merge_reduce(partial_result, chunk=50)
+        cluster_means = compss_wait_on(cluster_means)
+        cluster_means = np.array(
+            [cluster_means[c][1] / cluster_means[c][0] for c in
+             cluster_means])
+
+        medoids = get_medoids(X, cluster_means, num_fragments, num_centers)
 
         it += 1
         print("Iteration Time {} (s)".format(time.time() - startTime))
     print("Kmeans Time {} (s)".format(time.time() - startTime))
 
-    return it, centers
+    return it, medoids
 
 
 def main():
@@ -210,14 +241,15 @@ def main():
                       seed=args.seed,
                       distributed_read=args.distributed_read)
 
-    result = kmeans(X=X,
-                    num_points=args.num_points,
-                    num_centers=args.num_centers,
-                    dimensions=args.dimensions,
-                    epsilon=args.epsilon,
-                    max_iterations=args.max_iterations,
-                    num_fragments=args.num_fragments,
-                    seed=args.seed)
+    result = kmedoids(X=X,
+                      num_points=args.num_points,
+                      num_centers=args.num_centers,
+                      dimensions=args.dimensions,
+                      epsilon=args.epsilon,
+                      max_iterations=args.max_iterations,
+                      num_fragments=args.num_fragments,
+                      seed=args.seed)
+
 
     t1 = time.time()
     print("Total elapsed time: %s [points=%s]" % (t1 - t0, args.num_points))
