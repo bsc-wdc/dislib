@@ -1,10 +1,10 @@
 import os
 
 import numpy as np
-from pycompss.api.parameter import FILE
+from pycompss.api.parameter import FILE_IN
 from pycompss.api.task import task
 
-from .classes import Dataset
+from dislib.data import Dataset
 
 
 def load_file(path, part_size, fmt="labeled", n_features=None, use_array=False):
@@ -28,28 +28,27 @@ def load_file(path, part_size, fmt="labeled", n_features=None, use_array=False):
         A list of Dataset instances of size part_size.
     """
 
-    assert (not n_features and fmt == "libsvm"), \
+    assert (n_features or fmt != "libsvm"), \
         "Number of features must be specified for LibSVM files."
 
     lines = []
-    partitions = []
+    parts = []
     idx = 0
 
     with open(path, "r") as f:
         for line in f:
-            lines.append(line)
+            lines.append(line.encode())
             idx += 1
 
             if idx == part_size:
-                partitions.append(_read_lines(lines, fmt, n_features,
-                                              use_array))
+                parts.append(_read_lines(lines, fmt, n_features, use_array))
                 lines = []
                 idx = 0
 
     if lines:
-        partitions.append(_read_lines(lines, fmt, n_features, use_array))
+        parts.append(_read_lines(lines, fmt, n_features, use_array))
 
-    return partitions
+    return parts
 
 
 def load_files(path, fmt="labeled", n_features=None, use_array=False):
@@ -70,24 +69,23 @@ def load_files(path, fmt="labeled", n_features=None, use_array=False):
     :return: list
         A list of Dataset instances. One instance per file in path.
     """
-
-    assert (not n_features and fmt == "libsvm"), \
+    assert (n_features or fmt != "libsvm"), \
         "Number of features must be specified for LibSVM files."
 
     files = os.listdir(path)
-    partitions = []
+    parts = []
 
     for file in files:
-        partitions.append(_read_file(file, fmt, n_features, use_array))
+        parts.append(_read_file(os.path.join(path, file), fmt, n_features,
+                                use_array))
 
-    return partitions
+    return parts
 
 
 @task(returns=1)
 def _read_lines(lines, fmt, n_features, use_array):
     if fmt == "libsvm":
         data = _read_libsvm(lines, n_features, use_array)
-
     elif fmt == "unlabeled":
         data = Dataset(np.genfromtxt(lines, delimiter=","))
     else:
@@ -97,7 +95,7 @@ def _read_lines(lines, fmt, n_features, use_array):
     return data
 
 
-@task(file=FILE, returns=1)
+@task(file=FILE_IN, returns=1)
 def _read_file(file, fmt, n_features, use_array):
     from sklearn.datasets import load_svmlight_file
 
