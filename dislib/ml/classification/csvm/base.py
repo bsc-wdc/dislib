@@ -90,7 +90,6 @@ class CascadeSVM(object):
 
         Parameters
         ----------
-
         data : Dataset
             Input vectors.
         """
@@ -108,7 +107,6 @@ class CascadeSVM(object):
 
         Parameters
         ----------
-
         x : array-like, shape (n_samples, n_features)
 
         Returns
@@ -152,7 +150,6 @@ class CascadeSVM(object):
 
         Parameters
         ----------
-
         x : array-like, shape = (n_samples, n_features)
             Test samples.
         y : array-like, shape = (n_samples) or (n_samples, n_outputs)
