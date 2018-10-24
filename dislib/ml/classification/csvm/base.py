@@ -7,39 +7,62 @@ from sklearn.svm import SVC
 
 
 class CascadeSVM(object):
-    name_to_kernel = {"linear": "_linear_kernel", "rbf": "_rbf_kernel"}
+    """ Cascade Support Vector classification.
+
+    Implements distributed support vector classification based on
+    Graf et al. _[1]. The optimization process is carried out using
+    scikit-learn's SVC _[2].
+
+    Parameters
+    ----------
+    cascade_arity : int, optional (default=2)
+        Arity of the reduction process.
+    cascade_iterations : int, optional (default=5)
+        Maximum number of iterations to perform.
+    tol : float, optional (default=1e-3)
+        Tolerance for the stopping criterion.
+    kernel : string, optional (default='rbf')
+        Specifies the kernel type to be used in the algorithm. Supported
+        kernels are 'linear' and 'rbf'.
+    c : float, optional (default=1.0)
+        Penalty parameter C of the error term.
+    gamma : float, optional (default='scale')
+        Supports 'scale' for 1 / (n_features * vectors.std()) and 'auto' for
+        1 / (n_features)
+    check_convergence: boolean, optional (default=True)
+        Whether to test for convergence. If False, the algorithm will run
+        for cascade_iterations. Checking for convergence adds a
+        synchronization point after each iteration.
+
+        If ``check_convergence=False'' synchronization does not happen until
+        a call to ``predict'', ``decision_function'' or ``score''. This can
+        be useful to fit multiple models in parallel.
+
+    Attributes
+    ----------
+    iterations : int
+        Number of iterations performed.
+    converged: boolean
+        Whether the model has converged.
+
+    References
+    ----------
+
+    .. [1] Graf, H. P., Cosatto, E., Bottou, L., Dourdanovic, I., & Vapnik,
+    V. (2005). Parallel support vector machines: The cascade svm. In
+    Advances in neural information processing systems (pp. 521-528).
+
+    .. [2] http://scikit-learn.org/stable/modules/generated/sklearn.svm.SVC.html
+    """
+    _name_to_kernel = {"linear": "_linear_kernel", "rbf": "_rbf_kernel"}
 
     def __init__(self, cascade_arity=2, cascade_iterations=5, tol=1 ** -3,
                  kernel="rbf", c=1, gamma="scale", check_convergence=True):
-        """
-
-        :param cascade_arity: list (int), optional (default=2)
-            Arities of the reductions of the input datasets X.
-        :param cascade_iterations: list (int), optional (default=5)
-            Maximum number of iterations to perform for each dataset.
-        :param tol: list (float), optional (default=1e-3)
-            Tolerance for the stopping criterion for each dataset.
-        :param kernel: list (string), optional (default='rbf')
-            Specifies the kernel type to be used in the algorithm. It must be
-            one of 'linear' or 'rbf'.
-        :param c: list (float), optional (default=1.0)
-            Penalty parameter C of the error term for each dataset.
-        :param gamma: list (float), optional (default='auto')
-            Kernel coefficient for 'rbf'. If gamma is 'auto' then 1/n_features
-            will be used instead.
-        :param check_convergence: boolean, optional (default=True)
-            Whether to test for convergence. If False, the algorithm will run
-            for the number of iterations specified in load_data.
-            Checking for convergence adds a synchronization point, and can
-            negatively affect performance if multiple datasets are fit in
-            parallel.
-        """
-
         assert (gamma is "auto" or gamma is "scale" or type(gamma) == float
                 or type(float(gamma)) == float), "Invalid gamma"
-        assert (kernel is None or kernel in self.name_to_kernel.keys()), \
+        assert (kernel is None or kernel in self._name_to_kernel.keys()), \
             "Incorrect kernel value [%s], available kernels are %s" % (
-                kernel, self.name_to_kernel.keys())
+                kernel, self._name_to_kernel.keys())
         assert (c is None or type(c) == float or type(float(c)) == float), \
             "Incorrect C type [%s], type : %s" % (c, type(c))
         assert (type(tol) == float or type(float(tol)) == float), \
@@ -58,18 +81,18 @@ class CascadeSVM(object):
         self._clf_params = {"kernel": kernel, "C": c, "gamma": gamma}
 
         try:
-            self._kernel_f = getattr(self, CascadeSVM.name_to_kernel[kernel])
+            self._kernel_f = getattr(self, CascadeSVM._name_to_kernel[kernel])
         except AttributeError:
             self._kernel_f = getattr(self, "_rbf_kernel")
 
     def fit(self, data):
-        """
-        Fits one or more models using training data. The training process of
-        each dataset is performed in parallel. The resulting models are stored
-        in self._clf.
+        """ Fits a model using training data.
 
-        :param data: Dataset
-            Dataset
+        Parameters
+        ----------
+
+        data : Dataset
+            Input vectors.
         """
         self._reset_model()
 
@@ -81,16 +104,18 @@ class CascadeSVM(object):
                 self._print_iteration()
 
     def predict(self, x):
-        """
-        Perform classification on samples in X using model i.
-        
-        :param x: array-like, shape (n_samples, n_features)
-        :param i: int, optional (default=0)
-            Model index in case multiple models have been built in parallel. 
-        :return y_pred: array, shape (n_samples,)
-            Class labels for samples in X.
-        """
+        """ Perform classification on samples in x.
 
+        Parameters
+        ----------
+
+        x : array-like, shape (n_samples, n_features)
+
+        Returns
+        -------
+        y_pred : array, shape (n_samples,)
+            Class labels for samples in x.
+        """
         assert (self._clf is not None or self._feedback is not None), \
             "Model has not been initialized. Call fit() first."
 
@@ -100,15 +125,17 @@ class CascadeSVM(object):
         return self._clf.predict(x)
 
     def decision_function(self, x):
-        """
-        Distance of the samples x to the ith separating hyperplane.
-        
-        :param x: array-like, shape (n_samples, n_features)
-        :param i: int, optional (default=0)
-            Model index in case multiple models have been built in parallel. 
-        :return: array-like, shape (n_samples, n_classes * (n_classes-1) / 2)        
+        """ Distance of the samples x to the separating hyperplane.
+
+        Parameters
+        ----------
+        x : array-like, shape (n_samples, n_features)
+
+        Returns
+        -------
+        out : array-like, shape (n_samples, n_classes * (n_classes-1) / 2)
             Returns the decision function of the sample for each class in the
-            ith model.
+            model.
         """
 
         assert (self._clf is not None or self._feedback is not None), \
@@ -121,16 +148,19 @@ class CascadeSVM(object):
 
     def score(self, x, y):
         """
-        Returns the mean accuracy on the given test data and labels using model
-        i.
-        
-        :param x: array-like, shape = (n_samples, n_features)
+        Returns the mean accuracy on the given test data and labels.
+
+        Parameters
+        ----------
+
+        x : array-like, shape = (n_samples, n_features)
             Test samples.
-        :param y: array-like, shape = (n_samples) or (n_samples, n_outputs)
-            True labels for X.  
-        :param i: int, optional (default=0)
-            Model index in case multiple models have been built in parallel.
-        :return score: Mean accuracy of self.predict(X, i) wrt. y.
+        y : array-like, shape = (n_samples) or (n_samples, n_outputs)
+            True labels for x.
+
+        Returns
+        -------
+        score : Mean accuracy of self.predict(x) wrt. y.
         """
 
         assert (self._clf is not None or self._feedback is not None), \

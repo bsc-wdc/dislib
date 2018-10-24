@@ -7,11 +7,19 @@ from scipy.sparse import issparse, vstack
 class Dataset(object):
     """ Set of vectors with or without labels.
 
+    Parameters
+    ----------
+        vectors : ndarray
+            Array of shape (n_vectors, n_features).
+        labels : ndarray, optional
+            Array of shape (n_vectors)
+
     Attributes
     ----------
-    vectors : ndarray.
+    vectors : ndarray
 
-    labels : ndarray.
+    labels : ndarray
+
 
     Methods
     -------
@@ -20,15 +28,6 @@ class Dataset(object):
     """
 
     def __init__(self, vectors, labels=None):
-        """
-
-        Parameters
-        ----------
-        vectors : ndarray
-            Array of shape (n_vectors, n_features).
-        labels : ndarray, optional
-            Array of shape (n_vectors)
-        """
         self.vectors = vectors
         self.labels = labels
 
