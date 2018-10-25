@@ -78,7 +78,9 @@ def main():
 
     csvm = CascadeSVM(cascade_arity=args.a, cascade_iterations=args.i, c=args.c,
                       gamma=gamma, check_convergence=args.convergence)
-    csvm.fit(data[0])
+
+    for d in data:
+        csvm.fit(d)
 
     out = [args.k, args.a, args.p, csvm._clf_params["gamma"], args.c,
            csvm.iterations, csvm.converged]

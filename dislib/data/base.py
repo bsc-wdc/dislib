@@ -8,23 +8,27 @@ from dislib.data import Dataset
 
 
 def load_file(path, part_size, fmt="labeled", n_features=None, use_array=False):
-    """
-    Loads a text file in a distributed way.
+    """ Loads and parses a CSV or LibSVM file.
 
-    :param path: string
+    Parameters
+    ----------
+    path : string
         File path
-    :param part_size: int
+    part_size : int
         Partition size in lines
-    :param fmt: string, optional (default = 'labeled')
+    fmt : string, optional (default = 'labeled')
         Format of the text file. It can be 'labeled' for labeled CSV files
         with the label at the last column, 'unlabeled' for unlabeled CSV
         files, and 'libsvm' for LibSVM/SVMLight files.
-    :param n_features: int, optional
+    n_features : int, optional
         Number of features. This parameter is mandatory for LibSVM files.
-    :param use_array: boolean, optional (default = False)
+    use_array : boolean, optional (default = False)
         Whether to convert LibSVM files to numpy.array. If False, scipy.sparse
         data structures are employed.
-    :return: list
+
+    Returns
+    -------
+    datasets : list
         A list of Dataset instances of size part_size.
     """
 
@@ -52,22 +56,24 @@ def load_file(path, part_size, fmt="labeled", n_features=None, use_array=False):
 
 
 def load_files(path, fmt="labeled", n_features=None, use_array=False):
-    """
-    Loads a set of text files in a distributed way.
+    """ Loads and parses a set of CSV or LibSVM files.
 
-    :param path: string
+    path : string
         Path to a directory containing input files.
-    :param fmt: string, optional (default = 'labeled')
+    fmt : string, optional (default = 'labeled')
         Format of the text files. It can be 'labeled' for labeled CSV files
         with the label at the last column, 'unlabeled' for unlabeled CSV
         files, and 'libsvm' for LibSVM/SVMLight files.
-    :param n_features: int, optional
+    n_features : int, optional
         Number of features. This parameter is mandatory for LibSVM files.
-    :param use_array: boolean, optional (default = False)
+    use_array: boolean, optional (default = False)
         Whether to convert LibSVM files to numpy.array. If False, scipy.sparse
         data structures are employed.
-    :return: list
-        A list of Dataset instances. One instance per file in path.
+
+    Returns
+    -------
+     datasets: list
+        A list of Dataset instances. One instance per file in ``path''.
     """
     assert (n_features or fmt != "libsvm"), \
         "Number of features must be specified for LibSVM files."

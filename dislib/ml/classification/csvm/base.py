@@ -45,6 +45,17 @@ class CascadeSVM(object):
     converged: boolean
         Whether the model has converged.
 
+    Methods
+    -------
+    fit(data)
+        Fit a model using training data.
+    predict(x)
+        Perform classification on samples in x.
+    decision_function(x)
+        Distance of the samples x to the separating hyperplane.
+    score(x,y)
+        Returns the mean accuracy on the given test data and labels.
+
     References
     ----------
 
@@ -90,8 +101,8 @@ class CascadeSVM(object):
 
         Parameters
         ----------
-        data : Dataset
-            Input vectors.
+        data : List of Dataset
+            Input data.
         """
         self._reset_model()
 
