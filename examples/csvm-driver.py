@@ -2,11 +2,15 @@ import argparse
 import csv
 import os
 
+import time
+
 import numpy as np
 from sklearn.datasets import load_svmlight_file
 
 from dislib.data import load_file, load_files
 from dislib.ml.classification import CascadeSVM
+
+from pycompss.api.api import barrier
 
 
 def main():
@@ -66,6 +70,8 @@ def main():
 
     data = []
 
+    s_time = time.time()
+
     if os.path.isdir(train_data):
         for _ in range(args.nd):
             data.append(load_files(path=train_data, fmt=fmt,
@@ -76,7 +82,11 @@ def main():
                                   fmt=fmt, n_features=args.f,
                                   use_array=args.dense))
 
-    csvm = CascadeSVM(cascade_arity=args.a, cascade_iterations=args.i, c=args.c,
+    if args.dt:
+        barrier()
+
+
+    csvm = CascadeSVM(cascade_arity=args.a, max_iter=args.i, c=args.c,
                       gamma=gamma, check_convergence=args.convergence)
 
     for d in data:

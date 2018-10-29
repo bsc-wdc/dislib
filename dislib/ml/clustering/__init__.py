@@ -1,4 +1,3 @@
-from kmeans.base import Kmeans
-from dbscan.base import DBSCAN
+from dislib.ml.clustering.kmeans.base import KMeans
 
-__all__ = ['Kmeans', 'DBSCAN']
+__all__ = ['KMeans']

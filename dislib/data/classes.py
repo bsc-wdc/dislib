@@ -64,6 +64,26 @@ class Dataset(object):
             self.vectors = self.vectors[uniques]
             self.labels = self.labels[uniques]
 
+    def set_label(self, index, label):
+        """ Sets vector labels.
+
+        Parameters
+        ----------
+        index : int or sequence of ints
+            Indices of the target vectors.
+        label : float
+            Label value.
+
+        Notes
+        -----
+        If the Dataset does not contain labels, this method initializes all
+        labels different from ``index'' to ``None''.
+        """
+        if self.labels is None:
+            self.labels = np.array([None] * self.vectors.shape[0])
+
+        self.labels[index] = label
+
     def __getitem__(self, item):
         if self.labels is not None:
             ds = Dataset(self.vectors[item], self.labels[item])

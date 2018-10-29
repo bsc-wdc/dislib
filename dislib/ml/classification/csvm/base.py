@@ -17,7 +17,7 @@ class CascadeSVM(object):
     ----------
     cascade_arity : int, optional (default=2)
         Arity of the reduction process.
-    cascade_iterations : int, optional (default=5)
+    max_iter : int, optional (default=5)
         Maximum number of iterations to perform.
     tol : float, optional (default=1e-3)
         Tolerance for the stopping criterion.
@@ -67,7 +67,7 @@ class CascadeSVM(object):
     """
     _name_to_kernel = {"linear": "_linear_kernel", "rbf": "_rbf_kernel"}
 
-    def __init__(self, cascade_arity=2, cascade_iterations=5, tol=1 ** -3,
+    def __init__(self, cascade_arity=2, max_iter=5, tol=1 ** -3,
                  kernel="rbf", c=1, gamma="scale", check_convergence=True):
         assert (gamma is "auto" or gamma is "scale" or type(gamma) == float
                 or type(float(gamma)) == float), "Invalid gamma"
@@ -79,14 +79,14 @@ class CascadeSVM(object):
         assert (type(tol) == float or type(float(tol)) == float), \
             "Incorrect tol type [%s], type : %s" % (tol, type(tol))
         assert cascade_arity > 1, "Cascade arity must be greater than 1"
-        assert cascade_iterations > 0, "Max iterations must be greater than 0"
+        assert max_iter > 0, "Max iterations must be greater than 0"
         assert type(check_convergence) == bool, "Invalid value in " \
                                                 "check_convergence"
 
         self._reset_model()
 
         self._cascade_arity = cascade_arity
-        self._max_iterations = cascade_iterations
+        self._max_iter = max_iter
         self._tol = tol
         self._check_convergence = check_convergence
         self._clf_params = {"kernel": kernel, "C": c, "gamma": gamma}
@@ -102,7 +102,7 @@ class CascadeSVM(object):
         Parameters
         ----------
         data : List of Dataset
-            Input data.
+            Training data divided in partitions.
         """
         self._reset_model()
 
@@ -190,7 +190,7 @@ class CascadeSVM(object):
         self._feedback, self._clf = compss_wait_on(self._feedback)
 
     def _print_iteration(self):
-        print("Iteration %s of %s." % (self.iterations, self._max_iterations))
+        print("Iteration %s of %s." % (self.iterations, self._max_iter))
 
     def _do_iteration(self, data):
         q = []
@@ -219,10 +219,10 @@ class CascadeSVM(object):
         self.iterations += 1
 
     def _is_last_iteration(self):
-        return self.iterations == self._max_iterations - 1
+        return self.iterations == self._max_iter - 1
 
     def _check_finished(self):
-        return self.iterations >= self._max_iterations or self.converged
+        return self.iterations >= self._max_iter or self.converged
 
     def _lagrangian_fast(self, vectors, labels, coef):
         set_sl = set(labels)

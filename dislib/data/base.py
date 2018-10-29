@@ -58,6 +58,8 @@ def load_file(path, part_size, fmt="labeled", n_features=None, use_array=False):
 def load_files(path, fmt="labeled", n_features=None, use_array=False):
     """ Loads and parses a set of CSV or LibSVM files.
 
+    Parameters
+    ----------
     path : string
         Path to a directory containing input files.
     fmt : string, optional (default = 'labeled')

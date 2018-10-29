@@ -1,3 +1,3 @@
-from .csvm.base import CascadeSVM
+from dislib.ml.classification.csvm.base import CascadeSVM
 
 all = ['CascadeSVM']
