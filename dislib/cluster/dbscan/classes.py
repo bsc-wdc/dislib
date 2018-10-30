@@ -1,7 +1,5 @@
 from itertools import product
 
-from dislib.ml.clustering.dbscan.tasks import *
-
 
 class Square(object):
 

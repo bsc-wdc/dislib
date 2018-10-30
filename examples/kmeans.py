@@ -3,7 +3,7 @@ import numpy as np
 from sklearn.datasets import make_blobs
 
 from dislib.data import Dataset
-from dislib.ml.clustering import KMeans
+from cluster import KMeans
 
 
 def main():

@@ -5,9 +5,9 @@ import time
 import argparse
 from pycompss.api.api import compss_wait_on
 from pycompss.api.api import compss_barrier
-from ml.clustering.dbscan import constants
-from dislib.ml.clustering.dbscan.classes import DisjointSet
-from dislib.ml.clustering.dbscan.classes import Square
+from dislib.cluster.dbscan import constants
+from dislib.cluster.dbscan.classes import DisjointSet
+from dislib.cluster.dbscan.classes import Square
 
 
 def sync_relations(cluster_rules):
@@ -55,7 +55,7 @@ def DBSCAN(eps, min_points, datafile, is_mn, print_times):
         dataset[comb] = Square(comb, eps, dimensions)
         # Load the data to it
         count_tasks = dataset[comb].init_data(datafile, is_mn, TH_1, count_tasks)
-        # Perform a local clustering
+        # Perform a local cluster
         count_tasks = dataset[comb].partial_scan(min_points, TH_1, count_tasks)
 
     if print_times:

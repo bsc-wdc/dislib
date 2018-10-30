@@ -196,7 +196,7 @@ def get_medoids(X: list, cluster_means: np.array, num_fragments: int,
     return [fragment_medoids[i][j] for i, j in indices]
 
 
-def kmedoids(X, num_points, num_centers, dimensions, epsilon, max_iterations,
+def KMedoids(X, num_points, num_centers, dimensions, epsilon, max_iterations,
              num_fragments, seed):
     size = int(num_points / num_fragments)
     cluster_means = init_centers_random(dimensions, num_centers, seed)
@@ -241,7 +241,7 @@ def main():
                       seed=args.seed,
                       distributed_read=args.distributed_read)
 
-    result = kmedoids(X=X,
+    result = KMedoids(X=X,
                       num_points=args.num_points,
                       num_centers=args.num_centers,
                       dimensions=args.dimensions,

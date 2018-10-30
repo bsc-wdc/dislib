@@ -7,8 +7,7 @@ from pycompss.api.parameter import FILE_IN
 from pycompss.api.parameter import FILE_OUT
 from pycompss.api.task import task
 
-from dislib.ml.clustering.dbscan.classes import DisjointSet
-from dislib.ml.clustering.dbscan.constants import *
+from cluster import DisjointSet
 
 
 def orquestrate_sync_clusters(data, adj_mat, epsilon, coord, neigh_sq_loc,

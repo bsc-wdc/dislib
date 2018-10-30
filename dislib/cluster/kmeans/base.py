@@ -4,7 +4,7 @@ from pycompss.api.task import task
 
 
 class KMeans:
-    """ Perform K-means clustering.
+    """ Perform K-means cluster.
 
     Parameters
     ----------
@@ -32,7 +32,7 @@ class KMeans:
     Methods
     -------
     fit(data)
-        Compute k-means clustering.
+        Compute k-means cluster.
     predict(x)
         Predict the closest cluster each sample in x belongs to.
     """
@@ -48,7 +48,7 @@ class KMeans:
         self.n_iter = 0
 
     def fit(self, data):
-        """ Compute k-means clustering.
+        """ Compute k-means cluster.
 
         Parameters
         ----------
