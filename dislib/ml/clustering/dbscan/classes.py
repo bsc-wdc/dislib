@@ -1,11 +1,6 @@
 from itertools import product
-import os
-from collections import defaultdict
-from task_src.init_data import count_lines, orquestrate_init_data
-from task_src.init_data import merge_task_init_data
-from task_src.partial_scan import orq_scan_merge, merge_relations
-from task_src.partial_scan import merge_cluster_labels, merge_core_points
-from task_src.sync_clusters import sync_task, update_task
+
+from dislib.ml.clustering.dbscan.tasks import *
 
 
 class Square(object):
@@ -22,7 +17,7 @@ class Square(object):
     def __neigh_squares_query(self):
         dim = len(self.coord)
         neigh_squares = []
-        border_squares = [int(min(max(self.epsilon*i, 1), i-1)) for i in
+        border_squares = [int(min(max(self.epsilon * i, 1), i - 1)) for i in
                           self.dimensions]
         perm = []
         for i in range(dim):
@@ -31,7 +26,7 @@ class Square(object):
             current = []
             for i in range(dim):
                 if self.coord[i] + comb[i] in range(self.dimensions[i]):
-                    current.append(self.coord[i]+comb[i])
+                    current.append(self.coord[i] + comb[i])
             if len(current) == dim and current != list(self.coord):
                 neigh_squares.append(tuple(current))
         neigh_squares.append(tuple(self.coord))
@@ -72,7 +67,11 @@ class Square(object):
         self.cluster_labels = defaultdict(list)
         for comb in self.neigh_sq_id:
             count_tasks += 1
-            self.cluster_labels[comb] = merge_cluster_labels(self.relations, comb, self.neigh_thres[comb], *fut_list_0)
+            self.cluster_labels[comb] = merge_cluster_labels(self.relations,
+                                                             comb,
+                                                             self.neigh_thres[
+                                                                 comb],
+                                                             *fut_list_0)
         self.core_points = merge_core_points(self.neigh_thres, self.coord,
                                              *fut_list_2)
         return count_tasks
@@ -83,14 +82,62 @@ class Square(object):
 
     def update_labels(self, updated_relations, is_mn, file_id):
         if is_mn:
-            path = "/gpfs/projects/bsc19/COMPSs_DATASETS/dbscan2/"+str(file_id)
+            path = "/gpfs/projects/bsc19/COMPSs_DATASETS/dbscan2/" + str(
+                file_id)
         else:
-            path = "~/DBSCAN/data/"+str(file_id)
+            path = "~/DBSCAN/data/" + str(file_id)
         path = os.path.expanduser(path)
-        tmp_string = path+"/"+str(self.coord[0])
+        tmp_string = path + "/" + str(self.coord[0])
         for num, j in enumerate(self.coord):
             if num > 0:
-                tmp_string += "_"+str(j)
+                tmp_string += "_" + str(j)
         tmp_string += "_OUT.txt"
         update_task(self.cluster_labels[self.coord], self.coord, self.points,
-                    self.neigh_thres[self.coord][0], updated_relations, tmp_string)
+                    self.neigh_thres[self.coord][0], updated_relations,
+                    tmp_string)
+
+
+class Data(object):
+    def __init__(self):
+        self.value = []
+
+
+class DisjointSet:
+    _disjoint_set = list()
+
+    #    def __init__(self, init_arr):
+    #        self._disjoint_set = []
+    #        if init_arr:
+    #            for item in list(set(init_arr)):
+    #                self._disjoint_set.append([item])
+
+    # Alternative __init__:
+    def __init__(self, init_arr):
+        self._disjoint_set = []
+        if init_arr:
+            for item in list(init_arr):
+                self._disjoint_set.append([item])
+
+    def _find_index(self, elem):
+        for item in self._disjoint_set:
+            if elem in item:
+                return self._disjoint_set.index(item)
+        return None
+
+    def find(self, elem):
+        for item in self._disjoint_set:
+            if elem in item:
+                return self._disjoint_set[self._disjoint_set.index(item)]
+        return None
+
+    def union(self, elem1, elem2):
+        index_elem1 = self._find_index(elem1)
+        index_elem2 = self._find_index(elem2)
+        if index_elem1 != index_elem2 and index_elem1 is not None and index_elem2 is not None:
+            self._disjoint_set[index_elem2] = self._disjoint_set[index_elem2] + \
+                                              self._disjoint_set[index_elem1]
+            del self._disjoint_set[index_elem1]
+        return self._disjoint_set
+
+    def get(self):
+        return self._disjoint_set

@@ -85,7 +85,7 @@ class CascadeSVM(object):
 
         self._reset_model()
 
-        self._cascade_arity = cascade_arity
+        self._arity = cascade_arity
         self._max_iter = max_iter
         self._tol = tol
         self._check_convergence = check_convergence
@@ -194,7 +194,7 @@ class CascadeSVM(object):
 
     def _do_iteration(self, data):
         q = []
-        arity = self._cascade_arity
+        arity = self._arity
         params = self._clf_params
 
         # first level

@@ -15,7 +15,7 @@ def main():
 
     n_samples = 1500
     random_state = 170
-    x, y = make_blobs(n_samples=n_samples, random_state=170)
+    x, y = make_blobs(n_samples=n_samples, random_state=random_state)
 
     data = gen_data(x)
 

@@ -2,14 +2,12 @@ from collections import defaultdict
 from ast import literal_eval
 import itertools
 import time
-import sys
 import argparse
-from pycompss.api.task import task
 from pycompss.api.api import compss_wait_on
 from pycompss.api.api import compss_barrier
-from classes import constants
-from classes.DS import DisjointSet
-from classes.square import Square
+from ml.clustering.dbscan import constants
+from dislib.ml.clustering.dbscan.classes import DisjointSet
+from dislib.ml.clustering.dbscan.classes import Square
 
 
 def sync_relations(cluster_rules):
@@ -26,7 +24,7 @@ def sync_relations(cluster_rules):
 
 
 # DBSCAN Algorithm
-def DBSCAN(epsilon, min_points, datafile, is_mn, print_times, *args, **kwargs):
+def DBSCAN(eps, min_points, datafile, is_mn, print_times):
     initial_time = time.time()
 
     # This threshold determines the granularity of the tasks
@@ -54,7 +52,7 @@ def DBSCAN(epsilon, min_points, datafile, is_mn, print_times, *args, **kwargs):
     # For each square in the grid
     for comb in itertools.product(*dimension_perms):
         # Initialise the square object
-        dataset[comb] = Square(comb, epsilon, dimensions)
+        dataset[comb] = Square(comb, eps, dimensions)
         # Load the data to it
         count_tasks = dataset[comb].init_data(datafile, is_mn, TH_1, count_tasks)
         # Perform a local clustering
@@ -62,14 +60,14 @@ def DBSCAN(epsilon, min_points, datafile, is_mn, print_times, *args, **kwargs):
 
     if print_times:
         compss_barrier()
-        print "Partial Scan Tasks Finished"
+        print("Partial Scan Tasks Finished")
         ps_time = time.time() - initial_time
-        print "PS Lasted: "+str(ps_time)
+        print("PS Lasted: "+str(ps_time))
         cp_count = 0
         for comb in itertools.product(*dimension_perms):
             dataset[comb].core_points = compss_wait_on(dataset[comb].core_points)
             cp_count += dataset[comb].core_points.count(constants.CORE_POINT)
-        print "Number of core points found: "+str(cp_count)
+        print("Number of core points found: "+str(cp_count))
 
     # In spite of not needing a synchronization we loop again since the first
     # loop initialises all the future objects that are used afterwards
@@ -99,9 +97,9 @@ def DBSCAN(epsilon, min_points, datafile, is_mn, print_times, *args, **kwargs):
         dataset[comb].update_labels(updated_links, is_mn, datafile)
     compss_barrier()
 
-    print "Total number of tasks scheduled: "+str(count_tasks)
-    print "Number of clusters found: "+str(len(updated_links))
-    print "Time elapsed: " + str(time.time()-initial_time)
+    print("Total number of tasks scheduled: "+str(count_tasks))
+    print("Number of clusters found: "+str(len(updated_links)))
+    print("Time elapsed: " + str(time.time()-initial_time))
 
     return 1
 
