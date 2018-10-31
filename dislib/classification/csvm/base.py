@@ -68,7 +68,8 @@ class CascadeSVM(object):
     _name_to_kernel = {"linear": "_linear_kernel", "rbf": "_rbf_kernel"}
 
     def __init__(self, cascade_arity=2, max_iter=5, tol=1 ** -3,
-                 kernel="rbf", c=1, gamma="scale", check_convergence=True):
+                 kernel="rbf", c=1, gamma='scale', check_convergence=True):
+
         assert (gamma is "auto" or gamma is "scale" or type(gamma) == float
                 or type(float(gamma)) == float), "Invalid gamma"
         assert (kernel is None or kernel in self._name_to_kernel.keys()), \
@@ -89,7 +90,11 @@ class CascadeSVM(object):
         self._max_iter = max_iter
         self._tol = tol
         self._check_convergence = check_convergence
-        self._clf_params = {"kernel": kernel, "C": c, "gamma": gamma}
+
+        if kernel == "rbf":
+            self._clf_params = {"kernel": kernel, "C": c, "gamma": gamma}
+        else:
+            self._clf_params = {"kernel": kernel, "C": c}
 
         try:
             self._kernel_f = getattr(self, CascadeSVM._name_to_kernel[kernel])
