@@ -1,5 +1,6 @@
 import numpy as np
 from pycompss.api.api import compss_wait_on
+from pycompss.api.parameter import INOUT
 from pycompss.api.task import task
 
 
@@ -72,6 +73,29 @@ class KMeans:
 
         self.n_iter = iter
 
+    def fit_predict(self, data):
+        """ Performs clustering on data, and sets and returns the cluster
+        labels.
+
+        Parameters
+        ----------
+        data : List of Dataset
+            Unlabeled data divided in partitions.
+
+        Returns
+        -------
+        y : ndarray, shape (n_samples)
+            Cluster labels.
+        """
+
+        self.fit(data)
+        labels = []
+
+        for part in data:
+            labels.append(_get_label(part))
+
+        return np.array(compss_wait_on(labels))
+
     def predict(self, x):
         """ Predict the closest cluster each sample in x belongs to.
 
@@ -114,6 +138,11 @@ class KMeans:
 
 
 @task(returns=np.array)
+def _get_label(data):
+    return data.labels
+
+
+@task(returns=np.array)
 def _init_centers(data, n_clusters, random_state):
     np.random.seed(random_state)
     n_features = data.vectors.shape[1]
@@ -121,13 +150,14 @@ def _init_centers(data, n_clusters, random_state):
     return centers
 
 
-@task(returns=np.array)
+@task(data=INOUT, returns=np.array)
 def _partial_sum(data, centers):
     partials = np.zeros((centers.shape[0], 2), dtype=object)
 
-    for vec in data.vectors:
+    for idx, vec in enumerate(data.vectors):
         dist = np.linalg.norm(vec - centers, axis=1)
         min_center = np.argmin(dist)
+        data.set_label(idx, min_center)
         partials[min_center][0] += vec
         partials[min_center][1] += 1
 

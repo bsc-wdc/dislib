@@ -8,7 +8,7 @@ import numpy as np
 from sklearn.datasets import load_svmlight_file
 
 from dislib.data import load_file, load_files
-from classification import CascadeSVM
+from dislib.classification import CascadeSVM
 
 from pycompss.api.api import barrier
 

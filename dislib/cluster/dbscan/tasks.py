@@ -7,7 +7,7 @@ from pycompss.api.parameter import FILE_IN
 from pycompss.api.parameter import FILE_OUT
 from pycompss.api.task import task
 
-from cluster import DisjointSet
+from dislib.cluster.dbscan.constants import *
 
 
 def orquestrate_sync_clusters(data, adj_mat, epsilon, coord, neigh_sq_loc,
@@ -146,6 +146,7 @@ def merge_cluster_labels(relations, comb, chunks, *args):
 
 @task(returns=1)
 def merge_relations(*args):
+    from dislib.cluster.dbscan.classes import DisjointSet
     out = defaultdict(set)
     for dic in args:
         for key in dic:
@@ -183,21 +184,17 @@ def count_lines(tupla, file_id, is_mn):
 
 
 def orquestrate_init_data(tupla, file_id, len_data, quocient,
-                          res, fut_list, TH_1, is_mn,
-                          count_tasks):
+                          res, fut_list, TH_1, is_mn):
     if (len_data / quocient) > TH_1:
-        [fut_list,
-         count_tasks] = orquestrate_init_data(tupla, file_id, len_data,
+        fut_list = orquestrate_init_data(tupla, file_id, len_data,
                                               quocient * 2, res * 2 + 0,
                                               fut_list,
-                                              TH_1, is_mn, count_tasks)
-        [fut_list,
-         count_tasks] = orquestrate_init_data(tupla, file_id, len_data,
+                                              TH_1, is_mn)
+        fut_list = orquestrate_init_data(tupla, file_id, len_data,
                                               quocient * 2, res * 2 + 1,
                                               fut_list,
-                                              TH_1, is_mn, count_tasks)
+                                              TH_1, is_mn)
     else:
-        count_tasks += 1
         if is_mn:
             path = "/gpfs/projects/bsc19/COMPSs_DATASETS/dbscan/" + str(file_id)
         else:
@@ -210,7 +207,7 @@ def orquestrate_init_data(tupla, file_id, len_data, quocient,
         tmp_string += ".txt"
         tmp_f = init_data(tmp_string, quocient, res, is_mn)
         fut_list.append(tmp_f)
-    return fut_list, count_tasks
+    return fut_list
 
 
 # @task(isDistributed=True, file_path=FILE_IN, returns=1)

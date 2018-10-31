@@ -1,5 +1,7 @@
 from itertools import product
 
+from dislib.cluster.dbscan.tasks import *
+
 
 class Square(object):
 
@@ -30,7 +32,7 @@ class Square(object):
         neigh_squares.append(tuple(self.coord))
         self.neigh_sq_id = tuple(neigh_squares)
 
-    def init_data(self, file_id, is_mn, TH_1, count_tasks):
+    def init_data(self, file_id, is_mn, TH_1):
         fut_list = []
         prev = 0
         for comb in self.neigh_sq_id:
@@ -38,14 +40,12 @@ class Square(object):
             self.len[comb] = count_lines(comb, file_id, is_mn)
             prev += self.len[comb]
             self.len_tot += self.len[comb]
-            fut_list, count_tasks = orquestrate_init_data(comb, file_id,
-                                                          self.len[comb], 1,
-                                                          0, fut_list, TH_1,
-                                                          is_mn, count_tasks)
-        count_tasks += 1
+            fut_list = orquestrate_init_data(comb, file_id,
+                                             self.len[comb], 1,
+                                             0, fut_list, TH_1,
+                                             is_mn)
         self.points = merge_task_init_data(*fut_list)
         self.__set_neigh_thres()
-        return count_tasks
 
     def __set_neigh_thres(self):
         out = defaultdict(list)
