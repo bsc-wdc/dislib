@@ -4,9 +4,9 @@ from math import sqrt
 
 from pycompss.api.api import compss_wait_on
 
-from decision_tree import DecisionTreeClassifier
-from decision_tree import get_features_file
-from decision_tree import get_y
+from dislib.classification.rf.decision_tree import DecisionTreeClassifier
+from dislib.classification.rf.decision_tree import get_features_file
+from dislib.classification.rf.decision_tree import get_y
 
 import numpy as np
 from numpy.lib import format

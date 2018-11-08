@@ -17,8 +17,8 @@ from pycompss.api.api import compss_delete_object
 from sklearn.tree import DecisionTreeClassifier as SklearnDTClassifier
 from sklearn.tree import _tree
 
-import prediction
-from test_split import test_split
+import dislib.classification.rf.prediction as prediction
+from dislib.classification.rf.test_split import test_split
 
 
 class TreeWrapper(object):
