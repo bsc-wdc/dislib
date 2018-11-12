@@ -6,7 +6,7 @@ from pycompss.api.api import compss_open
 
 
 def predict(file_name, test_data):
-    with compss_open(file_name, 'rb') as tree_file:
+    with compss_open(file_name, 'r') as tree_file:
         if len(test_data.shape) == 1:
             leaf = get_leaf(tree_file, test_data)
             return leaf['mode']
@@ -22,11 +22,11 @@ def predict(file_name, test_data):
 
 
 def predict_probabilities(file_name, test_data, n_classes):
-    with compss_open(file_name, 'rb') as tree_file:
+    with compss_open(file_name, 'r') as tree_file:
         if len(test_data.shape) == 1:
             leaf = get_leaf(tree_file, test_data)
             res = np.zeros((n_classes,))
-            for cla, freq in leaf['frequencies'].iteritems():
+            for cla, freq in leaf['frequencies'].items():
                 res[int(cla)] = freq
             return res/leaf['size']
         elif len(test_data.shape) == 2:
@@ -34,7 +34,7 @@ def predict_probabilities(file_name, test_data, n_classes):
             res = np.zeros((n_samples, n_classes))
             for i, test_instance in enumerate(test_data):
                 leaf = get_leaf(tree_file, test_instance)
-                for cla, freq in leaf['frequencies'].iteritems():
+                for cla, freq in leaf['frequencies'].items():
                     res[i, int(cla)] = freq
                 res[i] /= leaf['size']
             return res

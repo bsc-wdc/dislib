@@ -35,7 +35,7 @@ class TreeWrapper(object):
                 frequencies = dict((self.classes[k], int(v)) for k, v in enumerate(self.i_tree.value[node_id][0]))
                 mode = max(frequencies, key=frequencies.get)
                 n_node_samples = self.i_tree.n_node_samples[node_id]
-                frequencies_str = ', '.join(['"{}": {}'.format(k, v) for k, v in frequencies.iteritems()])
+                frequencies_str = ', '.join(['"{}": {}'.format(k, v) for k, v in frequencies.items()])
                 frequencies_str = '{' + frequencies_str + '}'
                 tree_file.write('{{"tree_path": "{}", "type": "LEAF", '
                                 '"size": {}, "mode": {}, "frequencies": {}}}\n'
@@ -72,7 +72,7 @@ class Leaf(object):
         self.mode = mode
 
     def to_json(self):
-        frequencies_str = ', '.join(map('"%r": %r'.__mod__, self.frequencies.items()))
+        frequencies_str = ', '.join(map('"%r": %r'.__mod__, list(self.frequencies.items())))
         frequencies_str = '{' + frequencies_str + '}'
         return ('{{"tree_path": "{}", "type": "LEAF", '
                 '"size": {}, "mode": {}, "frequencies": {}}}\n'

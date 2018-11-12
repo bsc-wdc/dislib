@@ -97,7 +97,7 @@ class RandomForestClassifier:
             raise ValueError
 
     def _features_file_check(self, features_file):
-        with open(features_file) as fp:
+        with open(features_file, 'rb') as fp:
             version = format.read_magic(fp)
             try:
                 format._check_version(version)
