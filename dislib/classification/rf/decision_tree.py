@@ -290,7 +290,7 @@ class DecisionTreeClassifier:
         tree_sample, y_s = sample_selection(self.n_instances, self.y_codes, self.bootstrap)
         features_file = get_features_file(self.path_in)
         samples_file = get_samples_file(self.path_in)
-        tree_traversal = [('/', tree_sample, y_s, 0)]
+        tree_traversal = [('//', tree_sample, y_s, 0)]
         file_out = os.path.join(self.path_out, self.name_out)
         open(file_out, 'w').close()  # Create new empty file deleting previous content
         nodes_to_persist = []

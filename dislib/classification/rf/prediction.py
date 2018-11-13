@@ -43,7 +43,7 @@ def predict_probabilities(file_name, test_data, n_classes):
 
 
 def get_leaf(tree_file, instance):
-    tree_path = '/'
+    tree_path = '//'
     node, pos = get_node(tree_file, tree_path, 0)
     while True:
         node_type = node['type']
