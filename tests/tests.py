@@ -30,31 +30,6 @@ class ResultsTest(unittest.TestCase):
     def test_cascadecsvm(self):
         from dislib.ml.classification import CascadeSVM
 
-    def test_fft(self):
-        import numpy as np
-        from dislib.math.fft import fft
-
-        arr = np.random.rand(32)
-
-        nfft = np.fft.fft(arr)
-        pfft = fft(arr)
-
-        self.assertTrue(np.allclose(nfft, pfft))
-
-    def test_matmul(self):
-        from dislib.math.linalg.matmul import dot
-        from dislib.math.linalg.matmul import initialize_variables
-        import numpy as np
-
-        A, B, C = initialize_variables(4, 16, 1)
-        dot(A, B, C, 4, 1)
-
-        Ajoin = np.bmat(A)
-        Bjoin = np.bmat(B)
-        Cjoin = np.bmat(C)
-
-        self.assertTrue(np.allclose(Cjoin, np.dot(Ajoin, Bjoin)))
-
 def main():
     unittest.main()
 
