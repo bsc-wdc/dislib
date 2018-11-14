@@ -8,8 +8,9 @@ before_install:
     - docker run -d --name dislib dislib:latest 
 jobs:
     include:
-        - stage: "Test"
+        - stage: "Docker Test"
           script: "docker exec dislib bash run_tests.sh"
+        - stage: "Test"
           script: "bash run_tests.sh"
 
 after_script:
