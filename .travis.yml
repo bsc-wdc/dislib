@@ -1,11 +1,14 @@
 sudo: required
 services:
   - docker
-
+env:
+  global:
+    - REGISTRY_USER=compsuperscalar
+    - secure: ""
 
 before_install:
-    - docker build --tag dislib:0.1 .
-    - docker run -d --name dislib dislib:0.1 
+    - docker build --pull --cache-from bscwdc/dislib --tag bscwdc/dislib .
+    - docker run -d --name dislib bscwdc/dislib 
 jobs:
     include:
         - stage: "Test"
@@ -17,3 +20,13 @@ after_success:
   - docker exec dislib codecov
 after_script:
   - docker images
+
+before_deploy:
+  - docker login -u "$REGISTRY_USER" -p "$REGISTRY_PASS"
+deploy:
+  provider: script
+  script: docker push bscwdc/dislib
+  on:
+    branch: master
+
+
