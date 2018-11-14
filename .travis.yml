@@ -1,5 +1,12 @@
 language: python
+install: skip
+
 sudo: required
+
+#branches:
+#  only:
+#    - master
+
 services:
   - docker
 env:
