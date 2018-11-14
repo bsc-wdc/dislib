@@ -13,4 +13,12 @@ coverage report -m
 
 runcompss \
     --debug \
-    /home/dislib/tests/tests.py
+    ./tests/tests.py 2>&1 | tee output.log
+
+result=$(cat output.log | egrep "OK|FAILED")
+
+echo "Tests result: ${result}"
+
+if [[ $result =~ FAILED ]]; then 
+    exit 1
+fi
