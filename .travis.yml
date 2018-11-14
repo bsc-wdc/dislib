@@ -2,9 +2,12 @@ sudo: required
 services:
   - docker
 
-script:
-  - docker build --tag dislib .
-  - docker run dislib bash /home/dislib/run_tests.sh
+jobs:
+    include:
+        - stage: "Build"
+          script: "docker build --tag dislib ."
+        - stage: "Test"
+          script: "docker run dislib bash run_tests.sh"
 
 after_script:
   - docker images
