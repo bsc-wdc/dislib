@@ -11,7 +11,7 @@ services:
   - docker
 env:
   global:
-    - REGISTRY_USER=compsuperscalar
+    - REGISTRY_USER=compss
     - secure: ""
 
 before_script:
