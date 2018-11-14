@@ -1,31 +1,13 @@
-FROM phusion/baseimage:0.11
-#FROM python:3.6.7-slim
-#FROM openjdk:8-slim 
+FROM compss/compss-ubuntu16:2.4
 
 MAINTAINER COMPSs Support <support-compss@bsc.es>
 
-# Use baseimage-docker's init system.
-CMD ["/sbin/my_init"]
 
-RUN apt-get update && apt-get install -y \
-    openjdk-8-jre-headless \
-    python3-minimal \
-    python3-pip \
-    openssh-server 
-    uuid-runtime && \
-# Coverage stuff 
-    pip3 install codecov coverage && \
-# Default to python3
-    ln -s /usr/bin/python3 /usr/bin/python && \
-# Clean up APT.
-    apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* && \
+RUN pip3 install codecov coverage && \
 # Enable ssh to localhost
     yes yes | ssh-keygen -f /root/.ssh/id_rsa -t rsa -N '' > /dev/null && \
     cat /root/.ssh/id_rsa.pub > /root/.ssh/authorized_keys 
 
-# Copy 2.4 COMPSs installation
-COPY --from=compss/compss-ubuntu16:2.4 /opt/COMPSs /opt/COMPSs
-#COPY --from=compss/compss-ubuntu16:2.4 /etc/profile.d/compss.sh /etc/profile.d/compss.sh
 COPY dislib dislib
 COPY examples examples
 COPY tests tests
