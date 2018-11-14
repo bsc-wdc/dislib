@@ -1,0 +1,10 @@
+sudo: required
+services:
+  - docker
+
+script:
+  - docker build --tag dislib .
+  - docker run dislib ./run_tests.sh
+
+after_script:
+  - docker images

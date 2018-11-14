@@ -7,18 +7,18 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 class ImportTests(unittest.TestCase):
 
     def test_import_fft(self):
-        from pycompss_lib.math import fft
-        from pycompss_lib.math.fft import fft
+        from dislib.math import fft
+        from dislib.math.fft import fft
 
     def test_import_cascadecsvm(self):
-        from pycompss_lib.ml.classification import CascadeSVM
+        from dislib.ml.classification import CascadeSVM
 
 
     def test_import_kmeans(self):
-        from pycompss_lib.ml.clustering import kmeans
+        from dislib.ml.clustering import kmeans
 
     def test_import_dbscan(self):
-        from pycompss_lib.ml.clustering import DBSCAN
+        from dislib.ml.clustering import DBSCAN
 
 
 
@@ -28,11 +28,11 @@ class ResultsTest(unittest.TestCase):
     #ipycompss.start(graph=True, trace=True, debug=True, project_xml='../project.xml', resources_xml='../resources.xml')
 
     def test_cascadecsvm(self):
-        from pycompss_lib.ml.classification import CascadeSVM
+        from dislib.ml.classification import CascadeSVM
 
     def test_fft(self):
         import numpy as np
-        from pycompss_lib.math.fft import fft
+        from dislib.math.fft import fft
 
         arr = np.random.rand(32)
 
@@ -42,8 +42,8 @@ class ResultsTest(unittest.TestCase):
         self.assertTrue(np.allclose(nfft, pfft))
 
     def test_matmul(self):
-        from pycompss_lib.math.linalg.matmul import dot
-        from pycompss_lib.math.linalg.matmul import initialize_variables
+        from dislib.math.linalg.matmul import dot
+        from dislib.math.linalg.matmul import initialize_variables
         import numpy as np
 
         A, B, C = initialize_variables(4, 16, 1)
