@@ -8,8 +8,8 @@ export PATH=$PATH:/opt/COMPSs/Bindings/c/bin
 
 /etc/init.d/ssh start
 
-coverage run --source dislib tests/tests.py
-coverage report -m
+#coverage run --source dislib tests/tests.py
+#coverage report -m
 
 runcompss \
     --debug \
