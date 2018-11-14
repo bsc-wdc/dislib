@@ -22,7 +22,7 @@ script: "docker exec dislib bash run_tests.sh"
 script: "docker exec dislib bash run_coverage.sh"
 
 after_success:
-  - docker exec dislib codecov
+  - docker exec dislib codecov --token=629589cf-e257-4262-8ec0-314dfd98f003
 after_script:
   - docker images
 
