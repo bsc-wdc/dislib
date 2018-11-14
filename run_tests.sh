@@ -1,3 +1,6 @@
+#!/bin/bash
+
+/etc/init.d/ssh start
 export ComputingUnits=4
 
 runcompss \
