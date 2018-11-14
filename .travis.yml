@@ -2,12 +2,15 @@ sudo: required
 services:
   - docker
 
+
+before_install:
+    - docker build --tag dislib:latest .
+    - docker run -d --name dislib dislib:latest 
 jobs:
     include:
-        - stage: "Build"
-          script: "docker build --tag dislib ."
         - stage: "Test"
-          script: "docker run dislib bash run_tests.sh"
+          script: "docker exec dislib bash run_tests.sh"
+          script: "bash run_tests.sh"
 
 after_script:
   - docker images
