@@ -11,7 +11,8 @@ RUN apt-get update && apt-get install -y \
     openjdk-8-jre-headless \
     python3-minimal \
     python3-pip \
-    openssh-server && \
+    openssh-server 
+    uuid-runtime && \
 # Coverage stuff 
     pip3 install codecov coverage && \
 # Default to python3
@@ -28,7 +29,8 @@ COPY --from=compss/compss-ubuntu16:2.4 /opt/COMPSs /opt/COMPSs
 COPY dislib dislib
 COPY examples examples
 COPY tests tests
-COPY run_tests.sh /home/dislib/
+COPY run_tests.sh /
+COPY run_coverage.sh /
 
 ENV PATH=$PATH:/opt/COMPSs/Runtime/scripts/user:/opt/COMPSs/Bindings/c/bin
 ENV CLASSPATH=$CLASSPATH:/opt/COMPSs/Runtime/compss-engine.jar
