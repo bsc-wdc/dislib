@@ -1,10 +1,11 @@
 sudo: required
+language: python
 services:
   - docker
 
 script:
   - docker build --tag dislib .
-  - docker run dislib ./run_tests.sh
+  - docker run dislib bash /home/dislib/run_tests.sh
 
 after_script:
   - docker images
