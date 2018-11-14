@@ -4,14 +4,16 @@ services:
 
 
 before_install:
-    - docker build --tag dislib:latest .
-    - docker run -d --name dislib dislib:latest 
+    - docker build --tag dislib:0.1 .
+    - docker run -d --name dislib dislib:0.1 
 jobs:
     include:
         - stage: "Test"
-          script: "bash run_tests.sh"
-        - stage: "Docker Test"
           script: "docker exec dislib bash run_tests.sh"
+        - stage: "Code Coverage"
+          script: "docker exec dislib bash run_coverage.sh"
 
+after_success:
+  - docker exec dislib codecov
 after_script:
   - docker images
