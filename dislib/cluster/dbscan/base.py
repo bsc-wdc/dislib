@@ -9,23 +9,78 @@ from dislib.cluster.dbscan.classes import Square
 
 
 class DBSCAN():
+    """ Perform DBSCAN clustering.
 
-    def __init__(self, eps=0.5, min_points=5, grid_dim=10, grid_data=False):
+    This algorithm requires data to be arranged in a multidimensional grid.
+    The default behavior is to re-arrange input data before running the
+    clustering algorithm. See fit() for more details.
+
+
+    Parameters
+    ----------
+    eps : float, optional (default=0.5)
+        The maximum distance between two samples for them to be considered as
+        in the same neighborhood.
+    min_samples : int, optional (default=5)
+        The number of samples (or total weight) in a neighborhood for a point
+        to be considered as a core point. This includes the point itself.
+    arrange_data: boolean, optional (default=True)
+        Whether to re-arrange input data before performing clustering.
+    grid_dim : int, optional (default=10)
+        Number of regions per dimension in which to divide the feature space.
+        The number of regions generated is equal to n_features ^ grid_dim.
+
+    Attributes
+    ----------
+    labels_ : array, shape = [n_samples]
+        Cluster labels for each point in the dataset given to fit(). Noisy
+        samples are given the label -1.
+
+    Methods
+    -------
+    fit(data)
+        Perform DBSCAN clustering.
+    """
+
+    def __init__(self, eps=0.5, min_samples=5, arrange_data=True, grid_dim=10):
         assert grid_dim >= 1, "Grid dimensions must be greater than 1."
 
         self._eps = eps
-        self._min_points = min_points
+        self._min_samples = min_samples
         self._grid_dim = grid_dim
-        self._grid_data = grid_data
+        self._arrange_data = arrange_data
         self.labels_ = np.empty(0)
         self._part_sizes = []
         self._sorting = []
 
     def fit(self, data):
+        """ Perform DBSCAN clustering on data.
+
+        If arrange_data=True, data is initially rearranged in a
+        multidimensional grid with grid_dim regions per dimension. Regions
+        are uniform in size.
+
+        For example, suppose that data contains N partitions of 2-dimensional
+        samples (n_features=2), where the first feature ranges from 1 to 5 and
+        the second feature ranges from 0 to 1. Then, grid_dim=10 re-arranges
+        data into 10^2=100 new partitions, where each partition contains the
+        samples that lie in one region of the grid. numpy.linspace() is
+        employed to divide the feature space into uniform regions.
+
+        If data is already arranged in a grid, then the number of partitions
+        in data must be equal to grid_dim ^ n_features. The equivalence
+        between partition and region index is computed using
+        numpy.ravel_multi_index().
+
+        Parameters
+        ----------
+        data : List of Dataset
+            Input data.
+        """
         n_features = compss_wait_on(_get_n_features(data[0]))
         grid = np.empty([self._grid_dim] * n_features, dtype=object)
 
-        assert (not self._grid_data or grid.size == len(data)), \
+        assert (self._arrange_data or grid.size == len(data)), \
             "%s partitions required for grid dimension = %s and number of " \
             "features = %s. Got %s partitions instead" % (grid.size,
                                                           self._grid_dim,
@@ -34,7 +89,7 @@ class DBSCAN():
         mn, mx = self._get_min_max(data)
         bins, region_sizes = self._generate_bins(mn, mx, n_features)
 
-        if not self._grid_data:
+        if self._arrange_data:
             self._set_part_sizes(data)
             sorted_data = self._sort_data(data, grid, bins)
         else:
@@ -48,7 +103,7 @@ class DBSCAN():
         for ind in np.ndindex(grid.shape):
             grid[ind] = Square(ind, self._eps, grid.shape, region_sizes)
             grid[ind].init_data(sorted_data, grid.shape)
-            grid[ind].partial_scan(self._min_points, TH_1)
+            grid[ind].partial_scan(self._min_samples, TH_1)
 
         # In spite of not needing a synchronization we loop again since the first
         # loop initialises all the future objects that are used afterwards
