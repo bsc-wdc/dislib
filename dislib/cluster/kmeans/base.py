@@ -49,7 +49,7 @@ class KMeans:
         self.n_iter = 0
 
     def fit(self, data):
-        """ Compute k-means cluster.
+        """ Compute k-means clustering.
 
         Parameters
         ----------
@@ -86,6 +86,10 @@ class KMeans:
         -------
         y : ndarray, shape (n_samples)
             Cluster labels.
+
+        Notes
+        -----
+        This method modifies the input dataset by setting the cluster labels.
         """
 
         self.fit(data)

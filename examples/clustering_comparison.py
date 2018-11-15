@@ -9,7 +9,7 @@ from sklearn.datasets import make_blobs, make_circles, make_moons
 from sklearn.neighbors import kneighbors_graph
 from sklearn.preprocessing import StandardScaler
 
-from dislib.cluster import KMeans
+from dislib.cluster import KMeans, DBSCAN
 from dislib.data import Dataset
 
 
@@ -22,7 +22,7 @@ def main():
     # ============
     n_samples = 1500
     noisy_circles = make_circles(n_samples=n_samples, factor=.5,
-                                 noise=.05)
+                                 noise=.05, random_state=170)
     noisy_moons = make_moons(n_samples=n_samples, noise=.05)
     blobs = make_blobs(n_samples=n_samples, random_state=8)
     no_structure = np.random.rand(n_samples, 2), None
@@ -87,9 +87,11 @@ def main():
         # Create cluster objects
         # ============
         kmeans = KMeans(n_clusters=params["n_clusters"])
+        dbscan = DBSCAN(eps=params["eps"], grid_dim=1)
 
         clustering_algorithms = (
-            ('KMeans', kmeans),
+            ('K-Means', kmeans),
+            ('DBSCAN', dbscan),
         )
 
         for name, algorithm in clustering_algorithms:
@@ -144,6 +146,7 @@ def main():
 
 
 def gen_data(x):
+    # Split the data in several Datasets for demonstration purposes
     data = []
     size = x.shape[0]
     step = int(size / 5)

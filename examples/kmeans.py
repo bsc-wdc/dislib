@@ -76,6 +76,7 @@ def main():
 
 
 def gen_data(x):
+    # Split the data in several Datasets for demonstration purposes
     data = []
     size = x.shape[0]
     step = int(size / 5)
