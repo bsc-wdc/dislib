@@ -4,127 +4,223 @@ import numpy as np
 from pycompss.api.parameter import FILE_IN
 from pycompss.api.task import task
 
-from dislib.data import Dataset
+from dislib.data import Subset, Dataset
 
 
-def load_file(path, part_size, fmt="labeled", n_features=None, use_array=False):
-    """ Loads and parses a CSV or LibSVM file.
+def load_data(x, subset_size, y=None):
+    """
+    Loads data into a Dataset.
 
     Parameters
     ----------
-    path : string
-        File path
-    part_size : int
-        Partition size in lines
-    fmt : string, optional (default = 'labeled')
-        Format of the text file. It can be 'labeled' for labeled CSV files
-        with the label at the last column, 'unlabeled' for unlabeled CSV
-        files, and 'libsvm' for LibSVM/SVMLight files.
-    n_features : int, optional
-        Number of features. This parameter is mandatory for LibSVM files.
-    use_array : boolean, optional (default = False)
-        Whether to convert LibSVM files to numpy.array. If False, scipy.sparse
-        data structures are employed.
+    x : ndarray, shape=[n_samples, n_features]
+        Array of samples.
+    y : ndarray, optional, shape=[n_features,]
+        Array of labels.
+    subset_size : int
+        Subset size in number of samples.
 
     Returns
     -------
-    datasets : list
-        A list of Dataset instances of size part_size.
+    dataset : Dataset
+        A distributed representation of the data divided in Subsets of
+        subset_size.
     """
 
-    assert (n_features or fmt != "libsvm"), \
-        "Number of features must be specified for LibSVM files."
+    dataset = Dataset(n_features=x.shape[1])
 
+    for i in range(0, x.shape[0], subset_size):
+        if y is not None:
+            subset = Subset(x[i: i + subset_size], y[i: i + subset_size])
+        else:
+            subset = Subset(x[i: i + subset_size])
+        dataset.append(subset)
+
+    return dataset
+
+
+def load_libsvm_file(path, subset_size, n_features, store_sparse=True):
+    """ Loads a LibSVM file into a Dataset.
+
+     Parameters
+    ----------
+    path : string
+        File path.
+    subset_size : int
+        Subset size in lines.
+    n_features : int
+        Number of features.
+    store_sparse : boolean, optional (default = True).
+        Whether to use scipy.sparse data structures to store data. If False,
+        numpy.array is used instead.
+
+    Returns
+    -------
+    dataset : Dataset
+        A distributed representation of the data divided in Subsets of
+        subset_size.
+    """
+
+    return _load_file(path, subset_size, fmt="libsvm",
+                      store_sparse=store_sparse,
+                      n_features=n_features)
+
+
+def load_libsvm_files(path, n_features, store_sparse=True):
+    """ Loads a set of LibSVM files into a Dataset.
+
+        Parameters
+       ----------
+       path : string
+           Path to a directory containing LibSVM files.
+       n_features : int
+           Number of features.
+       store_sparse : boolean, optional (default = True).
+           Whether to use scipy.sparse data structures to store data. If False,
+           numpy.array is used instead.
+
+       Returns
+       -------
+       dataset : Dataset
+           A distributed representation of the data divided in a Subset for
+           each file in path.
+       """
+
+    return _load_files(path, fmt="libsvm", store_sparse=store_sparse,
+                       n_features=n_features)
+
+
+def load_csv_file(path, subset_size, n_features, delimiter=",", label_col=None):
+    """ Loads a CSV file into a Dataset.
+
+     Parameters
+    ----------
+    path : string
+        File path.
+    subset_size : int
+        Subset size in lines.
+    n_features : int
+        Number of features.
+    delimiter : string, optional (default ",")
+        String that separates features in the file.
+    label_col : int, optional (default=None)
+        Column representing data labels. Can be 'first' or 'last'.
+
+    Returns
+    -------
+    dataset : Dataset
+        A distributed representation of the data divided in Subsets of
+        subset_size.
+    """
+    return _load_file(path, subset_size, fmt="csv", n_features=n_features,
+                      delimiter=delimiter, label_col=label_col)
+
+
+def load_csv_files(path, n_features, delimiter=",", label_col=None):
+    """ Loads a set of CSV files into a Dataset.
+
+    Parameters
+   ----------
+    path : string
+        Path to a directory containing CSV files.
+    n_features : int
+        Number of features.
+    delimiter : string, optional (default ",")
+        String that separates features in the file.
+    label_col : int, optional (default=None)
+        Column representing data labels. Can be 'first' or 'last'.
+
+   Returns
+   -------
+   dataset : Dataset
+       A distributed representation of the data divided in a Subset for
+       each file in path.
+   """
+
+    return _load_files(path, fmt="csv", n_features=n_features,
+                       delimiter=delimiter, label_col=label_col)
+
+
+def _load_file(path, part_size, fmt, n_features, delimiter=",",
+               label_col=None, store_sparse=False):
     lines = []
-    parts = []
-    idx = 0
+    dataset = Dataset(n_features)
 
     with open(path, "r") as f:
         for line in f:
             lines.append(line.encode())
-            idx += 1
 
-            if idx == part_size:
-                parts.append(_read_lines(lines, fmt, n_features, use_array))
+            if len(lines) == part_size:
+                subset = _read_lines(lines, fmt, n_features, delimiter,
+                                     label_col, store_sparse)
+                dataset.append(subset)
                 lines = []
-                idx = 0
 
     if lines:
-        parts.append(_read_lines(lines, fmt, n_features, use_array))
+        dataset.append(_read_lines(lines, fmt, n_features, store_sparse))
 
-    return parts
+    return dataset
 
 
-def load_files(path, fmt="labeled", n_features=None, use_array=False):
-    """ Loads and parses a set of CSV or LibSVM files.
-
-    Parameters
-    ----------
-    path : string
-        Path to a directory containing input files.
-    fmt : string, optional (default = 'labeled')
-        Format of the text files. It can be 'labeled' for labeled CSV files
-        with the label at the last column, 'unlabeled' for unlabeled CSV
-        files, and 'libsvm' for LibSVM/SVMLight files.
-    n_features : int, optional
-        Number of features. This parameter is mandatory for LibSVM files.
-    use_array: boolean, optional (default = False)
-        Whether to convert LibSVM files to numpy.array. If False, scipy.sparse
-        data structures are employed.
-
-    Returns
-    -------
-     datasets: list
-        A list of Dataset instances. One instance per file in ``path''.
-    """
-    assert (n_features or fmt != "libsvm"), \
-        "Number of features must be specified for LibSVM files."
+def _load_files(path, fmt, n_features, delimiter=",", label_col=None,
+                store_sparse=False):
+    assert os.path.isdir(path), "Path is not a directory."
 
     files = os.listdir(path)
-    parts = []
+    subsets = Dataset(n_features)
 
-    for file in files:
-        parts.append(_read_file(os.path.join(path, file), fmt, n_features,
-                                use_array))
+    for file_ in files:
+        full_path = os.path.join(path, file_)
+        subset = _read_file(full_path, fmt, n_features, delimiter,
+                            label_col, store_sparse)
+        subsets.append(subset)
 
-    return parts
+    return subsets
 
 
 @task(returns=1)
-def _read_lines(lines, fmt, n_features, use_array):
+def _read_lines(lines, fmt, n_features, delimiter, label_col, store_sparse):
     if fmt == "libsvm":
-        data = _read_libsvm(lines, n_features, use_array)
-    elif fmt == "unlabeled":
-        data = Dataset(np.genfromtxt(lines, delimiter=","))
+        subset = _read_libsvm(lines, n_features, store_sparse)
     else:
-        vecs = np.genfromtxt(lines, delimiter=",")
-        data = Dataset(vecs[:, :-1], vecs[:, -1])
+        samples = np.genfromtxt(lines, delimiter=delimiter)
 
-    return data
+        if label_col == "first":
+            subset = Subset(samples[:, 1:], samples[:, 1])
+        elif label_col == "last":
+            subset = Subset(samples[:, :-1], samples[:, -1])
+        else:
+            subset = Subset(samples)
+
+    return subset
 
 
 @task(file=FILE_IN, returns=1)
-def _read_file(file, fmt, n_features, use_array):
+def _read_file(file, fmt, n_features, delimiter, label_col, store_sparse):
     from sklearn.datasets import load_svmlight_file
 
     if fmt == "libsvm":
         x, y = load_svmlight_file(file, n_features)
 
-        if use_array:
+        if not store_sparse:
             x = x.toarray()
 
-        data = Dataset(x, y)
+        subset = Subset(x, y)
 
-    elif fmt == "unlabeled":
-        data = Dataset(np.loadtxt(file, delimiter=","))
     else:
-        vecs = np.loadtxt(file, delimiter=",")
-        data = Dataset(vecs[:, :-1], vecs[:, -1])
+        samples = np.loadtxt(file, delimiter=delimiter)
 
-    return data
+        if label_col == "first":
+            subset = Subset(samples[:, 1:], samples[:, 1])
+        elif label_col == "last":
+            subset = Subset(samples[:, :-1], samples[:, -1])
+        else:
+            subset = Subset(samples)
+
+    return subset
 
 
-def _read_libsvm(lines, n_features, use_array):
+def _read_libsvm(lines, n_features, store_sparse):
     from tempfile import SpooledTemporaryFile
     from sklearn.datasets import load_svmlight_file
     # Creating a tmp file to use load_svmlight_file method should be more
@@ -134,8 +230,8 @@ def _read_libsvm(lines, n_features, use_array):
     tmp_file.seek(0)
     x, y = load_svmlight_file(tmp_file, n_features)
 
-    if use_array:
+    if not store_sparse:
         x = x.toarray()
 
-    data = Dataset(x, y)
+    data = Subset(x, y)
     return data

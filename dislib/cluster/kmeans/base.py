@@ -32,9 +32,9 @@ class KMeans:
 
     Methods
     -------
-    fit(data)
+    fit(dataset)
         Compute K-means clustering.
-    fit_predict(data)
+    fit_predict(dataset)
         Compute K-means clustering, and set and return cluster labels.
     predict(x)
         Predict the closest cluster each sample in x belongs to.
@@ -50,16 +50,20 @@ class KMeans:
         self.centers = None
         self.n_iter = 0
 
-    def fit(self, data):
-        """ Compute k-means clustering.
+    def fit(self, dataset):
+        """ Compute K-means clustering.
 
         Parameters
         ----------
-        data : List of Dataset
-            Unlabeled data divided in partitions.
+        dataset : Dataset
+            Samples to cluster.
+
+        Notes
+        -----
+        This method modifies the input Dataset by setting the cluster labels.
         """
-        future = _init_centers(data[0], self._n_clusters, self._random_state)
-        self.centers = compss_wait_on(future)
+        centers = _init_centers(dataset[0], self._n_clusters, self._random_state)
+        self.centers = compss_wait_on(centers)
 
         old_centers = None
         iter = 0
@@ -67,38 +71,38 @@ class KMeans:
         while not self._converged(old_centers, iter):
             old_centers = np.array(self.centers)
             partials = []
-            for part in data:
-                partials.append(_partial_sum(part, old_centers))
+            for subset in dataset:
+                partials.append(_partial_sum(subset, old_centers))
 
             self._recompute_centers(partials)
             iter += 1
 
         self.n_iter = iter
 
-    def fit_predict(self, data):
+    def fit_predict(self, dataset):
         """ Performs clustering on data, and sets and returns the cluster
         labels.
 
         Parameters
         ----------
-        data : List of Dataset
-            Unlabeled data divided in partitions.
+        dataset : Dataset
+            Samples to cluster.
 
         Returns
         -------
-        y : ndarray, shape (n_samples)
+        y : ndarray, shape=[n_samples]
             Cluster labels.
 
         Notes
         -----
-        This method modifies the input dataset by setting the cluster labels.
+        This method modifies the input Dataset by setting the cluster labels.
         """
 
-        self.fit(data)
+        self.fit(dataset)
         labels = []
 
-        for part in data:
-            labels.append(_get_label(part))
+        for subset in dataset:
+            labels.append(_get_label(subset))
 
         return np.array(compss_wait_on(labels))
 
@@ -144,27 +148,27 @@ class KMeans:
 
 
 @task(returns=np.array)
-def _get_label(data):
-    return data.labels
+def _get_label(subset):
+    return subset.labels
 
 
 @task(returns=np.array)
-def _init_centers(data, n_clusters, random_state):
+def _init_centers(subset, n_clusters, random_state):
     np.random.seed(random_state)
-    n_features = data.vectors.shape[1]
+    n_features = subset.samples.shape[1]
     centers = np.random.random((n_clusters, n_features))
     return centers
 
 
-@task(data=INOUT, returns=np.array)
-def _partial_sum(data, centers):
+@task(subset=INOUT, returns=np.array)
+def _partial_sum(subset, centers):
     partials = np.zeros((centers.shape[0], 2), dtype=object)
 
-    for idx, vec in enumerate(data.vectors):
-        dist = np.linalg.norm(vec - centers, axis=1)
+    for idx, sample in enumerate(subset.samples):
+        dist = np.linalg.norm(sample - centers, axis=1)
         min_center = np.argmin(dist)
-        data.set_label(idx, min_center)
-        partials[min_center][0] += vec
+        subset.set_label(idx, min_center)
+        partials[min_center][0] += sample
         partials[min_center][1] += 1
 
     return partials

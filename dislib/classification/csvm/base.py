@@ -27,9 +27,9 @@ class CascadeSVM(object):
     c : float, optional (default=1.0)
         Penalty parameter C of the error term.
     gamma : float, optional (default='scale')
-        Supports 'scale' for 1 / (n_features * vectors.std()) and 'auto' for
+        Supports 'scale' for 1 / (n_features * samples.std()) and 'auto' for
         1 / (n_features)
-    check_convergence: boolean, optional (default=True)
+    check_convergence : boolean, optional (default=True)
         Whether to test for convergence. If False, the algorithm will run
         for cascade_iterations. Checking for convergence adds a
         synchronization point after each iteration.
@@ -37,17 +37,23 @@ class CascadeSVM(object):
         If ``check_convergence=False'' synchronization does not happen until
         a call to ``predict'', ``decision_function'' or ``score''. This can
         be useful to fit multiple models in parallel.
+    random_state : int, RandomState instance or None, optional (default=None)
+        The seed of the pseudo random number generator used when shuffling the
+        data for probability estimates. If int, random_state is the seed used
+        by the random number generator; If RandomState instance, random_state
+        is the random number generator; If None, the random number generator is
+        the RandomState instance used by np.random.
 
     Attributes
     ----------
     iterations : int
         Number of iterations performed.
-    converged: boolean
+    converged : boolean
         Whether the model has converged.
 
     Methods
     -------
-    fit(data)
+    fit(dataset)
         Fit a model using training data.
     predict(x)
         Perform classification on samples in x.
@@ -68,7 +74,8 @@ class CascadeSVM(object):
     _name_to_kernel = {"linear": "_linear_kernel", "rbf": "_rbf_kernel"}
 
     def __init__(self, cascade_arity=2, max_iter=5, tol=1 ** -3,
-                 kernel="rbf", c=1, gamma='scale', check_convergence=True):
+                 kernel="rbf", c=1, gamma='scale', check_convergence=True,
+                 random_state=None):
 
         assert (gamma is "auto" or gamma is "scale" or type(gamma) == float
                 or type(float(gamma)) == float), "Invalid gamma"
@@ -90,6 +97,7 @@ class CascadeSVM(object):
         self._max_iter = max_iter
         self._tol = tol
         self._check_convergence = check_convergence
+        self._random_state = random_state
 
         if kernel == "rbf":
             self._clf_params = {"kernel": kernel, "C": c, "gamma": gamma}
@@ -101,18 +109,18 @@ class CascadeSVM(object):
         except AttributeError:
             self._kernel_f = getattr(self, "_rbf_kernel")
 
-    def fit(self, data):
+    def fit(self, dataset):
         """ Fits a model using training data.
 
         Parameters
         ----------
-        data : List of Dataset
-            Training data divided in partitions.
+        dataset : Dataset
+            Training data.
         """
         self._reset_model()
 
         while not self._check_finished():
-            self._do_iteration(data)
+            self._do_iteration(dataset)
 
             if self._check_convergence:
                 self._check_convergence_and_update_w()
@@ -123,11 +131,11 @@ class CascadeSVM(object):
 
         Parameters
         ----------
-        x : array-like, shape (n_samples, n_features)
+        x : array-like, shape=[n_samples, n_features]
 
         Returns
         -------
-        y_pred : array, shape (n_samples,)
+        y_pred : array, shape=[n_samples,]
             Class labels for samples in x.
         """
         assert (self._clf is not None or self._feedback is not None), \
@@ -197,30 +205,30 @@ class CascadeSVM(object):
     def _print_iteration(self):
         print("Iteration %s of %s." % (self.iterations, self._max_iter))
 
-    def _do_iteration(self, data):
+    def _do_iteration(self, dataset):
         q = []
         arity = self._arity
         params = self._clf_params
 
         # first level
-        for partition in data:
-            data = filter(None, [partition, self._feedback])
-            q.append(_train(False, *data, **params))
+        for subset in dataset:
+            data = filter(None, [subset, self._feedback])
+            q.append(_train(False, self._random_state, *data, **params))
 
         # reduction
         while len(q) > arity:
             data = q[:arity]
             del q[:arity]
 
-            q.append(_train(False, *data, **params))
+            q.append(_train(False, self._random_state, *data, **params))
 
             # delete partial results
-            for d in data:
-                compss_delete_object(d)
+            for partial in data:
+                compss_delete_object(partial)
 
         # last layer
         get_clf = (self._check_convergence or self._is_last_iteration())
-        self._feedback = _train(get_clf, *q, **params)
+        self._feedback = _train(get_clf, self._random_state, *q, **params)
         self.iterations += 1
 
     def _is_last_iteration(self):
@@ -248,11 +256,11 @@ class CascadeSVM(object):
 
     def _check_convergence_and_update_w(self):
         self._retrieve_clf()
-        vectors = self._feedback.vectors
+        samples = self._feedback.samples
         labels = self._feedback.labels
 
         print("Checking convergence...")
-        w = self._lagrangian_fast(vectors, labels, self._clf.dual_coef_)
+        w = self._lagrangian_fast(samples, labels, self._clf.dual_coef_)
         print("     Computed W %s" % w)
 
         if self._last_w:
@@ -288,13 +296,13 @@ class CascadeSVM(object):
 
 
 @task(returns=tuple)
-def _train(return_classifier, *args, **kwargs):
-    data = _merge(*args)
+def _train(return_classifier, random_state, *subsets, **params):
+    subset = _merge(*subsets)
 
-    clf = SVC(random_state=1, **kwargs)
-    clf.fit(X=data.vectors, y=data.labels)
+    clf = SVC(random_state=random_state, **params)
+    clf.fit(X=subset.samples, y=subset.labels)
 
-    sup_vec = data[clf.support_]
+    sup_vec = subset[clf.support_]
 
     if return_classifier:
         return sup_vec, clf
@@ -302,10 +310,10 @@ def _train(return_classifier, *args, **kwargs):
         return sup_vec
 
 
-def _merge(*args):
-    d0 = args[0]
+def _merge(*subsets):
+    set0 = subsets[0]
 
-    for dx in args[1:]:
-        d0.concatenate(dx, remove_duplicates=True)
+    for setx in subsets[1:]:
+        set0.concatenate(setx, remove_duplicates=True)
 
-    return d0
+    return set0
