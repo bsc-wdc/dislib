@@ -1,94 +1,114 @@
 from uuid import uuid4
 
 import numpy as np
+from pycompss.api.api import compss_wait_on
 from scipy.sparse import issparse, vstack
 
 
 class Dataset(object):
-    """ Set of vectors with or without labels.
+
+    def __init__(self, n_features):
+        self._subsets = list()
+        self.n_features = n_features
+
+    def __getitem__(self, item):
+        return self._subsets.__getitem__(item)
+
+    def append(self, subset):
+        self._subsets.append(subset)
+
+    def extend(self, *subsets):
+        self._subsets.append(subsets)
+
+    def collect(self):
+        self._subsets = compss_wait_on(self._subsets)
+
+
+class Subset(object):
+    """ A subset of data for machine learning.
 
     Parameters
     ----------
-        vectors : ndarray
-            Array of shape (n_vectors, n_features).
+        samples : ndarray
+            Array of shape (n_samples, n_features).
         labels : ndarray, optional
-            Array of shape (n_vectors)
+            Array of shape (n_samples)
 
     Attributes
     ----------
-    vectors : ndarray
+    samples : ndarray
 
     labels : ndarray
 
 
     Methods
     -------
-    concatenate(data, remove_duplicates=False)
-        Vertically concatenates this Dataset to another.
+    concatenate(subset, remove_duplicates=False)
+        Vertically concatenates this Subset to another.
     """
 
-    def __init__(self, vectors, labels=None):
-        self.vectors = vectors
+    def __init__(self, samples, labels=None):
+        self.samples = samples
         self.labels = labels
 
-        idx = [uuid4().int for _ in range(vectors.shape[0])]
+        idx = [uuid4().int for _ in range(samples.shape[0])]
         self._ids = np.array(idx)
 
-    def concatenate(self, data, remove_duplicates=False):
-        """ Vertically concatenates this Dataset to another.
+    def concatenate(self, subset, remove_duplicates=False):
+        """ Vertically concatenates this Subset to another.
 
         Parameters
         ----------
-        data : Dataset
-            Dataset to concatenate.
+        subset : Subset
+            Subset to concatenate.
         remove_duplicates : boolean, optional (default=False)
-            Whether to remove duplicate vectors.
+            Whether to remove duplicate samples.
         """
-        assert issparse(self.vectors) == issparse(data.vectors), \
+        assert issparse(self.samples) == issparse(subset.samples), \
             "Cannot concatenate sparse data with non-sparse data."
-        assert (self.labels is None) == (data.labels is None), \
+        assert (self.labels is None) == (subset.labels is None), \
             "Cannot concatenate labeled data with non-labeled data"
 
-        if issparse(self.vectors):
-            self.vectors = vstack([self.vectors, data.vectors])
+        if issparse(self.samples):
+            self.samples = vstack([self.samples, subset.samples])
         else:
-            self.vectors = np.concatenate([self.vectors, data.vectors])
+            self.samples = np.concatenate([self.samples, subset.samples])
 
         if self.labels is not None:
-            self.labels = np.concatenate([self.labels, data.labels])
+            self.labels = np.concatenate([self.labels, subset.labels])
 
-        self._ids = np.concatenate([self._ids, data._ids])
+        self._ids = np.concatenate([self._ids, subset._ids])
 
         if remove_duplicates:
             self._ids, uniques = np.unique(self._ids, return_index=True)
-            self.vectors = self.vectors[uniques]
+            self.samples = self.samples[uniques]
             self.labels = self.labels[uniques]
 
     def set_label(self, index, label):
-        """ Sets vector labels.
+        """ Sets sample labels.
 
         Parameters
         ----------
         index : int or sequence of ints
-            Indices of the target vectors.
+            Indices of the target samples.
         label : float
             Label value.
 
         Notes
         -----
-        If the Dataset does not contain labels, this method initializes all
+        If the Subset does not contain labels, this method initializes all
         labels different from ``index'' to ``None''.
         """
         if self.labels is None:
-            self.labels = np.array([None] * self.vectors.shape[0])
+            self.labels = np.array([None] * self.samples.shape[0])
 
         self.labels[index] = label
 
     def __getitem__(self, item):
         if self.labels is not None:
-            ds = Dataset(self.vectors[item], self.labels[item])
+            ds = Subset(self.samples[item], self.labels[item])
         else:
-            ds = Dataset(self.vectors[item])
+            ds = Subset(self.samples[item])
 
         ds._ids = self._ids[item]
         return ds
