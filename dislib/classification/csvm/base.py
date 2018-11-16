@@ -37,8 +37,6 @@ class CascadeSVM(object):
         If ``check_convergence=False'' synchronization does not happen until
         a call to ``predict'', ``decision_function'' or ``score''. This can
         be useful to fit multiple models in parallel.
-<<<<<<< Updated upstream
-=======
     random_state : int, RandomState instance or None, optional (default=None)
         The seed of the pseudo random number generator used when shuffling the
         data for probability estimates. If int, random_state is the seed used
@@ -47,7 +45,6 @@ class CascadeSVM(object):
         the RandomState instance used by np.random.
     verbose : boolean, optional (default=False)
         Whether to print progress information.
->>>>>>> Stashed changes
 
     Attributes
     ----------
@@ -104,7 +101,6 @@ class CascadeSVM(object):
         self._check_convergence = check_convergence
         self._random_state = random_state
         self._verbose = verbose
-
 
         if kernel == "rbf":
             self._clf_params = {"kernel": kernel, "C": c, "gamma": gamma}
