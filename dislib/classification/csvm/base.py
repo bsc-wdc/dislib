@@ -37,6 +37,17 @@ class CascadeSVM(object):
         If ``check_convergence=False'' synchronization does not happen until
         a call to ``predict'', ``decision_function'' or ``score''. This can
         be useful to fit multiple models in parallel.
+<<<<<<< Updated upstream
+=======
+    random_state : int, RandomState instance or None, optional (default=None)
+        The seed of the pseudo random number generator used when shuffling the
+        data for probability estimates. If int, random_state is the seed used
+        by the random number generator; If RandomState instance, random_state
+        is the random number generator; If None, the random number generator is
+        the RandomState instance used by np.random.
+    verbose : boolean, optional (default=False)
+        Whether to print progress information.
+>>>>>>> Stashed changes
 
     Attributes
     ----------
@@ -68,7 +79,8 @@ class CascadeSVM(object):
     _name_to_kernel = {"linear": "_linear_kernel", "rbf": "_rbf_kernel"}
 
     def __init__(self, cascade_arity=2, max_iter=5, tol=1 ** -3,
-                 kernel="rbf", c=1, gamma='scale', check_convergence=True):
+                 kernel="rbf", c=1, gamma='scale', check_convergence=True,
+                 random_state=None, verbose=False):
 
         assert (gamma is "auto" or gamma is "scale" or type(gamma) == float
                 or type(float(gamma)) == float), "Invalid gamma"
@@ -90,6 +102,9 @@ class CascadeSVM(object):
         self._max_iter = max_iter
         self._tol = tol
         self._check_convergence = check_convergence
+        self._random_state = random_state
+        self._verbose = verbose
+
 
         if kernel == "rbf":
             self._clf_params = {"kernel": kernel, "C": c, "gamma": gamma}
@@ -195,7 +210,8 @@ class CascadeSVM(object):
         self._feedback, self._clf = compss_wait_on(self._feedback)
 
     def _print_iteration(self):
-        print("Iteration %s of %s." % (self.iterations, self._max_iter))
+        if self._verbose:
+            print("Iteration %s of %s." % (self.iterations, self._max_iter))
 
     def _do_iteration(self, data):
         q = []
@@ -248,24 +264,31 @@ class CascadeSVM(object):
 
     def _check_convergence_and_update_w(self):
         self._retrieve_clf()
-        vectors = self._feedback.vectors
+        samples = self._feedback.vectors
         labels = self._feedback.labels
 
-        print("Checking convergence...")
-        w = self._lagrangian_fast(vectors, labels, self._clf.dual_coef_)
-        print("     Computed W %s" % w)
+        w = self._lagrangian_fast(samples, labels, self._clf.dual_coef_)
+        delta = 0
 
         if self._last_w:
             delta = np.abs((w - self._last_w) / self._last_w)
             if delta < self._tol:
-                print("     Converged with delta: %s " % delta)
                 self.converged = True
+
+        if self._verbose:
+            self._print_convergence(delta, w)
+
+        self._last_w = w
+
+    def _print_convergence(self, delta, w):
+        print("Computed W %s" % w)
+        if self._last_w:
+            print("Checking convergence...")
+
+            if self.converged:
+                print("     Converged with delta: %s " % delta)
             else:
                 print("     No convergence with delta: %s " % delta)
-        else:
-            print("     First iteration, not testing convergence.")
-        self._last_w = w
-        print()
 
     def _rbf_kernel(self, x):
         # Trick: || x - y || ausmultipliziert
