@@ -6,7 +6,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
 from dislib.classification import CascadeSVM
-from dislib.data import Subset
+from dislib.data import load_data
 
 
 def main():
@@ -70,7 +70,7 @@ def main():
         for name, clf in zip(names, classifiers):
             ax = plt.subplot(len(datasets), len(classifiers) + 1, i)
 
-            data = gen_data(x_train, y_train)
+            data = load_data(x=x_train, y=y_train, subset_size=20)
             clf.fit(data)
             score = clf.score(x_test, y_test)
 
@@ -104,16 +104,6 @@ def main():
 
     plt.tight_layout()
     plt.show()
-
-
-def gen_data(x, y):
-    # Split the data in several Datasets for demonstration purposes
-    data = []
-    size = x.shape[0]
-    step = int(size / 5)
-    for i in range(0, size, step):
-        data.append(Subset(x[i: i + step], y[i: i + step]))
-    return data
 
 
 if __name__ == "__main__":

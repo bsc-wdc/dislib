@@ -6,6 +6,7 @@ from pycompss.api.task import task
 
 from dislib.cluster.dbscan.classes import DisjointSet
 from dislib.cluster.dbscan.classes import Square
+from dislib.data import Dataset
 
 
 class DBSCAN():
@@ -38,7 +39,7 @@ class DBSCAN():
 
     Methods
     -------
-    fit(data)
+    fit(dataset)
         Perform DBSCAN clustering.
     """
 
@@ -50,10 +51,10 @@ class DBSCAN():
         self._grid_dim = grid_dim
         self._arrange_data = arrange_data
         self.labels_ = np.empty(0)
-        self._part_sizes = []
+        self._subset_sizes = []
         self._sorting = []
 
-    def fit(self, data):
+    def fit(self, dataset):
         """ Perform DBSCAN clustering on data.
 
         If arrange_data=True, data is initially rearranged in a
@@ -74,26 +75,27 @@ class DBSCAN():
 
         Parameters
         ----------
-        data : List of Dataset
+        dataset : Dataset
             Input data.
         """
-        n_features = compss_wait_on(_get_n_features(data[0]))
+        n_features = compss_wait_on(_get_n_features(dataset[0]))
         grid = np.empty([self._grid_dim] * n_features, dtype=object)
 
-        assert (self._arrange_data or grid.size == len(data)), \
+        assert (self._arrange_data or grid.size == len(dataset)), \
             "%s partitions required for grid dimension = %s and number of " \
             "features = %s. Got %s partitions instead" % (grid.size,
                                                           self._grid_dim,
-                                                          n_features, len(data))
+                                                          n_features,
+                                                          len(dataset))
 
-        mn, mx = self._get_min_max(data)
-        bins, region_sizes = self._generate_bins(mn, mx, n_features)
+        min_, max_ = self._get_min_max(dataset)
+        bins, region_sizes = self._generate_bins(min_, max_, n_features)
 
         if self._arrange_data:
-            self._set_part_sizes(data)
-            sorted_data = self._sort_data(data, grid, bins)
+            self._set_subset_sizes(dataset)
+            sorted_data = self._sort_data(dataset, grid, bins)
         else:
-            sorted_data = data
+            sorted_data = dataset
 
         # This threshold determines the granularity of the tasks
         TH_1 = 1000
@@ -163,36 +165,36 @@ class DBSCAN():
         minmax = compss_wait_on(minmax)
         return np.min(minmax, axis=0)[0], np.max(minmax, axis=0)[1]
 
-    def _set_part_sizes(self, data):
-        for part in data:
-            self._part_sizes.append(_get_part_size(part))
+    def _set_subset_sizes(self, dataset):
+        for subset in dataset:
+            self._subset_sizes.append(_get_subset_size(subset))
 
-    def _sort_data(self, data, grid, bins):
-        sorted_data = []
+    def _sort_data(self, dataset, grid, bins):
+        sorted_data = Dataset(dataset.n_features)
 
-        for ind in np.ndindex(grid.shape):
-            vec_list = []
+        for idx in np.ndindex(grid.shape):
+            sample_list = []
 
             # for each partition get the vectors in a particular region
-            for part_ind, part in enumerate(data):
-                indices, vecs = _filter(part, ind, bins)
-                vec_list.append(vecs)
-                self._sorting.append((part_ind, indices))
+            for set_idx, subset in enumerate(dataset):
+                indices, samples = _filter(subset, idx, bins)
+                sample_list.append(samples)
+                self._sorting.append((set_idx, indices))
 
             # create a new partition representing the grid region
-            sorted_data.append(_merge(*vec_list))
+            sorted_data.append(_merge(*sample_list))
 
         return sorted_data
 
-    def _generate_bins(self, mn, mx, n_features):
+    def _generate_bins(self, min_, max_, n_features):
         bins = []
         region_sizes = []
 
         # create bins for the different regions in the grid in every dimension
         for i in range(n_features):
             # Add up a small delta to the max to include it in the binarization
-            delta = mx[i] / 1e8
-            bin = np.linspace(mn[i], mx[i] + delta, self._grid_dim + 1)
+            delta = max_[i] / 1e8
+            bin = np.linspace(min_[i], max_[i] + delta, self._grid_dim + 1)
             bins.append(bin)
             region_sizes.append(np.max(bin[1:] - bin[0:-1]))
 
@@ -200,11 +202,11 @@ class DBSCAN():
 
     def _get_sorting_indices(self):
         indices = []
-        self._part_sizes = compss_wait_on(self._part_sizes)
+        self._subset_sizes = compss_wait_on(self._subset_sizes)
 
         for part_ind, vec_ind in self._sorting:
             vec_ind = compss_wait_on(vec_ind)
-            offset = np.sum(self._part_sizes[:part_ind])
+            offset = np.sum(self._subset_sizes[:part_ind])
 
             for ind in vec_ind:
                 indices.append(ind + offset)
@@ -213,79 +215,56 @@ class DBSCAN():
 
 
 @task(returns=int)
-def _get_part_size(part):
-    return part.vectors.shape[0]
+def _get_subset_size(subset):
+    return subset.samples.shape[0]
 
 
 @task(returns=1)
-def _merge(*vec_list):
+def _merge(*samples):
     from dislib.data import Subset
-    return Subset(np.vstack(vec_list))
+    return Subset(np.vstack(samples))
 
 
 @task(returns=2)
-def _filter(part, ind, bins):
-    filtered_vecs = part.vectors
-    final_ind = np.array(range(filtered_vecs.shape[0]))
+def _filter(subset, idx, bins):
+    filtered_samples = subset.samples
+    final_ind = np.array(range(filtered_samples.shape[0]))
 
     # filter vectors by checking if they lie in the given region (specified
-    # by ind)
-    for col_ind in range(filtered_vecs.shape[1]):
-        col = filtered_vecs[:, col_ind]
+    # by idx)
+    for col_ind in range(filtered_samples.shape[1]):
+        col = filtered_samples[:, col_ind]
         indices = np.digitize(col, bins[col_ind]) - 1
-        mask = (indices == ind[col_ind])
-        filtered_vecs = filtered_vecs[mask]
+        mask = (indices == idx[col_ind])
+        filtered_samples = filtered_samples[mask]
         final_ind = final_ind[mask]
 
-        if filtered_vecs.size == 0:
+        if filtered_samples.size == 0:
             break
 
-    return final_ind, filtered_vecs
+    return final_ind, filtered_samples
 
 
 @task(returns=int)
-def _get_n_features(part):
-    return part.vectors.shape[1]
+def _get_n_features(subset):
+    return subset.samples.shape[1]
 
 
 @task(returns=np.array)
-def _min_max(part):
-    mn = np.min(part.vectors, axis=0)
-    mx = np.max(part.vectors, axis=0)
+def _min_max(subset):
+    mn = np.min(subset.samples, axis=0)
+    mx = np.max(subset.samples, axis=0)
     return np.array([mn, mx])
 
 
 @task(returns=np.array)
-def _get_sorting_indices(sorting, part_sizes):
+def _get_sorting_indices(sorting, subset_sizes):
     indices = []
 
-    for part_ind, vec_ind in sorting:
-        offset = np.sum(part_sizes[:part_ind])
+    for set_idx, sample_idx in sorting:
+        offset = np.sum(subset_sizes[:set_idx])
 
-        for ind in vec_ind:
-            indices.append(ind + offset)
+        for idx in sample_idx:
+            indices.append(idx + offset)
 
     return np.array(indices)
-
-    # if __name__ == "__main__":
-    #     parser = argparse.ArgumentParser(description='DBSCAN Clustering Algorithm implemented within the PyCOMPSs'
-    #                                                  ' framework. For a detailed guide on the usage see the '
-    #                                                  'user guide provided.')
-    #     parser.add_argument('epsilon', type=float, help='Radius that defines the maximum distance under which neighbors '
-    #                                                     'are looked for.')
-    #     parser.add_argument('min_points', type=int, help='Minimum number of neighbors for a point to '
-    #                                                      'be considered core point.')
-    #     parser.add_argument('datafile', type=int, help='Numeric identifier for the dataset to be used. For further '
-    #                                                    'information see the user guide provided.')
-    #     parser.add_argument('--is_mn', action='store_true', help='If set to true, this tells the algorithm that you are '
-    #                                                              'running the code in the MN cluster, setting the correct '
-    #                                                              'paths to the data files and setting the correct '
-    #                                                              'parameters. Otherwise it assumes you are running the '
-    #                                                              'code locally.')
-    #     parser.add_argument('--print_times', action='store_true', help='If set to true, the timing for each task will be '
-    #                                                                    'printed through the standard output. NOTE THAT '
-    #                                                                    'THIS WILL LEAD TO EXTRA BARRIERS INTRODUCED IN THE'
-    #                                                                    ' CODE. Otherwise only the total time elapsed '
-    #                                                                    'is printed.')
-    #     args = parser.parse_args()
-    #     DBSCAN(**vars(args))

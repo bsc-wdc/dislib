@@ -10,7 +10,7 @@ from sklearn.neighbors import kneighbors_graph
 from sklearn.preprocessing import StandardScaler
 
 from dislib.cluster import KMeans, DBSCAN
-from dislib.data import Subset
+from dislib.data import load_data
 
 
 def main():
@@ -111,7 +111,7 @@ def main():
                             " may not work as expected.",
                     category=UserWarning)
 
-                data = gen_data(X)
+                data = load_data(x=X, y=y, subset_size=300)
                 algorithm.fit(data)
 
             t1 = time.time()
@@ -143,16 +143,6 @@ def main():
             plot_num += 1
 
     plt.show()
-
-
-def gen_data(x):
-    # Split the data in several Datasets for demonstration purposes
-    data = []
-    size = x.shape[0]
-    step = int(size / 5)
-    for i in range(0, size, step):
-        data.append(Subset(x[i: i + step]))
-    return data
 
 
 if __name__ == "__main__":

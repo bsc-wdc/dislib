@@ -102,8 +102,8 @@ def orq_scan_merge(data, epsilon, min_points, TH_1, quocient,
 
 
 @task(returns=3)
-def partial_dbscan(data, epsilon, min_points, quocient, res, len_tot):
-    points = data.vectors
+def partial_dbscan(subset, epsilon, min_points, quocient, res, len_tot):
+    samples = subset.samples
     indices = [i for i in range(len_tot) if ((i % quocient) == res)]
     cluster_count = 0
     cluster_labels = np.array([NOT_PROCESSED] * len_tot)
@@ -111,7 +111,7 @@ def partial_dbscan(data, epsilon, min_points, quocient, res, len_tot):
     relations = defaultdict(set)
 
     for i in indices:
-        neigh_points = np.linalg.norm(points - points[i], axis=1) < epsilon
+        neigh_points = np.linalg.norm(samples - samples[i], axis=1) < epsilon
         neigh_sum = np.sum(neigh_points)
 
         if neigh_sum >= min_points:
@@ -227,15 +227,15 @@ def merge_core_points(chunks, comb, *args):
 
 
 @task(returns=1)
-def concatenate_data(*parts):
-    ds = parts[0]
+def concatenate_data(*subsets):
+    set0 = subsets[0]
 
-    for part in parts[1:]:
-        ds.concatenate(part)
+    for set in subsets[1:]:
+        set0.concatenate(set)
 
-    return ds
+    return set0
 
 
 @task(returns=int)
-def count_lines(part):
-    return part.vectors.shape[0]
+def count_lines(subset):
+    return subset.samples.shape[0]
