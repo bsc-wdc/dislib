@@ -219,8 +219,8 @@ def _get_part_size(part):
 
 @task(returns=1)
 def _merge(*vec_list):
-    from dislib.data import Dataset
-    return Dataset(np.vstack(vec_list))
+    from dislib.data import Subset
+    return Subset(np.vstack(vec_list))
 
 
 @task(returns=2)

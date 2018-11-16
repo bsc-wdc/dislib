@@ -6,7 +6,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
 from dislib.classification import CascadeSVM
-from dislib.data import Dataset
+from dislib.data import Subset
 
 
 def main():
@@ -112,7 +112,7 @@ def gen_data(x, y):
     size = x.shape[0]
     step = int(size / 5)
     for i in range(0, size, step):
-        data.append(Dataset(x[i: i + step], y[i: i + step]))
+        data.append(Subset(x[i: i + step], y[i: i + step]))
     return data
 
 

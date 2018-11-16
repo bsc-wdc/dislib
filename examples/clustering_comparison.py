@@ -10,7 +10,7 @@ from sklearn.neighbors import kneighbors_graph
 from sklearn.preprocessing import StandardScaler
 
 from dislib.cluster import KMeans, DBSCAN
-from dislib.data import Dataset
+from dislib.data import Subset
 
 
 def main():
@@ -151,7 +151,7 @@ def gen_data(x):
     size = x.shape[0]
     step = int(size / 5)
     for i in range(0, size, step):
-        data.append(Dataset(x[i: i + step]))
+        data.append(Subset(x[i: i + step]))
     return data
 
 
