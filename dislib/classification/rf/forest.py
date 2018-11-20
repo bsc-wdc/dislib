@@ -49,7 +49,8 @@ class RandomForestClassifier:
         Fits the RandomForestClassifier.
         """
         features_file = get_features_file(self.path_in)
-        self._features_file_check(features_file)
+        if features_file is not None:
+            self._features_file_check(features_file)
         self.y, self.y_codes, self.n_classes = get_y(self.path_in)
 
         for i in range(self.n_estimators):
