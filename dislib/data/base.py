@@ -157,7 +157,8 @@ def _load_file(path, part_size, fmt, n_features, delimiter=",",
                 lines = []
 
     if lines:
-        dataset.append(_read_lines(lines, fmt, n_features, store_sparse))
+            dataset.append(_read_lines(lines, fmt, n_features, delimiter,
+                                       label_col, store_sparse))
 
     return dataset
 
