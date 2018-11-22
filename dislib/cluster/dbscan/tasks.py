@@ -6,31 +6,6 @@ from pycompss.api.task import task
 from dislib.cluster.dbscan.constants import *
 
 
-def orquestrate_sync_clusters(data, adj_mat, epsilon, coord, neigh_sq_loc,
-                              len_neighs, quocient, res, fut_list, TH_2,
-                              count_tasks, *args):
-    if (len_neighs / quocient) > TH_2:
-        [fut_list,
-         count_tasks] = orquestrate_sync_clusters(data, adj_mat, epsilon, coord,
-                                                  neigh_sq_loc, len_neighs,
-                                                  quocient * 2, res * 2 + 0,
-                                                  fut_list,
-                                                  TH_2, count_tasks, *args)
-        [fut_list,
-         count_tasks] = orquestrate_sync_clusters(data, adj_mat, epsilon, coord,
-                                                  neigh_sq_loc, len_neighs,
-                                                  quocient * 2, res * 2 + 1,
-                                                  fut_list,
-                                                  TH_2, count_tasks, *args)
-    else:
-        count_tasks += 1
-        fut_list.append(orquestrate_sync_clusters(data, adj_mat, epsilon, coord,
-                                                  neigh_sq_loc, quocient, res,
-                                                  len_neighs,
-                                                  *args))
-    return fut_list, count_tasks
-
-
 @task(returns=list)
 def merge_task_sync(adj_mat, *args):
     adj_mat_copy = [[] for _ in range(max(adj_mat[0], 1))]
@@ -77,38 +52,32 @@ def update_task(cluster_labels, coord, updated_relations):
 
 
 def orq_scan_merge(data, epsilon, min_points, TH_1, quocient,
-                   res, fut_list, len_total):
+                   res, label_list, cp_list, len_total):
     if (len_total / quocient) > TH_1:
-        [fut_list[0],
-         fut_list[1],
-         fut_list[2]] = orq_scan_merge(data, epsilon, min_points, TH_1,
-                                       quocient * 2, res * 2 + 0,
-                                       fut_list, len_total)
+        label_list, cp_list = orq_scan_merge(data, epsilon, min_points, TH_1,
+                                             quocient * 2, res * 2 + 0,
+                                             label_list, cp_list, len_total)
 
-        [fut_list[0],
-         fut_list[1],
-         fut_list[2]] = orq_scan_merge(data, epsilon, min_points, TH_1,
-                                       quocient * 2, res * 2 + 1,
-                                       fut_list, len_total)
+        label_list, cp_list = orq_scan_merge(data, epsilon, min_points, TH_1,
+                                             quocient * 2, res * 2 + 1,
+                                             label_list, cp_list, len_total)
     else:
-        obj = [[], [], []]
-        obj[0], obj[1], obj[2] = partial_dbscan(data, epsilon, min_points,
-                                                quocient, res, len_total)
+        labels, core_points = partial_dbscan(data, epsilon, min_points,
+                                             quocient, res, len_total)
 
-        for num, _list in enumerate(fut_list):
-            _list.append(obj[num])
+        label_list.append(labels)
+        cp_list.append(core_points)
 
-    return fut_list[0], fut_list[1], fut_list[2]
+    return label_list, cp_list
 
 
-@task(returns=3)
+@task(returns=2)
 def partial_dbscan(subset, epsilon, min_points, quocient, res, len_tot):
     samples = subset.samples
     indices = [i for i in range(len_tot) if ((i % quocient) == res)]
     cluster_count = 0
     cluster_labels = np.array([NOT_PROCESSED] * len_tot)
     core_points = np.array([NO_CP] * len_tot)
-    relations = defaultdict(set)
 
     for i in indices:
         neigh_points = np.linalg.norm(samples - samples[i], axis=1) < epsilon
@@ -117,9 +86,9 @@ def partial_dbscan(subset, epsilon, min_points, quocient, res, len_tot):
         if neigh_sum >= min_points:
             core_points[i] = CORE_POINT
             cluster_labels[i] = cluster_count
-            neigh_idx = np.where(neigh_points)
+            neigh_idx = np.where(neigh_points)[0]
 
-            for j in neigh_idx[0]:
+            for j in neigh_idx:
                 neigh_label = cluster_labels[j]
                 cluster_labels[j] = cluster_count
 
@@ -128,16 +97,15 @@ def partial_dbscan(subset, epsilon, min_points, quocient, res, len_tot):
                         cluster_labels == neigh_label] = cluster_count
 
             cluster_count += 1
-        else:
+        elif cluster_labels[i] == NOT_PROCESSED:
             cluster_labels[i] = NOISE
 
-    return cluster_labels, relations, core_points
+    return cluster_labels, core_points
 
 
 @task(returns=1)
-def merge_cluster_labels(chunks, *args):
-    new_labels, transitions = _compute_transitions(args)
-
+def merge_cluster_labels(chunks, *labels_list):
+    new_labels, transitions = _compute_transitions(labels_list)
     connected = _get_connected_components(transitions)
 
     for component in connected:
@@ -162,10 +130,11 @@ def _get_connected_components(transitions):
     return connected
 
 
-def _compute_transitions(args):
-    labels = np.array(args)
+def _compute_transitions(labels_list):
+    labels = np.array(labels_list)
     new_labels = np.full(labels[0].shape[0], -1)
     transitions = defaultdict(set)
+
     for i in range(len(new_labels)):
         final_indices = np.empty(0, dtype=int)
 
@@ -184,6 +153,7 @@ def _compute_transitions(args):
         for label in trans:
             transitions[new_label].add(label)
             transitions[label].add(new_label)
+
     return new_labels, transitions
 
 
@@ -221,8 +191,8 @@ def merge_relations(*args):
 
 
 @task(returns=1)
-def merge_core_points(chunks, comb, *args):
-    tmp = [max(i) for i in list(zip(*args))]
+def merge_core_points(chunks, comb, *cp_list):
+    tmp = [max(i) for i in list(zip(*cp_list))]
     return tmp[chunks[comb][0]: chunks[comb][1]]
 
 

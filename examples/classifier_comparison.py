@@ -41,6 +41,7 @@ def main():
         x = StandardScaler().fit_transform(x)
         x_train, x_test, y_train, y_test = \
             train_test_split(x, y, test_size=.4, random_state=42)
+        data = load_data(x=x_train, y=y_train, subset_size=20)
 
         x_min, x_max = x[:, 0].min() - .5, x[:, 0].max() + .5
         y_min, y_max = x[:, 1].min() - .5, x[:, 1].max() + .5
@@ -70,7 +71,6 @@ def main():
         for name, clf in zip(names, classifiers):
             ax = plt.subplot(len(datasets), len(classifiers) + 1, i)
 
-            data = load_data(x=x_train, y=y_train, subset_size=20)
             clf.fit(data)
             score = clf.score(x_test, y_test)
 
