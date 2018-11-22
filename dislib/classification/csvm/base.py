@@ -249,7 +249,7 @@ class CascadeSVM(object):
         new_sl[labels == 0] = -1
 
         if issparse(coef):
-            coef = coef.todense()
+            coef = coef.toarray()
 
         c1, c2 = np.meshgrid(coef, coef)
         l1, l2 = np.meshgrid(new_sl, new_sl)

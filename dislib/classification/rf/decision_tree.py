@@ -80,7 +80,10 @@ class Leaf(object):
 
 
 def get_features_file(path):
-    return os.path.join(path, 'x_t.npy')
+    features_path = os.path.join(path, 'x_t.npy')
+    if os.path.isfile(features_path):
+        return features_path
+    return None
 
 
 def get_sample_attributes(samples_file, indices):
@@ -159,9 +162,24 @@ def build_leaf(y_s, tree_path):
     return Leaf(tree_path, len(y_s), frequencies, mode)
 
 
+def split_node(tree_path, sample, n_features, y_s, n_classes, m_try, samples_file=None, features_file=None):
+    if features_file is not None:
+        return split_node_a(tree_path, sample, n_features, features_file, y_s, n_classes, m_try)
+    elif samples_file is not None:
+        return split_node_b(tree_path, sample, n_features, samples_file, y_s, n_classes, m_try)
+    else:
+        raise ValueError('Invalid combination of arguments. samples_file is None and features_file is None.')
+
+
 @task(features_file=FILE_IN, returns=(InternalNode, list, list, list, list))
-def compute_split_node(tree_path, sample, n_features, features_file, y_s, n_classes, m_try):
+def split_node_a(tree_path, sample, n_features, features_file, y_s, n_classes, m_try):
     features_mmap = np.load(features_file, mmap_mode='r', allow_pickle=False)
+    return compute_split(tree_path, sample, n_features, features_mmap, y_s, n_classes, m_try)
+
+
+@task(samples_file=FILE_IN, returns=(InternalNode, list, list, list, list))
+def split_node_b(tree_path, sample, n_features, samples_file, y_s, n_classes, m_try):
+    features_mmap = np.load(samples_file, mmap_mode='r', allow_pickle=False).T
     return compute_split(tree_path, sample, n_features, features_mmap, y_s, n_classes, m_try)
 
 
@@ -213,13 +231,34 @@ def flush_nodes(file_out, *nodes_to_persist):
                         tree_file.write(nested_item.to_json())
 
 
+def build_subtree(sample, y_s, n_features, tree_path, max_depth, n_classes, m_try, samples_file, features_file):
+    if features_file is not None:
+        return build_subtree_a(sample, y_s, n_features, tree_path, max_depth, n_classes, m_try, samples_file,
+                               features_file)
+    else:
+        return build_subtree_b(sample, y_s, n_features, tree_path, max_depth, n_classes, m_try, samples_file)
+
+
 @task(samples_file=FILE_IN, features_file=FILE_IN, returns=list)
-def build_subtree(sample, y_s, n_features, tree_path, max_depth, n_classes, features_file, m_try, samples_file,
-                  use_sklearn_internally=True, sklearn_max_elements=100000000):
+def build_subtree_a(sample, y_s, n_features, tree_path, max_depth, n_classes, m_try, samples_file, features_file):
+    return build_subtree_in(sample, y_s, n_features, tree_path, max_depth, n_classes, m_try, samples_file,
+                            features_file=features_file)
+
+
+@task(samples_file=FILE_IN, returns=list)
+def build_subtree_b(sample, y_s, n_features, tree_path, max_depth, n_classes, m_try, samples_file):
+    return build_subtree_in(sample, y_s, n_features, tree_path, max_depth, n_classes, m_try, samples_file)
+
+
+def build_subtree_in(sample, y_s, n_features, tree_path, max_depth, n_classes, m_try, samples_file, features_file=None,
+                     use_sklearn_internally=True, sklearn_max_elements=100000000):
     np.random.seed()
     if not sample.size:
         return []
-    features_mmap = np.load(features_file, mmap_mode='r', allow_pickle=False)
+    if features_file is not None:
+        features_mmap = np.load(features_file, mmap_mode='r', allow_pickle=False)
+    else:
+        features_mmap = np.load(samples_file, mmap_mode='r', allow_pickle=False).T
     tree_traversal = [(tree_path, sample, y_s, 0)]
     node_list_to_persist = []
     while tree_traversal:
@@ -299,9 +338,10 @@ class DecisionTreeClassifier:
             tree_path, sample, y_s, depth = tree_traversal.pop()
             if depth < self.max_depth:
                 if depth < self.distr_depth:
-                    node, left_group, y_l, right_group, y_r = compute_split_node(tree_path, sample,
-                                                                                 self.n_features, features_file, y_s,
-                                                                                 self.n_classes, self.m_try)
+                    node, left_group, y_l, right_group, y_r = split_node(tree_path, sample, self.n_features, y_s,
+                                                                         self.n_classes, self.m_try,
+                                                                         samples_file=samples_file,
+                                                                         features_file=features_file)
                     compss_delete_object(sample)
                     compss_delete_object(y_s)
                     nodes_to_persist.append(node)
@@ -309,7 +349,7 @@ class DecisionTreeClassifier:
                     tree_traversal.append((tree_path + 'L', left_group, y_l, depth + 1))
                 else:
                     subtree_nodes = build_subtree(sample, y_s, self.n_features, tree_path, self.max_depth - depth,
-                                                  self.n_classes, features_file, self.m_try, samples_file)
+                                                  self.n_classes, self.m_try, samples_file, features_file)
                     nodes_to_persist.append(subtree_nodes)
                     compss_delete_object(sample)
                     compss_delete_object(y_s)
