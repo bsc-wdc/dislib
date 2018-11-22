@@ -98,42 +98,61 @@ class DBSCAN():
             sorted_data = dataset
 
         # This threshold determines the granularity of the tasks
-        TH_1 = 1000
+        TH_1 = 2000
 
         links = defaultdict()
 
-        for ind in np.ndindex(grid.shape):
-            grid[ind] = Square(ind, self._eps, grid.shape, region_sizes)
-            grid[ind].init_data(sorted_data, grid.shape)
-            grid[ind].partial_scan(self._min_samples, TH_1)
+        for idx in np.ndindex(grid.shape):
+            grid[idx] = Square(idx, self._eps, grid.shape, region_sizes)
+            grid[idx].init_data(sorted_data, grid.shape)
+            grid[idx].partial_scan(self._min_samples, TH_1)
 
-        # In spite of not needing a synchronization we loop again since the first
-        # loop initialises all the future objects that are used afterwards
-        for ind in np.ndindex(grid.shape):
-            # We retrieve all the neighbour square ids from the current square
-            neigh_sq_id = grid[ind].neigh_sq_id
+        transitions = []
+
+        for idx in np.ndindex(grid.shape):
+            neigh_sq_id = grid[idx].neigh_sq_id
             labels_versions = []
-            for neigh_comb in neigh_sq_id:
-                # We obtain the labels found for our points by our neighbours.
-                labels_versions.append(grid[neigh_comb].cluster_labels[ind])
 
-            # We merge all the different labels found and return merging rules
-            links[ind] = grid[ind].sync_labels(*labels_versions)
+            for neigh_idx in neigh_sq_id:
+                labels_versions.append(grid[neigh_idx].cluster_labels[idx])
 
-        # We synchronize all the merging loops
-        for ind in np.ndindex(grid.shape):
-            links[ind] = compss_wait_on(links[ind])
+            grid[idx].cluster_labels[idx] = _compute_labels(*labels_versions)
 
-        # We sync all the links locally and broadcast the updated global labels
-        # to all the workers
-        updated_links = self._sync_relations(links)
+        for idx in np.ndindex(grid.shape):
+            neigh_sq_id = grid[idx].neigh_sq_id
+            labels_versions = []
+            neigh_indices = []
 
-        # We lastly output the results to text files. For performance testing
-        # the following two lines could be commented.
-        for ind in np.ndindex(grid.shape):
-            grid[ind].update_labels(updated_links)
-            labels = np.array(grid[ind].get_labels())
+            for neigh_idx in neigh_sq_id:
+                labels_versions.append(grid[neigh_idx].cluster_labels[idx])
+                neigh_indices.append(neigh_idx)
+
+            transitions.append(_compute_neighbour_transitions(idx,
+                                                              neigh_indices,
+                                                              grid[
+                                                                  idx].cluster_labels[
+                                                                  idx],
+                                                              *labels_versions))
+
+        transitions = _merge_transitions(*transitions)
+        connected_comp = _get_connected_components(transitions)
+
+        final_labels = []
+
+        for idx in np.ndindex(grid.shape):
+            labels = grid[idx].cluster_labels[idx]
+            final_labels.append(_update_labels(idx, labels, connected_comp))
+
+        final_labels = compss_wait_on(final_labels)
+
+        for labels in final_labels:
             self.labels_ = np.concatenate((self.labels_, labels))
+
+        unique_labels = np.unique(self.labels_)
+
+        for unique, label in enumerate(unique_labels):
+            if label > 0:
+                self.labels_[self.labels_ == label] = unique
 
         sorting_ind = self._get_sorting_indices()
 
@@ -212,6 +231,127 @@ class DBSCAN():
                 indices.append(ind + offset)
 
         return np.array(indices, dtype=int)
+
+
+@task(returns=1)
+def _compute_labels(*labels):
+    label_arr = np.array(labels)
+    return np.max(label_arr, axis=0)
+
+
+@task(returns=1)
+def _compute_neighbour_transitions(region_idx, neigh_indices,
+                                   labels, *neigh_labels):
+    transitions = defaultdict(set)
+
+    for label_idx, label in enumerate(labels):
+        if label < 0:
+            continue
+
+        label_key = region_idx + (label,)
+
+        for neigh_idx, neigh_label in enumerate(neigh_labels):
+            if neigh_indices[neigh_idx] != region_idx:
+                neigh_key = neigh_indices[neigh_idx] + (neigh_label[label_idx],)
+                transitions[label_key].add(neigh_key)
+
+    return transitions
+
+
+@task(returns=1)
+def _merge_transitions(*transitions):
+    trans0 = transitions[0]
+
+    for transition in transitions[1:]:
+        trans0.update(transition)
+
+    return trans0
+
+
+@task(returns=1)
+def _update_labels(region, labels, connected):
+    for component in connected:
+        old_label = -1
+        min_ = np.inf
+
+        for tup in component:
+            min_ = min(min_, tup[-1])
+
+            if tup[:-1] == region:
+                old_label = tup[-1]
+
+        if old_label > 0:
+            labels[labels == old_label] = min_
+
+    return labels
+
+
+@task(returns=1)
+def merge_labels(*labels_list):
+    new_labels, transitions = _compute_transitions(labels_list)
+    connected = _get_connected_components(transitions)
+
+    for component in connected:
+        min_ = min(component)
+
+        for label in component:
+            new_labels[new_labels == label] = min_
+
+    return new_labels
+
+
+@task(returns=1)
+def _get_connected_components(transitions):
+    visited = []
+    connected = []
+    for node, neighbours in transitions.items():
+        if node in visited:
+            continue
+
+        connected.append([node])
+
+        _visit_neighbours(transitions, neighbours, visited, connected)
+    return connected
+
+
+def _visit_neighbours(transitions, neighbours, visited, connected):
+    for neighbour in neighbours:
+        if neighbour in visited:
+            continue
+
+        visited.append(neighbour)
+        connected[-1].append(neighbour)
+
+        if neighbour in transitions:
+            new_neighbours = transitions[neighbour]
+
+            _visit_neighbours(transitions, new_neighbours, visited, connected)
+
+
+def _compute_transitions(labels_list):
+    labels = np.array(labels_list)
+    new_labels = np.full(labels[0].shape[0], -1)
+    transitions = defaultdict(set)
+    for i in range(len(new_labels)):
+        final_indices = np.empty(0, dtype=int)
+
+        for label_vec in labels[labels[:, i] >= 0]:
+            indices = np.argwhere(label_vec == label_vec[i])[:, 0]
+            final_indices = np.concatenate((final_indices, indices))
+
+        final_indices = np.unique(final_indices)
+        new_label = min(i, max(new_labels[i], i))
+
+        trans = new_labels[final_indices]
+        trans = np.unique(trans[trans >= 0])
+
+        new_labels[final_indices] = new_label
+
+        for label in trans:
+            transitions[new_label].add(label)
+            transitions[label].add(new_label)
+
+    return new_labels, transitions
 
 
 @task(returns=int)

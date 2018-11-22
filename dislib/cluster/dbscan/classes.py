@@ -47,21 +47,21 @@ class Square(object):
         self.neigh_thres = out
 
     def partial_scan(self, min_points, TH_1):
-        [fut_list_0,
-         fut_list_1,
-         fut_list_2] = orq_scan_merge(self.points, self.epsilon, min_points,
-                                      TH_1, 1, 0, [[], [], []],
-                                      self.len_tot)
-        self.relations = merge_relations(*fut_list_1)
+        label_list, cp_list = orq_scan_merge(self.points, self.epsilon,
+                                             min_points, TH_1, 1, 0, [], [],
+                                             self.len_tot)
+
+
+
         self.cluster_labels = defaultdict(list)
 
         for comb in self.neigh_sq_id:
             self.cluster_labels[comb] = merge_cluster_labels(self.neigh_thres[
                                                                  comb],
-                                                             *fut_list_0)
+                                                             *label_list)
 
         self.core_points = merge_core_points(self.neigh_thres, self.coord,
-                                             *fut_list_2)
+                                             *cp_list)
 
     def sync_labels(self, *labels_versions):
         return sync_task(self.coord, self.cluster_labels[self.coord],
