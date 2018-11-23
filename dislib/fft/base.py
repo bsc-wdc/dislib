@@ -53,12 +53,10 @@ def _base(even, odd, w):
     o = 0
 
     for k in range(n):
-        for m in range(n/2):
+        for m in range(n / 2):
             e += even[m] * w[2 * m, k]
             o += odd[m] * w[2 * m, k]
 
         x[k] = e + np.exp(-2 * np.pi * 1j * k / n) * o
 
     return x
-
-

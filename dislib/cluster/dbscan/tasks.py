@@ -3,7 +3,8 @@ from collections import defaultdict
 import numpy as np
 from pycompss.api.task import task
 
-from dislib.cluster.dbscan.constants import *
+from dislib.cluster.dbscan.constants import CORE_POINT, NOT_PROCESSED, NO_CP, \
+    NOISE
 
 
 @task(returns=list)

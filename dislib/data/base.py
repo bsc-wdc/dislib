@@ -90,7 +90,8 @@ def load_libsvm_files(path, n_features, store_sparse=True):
                        n_features=n_features)
 
 
-def load_csv_file(path, subset_size, n_features, delimiter=",", label_col=None):
+def load_csv_file(path, subset_size, n_features, delimiter=",",
+                  label_col=None):
     """ Loads a CSV file into a Dataset.
 
      Parameters

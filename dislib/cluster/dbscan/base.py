@@ -120,6 +120,7 @@ class DBSCAN():
 
         for idx in np.ndindex(grid.shape):
             neigh_sq_id = grid[idx].neigh_sq_id
+
             labels_versions = []
             neigh_indices = []
 
