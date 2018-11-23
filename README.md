@@ -21,8 +21,14 @@
          alt="Build Status">
   </a> 
   <a href="https://codecov.io/gh/bsc-wdc/dislib">
-    <img src="https://codecov.io/gh/bsc-wdc/dislib/branch/master/graph/badge.svg" alt="Code Coverage"/>
+    <img src="https://codecov.io/gh/bsc-wdc/dislib/branch/master/graph/badge.svg"
+         alt="Code Coverage"/>
   </a>
+  <a href="https://dislib.readthedocs.io/en/latest/?badge=latest">
+    <img src="https://readthedocs.org/projects/dislib/badge/?version=latest"
+         alt="Documentation Status"/>
+  </a>
+    
 </p>
 
 <p align="center"><b>
@@ -32,14 +38,9 @@
 </b></p>
 
 
-[![Build Status](https://travis-ci.org/bsc-wdc/dislib.svg?branch=master)](https://travis-ci.org/bsc-wdc/dislib)
-[![codecov](https://codecov.io/gh/bsc-wdc/dislib/branch/master/graph/badge.svg)](https://codecov.io/gh/bsc-wdc/dislib)
-[![Documentation Status](https://readthedocs.org/projects/dislib/badge/?version=latest)](https://dislib.readthedocs.io/en/latest/?badge=latest)
-
-
 ## Contributing
 
-Contributions are **welcome and very much appreciated** 
+Contributions are **welcome and very much appreciated**. We are also open to starting research collaborations or mentoring if you are interested in or need assistance to implement new algorithms.
 Please refer [to our Contribution Guide](CONTRIBUTING.md) for more details.
 
 
