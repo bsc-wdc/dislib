@@ -1,4 +1,4 @@
-dislib.cluster.dbscan package
+cluster.dbscan package
 =============================
 
 Submodules
@@ -32,15 +32,6 @@ dislib.cluster.dbscan.tasks module
 ----------------------------------
 
 .. automodule:: dislib.cluster.dbscan.tasks
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
-Module contents
----------------
-
-.. automodule:: dislib.cluster.dbscan
     :members:
     :undoc-members:
     :show-inheritance:

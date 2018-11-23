@@ -10,8 +10,23 @@ Contents:
 
 .. toctree::
    :maxdepth: 2
+   :caption: Contents:
 
+Dislib provides implementations of distributed machine learning algorithms for HPC
 
+Dislib summary
+--------------
+
+.. autosummary::
+   :toctree:
+
+   dislib.classification.csvm
+   dislib.classification.rf
+   dislib.cluster.dbscan
+   dislib.cluster.kmeans
+   dislib.cluster.kmedoids
+   dislib.data
+   dislib.fft
 
 Indices and tables
 ==================

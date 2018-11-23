@@ -1,5 +1,5 @@
-dislib.classification.rf package
-================================
+classification.rf package
+=========================
 
 Submodules
 ----------
@@ -32,15 +32,6 @@ dislib.classification.rf.test\_split module
 -------------------------------------------
 
 .. automodule:: dislib.classification.rf.test_split
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
-Module contents
----------------
-
-.. automodule:: dislib.classification.rf
     :members:
     :undoc-members:
     :show-inheritance:

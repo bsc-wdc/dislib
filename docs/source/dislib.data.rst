@@ -1,10 +1,10 @@
-dislib.data package
+data package
 ===================
 
 Submodules
 ----------
 
-dislib.data.base module
+base module
 -----------------------
 
 .. automodule:: dislib.data.base
@@ -12,19 +12,10 @@ dislib.data.base module
     :undoc-members:
     :show-inheritance:
 
-dislib.data.classes module
+classes module
 --------------------------
 
 .. automodule:: dislib.data.classes
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
-Module contents
----------------
-
-.. automodule:: dislib.data
     :members:
     :undoc-members:
     :show-inheritance:

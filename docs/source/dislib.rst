@@ -6,8 +6,11 @@ Subpackages
 
 .. toctree::
 
-    dislib.classification
-    dislib.cluster
+    dislib.classification.csvm
+    dislib.classification.rf
+    dislib.cluster.kmeans
+    dislib.cluster.kmedoids
+    dislib.cluster.dbscan
     dislib.data
     dislib.fft
 
