@@ -17,9 +17,15 @@ env:
 before_script:
     - docker build --pull --cache-from bscwdc/dislib --tag bscwdc/dislib .
     - docker run $(bash <(curl -s https://codecov.io/env)) -d --name dislib bscwdc/dislib 
-       
-script: "docker exec dislib bash run_tests.sh"
-script: "docker exec dislib bash run_coverage.sh"
+
+jobs: 
+  include:
+    - stage: test
+      script: "docker exec dislib bash run_tests.sh"
+    - stage: code coverage
+      script: "docker exec dislib bash run_coverage.sh"
+    - stage: code style
+      script: "docker exec dislib flake8 dislib"
 
 after_success:
   - docker exec dislib codecov --token=629589cf-e257-4262-8ec0-314dfd98f003
