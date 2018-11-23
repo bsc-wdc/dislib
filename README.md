@@ -1,6 +1,6 @@
 <h1 align="center">
   <br>
-  <a href="https://www.bsc.es/research-and-development/software-and-apps/software-list/comp-superscalar/"><img src="docs/sourced.png" alt="source{d}" height="60px"></a>
+  <a href="https://www.bsc.es/research-and-development/software-and-apps/software-list/comp-superscalar/"><img src="docs/compss.png" alt="dislib" height="60px"></a>
   <br>
   <br>
   Distributed Computing Library
