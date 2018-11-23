@@ -12,6 +12,10 @@
 <h3 align="center">Distributed Computing library implemented using PyCOMPSs programming model for HPC.</h3>
 
 <p align="center">
+  <a href="https://dislib.readthedocs.io/en/latest/?badge=latest">
+    <img src="https://readthedocs.org/projects/dislib/badge/?version=latest"
+         alt="Documentation Status"/>
+  </a>
   <a href="https://github.com/bsc-wdc/dislib/releases">
     <img src="https://badge.fury.io/gh/bsc-wdcd%2Fdislib.svg"
          alt="GitHub version">
@@ -23,10 +27,6 @@
   <a href="https://codecov.io/gh/bsc-wdc/dislib">
     <img src="https://codecov.io/gh/bsc-wdc/dislib/branch/master/graph/badge.svg"
          alt="Code Coverage"/>
-  </a>
-  <a href="https://dislib.readthedocs.io/en/latest/?badge=latest">
-    <img src="https://readthedocs.org/projects/dislib/badge/?version=latest"
-         alt="Documentation Status"/>
   </a>
     
 </p>
