@@ -46,4 +46,4 @@ Please refer [to our Contribution Guide](CONTRIBUTING.md) for more details.
 
 ## License
 
-Apache License Version 2.0, see [LICENSE](LICENSE)
+GNU GENERAL PUBLIC LICENSE Version 3.0, see [LICENSE](LICENSE)
