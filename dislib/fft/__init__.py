@@ -1,3 +1,3 @@
 from .base import fft
 
-__all__ = [fft]
+__all__ = ['fft']
