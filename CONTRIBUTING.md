@@ -5,7 +5,7 @@ Contributing to dislib
 How to contribute
 -----------------
 
-The preferred workflow for contributing to scikit-learn is to fork the
+The preferred workflow for contributing to dislib is to fork the
 [main repository](https://github.com/bsc-wdc/dislib) on
 GitHub, clone, and develop on a branch. Steps:
 
