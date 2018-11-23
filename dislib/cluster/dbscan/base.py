@@ -50,7 +50,7 @@ class DBSCAN():
         self._min_samples = min_samples
         self._grid_dim = grid_dim
         self._arrange_data = arrange_data
-        self.labels_ = np.empty(0)
+        self.labels_ = np.empty(0, dtype=int)
         self._subset_sizes = []
         self._sorting = []
 
