@@ -62,7 +62,8 @@ class KMeans:
         -----
         This method modifies the input Dataset by setting the cluster labels.
         """
-        centers = _init_centers(dataset[0], self._n_clusters, self._random_state)
+        centers = _init_centers(dataset[0], self._n_clusters,
+                                self._random_state)
         self.centers = compss_wait_on(centers)
 
         old_centers = None

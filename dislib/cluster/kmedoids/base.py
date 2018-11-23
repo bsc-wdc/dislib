@@ -48,13 +48,13 @@ def parse_arguments():
                         help='Maximum number of iterations'
                         )
     parser.add_argument('-e', '--epsilon', type=float, default=1e-9,
-                        help='Epsilon. Kmeans will stop when |old - new| < epsilon.'
-                        )
+                        help='Epsilon. Kmeans will stop when |old - new| < '
+                             'epsilon.')
     parser.add_argument('-f', '--num_fragments', type=int, default=4,
                         help='Total number of fragments')
     parser.add_argument('--distributed_read', action='store_true',
-                        help='Boolean indicating if data should be read distributed.'
-                        )
+                        help='Boolean indicating if data should be read '
+                             'distributed.')
 
     return parser.parse_args()
 
@@ -125,7 +125,8 @@ def cluster_points_sum(fragment_points, centers, ind):
     center2points = {c: [] for c in range(0, len(centers))}
     for x in enumerate(fragment_points):
         closest_center = min([(i[0], np.linalg.norm(x[1] - centers[i[0]]))
-                              for i in enumerate(centers)], key=lambda t: t[1])[
+                              for i in enumerate(centers)],
+                             key=lambda t: t[1])[
             0]
         center2points[closest_center].append(x[0] + ind)
     return partial_sum(fragment_points, center2points, ind)
@@ -241,16 +242,16 @@ def main():
                       seed=args.seed,
                       distributed_read=args.distributed_read)
 
-    result = KMedoids(X=X,
-                      num_points=args.num_points,
-                      num_centers=args.num_centers,
-                      dimensions=args.dimensions,
-                      epsilon=args.epsilon,
-                      max_iterations=args.max_iterations,
-                      num_fragments=args.num_fragments,
-                      seed=args.seed)
+    it, medoids = KMedoids(X=X,
+                           num_points=args.num_points,
+                           num_centers=args.num_centers,
+                           dimensions=args.dimensions,
+                           epsilon=args.epsilon,
+                           max_iterations=args.max_iterations,
+                           num_fragments=args.num_fragments,
+                           seed=args.seed)
 
-
+    print("%s iterations to find %s medoids." % (it, len(medoids)))
     t1 = time.time()
     print("Total elapsed time: %s [points=%s]" % (t1 - t0, args.num_points))
 

@@ -1,6 +1,9 @@
 #!/bin/bash
 
+# We make sure that ssh daemon is running
 /etc/init.d/ssh start
+
+# Default process per worker
 export ComputingUnits=4
 
 runcompss \

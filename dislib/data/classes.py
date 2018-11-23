@@ -6,7 +6,6 @@ from scipy.sparse import issparse, vstack
 
 
 class Dataset(object):
-
     def __init__(self, n_features):
         self._subsets = list()
         self.n_features = n_features

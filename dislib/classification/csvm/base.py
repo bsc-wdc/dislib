@@ -71,14 +71,14 @@ class CascadeSVM(object):
     V. (2005). Parallel support vector machines: The cascade svm. In
     Advances in neural information processing systems (pp. 521-528).
 
-    .. [2] http://scikit-learn.org/stable/modules/generated/sklearn.svm.SVC.html
+    .. [2] Sklearn SVM classifier:
+    http://scikit-learn.org/stable/modules/generated/sklearn.svm.SVC.html
     """
     _name_to_kernel = {"linear": "_linear_kernel", "rbf": "_rbf_kernel"}
 
     def __init__(self, cascade_arity=2, max_iter=5, tol=1 ** -3,
                  kernel="rbf", c=1, gamma='scale', check_convergence=True,
                  random_state=None, verbose=False):
-
 
         assert (gamma is "auto" or gamma is "scale" or type(gamma) == float
                 or type(float(gamma)) == float), "Invalid gamma"

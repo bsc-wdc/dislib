@@ -1,10 +1,14 @@
+from collections import defaultdict
+
+import numpy as np
 from pycompss.api.api import compss_wait_on
 
-from dislib.cluster.dbscan.tasks import *
+from dislib.cluster.dbscan.tasks import count_lines, concatenate_data, \
+    orq_scan_merge, merge_cluster_labels, merge_core_points, \
+    sync_task, update_task
 
 
 class Square(object):
-
     def __init__(self, coord, epsilon, grid_shape, region_sizes):
         self.coord = coord
         self.epsilon = epsilon
@@ -50,8 +54,6 @@ class Square(object):
         label_list, cp_list = orq_scan_merge(self.points, self.epsilon,
                                              min_points, TH_1, 1, 0, [], [],
                                              self.len_tot)
-
-
 
         self.cluster_labels = defaultdict(list)
 
@@ -112,9 +114,12 @@ class DisjointSet:
         index_elem1 = self._find_index(elem1)
         index_elem2 = self._find_index(elem2)
 
-        if index_elem1 != index_elem2 and index_elem1 is not None and index_elem2 is not None:
-            self._disjoint_set[index_elem2] = self._disjoint_set[index_elem2] + \
-                                              self._disjoint_set[index_elem1]
+        if index_elem1 != index_elem2 \
+                and index_elem1 is not None \
+                and index_elem2 is not None:
+            self._disjoint_set[index_elem2] = self._disjoint_set[index_elem2] \
+                                              + self._disjoint_set[index_elem1]
+
             del self._disjoint_set[index_elem1]
 
         return self._disjoint_set

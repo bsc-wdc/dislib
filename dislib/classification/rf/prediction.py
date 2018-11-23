@@ -1,5 +1,5 @@
-import os
 import json
+import os
 
 import numpy as np
 from pycompss.api.api import compss_open
@@ -28,7 +28,7 @@ def predict_probabilities(file_name, test_data, n_classes):
             res = np.zeros((n_classes,))
             for cla, freq in leaf['frequencies'].items():
                 res[int(cla)] = freq
-            return res/leaf['size']
+            return res / leaf['size']
         elif len(test_data.shape) == 2:
             n_samples = test_data.shape[0]
             res = np.zeros((n_samples, n_classes))
@@ -62,8 +62,9 @@ def get_leaf(tree_file, instance):
 def get_node(tree_file, tree_path, start):
     f_p = find(tree_file, tree_path, start=start)
     if f_p == -1:
-        raise Exception('Node ' + tree_path + ' not found at ' + tree_file.name + ' starting at ' + str(start))
-    tree_file.seek(f_p-15)
+        raise Exception('Node ' + tree_path + ' not found at ' +
+                        tree_file.name + ' starting at ' + str(start))
+    tree_file.seek(f_p - 15)
     line = tree_file.readline()
     node = json.loads(line)
     return node, tree_file.tell()

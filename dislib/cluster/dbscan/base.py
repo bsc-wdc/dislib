@@ -83,10 +83,8 @@ class DBSCAN():
 
         assert (self._arrange_data or grid.size == len(dataset)), \
             "%s partitions required for grid dimension = %s and number of " \
-            "features = %s. Got %s partitions instead" % (grid.size,
-                                                          self._grid_dim,
-                                                          n_features,
-                                                          len(dataset))
+            "features = %s. Got %s partitions instead" % \
+            (grid.size, self._grid_dim, n_features, len(dataset))
 
         min_, max_ = self._get_min_max(dataset)
         bins, region_sizes = self._generate_bins(min_, max_, n_features)
@@ -99,8 +97,6 @@ class DBSCAN():
 
         # This threshold determines the granularity of the tasks
         TH_1 = 2000
-
-        links = defaultdict()
 
         for idx in np.ndindex(grid.shape):
             grid[idx] = Square(idx, self._eps, grid.shape, region_sizes)
@@ -120,6 +116,7 @@ class DBSCAN():
 
         for idx in np.ndindex(grid.shape):
             neigh_sq_id = grid[idx].neigh_sq_id
+
             labels_versions = []
             neigh_indices = []
 
@@ -127,12 +124,10 @@ class DBSCAN():
                 labels_versions.append(grid[neigh_idx].cluster_labels[idx])
                 neigh_indices.append(neigh_idx)
 
-            transitions.append(_compute_neighbour_transitions(idx,
-                                                              neigh_indices,
-                                                              grid[
-                                                                  idx].cluster_labels[
-                                                                  idx],
-                                                              *labels_versions))
+            transitions.append(
+                _compute_neighbour_transitions(
+                    idx, neigh_indices, grid[idx].cluster_labels[idx],
+                    *labels_versions))
 
         transitions = _merge_transitions(*transitions)
         connected_comp = _get_connected_components(transitions)
@@ -252,7 +247,8 @@ def _compute_neighbour_transitions(region_idx, neigh_indices,
 
         for neigh_idx, neigh_label in enumerate(neigh_labels):
             if neigh_indices[neigh_idx] != region_idx:
-                neigh_key = neigh_indices[neigh_idx] + (neigh_label[label_idx],)
+                neigh_key = neigh_indices[neigh_idx] + (
+                    neigh_label[label_idx],)
                 transitions[label_key].add(neigh_key)
 
     return transitions
