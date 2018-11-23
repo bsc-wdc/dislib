@@ -5,7 +5,7 @@ Contributing to dislib
 How to contribute
 -----------------
 
-The preferred workflow for contributing to scikit-learn is to fork the
+The preferred workflow for contributing to dislib is to fork the
 [main repository](https://github.com/bsc-wdc/dislib) on
 GitHub, clone, and develop on a branch. Steps:
 
@@ -54,14 +54,31 @@ Pull Request Checklist
 We recommended that your contribution complies with the
 following rules before you submit a pull request:
 
--  Follow the
-   [coding-guidelines](http://scikit-learn.org/dev/developers/contributing.html#coding-guidelines).
+-  **Run the tests** before attempting to merge. You can run them locally with:
+```
+./run_tests.sh # it may ask your password to start the ssh daemon
+```
 
--  Use, when applicable, the validation tools and scripts in the
-   `sklearn.utils` submodule.  A list of utility routines available
-   for developers can be found in the
-   [Utilities for Developers](http://scikit-learn.org/dev/developers/utilities.html#developers-utils)
-   page.
+-  **Check the code coverage**, it should at least do not decrease due to the PR. You can run them locally with:
+```
+pip3 install coverage
+./run_coverage.sh # it may ask your password to start the ssh daemon
+```
+
+-  **Check the code style** before attempting to merge. If there is any warning the PR will be rejected. You can run them locally with:
+```
+pip3 install flake8
+flake8 ./dislib
+```
+-  **Docker image**. All tests and code checks are run inside a docker image. If you want to run the tests in the same environment that travis will use:
+```
+    docker build --pull --cache-from bscwdc/dislib --tag bscwdc/dislib .
+    docker run -d --name dislib bscwdc/dislib 
+    docker exec dislib bash run_tests.sh
+    docker exec dislib bash run_coverage.sh
+    docker exec dislib flake8 dislib
+```
+-  Follow the coding-guidelines defined by default [flake8](http://flake8.pycqa.org/en/latest/).
 
 -  Give your pull request a helpful title that summarises what your
    contribution does. In some cases `Fix <ISSUE TITLE>` is enough.
@@ -87,13 +104,6 @@ following rules before you submit a pull request:
    WIPs often benefit from the inclusion of a
    [task list](https://github.com/blog/1375-task-lists-in-gfm-issues-pulls-comments)
    in the PR description.
-
--  All other tests pass when everything is rebuilt from scratch. On
-   Unix-like systems, check with (from the toplevel source folder):
-
-      ```bash
-      $ make
-      ```
 
 -  When adding additional functionality, provide at least one
    example script in the ``examples/`` folder. Have a look at other
