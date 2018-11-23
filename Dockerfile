@@ -3,7 +3,7 @@ FROM compss/compss-ubuntu16:2.4
 MAINTAINER COMPSs Support <support-compss@bsc.es>
 
 
-RUN pip3 install codecov coverage && \
+RUN pip3 install codecov coverage flake8 && \
 # Enable ssh to localhost
     yes yes | ssh-keygen -f /root/.ssh/id_rsa -t rsa -N '' > /dev/null && \
     cat /root/.ssh/id_rsa.pub > /root/.ssh/authorized_keys 
