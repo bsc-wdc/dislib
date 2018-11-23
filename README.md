@@ -5,7 +5,7 @@
   </a>
   <br>
   <br>
-  Distributed Computing Library
+  The Distributed Computing Library
   <br>
 </h1>
 
