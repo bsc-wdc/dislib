@@ -172,7 +172,8 @@ def _load_files(path, fmt, n_features, delimiter=",", label_col=None,
 
     for file_ in files:
         full_path = os.path.join(path, file_)
-        subset = _read_file(full_path, fmt, n_features, label_col, store_sparse)
+        subset = _read_file(full_path, fmt, n_features, label_col,
+                            store_sparse)
         subsets.append(subset)
 
     return subsets
