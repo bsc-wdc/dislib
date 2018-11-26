@@ -151,14 +151,14 @@ def _load_file(path, part_size, fmt, n_features, delimiter=",",
             lines.append(line.encode())
 
             if len(lines) == part_size:
-                subset = _read_lines(lines, fmt, n_features, delimiter,
-                                     label_col, store_sparse)
+                subset = _read_lines(lines, fmt, n_features, label_col,
+                                     store_sparse)
                 dataset.append(subset)
                 lines = []
 
     if lines:
-        dataset.append(_read_lines(lines, fmt, n_features, delimiter,
-                                   label_col, store_sparse))
+        dataset.append(_read_lines(lines, fmt, n_features, label_col,
+                                   store_sparse))
 
     return dataset
 
@@ -172,19 +172,18 @@ def _load_files(path, fmt, n_features, delimiter=",", label_col=None,
 
     for file_ in files:
         full_path = os.path.join(path, file_)
-        subset = _read_file(full_path, fmt, n_features, delimiter,
-                            label_col, store_sparse)
+        subset = _read_file(full_path, fmt, n_features, label_col, store_sparse)
         subsets.append(subset)
 
     return subsets
 
 
 @task(returns=1)
-def _read_lines(lines, fmt, n_features, delimiter, label_col, store_sparse):
+def _read_lines(lines, fmt, n_features, label_col, store_sparse):
     if fmt == "libsvm":
         subset = _read_libsvm(lines, n_features, store_sparse)
     else:
-        samples = np.genfromtxt(lines, delimiter=delimiter)
+        samples = np.genfromtxt(lines, delimiter=",")
 
         if label_col == "first":
             subset = Subset(samples[:, 1:], samples[:, 1])
@@ -197,7 +196,7 @@ def _read_lines(lines, fmt, n_features, delimiter, label_col, store_sparse):
 
 
 @task(file=FILE_IN, returns=1)
-def _read_file(file, fmt, n_features, delimiter, label_col, store_sparse):
+def _read_file(file, fmt, n_features, label_col, store_sparse):
     from sklearn.datasets import load_svmlight_file
 
     if fmt == "libsvm":
@@ -209,7 +208,7 @@ def _read_file(file, fmt, n_features, delimiter, label_col, store_sparse):
         subset = Subset(x, y)
 
     else:
-        samples = np.loadtxt(file, delimiter=delimiter)
+        samples = np.loadtxt(file, delimiter=",")
 
         if label_col == "first":
             subset = Subset(samples[:, 1:], samples[:, 1])
