@@ -206,7 +206,6 @@ def _read_file(file, fmt, n_features, label_col, store_sparse):
             x = x.toarray()
 
         subset = Subset(x, y)
-
     else:
         samples = np.loadtxt(file, delimiter=",")
 
