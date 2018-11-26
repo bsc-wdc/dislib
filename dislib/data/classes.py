@@ -20,7 +20,7 @@ class Dataset(object):
         self._subsets.append(subset)
 
     def extend(self, *subsets):
-        self._subsets.append(subsets)
+        self._subsets.extend(subsets)
 
     def collect(self):
         self._subsets = compss_wait_on(self._subsets)
