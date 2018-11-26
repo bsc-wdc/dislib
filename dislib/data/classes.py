@@ -13,6 +13,9 @@ class Dataset(object):
     def __getitem__(self, item):
         return self._subsets.__getitem__(item)
 
+    def __len__(self):
+        return len(self._subsets)
+
     def append(self, subset):
         self._subsets.append(subset)
 
