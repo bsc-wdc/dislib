@@ -90,8 +90,7 @@ def load_libsvm_files(path, n_features, store_sparse=True):
                        n_features=n_features)
 
 
-def load_csv_file(path, subset_size, n_features, delimiter=",",
-                  label_col=None):
+def load_csv_file(path, subset_size, n_features, label_col=None):
     """ Loads a CSV file into a Dataset.
 
      Parameters
@@ -102,7 +101,7 @@ def load_csv_file(path, subset_size, n_features, delimiter=",",
         Subset size in lines.
     n_features : int
         Number of features.
-    delimiter : string, optional (default ",")
+    delimiter : (currently unavailable) string, optional (default ",")
         String that separates features in the file.
     label_col : int, optional (default=None)
         Column representing data labels. Can be 'first' or 'last'.
@@ -114,10 +113,10 @@ def load_csv_file(path, subset_size, n_features, delimiter=",",
         subset_size.
     """
     return _load_file(path, subset_size, fmt="csv", n_features=n_features,
-                      delimiter=delimiter, label_col=label_col)
+                      delimiter=",", label_col=label_col)
 
 
-def load_csv_files(path, n_features, delimiter=",", label_col=None):
+def load_csv_files(path, n_features, label_col=None):
     """ Loads a set of CSV files into a Dataset.
 
     Parameters
@@ -126,7 +125,7 @@ def load_csv_files(path, n_features, delimiter=",", label_col=None):
         Path to a directory containing CSV files.
     n_features : int
         Number of features.
-    delimiter : string, optional (default ",")
+    delimiter : (currently unavailable) string, optional (default ",")
         String that separates features in the file.
     label_col : int, optional (default=None)
         Column representing data labels. Can be 'first' or 'last'.
@@ -139,7 +138,7 @@ def load_csv_files(path, n_features, delimiter=",", label_col=None):
    """
 
     return _load_files(path, fmt="csv", n_features=n_features,
-                       delimiter=delimiter, label_col=label_col)
+                       delimiter=",", label_col=label_col)
 
 
 def _load_file(path, part_size, fmt, n_features, delimiter=",",
@@ -158,8 +157,8 @@ def _load_file(path, part_size, fmt, n_features, delimiter=",",
                 lines = []
 
     if lines:
-            dataset.append(_read_lines(lines, fmt, n_features, delimiter,
-                                       label_col, store_sparse))
+        dataset.append(_read_lines(lines, fmt, n_features, delimiter,
+                                   label_col, store_sparse))
 
     return dataset
 
