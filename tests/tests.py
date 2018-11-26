@@ -228,7 +228,7 @@ class DataTest(unittest.TestCase):
         self.assertEqual(len(data), 15)
         self.assertIsNone(subset.labels)
 
-    def test_load_csv_file_labels(self):
+    def test_load_csv_file_labels_last(self):
         from dislib.data import load_csv_file
         import numpy as np
 
@@ -248,6 +248,45 @@ class DataTest(unittest.TestCase):
         self.assertTrue((read_x == csv[:, :-1]).all())
         self.assertTrue((read_y == csv[:, -1]).all())
         self.assertEqual(len(data), 5)
+
+    def test_load_csv_file_labels_first(self):
+        from dislib.data import load_csv_file
+        import numpy as np
+
+        csv_file = "./tests/files/csv/1"
+        data = load_csv_file(csv_file, subset_size=1000, n_features=121,
+                             label_col="first")
+        data.collect()
+        csv = np.loadtxt(csv_file, delimiter=",")
+
+        read_x = np.empty((0, csv.shape[1] - 1))
+        read_y = np.empty(0)
+
+        for subset in data:
+            read_x = np.concatenate((read_x, subset.samples))
+            read_y = np.concatenate((read_y, subset.labels))
+
+        self.assertTrue((read_x == csv[:, 1:]).all())
+        self.assertTrue((read_y == csv[:, 0]).all())
+        self.assertEqual(len(data), 5)
+
+    def test_load_csv_files(self):
+        from dislib.data import load_csv_files
+        import numpy as np
+
+        csv_dir = "./tests/files/csv"
+        data = load_csv_files(csv_dir, n_features=122)
+        data.collect()
+        csv = np.loadtxt(csv_dir, delimiter=",")
+
+        read_x = np.empty((0, csv.shape[1]))
+
+        for subset in data:
+            read_x = np.concatenate((read_x, subset.samples))
+
+        self.assertTrue((read_x == csv).all())
+        self.assertEqual(len(data), 15)
+        self.assertIsNone(subset.labels)
 
 
 def main():
