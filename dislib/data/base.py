@@ -186,7 +186,7 @@ def _read_lines(lines, fmt, n_features, label_col, store_sparse):
         samples = np.genfromtxt(lines, delimiter=",")
 
         if label_col == "first":
-            subset = Subset(samples[:, 1:], samples[:, 1])
+            subset = Subset(samples[:, 1:], samples[:, 0])
         elif label_col == "last":
             subset = Subset(samples[:, :-1], samples[:, -1])
         else:
@@ -210,7 +210,7 @@ def _read_file(file, fmt, n_features, label_col, store_sparse):
         samples = np.loadtxt(file, delimiter=",")
 
         if label_col == "first":
-            subset = Subset(samples[:, 1:], samples[:, 1])
+            subset = Subset(samples[:, 1:], samples[:, 0])
         elif label_col == "last":
             subset = Subset(samples[:, :-1], samples[:, -1])
         else:
