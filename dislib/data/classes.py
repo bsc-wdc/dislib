@@ -13,11 +13,14 @@ class Dataset(object):
     def __getitem__(self, item):
         return self._subsets.__getitem__(item)
 
+    def __len__(self):
+        return len(self._subsets)
+
     def append(self, subset):
         self._subsets.append(subset)
 
     def extend(self, *subsets):
-        self._subsets.append(subsets)
+        self._subsets.extend(subsets)
 
     def collect(self):
         self._subsets = compss_wait_on(self._subsets)
@@ -81,7 +84,9 @@ class Subset(object):
         if remove_duplicates:
             self._ids, uniques = np.unique(self._ids, return_index=True)
             self.samples = self.samples[uniques]
-            self.labels = self.labels[uniques]
+
+            if self.labels is not None:
+                self.labels = self.labels[uniques]
 
     def set_label(self, index, label):
         """ Sets sample labels.
@@ -105,9 +110,9 @@ class Subset(object):
 
     def __getitem__(self, item):
         if self.labels is not None:
-            ds = Subset(self.samples[item], self.labels[item])
+            subset = Subset(self.samples[item], self.labels[item])
         else:
-            ds = Subset(self.samples[item])
+            subset = Subset(self.samples[item])
 
-        ds._ids = self._ids[item]
-        return ds
+        subset._ids = self._ids[item]
+        return subset
