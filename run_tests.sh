@@ -10,7 +10,7 @@ runcompss \
     --debug \
     --pythonpath=$(pwd) \
     --python_interpreter=python3 \
-    ./tests/tests.py 2>&1 | tee output.log
+    ./dislib/tests/tests.py 2>&1 | tee output.log
 
 result=$(cat output.log | egrep "OK|FAILED")
 

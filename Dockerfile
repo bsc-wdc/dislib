@@ -8,11 +8,11 @@ RUN pip3 install codecov coverage flake8 && \
     yes yes | ssh-keygen -f /root/.ssh/id_rsa -t rsa -N '' > /dev/null && \
     cat /root/.ssh/id_rsa.pub > /root/.ssh/authorized_keys 
 
-COPY dislib dislib
-COPY examples examples
-COPY tests tests
-COPY run_tests.sh /
-COPY run_coverage.sh /
+COPY dislib dislib/dislib
+COPY examples dislib/examples
+COPY tests dislib/tests
+COPY run_tests.sh /dislib/
+COPY run_coverage.sh /dislib/
 
 ENV PATH=$PATH:/opt/COMPSs/Runtime/scripts/user:/opt/COMPSs/Bindings/c/bin
 ENV CLASSPATH=$CLASSPATH:/opt/COMPSs/Runtime/compss-engine.jar

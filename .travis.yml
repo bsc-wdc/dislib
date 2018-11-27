@@ -21,11 +21,11 @@ before_script:
 jobs: 
   include:
     - stage: test
-      script: "docker exec dislib bash run_tests.sh"
+      script: "docker exec dislib bash ./dislib/run_tests.sh"
     - stage: code coverage
-      script: "docker exec dislib bash run_coverage.sh"
+      script: "docker exec dislib bash ./dislib/run_coverage.sh"
     - stage: code style
-      script: "docker exec dislib flake8 dislib"
+      script: "docker exec dislib flake8 dislib/dislib"
 
 after_success:
   - docker exec dislib codecov --token=629589cf-e257-4262-8ec0-314dfd98f003
