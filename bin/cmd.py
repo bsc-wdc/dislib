@@ -13,7 +13,7 @@ def _is_running(name: str):
     return len(cs) > 0
 
 
-def _start_daemon(working_dir: str = None, restart: bool = False):
+def _start_daemon(working_dir: str = "", restart: bool = False):
     containers = client.containers.list(filters={'name': master_name},
                                         all=True)
     assert len(containers) < 2  # never should we run 2 masters
@@ -29,7 +29,7 @@ def _start_daemon(working_dir: str = None, restart: bool = False):
         print("Staring %s container in dir %s" % (master_name, working_dir))
 
         # mount target dir needs to be absolute
-        target_dir = '/' + os.path.basename(working_dir)
+        target_dir = '/home/user'
 
         user_dir = Mount(target=target_dir,
                          source=working_dir,
@@ -64,7 +64,7 @@ def _exec_in_daemon(cmd: str):
         _start_daemon()
 
     master = _get_master()
-    exit_code, output = master.exec_run(cmd)
+    exit_code, output = master.exec_run(cmd, workdir='/home/user')
 
     print("Exit code: %s" % exit_code)
     for line in [l for l in output.decode().split('\n')]:

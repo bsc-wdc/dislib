@@ -2,17 +2,17 @@
 
 #cmd_path="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
 cmd_path="$(dirname "$(readlink -f "$0")")"
-echo "Cmd path: ${cmd_path}"
 cmd=$1
 shift 1
 
 export PYTHONPATH=$PYTHONPATH:${cmd_path}
 
 if [ "${cmd}" == "init" ]; then
-    python3 -c 'from cmd import _start_daemon; _start_daemon(restart=True)'  
+    working_dir=$1
+    python3 -c "from cmd import _start_daemon; _start_daemon(working_dir='${working_dir}', restart=True)"
 fi
 if [ "${cmd}" == "kill" ]; then
-    python3 -c 'from cmd import _stop_daemon; _stop_daemon()'  
+    python3 -c "from cmd import _stop_daemon; _stop_daemon()"
 fi
 if [ "${cmd}" == "run" ]; then
     subcmd=$@
