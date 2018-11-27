@@ -154,7 +154,7 @@ class DataLoadingTest(unittest.TestCase):
 
         data = load_libsvm_file("./tests/files/libsvm/2", 10, 780)
         data.collect()
-        x,y = load_svmlight_file("./tests/files/libsvm/2", n_features=780)
+        x, y = load_svmlight_file("./tests/files/libsvm/2", n_features=780)
 
         read_x = np.empty((0, x.shape[1]))
         read_y = np.empty(0)
@@ -220,7 +220,7 @@ class DataLoadingTest(unittest.TestCase):
         for i, subset in enumerate(data):
             samples = subset.samples
             file_ = os.path.join(dir_, file_list[i])
-            x,y = load_svmlight_file(file_, n_features=780)
+            x, y = load_svmlight_file(file_, n_features=780)
 
             self.assertTrue((samples == x).all())
             self.assertTrue((subset.labels == y).all())
@@ -397,7 +397,86 @@ class DataClassesTest(unittest.TestCase):
 
         self.assertIsInstance(dataset[0], Subset)
 
+    def test_subset_concatenate_dense(self):
+        from dislib.data import Subset
+        import numpy as np
 
+        subset1 = Subset(samples=np.zeros((13, 2)))
+        subset2 = Subset(samples=np.zeros((11, 2)))
+
+        subset1.concatenate(subset2)
+
+        self.assertEqual(subset1.samples.shape[0], 24)
+
+    def test_subset_concatenate_sparse(self):
+        from dislib.data import Subset
+        import numpy as np
+        from scipy.sparse import csr_matrix
+
+        m1 = csr_matrix(np.random.random((13, 2)))
+        m2 = csr_matrix(np.random.random((11, 2)))
+        subset1 = Subset(samples=m1)
+        subset2 = Subset(samples=m2)
+
+        subset1.concatenate(subset2)
+
+        self.assertEqual(subset1.samples.shape[0], 24)
+
+    def test_subset_concatenate_with_labels(self):
+        from dislib.data import Subset
+        import numpy as np
+
+        subset1 = Subset(samples=np.zeros((13, 2)), labels=np.zeros((13)))
+        subset2 = Subset(samples=np.zeros((11, 2)), labels=np.zeros((11)))
+
+        subset1.concatenate(subset2)
+
+        self.assertEqual(subset1.labels.shape[0], 24)
+
+    def test_subset_concatenate_removing_duplicates(self):
+        from dislib.data import Subset
+        import numpy as np
+
+        labels = np.random.random(8)
+
+        subset1 = Subset(samples=np.random.random((25, 8)), labels=labels)
+        subset2 = Subset(samples=np.random.random((35, 8)), labels=labels)
+
+        subset1.concatenate(subset2)
+        subset2.concatenate(subset1, remove_duplicates=True)
+
+        self.assertEqual(subset2.samples.shape[0], 60)
+
+    def test_subset_set_label(self):
+        from dislib.data import Subset
+        import numpy as np
+
+        subset = Subset(samples=np.random.random((25, 8)))
+        subset.set_label(15, 3)
+
+        self.assertEqual(subset.labels[15], 3)
+
+    def test_subset_get_item(self):
+        from dislib.data import Subset
+        import numpy as np
+
+        subset = Subset(samples=np.array([range(10), range(10, 20)]))
+        item = subset[1]
+
+        self.assertTrue((item.samples == np.array(range(10, 20))).all())
+
+    def test_subset_get_item_with_labels(self):
+        from dislib.data import Subset
+        import numpy as np
+
+        samples = np.array([range(10), range(10, 20)])
+        labels = np.array([3, 4])
+
+        subset = Subset(samples=samples, labels=labels)
+        item = subset[1]
+
+        self.assertTrue((item.samples == np.array(range(10, 20))).all())
+        self.assertEqual(item.labels, 4)
 
 
 def main():
