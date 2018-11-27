@@ -17,6 +17,7 @@ COPY run_coverage.sh /dislib/
 ENV PATH=$PATH:/opt/COMPSs/Runtime/scripts/user:/opt/COMPSs/Bindings/c/bin
 ENV CLASSPATH=$CLASSPATH:/opt/COMPSs/Runtime/compss-engine.jar
 ENV JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64/
+ENV PYTHONPATH=$PYTHONPATH:/dislib
 #ENV MPI_HOME=/usr/lib64/openmpi
 #ENV LD_LIBRARY_PATH=/usr/lib64/openmpi/lib
 
