@@ -1,0 +1,26 @@
+#!/bin/bash
+
+#cmd_path="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
+cmd_path="$(dirname "$(readlink -f "$0")")"
+echo "Cmd path: ${cmd_path}"
+cmd=$1
+shift 1
+
+export PYTHONPATH=$PYTHONPATH:${cmd_path}
+
+if [ "${cmd}" == "init" ]; then
+    python3 -c 'from cmd import _start_daemon; _start_daemon(restart=True)'  
+fi
+if [ "${cmd}" == "kill" ]; then
+    python3 -c 'from cmd import _stop_daemon; _stop_daemon()'  
+fi
+if [ "${cmd}" == "run" ]; then
+    subcmd=$@
+    python3 -c "from cmd import _exec_in_daemon; _exec_in_daemon('${subcmd})"
+fi
+if [ "${cmd}" == "exec" ]; then
+    file=$1
+    shift 1
+    params=$@
+    python3 -c "from cmd import _exec_in_daemon; _exec_in_daemon('runcompss ${params} --lang=python --python_interpreter=python3 ${file}')"
+fi
