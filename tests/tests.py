@@ -138,11 +138,9 @@ class DataLoadingTest(unittest.TestCase):
         data = load_data(x=x, subset_size=100)
 
         read_x = np.empty((0, x.shape[1]))
-        read_y = np.empty(0)
 
         for subset in data:
             read_x = np.concatenate((read_x, subset.samples))
-            read_y = np.concatenate((read_y, subset.labels))
 
         self.assertTrue((read_x == x).all())
         self.assertEqual(len(data), 15)
@@ -152,9 +150,10 @@ class DataLoadingTest(unittest.TestCase):
         from sklearn.datasets import load_svmlight_file
         import numpy as np
 
-        data = load_libsvm_file("./tests/files/libsvm/2", 10, 780)
+        file_ = "dislib/tests/files/libsvm/2"
+        data = load_libsvm_file(file_, 10, 780)
         data.collect()
-        x, y = load_svmlight_file("./tests/files/libsvm/2", n_features=780)
+        x, y = load_svmlight_file(file_, n_features=780)
 
         read_x = np.empty((0, x.shape[1]))
         read_y = np.empty(0)
@@ -172,9 +171,10 @@ class DataLoadingTest(unittest.TestCase):
         from sklearn.datasets import load_svmlight_file
         import numpy as np
 
-        data = load_libsvm_file("./tests/files/libsvm/1", 20, 780, False)
+        file_ = "dislib/tests/files/libsvm/1"
+        data = load_libsvm_file(file_, 20, 780, False)
         data.collect()
-        x, y = load_svmlight_file("./tests/files/libsvm/1", n_features=780)
+        x, y = load_svmlight_file(file_, n_features=780)
 
         read_x = np.empty((0, x.shape[1]))
         read_y = np.empty(0)
@@ -192,7 +192,7 @@ class DataLoadingTest(unittest.TestCase):
         from sklearn.datasets import load_svmlight_file
         import os
 
-        dir_ = "./tests/files/libsvm"
+        dir_ = "dislib/tests/files/libsvm"
         file_list = os.listdir(dir_)
         data = load_libsvm_files(dir_, 780)
         data.collect()
@@ -212,7 +212,7 @@ class DataLoadingTest(unittest.TestCase):
         from sklearn.datasets import load_svmlight_file
         import os
 
-        dir_ = "./tests/files/libsvm"
+        dir_ = "dislib/tests/files/libsvm"
         file_list = os.listdir(dir_)
         data = load_libsvm_files(dir_, 780, False)
         data.collect()
@@ -231,7 +231,7 @@ class DataLoadingTest(unittest.TestCase):
         from dislib.data import load_csv_file
         import numpy as np
 
-        csv_file = "./tests/files/csv/1"
+        csv_file = "dislib/tests/files/csv/1"
         data = load_csv_file(csv_file, subset_size=300, n_features=122)
         data.collect()
         csv = np.loadtxt(csv_file, delimiter=",")
@@ -249,7 +249,7 @@ class DataLoadingTest(unittest.TestCase):
         from dislib.data import load_csv_file
         import numpy as np
 
-        csv_file = "./tests/files/csv/1"
+        csv_file = "dislib/tests/files/csv/1"
         data = load_csv_file(csv_file, subset_size=1000, n_features=121,
                              label_col="last")
         data.collect()
@@ -270,7 +270,7 @@ class DataLoadingTest(unittest.TestCase):
         from dislib.data import load_csv_file
         import numpy as np
 
-        csv_file = "./tests/files/csv/2"
+        csv_file = "dislib/tests/files/csv/2"
         data = load_csv_file(csv_file, subset_size=100, n_features=121,
                              label_col="first")
         data.collect()
@@ -292,7 +292,7 @@ class DataLoadingTest(unittest.TestCase):
         import numpy as np
         import os
 
-        csv_dir = "./tests/files/csv"
+        csv_dir = "dislib/tests/files/csv"
         file_list = os.listdir(csv_dir)
         data = load_csv_files(csv_dir, n_features=122)
         data.collect()
@@ -310,7 +310,7 @@ class DataLoadingTest(unittest.TestCase):
         import numpy as np
         import os
 
-        csv_dir = "./tests/files/csv"
+        csv_dir = "dislib/tests/files/csv"
         file_list = os.listdir(csv_dir)
         data = load_csv_files(csv_dir, n_features=122, label_col="last")
         data.collect()
@@ -329,7 +329,7 @@ class DataLoadingTest(unittest.TestCase):
         import numpy as np
         import os
 
-        csv_dir = "./tests/files/csv"
+        csv_dir = "dislib/tests/files/csv"
         file_list = os.listdir(csv_dir)
         data = load_csv_files(csv_dir, n_features=122, label_col="first")
         data.collect()
@@ -391,7 +391,7 @@ class DataClassesTest(unittest.TestCase):
     def test_dataset_collect(self):
         from dislib.data import load_csv_file, Subset
 
-        csv_file = "./tests/files/csv/3"
+        csv_file = "dislib/tests/files/csv/3"
         dataset = load_csv_file(csv_file, subset_size=300, n_features=122)
         dataset.collect()
 
@@ -437,10 +437,11 @@ class DataClassesTest(unittest.TestCase):
         from dislib.data import Subset
         import numpy as np
 
-        labels = np.random.random(8)
+        labels1 = np.random.random(25)
+        labels2 = np.random.random(35)
 
-        subset1 = Subset(samples=np.random.random((25, 8)), labels=labels)
-        subset2 = Subset(samples=np.random.random((35, 8)), labels=labels)
+        subset1 = Subset(samples=np.random.random((25, 8)), labels=labels1)
+        subset2 = Subset(samples=np.random.random((35, 8)), labels=labels2)
 
         subset1.concatenate(subset2)
         subset2.concatenate(subset1, remove_duplicates=True)
