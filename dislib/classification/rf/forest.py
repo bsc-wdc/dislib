@@ -1,5 +1,6 @@
 import math
 
+from pycompss.api.api import compss_wait_on
 from pycompss.api.task import task
 
 from dislib.classification.rf.decision_tree import DecisionTreeClassifier
@@ -40,7 +41,7 @@ class RandomForestClassifier:
             dataset.validate_features_file()
 
         self.try_features = resolve_try_features(self.try_features, dataset.get_n_features())
-        self.distr_depth = resolve_distr_depth(self.distr_depth, self.max_depth, dataset.get_n_features())
+        self.distr_depth = resolve_distr_depth(self.distr_depth, self.max_depth, dataset)
         self.classes = dataset.get_classes()
 
         for i in range(self.n_estimators):
@@ -49,6 +50,8 @@ class RandomForestClassifier:
 
         for tree in self.trees:
             tree.fit(dataset)
+
+        compss_wait_on()
 
     def predict_proba(self, dataset):
         """ Predicts class probabilities using a fitted forest. The order of the classes is given by self.classes. """
@@ -77,6 +80,7 @@ class RandomForestClassifier:
                 subset.labels = hard_vote(self.classes, *tree_predictions)
 
 
+@task(returns=1)
 def resolve_try_features(try_features, n_features):
     if try_features is None:
         return n_features
@@ -88,9 +92,11 @@ def resolve_try_features(try_features, n_features):
         return int(try_features)
 
 
-def resolve_distr_depth(distr_depth, max_depth,  n_samples):
+def resolve_distr_depth(distr_depth, max_depth, dataset):
     if distr_depth is 'auto':
-        distr_depth = max(0, int(math.log10(n_samples)) - 4)
+        dataset.get_n_samples()
+        dataset.n_samples = compss_wait_on(dataset.n_samples)
+        distr_depth = max(0, int(math.log10(dataset.n_samples)) - 4)
         distr_depth = min(distr_depth, max_depth)
     return distr_depth
 
