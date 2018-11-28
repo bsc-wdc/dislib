@@ -4,7 +4,6 @@ import numpy as np
 from pycompss.api.api import compss_wait_on
 from pycompss.api.task import task
 
-from dislib.cluster.dbscan.classes import DisjointSet
 from dislib.cluster.dbscan.classes import Square
 from dislib.data import Dataset
 
@@ -30,6 +29,14 @@ class DBSCAN():
     grid_dim : int, optional (default=10)
         Number of regions per dimension in which to divide the feature space.
         The number of regions generated is equal to n_features ^ grid_dim.
+    max_samples : int, optional (default=None)
+        Setting max_samples to an integer results in the parallelization of
+        the computation of distances inside each region of the grid. That
+        is, each region is processed using various parallel tasks, where each
+        task finds the neighbours of max_samples samples.
+
+        This can be used to balance the load in scenarios where samples are not
+        evenly distributed in the feature space.
 
     Attributes
     ----------
@@ -43,7 +50,8 @@ class DBSCAN():
         Perform DBSCAN clustering.
     """
 
-    def __init__(self, eps=0.5, min_samples=5, arrange_data=True, grid_dim=10):
+    def __init__(self, eps=0.5, min_samples=5, arrange_data=True, grid_dim=10,
+                 max_samples=None):
         assert grid_dim >= 1, "Grid dimensions must be greater than 1."
 
         self._eps = eps
@@ -53,6 +61,7 @@ class DBSCAN():
         self.labels_ = np.empty(0, dtype=int)
         self._subset_sizes = []
         self._sorting = []
+        self._max_samples = max_samples
 
     def fit(self, dataset):
         """ Perform DBSCAN clustering on data.
@@ -78,13 +87,8 @@ class DBSCAN():
         dataset : Dataset
             Input data.
         """
-        n_features = compss_wait_on(_get_n_features(dataset[0]))
+        n_features = dataset.n_features
         grid = np.empty([self._grid_dim] * n_features, dtype=object)
-
-        assert (self._arrange_data or grid.size == len(dataset)), \
-            "%s partitions required for grid dimension = %s and number of " \
-            "features = %s. Got %s partitions instead" % \
-            (grid.size, self._grid_dim, n_features, len(dataset))
 
         min_, max_ = self._get_min_max(dataset)
         bins, region_sizes = self._generate_bins(min_, max_, n_features)
@@ -95,13 +99,10 @@ class DBSCAN():
         else:
             sorted_data = dataset
 
-        # This threshold determines the granularity of the tasks
-        TH_1 = 2000
-
         for idx in np.ndindex(grid.shape):
             grid[idx] = Square(idx, self._eps, grid.shape, region_sizes)
             grid[idx].init_data(sorted_data, grid.shape)
-            grid[idx].partial_scan(self._min_samples, TH_1)
+            grid[idx]._partial_scan(self._min_samples, self._max_samples)
 
         transitions = []
 
@@ -114,6 +115,8 @@ class DBSCAN():
 
             grid[idx].cluster_labels[idx] = _compute_labels(*labels_versions)
 
+        # Iterate again over labels because the above loop changed them
+        # FIXME: This probably can be done in a better way
         for idx in np.ndindex(grid.shape):
             neigh_sq_id = grid[idx].neigh_sq_id
 
@@ -125,9 +128,9 @@ class DBSCAN():
                 neigh_indices.append(neigh_idx)
 
             transitions.append(
-                _compute_neighbour_transitions(
-                    idx, neigh_indices, grid[idx].cluster_labels[idx],
-                    *labels_versions))
+                _compute_neighbour_transitions(idx, neigh_indices,
+                                               grid[idx].cluster_labels[idx],
+                                               *labels_versions))
 
         transitions = _merge_transitions(*transitions)
         connected_comp = _get_connected_components(transitions)
@@ -143,32 +146,19 @@ class DBSCAN():
         for labels in final_labels:
             self.labels_ = np.concatenate((self.labels_, labels))
 
+        # Modify labels to small numbers since the merging process
+        # above can generate large labels (e.g., 150)
+        # FIXME: This probably can be avoided by improving the merging of the
+        #  labels computed by the different regions
         unique_labels = np.unique(self.labels_)
+        unique_labels = unique_labels[unique_labels >= 0]
 
         for unique, label in enumerate(unique_labels):
-            if label > 0:
-                self.labels_[self.labels_ == label] = unique
+            self.labels_[self.labels_ == label] = unique
 
         sorting_ind = self._get_sorting_indices()
 
         self.labels_ = self.labels_[np.argsort(sorting_ind)]
-
-    def _sync_relations(self, cluster_rules):
-        out = defaultdict(set)
-        for comb in cluster_rules:
-            for key in cluster_rules[comb]:
-                out[key] |= cluster_rules[comb][key]
-
-        mf_set = DisjointSet(out.keys())
-        for key in out:
-            tmp = list(out[key])
-            for i in range(len(tmp) - 1):
-                # Added this for loop to compare all vs all
-                mf_set.union(tmp[i], tmp[i + 1])
-                # for j in range(i, len(tmp)):
-                #     mf_set.union(tmp[i], tmp[j])
-
-        return mf_set.get()
 
     def _get_min_max(self, data):
         minmax = []
@@ -235,8 +225,8 @@ def _compute_labels(*labels):
 
 
 @task(returns=1)
-def _compute_neighbour_transitions(region_idx, neigh_indices,
-                                   labels, *neigh_labels):
+def _compute_neighbour_transitions(region_idx, neigh_indices, labels,
+                                   *neigh_labels):
     transitions = defaultdict(set)
 
     for label_idx, label in enumerate(labels):
@@ -307,6 +297,7 @@ def _get_connected_components(transitions):
         connected.append([node])
 
         _visit_neighbours(transitions, neighbours, visited, connected)
+
     return connected
 
 
@@ -379,11 +370,6 @@ def _filter(subset, idx, bins):
             break
 
     return final_ind, filtered_samples
-
-
-@task(returns=int)
-def _get_n_features(subset):
-    return subset.samples.shape[1]
 
 
 @task(returns=np.array)
