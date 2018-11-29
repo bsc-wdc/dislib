@@ -67,28 +67,39 @@ Aso supported:
 
 Folow the steps below to get started with wdc Dislib.
 
-#### 1. Install Docker
+#### 1. Install Docker and docker-py
 
-Follow these instructions:
+**Requires docker version >= 17.12.0-ce**
+
+
+Follow these instructions
 
 - [Docker for Mac](https://store.docker.com/editions/community/docker-ce-desktop-mac). Or, if you prefer to use [Homebrew](https://brew.sh/):
-  ```bash
-  brew cask install docker
-  ```
-- [Docker for Ubuntu](https://docs.docker.com/install/linux/docker-ce/ubuntu/#install-docker-ce-1)
-  ```bash
-  sudo apt-get update
-  sudo apt-get install docker-ce
+- [Docker for Ubuntu](https://docs.docker.com/install/linux/docker-ce/ubuntu/#install-docker-ce-1) **note** docker-ce is the new docker package, click on the link to activate it if it is not available in your package manager.
   ```
 - [Docker for Arch Linux](https://wiki.archlinux.org/index.php/Docker#Installation)
-  ```bash
-  sudo pacman -S docker
   ```
 
+Add user to docker group to run dislib as non-root user
+
+https://docs.docker.com/install/linux/linux-postinstall/
+
+Check that docker is correctly installed
+
+```
+docker --version
+docker ps # this should be empty as no docker processes are yet running.
+```
+
+Install [docker-py](https://docker-py.readthedocs.io/en/stable/)
+
+```
+sudo pip3 install docker
+```
 
 #### 2. Install the dislib
 
-Download the **[latest release](https://github.com/bsc-wdc/dislib/releases)** for MacOS (Darwin) or Linux.
+Download the **[latest release](https://github.com/bsc-wdc/dislib/releases)**.
 
 
 Extract the tar file from your terminal:
@@ -96,9 +107,10 @@ Extract the tar file from your terminal:
 tar -zxvf dislib_v0.1.0.tar.gz
 ```
 
-Move it into your local bin folder to be executable from anywhere:
+Move it into your desired installation path and link the binary to be executable from anywhere:
 ```bash
-sudo mv dislib/* /usr/local/bin/
+sudo mv dislib_v* /opt/dislib
+sudo ln -s /opt/dislib/dislib /usr/local/bin/dislib
 ```
 
 
@@ -107,6 +119,7 @@ sudo mv dislib/* /usr/local/bin/
 
 Initialize the dislib where your source code will be (you can reinit anytime). This will allow docker to access your local code and run it inside the container.
 
+**Note** that the first time dislib needs to download the docker image from the registry and it may take a while.
 ```
 # Without a path it operates on the current working directory.
 dislib init
@@ -115,7 +128,7 @@ dislib init
 dislib init /home/user/replace/path/
 ```
 
-#### 4. Run a dislib example application
+#### 4. Run a sample application
 
 First clone dislib repo:
 
@@ -141,6 +154,37 @@ dislib exec examples/clustering_comparison.py
 
 The log files of the execution can be found at $HOME/.COMPSs.
 
+#### 5. Adding more nodes
+
+
+**Note**: adding more nodes is still in beta phase. Any suggestion, issue, or feedback is highly welcome and appreciated.
+
+
+To add more computing nodes you can either let docker create more workers for you or manually create and config a custom node.
+
+For docker just issue the desired number of workers to be added. For example, to add 2 docker workers:
+```
+dislib components add worker 2
+```
+
+You can check that both new computing nodes are up with:
+
+```
+dislib components list
+```
+
+If you want to add a custom node it needs to be reachable through ssh without user. Moreover, dislib will try to copy there the `working_dir` so it needs write permissions fot the scp.
+
+For example, to add the local machine as worker node:
+
+```
+dislib components add worker '127.0.0.1:6'
+```
+
+* '127.0.0.1': is the IP used for ssh (can also be a hostname like 'localhost', as long as it can be resolved).
+* '6': desired number of available computing units for the new node.
+
+**Please be aware** that `dislib components` will not list your custom nodes because they are not docker processes and thus it can't be verified if they are up and running.
 
 ## Contributing
 
