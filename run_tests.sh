@@ -9,7 +9,6 @@ cd ${root_path}
 export ComputingUnits=4
 
 runcompss \
-    --debug \
     --pythonpath=$(pwd) \
     --python_interpreter=python3 \
     ./tests/tests.py 2>&1 | tee output.log

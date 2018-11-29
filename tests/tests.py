@@ -214,7 +214,7 @@ class DataLoadingTest(unittest.TestCase):
 
     def test_load_libsvm_file_sparse(self):
 
-        file_ = "dislib/tests/files/libsvm/2"
+        file_ = "tests/files/libsvm/2"
         data = load_libsvm_file(file_, 10, 780)
         data.collect()
         x, y = load_svmlight_file(file_, n_features=780)
@@ -232,7 +232,7 @@ class DataLoadingTest(unittest.TestCase):
 
     def test_load_libsvm_file_dense(self):
 
-        file_ = "dislib/tests/files/libsvm/1"
+        file_ = "tests/files/libsvm/1"
         data = load_libsvm_file(file_, 20, 780, False)
         data.collect()
         x, y = load_svmlight_file(file_, n_features=780)
@@ -250,7 +250,7 @@ class DataLoadingTest(unittest.TestCase):
 
     def test_load_libsvm_files_sparse(self):
 
-        dir_ = "dislib/tests/files/libsvm"
+        dir_ = "tests/files/libsvm"
         file_list = os.listdir(dir_)
         data = load_libsvm_files(dir_, 780)
         data.collect()
@@ -267,7 +267,7 @@ class DataLoadingTest(unittest.TestCase):
 
     def test_load_libsvm_files_dense(self):
 
-        dir_ = "dislib/tests/files/libsvm"
+        dir_ = "tests/files/libsvm"
         file_list = os.listdir(dir_)
         data = load_libsvm_files(dir_, 780, False)
         data.collect()
@@ -284,7 +284,7 @@ class DataLoadingTest(unittest.TestCase):
 
     def test_load_csv_file(self):
 
-        csv_file = "dislib/tests/files/csv/1"
+        csv_file = "tests/files/csv/1"
         data = load_csv_file(csv_file, subset_size=300, n_features=122)
         data.collect()
         csv = np.loadtxt(csv_file, delimiter=",")
@@ -300,7 +300,7 @@ class DataLoadingTest(unittest.TestCase):
 
     def test_load_csv_file_labels_last(self):
 
-        csv_file = "dislib/tests/files/csv/1"
+        csv_file = "tests/files/csv/1"
         data = load_csv_file(csv_file, subset_size=1000, n_features=121,
                              label_col="last")
         data.collect()
@@ -319,7 +319,7 @@ class DataLoadingTest(unittest.TestCase):
 
     def test_load_csv_file_labels_first(self):
 
-        csv_file = "dislib/tests/files/csv/2"
+        csv_file = "tests/files/csv/2"
         data = load_csv_file(csv_file, subset_size=100, n_features=121,
                              label_col="first")
         data.collect()
@@ -338,7 +338,7 @@ class DataLoadingTest(unittest.TestCase):
 
     def test_load_csv_files(self):
 
-        csv_dir = "dislib/tests/files/csv"
+        csv_dir = "tests/files/csv"
         file_list = os.listdir(csv_dir)
         data = load_csv_files(csv_dir, n_features=122)
         data.collect()
@@ -353,7 +353,7 @@ class DataLoadingTest(unittest.TestCase):
 
     def test_load_csv_files_labels_last(self):
 
-        csv_dir = "dislib/tests/files/csv"
+        csv_dir = "tests/files/csv"
         file_list = os.listdir(csv_dir)
         data = load_csv_files(csv_dir, n_features=122, label_col="last")
         data.collect()
@@ -369,7 +369,7 @@ class DataLoadingTest(unittest.TestCase):
 
     def test_load_csv_files_labels_first(self):
 
-        csv_dir = "dislib/tests/files/csv"
+        csv_dir = "tests/files/csv"
         file_list = os.listdir(csv_dir)
         data = load_csv_files(csv_dir, n_features=122, label_col="first")
         data.collect()
@@ -416,7 +416,7 @@ class DataClassesTest(unittest.TestCase):
         self.assertEqual(len(dataset), 10)
 
     def test_dataset_collect(self):
-        csv_file = "dislib/tests/files/csv/3"
+        csv_file = "tests/files/csv/3"
         dataset = load_csv_file(csv_file, subset_size=300, n_features=122)
         dataset.collect()
 
