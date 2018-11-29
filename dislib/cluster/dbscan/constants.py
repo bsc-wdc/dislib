@@ -1,5 +1,0 @@
-CORE_POINT = -2
-NOISE = -1
-NO_CP = -3
-NOT_PROCESSED = -4
-CP_LOC = -9

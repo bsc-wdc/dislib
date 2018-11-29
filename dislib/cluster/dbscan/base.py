@@ -99,13 +99,13 @@ class DBSCAN():
         else:
             sorted_data = dataset
 
+        # Compute dbscan in each region of the grid
         for idx in np.ndindex(grid.shape):
             grid[idx] = Square(idx, self._eps, grid.shape, region_sizes)
             grid[idx].init_data(sorted_data, grid.shape)
-            grid[idx]._partial_scan(self._min_samples, self._max_samples)
+            grid[idx].partial_scan(self._min_samples, self._max_samples)
 
-        transitions = []
-
+        # Update labels computed by the different neighbouring regions
         for idx in np.ndindex(grid.shape):
             neigh_sq_id = grid[idx].neigh_sq_id
             labels_versions = []
@@ -113,10 +113,13 @@ class DBSCAN():
             for neigh_idx in neigh_sq_id:
                 labels_versions.append(grid[neigh_idx].cluster_labels[idx])
 
-            grid[idx].cluster_labels[idx] = _compute_labels(*labels_versions)
+            grid[idx].cluster_labels[idx] = _get_max_labels(*labels_versions)
 
+        # Find connected clusters between regions
         # Iterate again over labels because the above loop changed them
         # FIXME: This probably can be done in a better way
+        transitions = []
+
         for idx in np.ndindex(grid.shape):
             neigh_sq_id = grid[idx].neigh_sq_id
 
@@ -160,11 +163,12 @@ class DBSCAN():
 
         self.labels_ = self.labels_[np.argsort(sorting_ind)]
 
-    def _get_min_max(self, data):
+    @staticmethod
+    def _get_min_max(dataset):
         minmax = []
 
-        for part in data:
-            minmax.append(_min_max(part))
+        for subset in dataset:
+            minmax.append(_min_max(subset))
 
         minmax = compss_wait_on(minmax)
         return np.min(minmax, axis=0)[0], np.max(minmax, axis=0)[1]
@@ -219,7 +223,7 @@ class DBSCAN():
 
 
 @task(returns=1)
-def _compute_labels(*labels):
+def _get_max_labels(*labels):
     label_arr = np.array(labels)
     return np.max(label_arr, axis=0)
 
@@ -266,7 +270,7 @@ def _update_labels(region, labels, connected):
             if tup[:-1] == region:
                 old_label = tup[-1]
 
-        if old_label > 0:
+        if old_label >= 0:
             labels[labels == old_label] = min_
 
     return labels
@@ -337,16 +341,3 @@ def _min_max(subset):
     mn = np.min(subset.samples, axis=0)
     mx = np.max(subset.samples, axis=0)
     return np.array([mn, mx])
-
-
-@task(returns=np.array)
-def _get_sorting_indices(sorting, subset_sizes):
-    indices = []
-
-    for set_idx, sample_idx in sorting:
-        offset = np.sum(subset_sizes[:set_idx])
-
-        for idx in sample_idx:
-            indices.append(idx + offset)
-
-    return np.array(indices)
