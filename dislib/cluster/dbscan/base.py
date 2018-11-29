@@ -4,7 +4,7 @@ import numpy as np
 from pycompss.api.api import compss_wait_on
 from pycompss.api.task import task
 
-from dislib.cluster.dbscan.classes import Square
+from dislib.cluster.dbscan.classes import Region
 from dislib.data import Dataset
 
 
@@ -101,7 +101,7 @@ class DBSCAN():
 
         # Compute dbscan in each region of the grid
         for idx in np.ndindex(grid.shape):
-            grid[idx] = Square(idx, self._eps, grid.shape, region_sizes)
+            grid[idx] = Region(idx, self._eps, grid.shape, region_sizes)
             grid[idx].init_data(sorted_data, grid.shape)
             grid[idx].partial_scan(self._min_samples, self._max_samples)
 

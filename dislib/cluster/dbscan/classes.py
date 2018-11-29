@@ -9,7 +9,7 @@ _NOISE = -1
 _NO_CP = -3
 
 
-class Square(object):
+class Region(object):
     def __init__(self, coord, epsilon, grid_shape, region_sizes):
         self.coord = coord
         self.epsilon = epsilon

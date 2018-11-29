@@ -67,6 +67,7 @@ def main():
 
     kmeans = KMeans(n_clusters=3, random_state=random_state)
     y_pred = kmeans.fit_predict(dataset)
+
     plt.subplot(224)
     plt.scatter(x_filtered[:, 0], x_filtered[:, 1], c=y_pred)
     centers = kmeans.centers

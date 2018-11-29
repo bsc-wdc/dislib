@@ -62,7 +62,7 @@ class KMeans:
         -----
         This method modifies the input Dataset by setting the cluster labels.
         """
-        centers = _init_centers(dataset[0], self._n_clusters,
+        centers = _init_centers(dataset.n_features, self._n_clusters,
                                 self._random_state)
         self.centers = compss_wait_on(centers)
 
@@ -105,7 +105,7 @@ class KMeans:
         for subset in dataset:
             labels.append(_get_label(subset))
 
-        return np.array(compss_wait_on(labels))
+        return np.concatenate(compss_wait_on(labels))
 
     def predict(self, x):
         """ Predict the closest cluster each sample in x belongs to.
@@ -122,9 +122,10 @@ class KMeans:
         """
         labels = []
 
-        for x in x:
-            dist = np.linalg.norm(x - self.centers, axis=1)
+        for sample in x:
+            dist = np.linalg.norm(sample - self.centers, axis=1)
             labels.append(np.argmin(dist))
+
         return np.array(labels)
 
     def _converged(self, old_centers, iter):
@@ -154,9 +155,8 @@ def _get_label(subset):
 
 
 @task(returns=np.array)
-def _init_centers(subset, n_clusters, random_state):
+def _init_centers(n_features, n_clusters, random_state):
     np.random.seed(random_state)
-    n_features = subset.samples.shape[1]
     centers = np.random.random((n_clusters, n_features))
     return centers
 
