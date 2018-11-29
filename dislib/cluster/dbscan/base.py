@@ -273,20 +273,6 @@ def _update_labels(region, labels, connected):
 
 
 @task(returns=1)
-def merge_labels(*labels_list):
-    new_labels, transitions = _compute_transitions(labels_list)
-    connected = _get_connected_components(transitions)
-
-    for component in connected:
-        min_ = min(component)
-
-        for label in component:
-            new_labels[new_labels == label] = min_
-
-    return new_labels
-
-
-@task(returns=1)
 def _get_connected_components(transitions):
     visited = []
     connected = []
@@ -313,32 +299,6 @@ def _visit_neighbours(transitions, neighbours, visited, connected):
             new_neighbours = transitions[neighbour]
 
             _visit_neighbours(transitions, new_neighbours, visited, connected)
-
-
-def _compute_transitions(labels_list):
-    labels = np.array(labels_list)
-    new_labels = np.full(labels[0].shape[0], -1)
-    transitions = defaultdict(set)
-    for i in range(len(new_labels)):
-        final_indices = np.empty(0, dtype=int)
-
-        for label_vec in labels[labels[:, i] >= 0]:
-            indices = np.argwhere(label_vec == label_vec[i])[:, 0]
-            final_indices = np.concatenate((final_indices, indices))
-
-        final_indices = np.unique(final_indices)
-        new_label = min(i, max(new_labels[i], i))
-
-        trans = new_labels[final_indices]
-        trans = np.unique(trans[trans >= 0])
-
-        new_labels[final_indices] = new_label
-
-        for label in trans:
-            transitions[new_label].add(label)
-            transitions[label].add(new_label)
-
-    return new_labels, transitions
 
 
 @task(returns=int)
