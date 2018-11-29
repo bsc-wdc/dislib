@@ -1,12 +1,9 @@
-import json
-import os
-from collections import Counter
-from math import sqrt, frexp
 from sys import float_info
 
+from pycompss.api.parameter import *
+
 import numpy as np
-from pandas import read_csv
-from pandas.api.types import CategoricalDtype
+from pycompss.api.task import task
 from pycompss.api.api import compss_delete_object
 from pycompss.api.parameter import FILE_IN, FILE_INOUT
 from pycompss.api.task import task
@@ -14,89 +11,91 @@ from six.moves import range
 from sklearn.tree import DecisionTreeClassifier as SklearnDTClassifier
 from sklearn.tree import _tree
 
-import dislib.classification.rf.prediction as prediction
 from dislib.classification.rf.test_split import test_split
 
 
-class TreeWrapper(object):
-    def __init__(self, tree_path, tree):
-        self.tree_path = tree_path
-        self.i_tree = tree.tree_
-        self.classes = tree.classes_
+class Node:
 
-    def write_to(self, tree_file):
-        nodes_to_write = [(0, self.tree_path)]
-        while nodes_to_write:
-            node_id, tree_path = nodes_to_write.pop()
-            if self.i_tree.children_left[node_id] == _tree.TREE_LEAF:
-                frequencies = dict((self.classes[k], int(v)) for k, v in
-                                   enumerate(self.i_tree.value[node_id][0]))
-                mode = max(frequencies, key=frequencies.get)
-                n_node_samples = self.i_tree.n_node_samples[node_id]
-                frequencies_str = ', '.join(
-                    ['"{}": {}'.format(k, v) for k, v in frequencies.items()])
-                frequencies_str = '{' + frequencies_str + '}'
-                tree_file.write('{{"tree_path": "{}", "type": "LEAF", '
-                                '"size": {}, "mode": {}, "frequencies": {}}}\n'
-                                .format(tree_path, n_node_samples, mode,
-                                        frequencies_str))
-            else:
-                tree_file.write('{{"tree_path": "{}", "type": "NODE", '
-                                '"index": {}, "value": {}}}\n'
-                                .format(tree_path,
-                                        self.i_tree.feature[node_id],
-                                        self.i_tree.threshold[node_id]))
-                nodes_to_write.append(
-                    (self.i_tree.children_right[node_id], tree_path + 'R'))
-                nodes_to_write.append(
-                    (self.i_tree.children_left[node_id], tree_path + 'L'))
+    def __init__(self):
+        self.content = None
+        self.left = None
+        self.right = None
+
+    def predict(self, sample):
+        node_content = self.content
+        if isinstance(node_content, LeafInfo):
+            return np.full((len(sample),), node_content.mode)
+        if isinstance(node_content, SkTreeWrapper):
+            return node_content.sk_tree.predict(sample)
+        if isinstance(node_content, InnerNodeInfo):
+            prediction = np.empty((len(sample),), dtype=np.int64)
+            left_indices = sample[:, node_content.index] <= node_content.value
+            prediction[left_indices] = self.left.predict(sample[left_indices])
+            prediction[~left_indices] = self.right.predict(sample[~left_indices])
+            return prediction
+        assert False, 'Node.predict() does not support this node type'
+
+    def predict_proba(self, sample, n_classes):
+        node_content = self.content
+        if isinstance(node_content, LeafInfo):
+            return np.repeat(node_content.frequencies/node_content.size, len(sample), 1)
+        if isinstance(node_content, SkTreeWrapper):
+            prediction = np.zeros((len(sample), n_classes), dtype=np.int64)
+            prediction[:, node_content.sk_tree.classes_] = node_content.sk_tree.predict_proba()
+        if isinstance(node_content, InnerNodeInfo):
+            prediction = np.empty((len(sample), n_classes), dtype=np.int64)
+            left_indices = sample[:, node_content.index] <= node_content.value
+            prediction[left_indices] = self.left.predict_proba(sample[left_indices])
+            prediction[~left_indices] = self.right.predict_proba(sample[~left_indices])
+            return prediction
+        assert False, 'Node.predict_proba() does not support this node type'
 
 
-class InternalNode(object):
-    def __init__(self, tree_path=None, index=None, value=None):
-        self.tree_path = tree_path
+class InnerNodeInfo:
+
+    def __init__(self, index=None, value=None):
         self.index = index
         self.value = value
 
-    def to_json(self):
-        if self.value == np.inf:
-            self.value = json.dumps(np.inf)
-        return ('{{"tree_path": "{}", "type": "NODE", '
-                '"index": {}, "value": {}}}\n'
-                .format(self.tree_path, self.index, self.value))
 
+class LeafInfo:
 
-class Leaf(object):
-    def __init__(self, tree_path=None, size=None, frequencies=None, mode=None):
-        self.tree_path = tree_path
+    def __init__(self, size=None, frequencies=None, mode=None):
         self.size = size
         self.frequencies = frequencies
         self.mode = mode
 
-    def to_json(self):
-        frequencies_str = ', '.join(
-            map('"%r": %r'.__mod__, list(self.frequencies.items())))
-        frequencies_str = '{' + frequencies_str + '}'
-        return ('{{"tree_path": "{}", "type": "LEAF", '
-                '"size": {}, "mode": {}, "frequencies": {}}}\n'
-                .format(self.tree_path, self.size, self.mode, frequencies_str))
 
+class SkTreeWrapper:
+    def __init__(self, tree):
+        self.sk_tree = tree
+        self.classes = tree.classes_
 
-def get_features_file(path):
-    features_path = os.path.join(path, 'x_t.npy')
-    if os.path.isfile(features_path):
-        return features_path
-    return None
+    # def write_to(self, tree_file):
+    #     nodes_to_write = [(0, self.tree_path)]
+    #     while nodes_to_write:
+    #         node_id, tree_path = nodes_to_write.pop()
+    #         if self.i_tree.children_left[node_id] == _tree.TREE_LEAF:
+    #             frequencies = dict((self.classes[k], int(v)) for k, v in enumerate(self.i_tree.value[node_id][0]))
+    #             mode = max(frequencies, key=frequencies.get)
+    #             n_node_samples = self.i_tree.n_node_samples[node_id]
+    #             frequencies_str = ', '.join(['"{}": {}'.format(k, v) for k, v in frequencies.items()])
+    #             frequencies_str = '{' + frequencies_str + '}'
+    #             tree_file.write('{{"tree_path": "{}", "type": "LEAF", '
+    #                             '"size": {}, "mode": {}, "frequencies": {}}}\n'
+    #                             .format(tree_path, n_node_samples, mode, frequencies_str))
+    #         else:
+    #             tree_file.write('{{"tree_path": "{}", "type": "NODE", '
+    #                             '"index": {}, "value": {}}}\n'
+    #                             .format(tree_path, self.i_tree.feature[node_id], self.i_tree.threshold[node_id]))
+    #             nodes_to_write.append((self.i_tree.children_right[node_id], tree_path + 'R'))
+    #             nodes_to_write.append((self.i_tree.children_left[node_id], tree_path + 'L'))
 
 
 def get_sample_attributes(samples_file, indices):
     samples_mmap = np.load(samples_file, mmap_mode='r', allow_pickle=False)
     x = samples_mmap[indices]
     return x
-
-
-def get_samples_file(path):
-    return os.path.join(path, 'x.npy')
 
 
 def get_feature_mmap(features_file, i):
@@ -123,13 +122,6 @@ def feature_selection(feature_indices, m_try):
     return np.random.choice(feature_indices,
                             size=min(m_try, len(feature_indices)),
                             replace=False)
-
-
-@task(returns=3)
-def get_y(path):
-    y = read_csv(os.path.join(path, 'y.dat'), dtype=CategoricalDtype(),
-                 header=None, squeeze=True).values
-    return y, y.codes, len(y.categories)
 
 
 @task(returns=tuple)
@@ -160,47 +152,36 @@ def get_groups(sample, y_s, features_mmap, index, value):
     return left, y_l, right, y_r
 
 
-def build_leaf(y_s, tree_path):
-    frequencies = Counter(y_s)
-    most_common = frequencies.most_common(1)
-    if most_common:
-        mode = most_common[0][0]
-    else:
-        mode = None
-    return Leaf(tree_path, len(y_s), frequencies, mode)
+def compute_leaf_info(y_s, n_classes):
+    frequencies = np.bincount(y_s, minlength=n_classes)
+    mode = np.argmax(frequencies)
+    return LeafInfo(len(y_s), frequencies, mode)
 
 
-def split_node(tree_path, sample, n_features, y_s, n_classes, m_try,
-               samples_file=None, features_file=None):
+def split_node(sample, n_features, y_s, n_classes, m_try, samples_file=None, features_file=None):
     if features_file is not None:
-        return split_node_a(tree_path, sample, n_features, features_file, y_s,
-                            n_classes, m_try)
+        return split_node_a(sample, n_features, features_file, y_s, n_classes, m_try)
     elif samples_file is not None:
-        return split_node_b(tree_path, sample, n_features, samples_file, y_s,
-                            n_classes, m_try)
+        return split_node_b(sample, n_features, samples_file, y_s, n_classes, m_try)
     else:
         raise ValueError('Invalid combination of arguments. samples_file is'
                          ' None and features_file is None.')
 
 
-@task(features_file=FILE_IN, returns=(InternalNode, list, list, list, list))
-def split_node_a(tree_path, sample, n_features, features_file, y_s, n_classes,
-                 m_try):
+@task(features_file=FILE_IN, returns=(object, list, list, list, list))
+def split_node_a(sample, n_features, features_file, y_s, n_classes, m_try):
     features_mmap = np.load(features_file, mmap_mode='r', allow_pickle=False)
-    return compute_split(tree_path, sample, n_features, features_mmap, y_s,
-                         n_classes, m_try)
+    return compute_split(sample, n_features, features_mmap, y_s, n_classes, m_try)
 
 
-@task(samples_file=FILE_IN, returns=(InternalNode, list, list, list, list))
-def split_node_b(tree_path, sample, n_features, samples_file, y_s, n_classes,
-                 m_try):
+@task(samples_file=FILE_IN, returns=(object, list, list, list, list))
+def split_node_b(sample, n_features, samples_file, y_s, n_classes, m_try):
     features_mmap = np.load(samples_file, mmap_mode='r', allow_pickle=False).T
-    return compute_split(tree_path, sample, n_features, features_mmap, y_s,
-                         n_classes, m_try)
+    return compute_split(sample, n_features, features_mmap, y_s, n_classes, m_try)
 
 
-def compute_split(tree_path, sample, n_features, features_mmap, y_s, n_classes,
-                  m_try):
+def compute_split(sample, n_features, features_mmap, y_s, n_classes, m_try):
+    node_info = left_group = y_l = right_group = y_r = None
     split_ended = False
     tried_indices = []
     while not split_ended:
@@ -220,67 +201,37 @@ def compute_split(tree_path, sample, n_features, features_mmap, y_s, n_classes,
                                                        b_value)
         if left_group.size and right_group.size:
             split_ended = True
-            node = InternalNode(tree_path, b_index, b_value)
+            node_info = InnerNodeInfo(b_index, b_value)
         else:
             tried_indices.extend(list(index_selection))
             if len(tried_indices) == n_features:
                 split_ended = True
-                node = build_leaf(y_s, tree_path)
+                node_info = compute_leaf_info(y_s, n_classes)
 
-    return node, left_group, y_l, right_group, y_r
-
-
-def flush_remove_nodes(file_out, nodes_to_persist):
-    flush_nodes(file_out, *nodes_to_persist)
-    for obj in nodes_to_persist:
-        compss_delete_object(obj)
-    del nodes_to_persist[:]
+    return node_info, left_group, y_l, right_group, y_r
 
 
-@task(file_out=FILE_INOUT)
-def flush_nodes(file_out, *nodes_to_persist):
-    with open(file_out, "a") as tree_file:
-        for item in nodes_to_persist:
-            if isinstance(item, (Leaf, InternalNode)):
-                tree_file.write(item.to_json())
-            else:
-                for nested_item in item:
-                    if isinstance(nested_item, TreeWrapper):
-                        nested_item.write_to(tree_file)
-                    else:
-                        tree_file.write(nested_item.to_json())
-
-
-def build_subtree(sample, y_s, n_features, tree_path, max_depth, n_classes,
-                  m_try, samples_file, features_file):
+def build_subtree(sample, y_s, n_features, max_depth, n_classes, m_try, samples_file, features_file):
     if features_file is not None:
-        return build_subtree_a(sample, y_s, n_features, tree_path, max_depth,
-                               n_classes, m_try, samples_file,
+        return build_subtree_a(sample, y_s, n_features, max_depth, n_classes, m_try, samples_file,
                                features_file)
     else:
-        return build_subtree_b(sample, y_s, n_features, tree_path, max_depth,
-                               n_classes, m_try, samples_file)
+        return build_subtree_b(sample, y_s, n_features, max_depth, n_classes, m_try, samples_file)
 
 
-@task(samples_file=FILE_IN, features_file=FILE_IN, returns=list)
-def build_subtree_a(sample, y_s, n_features, tree_path, max_depth, n_classes,
-                    m_try, samples_file, features_file):
-    return build_subtree_in(sample, y_s, n_features, tree_path, max_depth,
-                            n_classes, m_try, samples_file,
+@task(samples_file=FILE_IN, features_file=FILE_IN, returns=Node)
+def build_subtree_a(sample, y_s, n_features, max_depth, n_classes, m_try, samples_file, features_file):
+    return build_subtree_in(sample, y_s, n_features, max_depth, n_classes, m_try, samples_file,
                             features_file=features_file)
 
 
-@task(samples_file=FILE_IN, returns=list)
-def build_subtree_b(sample, y_s, n_features, tree_path, max_depth, n_classes,
-                    m_try, samples_file):
-    return build_subtree_in(sample, y_s, n_features, tree_path, max_depth,
-                            n_classes, m_try, samples_file)
+@task(samples_file=FILE_IN, returns=Node)
+def build_subtree_b(sample, y_s, n_features, max_depth, n_classes, m_try, samples_file):
+    return build_subtree_in(sample, y_s, n_features, max_depth, n_classes, m_try, samples_file)
 
 
-def build_subtree_in(sample, y_s, n_features, tree_path, max_depth, n_classes,
-                     m_try, samples_file, features_file=None,
-                     use_sklearn_internally=True,
-                     sklearn_max_elements=100000000):
+def build_subtree_in(sample, y_s, n_features, max_depth, n_classes, m_try, samples_file, features_file=None,
+                     use_sklearn_internally=True, sklearn_max_elements=100000000):
     np.random.seed()
     if not sample.size:
         return []
@@ -288,140 +239,168 @@ def build_subtree_in(sample, y_s, n_features, tree_path, max_depth, n_classes,
         features_mmap = np.load(features_file, mmap_mode='r',
                                 allow_pickle=False)
     else:
-        features_mmap = np.load(samples_file, mmap_mode='r',
-                                allow_pickle=False).T
-    tree_traversal = [(tree_path, sample, y_s, 0)]
-    node_list_to_persist = []
+        features_mmap = np.load(samples_file, mmap_mode='r', allow_pickle=False).T
+    subtree = Node()
+    tree_traversal = [(subtree, sample, y_s, 0)]
     while tree_traversal:
-        tree_path, sample, y_s, depth = tree_traversal.pop()
+        node, sample, y_s, depth = tree_traversal.pop()
         if depth < max_depth:
-            if use_sklearn_internally and n_features * len(
-                    sample) <= sklearn_max_elements:
-                dt = SklearnDTClassifier(max_features=m_try,
-                                         max_depth=None
-                                         if max_depth == np.inf
-                                         else max_depth - depth)
-                sample, new_indices, sample_weight = \
-                    np.unique(sample, return_index=True, return_counts=True)
+            if use_sklearn_internally and n_features * len(sample) <= sklearn_max_elements:
+                sklearn_max_depth = None if max_depth == np.inf else max_depth - depth
+                dt = SklearnDTClassifier(max_features=m_try, max_depth=sklearn_max_depth)
+                sample, new_indices, sample_weight = np.unique(sample, return_index=True, return_counts=True)
                 x = get_sample_attributes(samples_file, sample)
                 y_s = y_s[new_indices]
                 dt.fit(x, y_s, sample_weight=sample_weight, check_input=False)
-                node_list_to_persist.append(TreeWrapper(tree_path, dt))
+                node.content = SkTreeWrapper(dt)
             else:
-                node, left_group, y_l, right_group, y_r = compute_split(
-                    tree_path, sample, n_features, features_mmap,
-                    y_s, n_classes, m_try)
-                node_list_to_persist.append(node)
-                if isinstance(node, InternalNode):
-                    tree_traversal.append(
-                        (tree_path + 'R', right_group, y_r, depth + 1))
-                    tree_traversal.append(
-                        (tree_path + 'L', left_group, y_l, depth + 1))
+                node_info, left_group, y_l, right_group, y_r = compute_split(sample, n_features, features_mmap,
+                                                                             y_s, n_classes, m_try)
+                node.content = node_info
+                if isinstance(node_info, InnerNodeInfo):
+                    node.left = Node()
+                    node.right = Node()
+                    tree_traversal.append((node.right, right_group, y_r, depth + 1))
+                    tree_traversal.append((node.left, left_group, y_l, depth + 1))
         else:
-            node_list_to_persist.append(build_leaf(y_s, tree_path))
-    return node_list_to_persist
+            node.content = compute_leaf_info(y_s, n_classes)
+    return subtree
+
+
+@task(returns=list)
+def collect(*object_list):
+    return object_list
+
+
+def get_subtree_path(subtree_index, distr_depth):
+    if distr_depth == 0:
+        return ''
+    return bin(subtree_index)[2:].zfill(distr_depth)
+
+
+def get_predicted_indices(samples, tree, nodes_info, path):
+    indices_mask = np.full((len(samples),), True)
+    for direction in path:
+        node_info = nodes_info[tree.content]
+        if direction == '0':
+            indices_mask[indices_mask] = samples[indices_mask, node_info.index] <= node_info.value
+            tree = tree.left
+        else:
+            indices_mask[indices_mask] = samples[indices_mask, node_info.index] > node_info.value
+            tree = tree.right
+    return indices_mask
+
+
+@task(returns=1)
+def predict_branch(samples, tree, nodes_info, subtree_index, subtree, distr_depth):
+    path = get_subtree_path(subtree_index, distr_depth)
+    indices_mask = get_predicted_indices(samples, tree, nodes_info, path)
+    prediction = subtree.predict(samples[indices_mask])
+    return indices_mask, prediction
+
+
+@task(returns=1)
+def predict_branch_proba(samples, tree, nodes_info, subtree_index, subtree, distr_depth, n_classes):
+    path = get_subtree_path(subtree_index, distr_depth)
+    indices_mask = get_predicted_indices(samples, tree, nodes_info, path)
+    prediction = subtree.predict_proba(samples[indices_mask], n_classes)
+    return indices_mask, prediction
+
+
+@task(returns=list)
+def merge_branches(shape, *predictions):
+    merged_prediction = np.empty(shape, dtype=np.int64)
+    for selected, prediction in predictions:
+        merged_prediction[selected] = prediction
+    return merged_prediction
 
 
 class DecisionTreeClassifier:
-    def __init__(self, path_in, n_instances, n_features, path_out, name_out,
-                 max_depth=None, distr_depth=None,
-                 bootstrap=False, try_features=None):
+
+    def __init__(self, try_features, max_depth, distr_depth, bootstrap):
         """
         Decision tree with distributed splits using pyCOMPSs.
 
-        :param path_in: Path of the dataset directory.
-        :param n_instances: Number of instances in the sample.
-        :param n_features: Number of attributes in the sample.
-        :param path_out: Path of the output directory.
-        :param name_out: Name of the output file.
+        :param try_features: Number of features to try (at least) for splitting each node.
         :param max_depth: Depth of the decision tree.
-        :param distr_depth: Nodes are split in a distributed way up to this
-         depth.
-        :param bootstrap: Randomly select n_instances samples with repetition
-         (used in random forests).
-        :param try_features: Number of features to try (at least) for splitting
-         each node.
+        :param distr_depth: Nodes are split in a distributed way up to this depth.
+        :param bootstrap: Randomly select n_instances samples with repetition (used in random forests).
         """
-        self.path_in = path_in
-        self.n_instances = n_instances
-        self.n_features = n_features
-        self.path_out = path_out
-        self.name_out = name_out
-        self.max_depth = max_depth if max_depth is not None else np.inf
-        self.distr_depth = distr_depth if distr_depth is not None else (frexp(
-            self.n_instances)[1] - 1) // 3
-        self.y = None
-        self.y_codes = None
-        self.n_classes = None
+        self.try_features = try_features
+        self.max_depth = max_depth
+        self.distr_depth = distr_depth
         self.bootstrap = bootstrap
-        if try_features is None:
-            self.m_try = n_features
-        elif try_features == 'sqrt':
-            self.m_try = max(1, int(sqrt(n_features)))
-        elif try_features == 'third':
-            self.m_try = max(1, int(n_features / 3))
-        else:
-            self.m_try = int(try_features)
 
-    def fit(self):
+        self.n_features = None
+        self.n_classes = None
+
+        self.tree = None
+        self.nodes_info = None
+        self.subtrees = None
+
+    def fit(self, dataset):
         """
         Fits the DecisionTreeClassifier.
+
+        :param dataset: dislib.classification.rf.data.RfDataset.
         """
-        if self.y_codes is None:
-            self.y, self.y_codes, self.n_classes = get_y(self.path_in)
-        tree_sample, y_s = sample_selection(self.n_instances, self.y_codes,
-                                            self.bootstrap)
-        features_file = get_features_file(self.path_in)
-        samples_file = get_samples_file(self.path_in)
-        tree_traversal = [('//', tree_sample, y_s, 0)]
-        file_out = os.path.join(self.path_out, self.name_out)
-        open(file_out,
-             'w').close()  # Create new empty file deleting previous content
-        nodes_to_persist = []
 
+        self.n_features = dataset.get_n_features()
+        self.n_classes = dataset.get_n_classes()
+        samples_path = dataset.samples_path
+        features_path = dataset.features_path
+        n_samples = dataset.get_n_samples()
+        y_codes = dataset.get_y_codes()
+
+        tree_sample, y_s = sample_selection(n_samples, y_codes, self.bootstrap)
+        self.tree = Node()
+        self.nodes_info = []
+        self.subtrees = []
+        tree_traversal = [(self.tree, tree_sample, y_s, 0)]
         while tree_traversal:
-            tree_path, sample, y_s, depth = tree_traversal.pop()
-            if depth < self.max_depth:
-                if depth < self.distr_depth:
-                    node, left_group, y_l, right_group, y_r = split_node(
-                        tree_path, sample, self.n_features, y_s,
-                        self.n_classes, self.m_try,
-                        samples_file=samples_file,
-                        features_file=features_file)
-                    compss_delete_object(sample)
-                    compss_delete_object(y_s)
-                    nodes_to_persist.append(node)
-                    tree_traversal.append(
-                        (tree_path + 'R', right_group, y_r, depth + 1))
-                    tree_traversal.append(
-                        (tree_path + 'L', left_group, y_l, depth + 1))
-                else:
-                    subtree_nodes = build_subtree(sample, y_s, self.n_features,
-                                                  tree_path,
-                                                  self.max_depth - depth,
-                                                  self.n_classes, self.m_try,
-                                                  samples_file, features_file)
-                    nodes_to_persist.append(subtree_nodes)
-                    compss_delete_object(sample)
-                    compss_delete_object(y_s)
-
+            node, sample, y_s, depth = tree_traversal.pop()  # type: (Node, list, list, int)
+            if depth < self.distr_depth:
+                node_info, left_group, y_l, right_group, y_r = split_node(sample, self.n_features, y_s,
+                                                                          self.n_classes, self.try_features,
+                                                                          samples_file=samples_path,
+                                                                          features_file=features_path)
+                compss_delete_object(sample)
+                compss_delete_object(y_s)
+                node.content = len(self.nodes_info)
+                self.nodes_info.append(node_info)
+                node.left = Node()
+                node.right = Node()
+                tree_traversal.append((node.right, right_group, y_r, depth + 1))
+                tree_traversal.append((node.left, left_group, y_l, depth + 1))
             else:
-                nodes_to_persist.append(build_leaf(y_s, tree_path))
+                subtree = build_subtree(sample, y_s, self.n_features, self.max_depth - depth, self.n_classes,
+                                        self.try_features, samples_path, features_path)
+                node.content = len(self.subtrees)
+                self.subtrees.append(subtree)
+                compss_delete_object(sample)
+                compss_delete_object(y_s)
+        self.nodes_info = collect(*self.nodes_info)
 
-            if len(nodes_to_persist) >= 1000:
-                flush_remove_nodes(file_out, nodes_to_persist)
+    def predict(self, samples):
+        """ Predicts class codes for the input data using a fitted tree and returns an array."""
 
-        flush_remove_nodes(file_out, nodes_to_persist)
+        assert self.tree is not None, 'The decision tree is not fitted.'
+        assert samples.shape[1] == self.n_features, 'Wrong number of features.'
 
-    def predict(self, x_test):
-        """ Predicts class codes for the input data using a fitted tree and
-        returns an integer or an array. """
-        file_tree = os.path.join(self.path_out, self.name_out)
-        return prediction.predict(file_tree, x_test)
+        branch_predictions = []
+        for i, subtree in enumerate(self.subtrees):
+            branch_predictions.append(predict_branch(samples, self.tree, self.nodes_info, i, subtree, self.distr_depth))
+        return merge_branches((len(samples),), *branch_predictions)
 
-    def predict_probabilities(self, x_test):
-        """ Predicts class probabilities by class code using a fitted tree and
-         returns a 1D or 2D array. """
-        file_tree = os.path.join(self.path_out, self.name_out)
-        return prediction.predict_probabilities(file_tree, x_test,
-                                                self.n_classes)
+    def predict_proba(self, samples):
+        """ Predicts class probabilities by class code using a fitted tree and returns a 1D or 2D array. """
+
+        assert self.tree is not None, 'The decision tree is not fitted.'
+        assert samples.shape[1] == self.n_features, 'Wrong number of features.'
+
+        branch_predictions = []
+        for i, subtree in enumerate(self.subtrees):
+            branch_predictions.append(predict_branch_proba(samples, self.tree, self.nodes_info, i, subtree,
+                                                           self.distr_depth, self.n_classes))
+        return merge_branches((len(samples), self.n_classes), *branch_predictions)
+
