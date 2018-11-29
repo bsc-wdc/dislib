@@ -78,6 +78,7 @@ class RandomForestClassifier:
                 for tree in self.trees:
                     tree_predictions.append(tree.predict(subset.samples))
                 subset.labels = hard_vote(self.classes, *tree_predictions)
+        return dataset
 
 
 @task(returns=1)
@@ -103,12 +104,18 @@ def resolve_distr_depth(distr_depth, max_depth, dataset):
 
 @task(returns=1)
 def join_predictions(*predictions):
-    return sum(*predictions)/len(predictions)
+    aggregate = predictions[0]
+    for p in predictions[1:]:
+        aggregate += p
+    return aggregate/len(predictions)
 
 
 @task(returns=1)
 def soft_vote(classes, *predictions):
-    return classes[np.argmax(sum(*predictions), axis=1)]
+    aggregate = predictions[0]
+    for p in predictions[1:]:
+        aggregate += p
+    return classes[np.argmax(aggregate, axis=1)]
 
 
 @task(returns=1)

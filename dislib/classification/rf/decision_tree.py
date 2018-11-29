@@ -9,7 +9,6 @@ from pycompss.api.parameter import FILE_IN, FILE_INOUT
 from pycompss.api.task import task
 from six.moves import range
 from sklearn.tree import DecisionTreeClassifier as SklearnDTClassifier
-from sklearn.tree import _tree
 
 from dislib.classification.rf.test_split import test_split
 
@@ -41,14 +40,15 @@ class Node:
             return np.repeat(node_content.frequencies/node_content.size, len(sample), 1)
         if isinstance(node_content, SkTreeWrapper):
             prediction = np.zeros((len(sample), n_classes), dtype=np.int64)
-            prediction[:, node_content.sk_tree.classes_] = node_content.sk_tree.predict_proba()
+            prediction[:, node_content.sk_tree.classes_] = node_content.sk_tree.predict_proba(sample)
+            return prediction
         if isinstance(node_content, InnerNodeInfo):
             prediction = np.empty((len(sample), n_classes), dtype=np.int64)
             left_indices = sample[:, node_content.index] <= node_content.value
             prediction[left_indices] = self.left.predict_proba(sample[left_indices])
             prediction[~left_indices] = self.right.predict_proba(sample[~left_indices])
             return prediction
-        assert False, 'Node.predict_proba() does not support this node type'
+        assert False, 'Node.predict_proba() does not support this node_content type'
 
 
 class InnerNodeInfo:
@@ -308,7 +308,11 @@ def predict_branch_proba(samples, tree, nodes_info, subtree_index, subtree, dist
 
 
 @task(returns=list)
-def merge_branches(shape, *predictions):
+def merge_branches(shape_0, shape_1, *predictions):
+    if shape_1 is not None:
+        shape = (shape_0, shape_1)
+    else:
+        shape = (shape_0,)
     merged_prediction = np.empty(shape, dtype=np.int64)
     for selected, prediction in predictions:
         merged_prediction[selected] = prediction
@@ -390,7 +394,7 @@ class DecisionTreeClassifier:
         branch_predictions = []
         for i, subtree in enumerate(self.subtrees):
             branch_predictions.append(predict_branch(samples, self.tree, self.nodes_info, i, subtree, self.distr_depth))
-        return merge_branches((len(samples),), *branch_predictions)
+        return merge_branches(len(samples), None, *branch_predictions)
 
     def predict_proba(self, samples):
         """ Predicts class probabilities by class code using a fitted tree and returns a 1D or 2D array. """
@@ -402,5 +406,4 @@ class DecisionTreeClassifier:
         for i, subtree in enumerate(self.subtrees):
             branch_predictions.append(predict_branch_proba(samples, self.tree, self.nodes_info, i, subtree,
                                                            self.distr_depth, self.n_classes))
-        return merge_branches((len(samples), self.n_classes), *branch_predictions)
-
+        return merge_branches(len(samples), self.n_classes, *branch_predictions)

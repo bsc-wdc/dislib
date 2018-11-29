@@ -1,6 +1,4 @@
 from numpy.lib import format
-from pandas import read_csv
-from pandas.api.types import CategoricalDtype
 import numpy as np
 import tempfile
 
@@ -12,10 +10,12 @@ from dislib.data import Dataset
 
 @task(labels_path=FILE_IN, returns=3)
 def get_labels(labels_path):
-    with open(labels_path, 'rb') as fin:
-        print(fin.read())
-    y = read_csv(labels_path, dtype=CategoricalDtype(), header=None, squeeze=True).values
-    return y.codes, y.categories, len(y.categories)
+    y = np.genfromtxt(labels_path, dtype=None, encoding='utf-8')
+    def_intp = np.intp  # Save default np.intp
+    np.intp = np.int8  # Modify np.intp, so that codes.dtype=int8
+    categories, codes = np.unique(y, return_inverse=True)
+    np.intp = def_intp  # Reset np.intp to default value
+    return codes, categories, len(categories)
 
 
 class NpyFile(object):
@@ -130,12 +130,16 @@ def transform_to_rf_dataset(dataset: Dataset) -> RfDataset:
         samples_shapes.append(get_shape(subset.samples))
     samples_shapes, n_samples, n_features = collect_shapes(*samples_shapes)
 
-    samples_path = create_samples_file()
+    samples_file = tempfile.NamedTemporaryFile(mode='wb', prefix='tmp_rf_samples_', delete=False)
+    samples_path = samples_file.name
+    samples_file.close()
     allocate_samples_file(samples_path, n_samples, n_features)
     for i, subset in enumerate(dataset):
         fill_samples_file(samples_path, i, subset.samples, samples_shapes)
 
-    labels_path = create_labels_file()
+    labels_file = tempfile.NamedTemporaryFile(mode='w', prefix='tmp_rf_labels_', delete=False)
+    labels_path = labels_file.name
+    labels_file.close()
     for subset in dataset:
         fill_labels_file(labels_path, subset.labels)
 
@@ -160,12 +164,6 @@ def collect_shapes(*samples_shapes):
     return samples_shapes, n_samples, n_features
 
 
-@task(returns=FILE_OUT)
-def create_samples_file():
-    samples_file = tempfile.NamedTemporaryFile(mode='wb', prefix='tmp_rf_samples_', delete=False)
-    return samples_file.name
-
-
 @task(samples_path=FILE_INOUT)
 def allocate_samples_file(samples_path, n_samples, n_features):
     np.lib.format.open_memmap(samples_path, mode='w+', dtype='float32', shape=(n_samples, n_features))
@@ -176,14 +174,6 @@ def fill_samples_file(samples_path, i, subset_samples, samples_shapes):
     samples = np.lib.format.open_memmap(samples_path, mode='r+')
     first = sum(shape[0] for shape in samples_shapes[0:i])
     samples[first:first+samples_shapes[i][0]] = subset_samples.astype(dtype='float32', casting='same_kind')
-
-
-@task(returns=FILE_OUT)
-def create_labels_file():
-    labels_file = tempfile.NamedTemporaryFile(mode='w', prefix='tmp_rf_labels_', delete=False)
-    name = labels_file.name
-    labels_file.close()
-    return name
 
 
 @task(labels_path=FILE_INOUT)
