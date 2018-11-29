@@ -1,9 +1,9 @@
-FROM compss/compss-ubuntu16:2.4
+FROM compss/compss-ubuntu16:stable
 
 MAINTAINER COMPSs Support <support-compss@bsc.es>
 
 
-RUN pip3 install codecov coverage flake8 && \
+RUN pip3 install codecov coverage flake8 matplotlib && \
 # Enable ssh to localhost
     yes yes | ssh-keygen -f /root/.ssh/id_rsa -t rsa -N '' > /dev/null && \
     cat /root/.ssh/id_rsa.pub > /root/.ssh/authorized_keys 
@@ -13,6 +13,9 @@ COPY examples dislib/examples
 COPY tests dislib/tests
 COPY run_tests.sh /dislib/
 COPY run_coverage.sh /dislib/
+COPY bin/cfg.sh /
+COPY bin/generate_project.sh /
+COPY bin/generate_resources.sh /
 
 ENV PATH=$PATH:/opt/COMPSs/Runtime/scripts/user:/opt/COMPSs/Bindings/c/bin
 ENV CLASSPATH=$CLASSPATH:/opt/COMPSs/Runtime/compss-engine.jar

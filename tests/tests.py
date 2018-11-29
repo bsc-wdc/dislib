@@ -2,40 +2,54 @@ import os
 import sys
 import unittest
 
+import numpy as np
+from scipy.sparse import csr_matrix
+from sklearn.datasets import load_svmlight_file
+from sklearn.datasets import make_blobs
+from sklearn.datasets import make_circles
+from sklearn.datasets import make_moons
+from sklearn.preprocessing import StandardScaler
+
+from dislib.cluster import DBSCAN
+from dislib.data import Subset
+from dislib.data import load_csv_file
+from dislib.data import load_csv_files
+from dislib.data import load_data
+from dislib.data import load_libsvm_file
+from dislib.data import load_libsvm_files
+
 sys.path.insert(0,
                 os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 
+# the import tests should be removed; import should be tests in class specific
+#  tests
 class ImportTests(unittest.TestCase):
-
     def test_import_fft(self):
         from dislib.fft import fft
+        self.assertIsNotNone(fft)
 
     def test_import_cascadecsvm(self):
         from dislib.classification import CascadeSVM
+        self.assertIsNotNone(CascadeSVM)
 
     def test_import_kmeans(self):
         from dislib.cluster import KMeans
+        self.assertIsNotNone(KMeans)
 
     def test_import_dbscan(self):
         from dislib.cluster import DBSCAN
+        self.assertIsNotNone(DBSCAN)
 
 
 class ResultsTest(unittest.TestCase):
-
     def test_cascadecsvm(self):
         from dislib.classification import CascadeSVM
+        self.assertIsNotNone(CascadeSVM)
 
 
 class DBSCANTest(unittest.TestCase):
-
     def test_n_clusters_blobs(self):
-        from sklearn.datasets import make_blobs
-        from dislib.cluster import DBSCAN
-        from sklearn.preprocessing import StandardScaler
-        from dislib.data import load_data
-        import numpy as np
-
         n_samples = 1500
 
         # Test blobs
@@ -49,12 +63,6 @@ class DBSCANTest(unittest.TestCase):
         self.assertEqual(n_clusters, 3)
 
     def test_n_clusters_circles(self):
-        from sklearn.datasets import make_circles
-        from dislib.cluster import DBSCAN
-        from sklearn.preprocessing import StandardScaler
-        from dislib.data import load_data
-        import numpy as np
-
         n_samples = 1500
 
         # Test circles
@@ -68,12 +76,6 @@ class DBSCANTest(unittest.TestCase):
         self.assertEqual(n_clusters, 2)
 
     def test_n_clusters_moons(self):
-        from sklearn.datasets import make_moons
-        from dislib.cluster import DBSCAN
-        from sklearn.preprocessing import StandardScaler
-        from dislib.data import load_data
-        import numpy as np
-
         n_samples = 1500
 
         # Test moons
@@ -87,12 +89,6 @@ class DBSCANTest(unittest.TestCase):
         self.assertEqual(n_clusters, 2)
 
     def test_n_clusters_aniso(self):
-        from sklearn.datasets import make_blobs
-        from dislib.cluster import DBSCAN
-        from sklearn.preprocessing import StandardScaler
-        from dislib.data import load_data
-        import numpy as np
-
         n_samples = 1500
 
         # Test aniso
@@ -187,11 +183,7 @@ class DBSCANTest(unittest.TestCase):
 
 
 class DataLoadingTest(unittest.TestCase):
-
     def test_load_data_with_labels(self):
-        from sklearn.datasets import make_blobs
-        from dislib.data import load_data
-        import numpy as np
 
         x, y = make_blobs(n_samples=1500)
         data = load_data(x=x, y=y, subset_size=100)
@@ -208,9 +200,6 @@ class DataLoadingTest(unittest.TestCase):
         self.assertEqual(len(data), 15)
 
     def test_load_data_without_labels(self):
-        from sklearn.datasets import make_blobs
-        from dislib.data import load_data
-        import numpy as np
 
         x, y = make_blobs(n_samples=1500)
         data = load_data(x=x, subset_size=100)
@@ -224,9 +213,6 @@ class DataLoadingTest(unittest.TestCase):
         self.assertEqual(len(data), 15)
 
     def test_load_libsvm_file_sparse(self):
-        from dislib.data import load_libsvm_file
-        from sklearn.datasets import load_svmlight_file
-        import numpy as np
 
         file_ = "dislib/tests/files/libsvm/2"
         data = load_libsvm_file(file_, 10, 780)
@@ -245,9 +231,6 @@ class DataLoadingTest(unittest.TestCase):
         self.assertEqual(len(data), 6)
 
     def test_load_libsvm_file_dense(self):
-        from dislib.data import load_libsvm_file
-        from sklearn.datasets import load_svmlight_file
-        import numpy as np
 
         file_ = "dislib/tests/files/libsvm/1"
         data = load_libsvm_file(file_, 20, 780, False)
@@ -266,9 +249,6 @@ class DataLoadingTest(unittest.TestCase):
         self.assertEqual(len(data), 4)
 
     def test_load_libsvm_files_sparse(self):
-        from dislib.data import load_libsvm_files
-        from sklearn.datasets import load_svmlight_file
-        import os
 
         dir_ = "dislib/tests/files/libsvm"
         file_list = os.listdir(dir_)
@@ -286,9 +266,6 @@ class DataLoadingTest(unittest.TestCase):
         self.assertEqual(len(data), 3)
 
     def test_load_libsvm_files_dense(self):
-        from dislib.data import load_libsvm_files
-        from sklearn.datasets import load_svmlight_file
-        import os
 
         dir_ = "dislib/tests/files/libsvm"
         file_list = os.listdir(dir_)
@@ -306,8 +283,6 @@ class DataLoadingTest(unittest.TestCase):
         self.assertEqual(len(data), 3)
 
     def test_load_csv_file(self):
-        from dislib.data import load_csv_file
-        import numpy as np
 
         csv_file = "dislib/tests/files/csv/1"
         data = load_csv_file(csv_file, subset_size=300, n_features=122)
@@ -324,8 +299,6 @@ class DataLoadingTest(unittest.TestCase):
         self.assertIsNone(subset.labels)
 
     def test_load_csv_file_labels_last(self):
-        from dislib.data import load_csv_file
-        import numpy as np
 
         csv_file = "dislib/tests/files/csv/1"
         data = load_csv_file(csv_file, subset_size=1000, n_features=121,
@@ -345,8 +318,6 @@ class DataLoadingTest(unittest.TestCase):
         self.assertEqual(len(data), 5)
 
     def test_load_csv_file_labels_first(self):
-        from dislib.data import load_csv_file
-        import numpy as np
 
         csv_file = "dislib/tests/files/csv/2"
         data = load_csv_file(csv_file, subset_size=100, n_features=121,
@@ -366,9 +337,6 @@ class DataLoadingTest(unittest.TestCase):
         self.assertEqual(len(data), 44)
 
     def test_load_csv_files(self):
-        from dislib.data import load_csv_files
-        import numpy as np
-        import os
 
         csv_dir = "dislib/tests/files/csv"
         file_list = os.listdir(csv_dir)
@@ -384,9 +352,6 @@ class DataLoadingTest(unittest.TestCase):
         self.assertEqual(len(data), 3)
 
     def test_load_csv_files_labels_last(self):
-        from dislib.data import load_csv_files
-        import numpy as np
-        import os
 
         csv_dir = "dislib/tests/files/csv"
         file_list = os.listdir(csv_dir)
@@ -403,9 +368,6 @@ class DataLoadingTest(unittest.TestCase):
         self.assertEqual(len(data), 3)
 
     def test_load_csv_files_labels_first(self):
-        from dislib.data import load_csv_files
-        import numpy as np
-        import os
 
         csv_dir = "dislib/tests/files/csv"
         file_list = os.listdir(csv_dir)
@@ -423,11 +385,7 @@ class DataLoadingTest(unittest.TestCase):
 
 
 class DataClassesTest(unittest.TestCase):
-
     def test_dataset_get_item(self):
-        from dislib.data import load_data
-        import numpy as np
-
         arr = np.array((range(10), range(10, 20)))
         dataset = load_data(arr, subset_size=2)
         samples = dataset[0].samples
@@ -435,18 +393,12 @@ class DataClassesTest(unittest.TestCase):
         self.assertTrue((samples[0] == arr[0]).all())
 
     def test_dataset_len(self):
-        from dislib.data import load_data
-        import numpy as np
-
         arr = np.zeros((40, 25))
         dataset = load_data(arr, subset_size=5)
 
         self.assertEqual(len(dataset), 8)
 
     def test_dataset_append(self):
-        from dislib.data import Subset, load_data
-        import numpy as np
-
         arr = np.zeros((40, 25))
         dataset = load_data(arr, subset_size=5)
         subset = Subset(samples=arr)
@@ -455,9 +407,6 @@ class DataClassesTest(unittest.TestCase):
         self.assertEqual(len(dataset), 9)
 
     def test_dataset_extend(self):
-        from dislib.data import Subset, load_data
-        import numpy as np
-
         arr = np.zeros((40, 25))
         dataset = load_data(arr, subset_size=5)
         subset1 = Subset(samples=np.zeros((20, 18)))
@@ -467,8 +416,6 @@ class DataClassesTest(unittest.TestCase):
         self.assertEqual(len(dataset), 10)
 
     def test_dataset_collect(self):
-        from dislib.data import load_csv_file, Subset
-
         csv_file = "dislib/tests/files/csv/3"
         dataset = load_csv_file(csv_file, subset_size=300, n_features=122)
         dataset.collect()
@@ -476,9 +423,6 @@ class DataClassesTest(unittest.TestCase):
         self.assertIsInstance(dataset[0], Subset)
 
     def test_subset_concatenate_dense(self):
-        from dislib.data import Subset
-        import numpy as np
-
         subset1 = Subset(samples=np.zeros((13, 2)))
         subset2 = Subset(samples=np.zeros((11, 2)))
 
@@ -487,10 +431,6 @@ class DataClassesTest(unittest.TestCase):
         self.assertEqual(subset1.samples.shape[0], 24)
 
     def test_subset_concatenate_sparse(self):
-        from dislib.data import Subset
-        import numpy as np
-        from scipy.sparse import csr_matrix
-
         m1 = csr_matrix(np.random.random((13, 2)))
         m2 = csr_matrix(np.random.random((11, 2)))
         subset1 = Subset(samples=m1)
@@ -501,9 +441,6 @@ class DataClassesTest(unittest.TestCase):
         self.assertEqual(subset1.samples.shape[0], 24)
 
     def test_subset_concatenate_with_labels(self):
-        from dislib.data import Subset
-        import numpy as np
-
         subset1 = Subset(samples=np.zeros((13, 2)), labels=np.zeros((13)))
         subset2 = Subset(samples=np.zeros((11, 2)), labels=np.zeros((11)))
 
@@ -512,9 +449,6 @@ class DataClassesTest(unittest.TestCase):
         self.assertEqual(subset1.labels.shape[0], 24)
 
     def test_subset_concatenate_removing_duplicates(self):
-        from dislib.data import Subset
-        import numpy as np
-
         labels1 = np.random.random(25)
         labels2 = np.random.random(35)
 
@@ -527,27 +461,18 @@ class DataClassesTest(unittest.TestCase):
         self.assertEqual(subset2.samples.shape[0], 60)
 
     def test_subset_set_label(self):
-        from dislib.data import Subset
-        import numpy as np
-
         subset = Subset(samples=np.random.random((25, 8)))
         subset.set_label(15, 3)
 
         self.assertEqual(subset.labels[15], 3)
 
     def test_subset_get_item(self):
-        from dislib.data import Subset
-        import numpy as np
-
         subset = Subset(samples=np.array([range(10), range(10, 20)]))
         item = subset[1]
 
         self.assertTrue((item.samples == np.array(range(10, 20))).all())
 
     def test_subset_get_item_with_labels(self):
-        from dislib.data import Subset
-        import numpy as np
-
         samples = np.array([range(10), range(10, 20)])
         labels = np.array([3, 4])
 

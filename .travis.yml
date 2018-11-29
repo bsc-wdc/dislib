@@ -15,8 +15,8 @@ env:
     - secure: ""
 
 before_script:
-    - docker build --pull --cache-from bscwdc/dislib --tag bscwdc/dislib .
-    - docker run $(bash <(curl -s https://codecov.io/env)) -d --name dislib bscwdc/dislib 
+    - docker build --tag dislib .
+    - docker run $(bash <(curl -s https://codecov.io/env)) -d --name dislib dislib 
 
 jobs: 
   include:
@@ -34,9 +34,10 @@ after_script:
 
 before_deploy:
   - docker login -u "$REGISTRY_USER" -p "$REGISTRY_PASS"
+  - docker tag dislib bscwdc/dislib:latest
 deploy:
   provider: script
-  script: docker push bscwdc/dislib
+  script: docker push bscwdc/dislib:latest
   on:
     branch: master
 
