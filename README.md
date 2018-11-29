@@ -34,31 +34,20 @@
 <p align="center"><b>
     <a href="https://www.bsc.es/research-and-development/software-and-apps/software-list/comp-superscalar/">Website</a> •  
     <a href="https://dislib.readthedocs.io/en/master">Documentation</a> •
+    <a href="https://github.com/bsc-wdc/dislib/releases">Releases</a>
 </b></p>
 
 
 ## Introduction
 
-The Distributed Computing library is a project which aims to provide distributed machine learning algorithms ready to use as a library. Is is developed on top of PyCOMPSs programming model and is being developed by the [Workflows and Distributed Computing group](https://github.com/bsc-wdc) of the [Barcelona Supercomputing Center](https://www.bsc.es/). The library is designed to allow easy local development through docker. Once the code is finished, it can be run directly into a supercomputer / cloud without any further changes.
+The Distributed Computing library is a project which aims to provide distributed machine learning algorithms ready to use as a library. Is is developed on top of PyCOMPSs programming model and is being developed by the [Workflows and Distributed Computing group](https://github.com/bsc-wdc) of the [Barcelona Supercomputing Center](https://www.bsc.es/). The library is designed to allow easy local development through docker. Once the code is finished, it can be run directly into a supercomputer / cloud without any further changes. For more information on which supercomputers and architectures are supported refer to [Availability](#availability)
 
-Currently the following Supercomputers have already PyCOMPSs installed and ready to use. If you need help configuring your own cluster or supercomputer drop us an email and we will be pleased to help.
 
-- Marenostrum 4 - Barcelona Supercomputing Center (BSC)
-- Minotauro - Barcelona Supercomputing Center (BSC)
-- Nord 3 - Barcelona Supercomputing Center (BSC)
-- Cobi - Barcelona Supercomputing Center (BSC)
-- Juron - Jülich Supercomputing Centre (JSC)
-- Jureca - Jülich Supercomputing Centre (JSC)
-- Ultraviolet - The Genome Analysis Center (TGAC)
-- Archer - University of Edinburgh’s Advanced Computing Facility (ACF)
-
-Aso supported:
-- [Intel SSF architectures](https://www.intel.com/content/www/us/en/high-performance-computing/ssf-architecture-specification.html)
-- [IBM's Power 9](https://www.ibm.com/it-infrastructure/power/power9-b).
 
 ## Contents
 
 - [Quickstart](#quickstart)
+- [Availability](#availability)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -69,29 +58,32 @@ Folow the steps below to get started with wdc Dislib.
 
 #### 1. Install Docker and docker-py
 
-**Requires docker version >= 17.12.0-ce**
+**Warning:** requires docker version >= 17.12.0-ce
 
 
-Follow these instructions
+1. Follow these instructions
 
-- [Docker for Mac](https://store.docker.com/editions/community/docker-ce-desktop-mac). Or, if you prefer to use [Homebrew](https://brew.sh/):
-- [Docker for Ubuntu](https://docs.docker.com/install/linux/docker-ce/ubuntu/#install-docker-ce-1) **note** docker-ce is the new docker package, click on the link to activate it if it is not available in your package manager.
-  ```
-- [Docker for Arch Linux](https://wiki.archlinux.org/index.php/Docker#Installation)
-  ```
+   - [Docker for Mac](https://store.docker.com/editions/community/docker-ce-desktop-mac). Or, if you prefer to use [Homebrew](https://brew.sh/).
 
-Add user to docker group to run dislib as non-root user
+   - [Docker for Ubuntu](https://docs.docker.com/install/linux/docker-ce/ubuntu/#install-docker-ce-1).
 
-https://docs.docker.com/install/linux/linux-postinstall/
+   - [Docker for Arch Linux](https://wiki.archlinux.org/index.php/Docker#Installation).
 
-Check that docker is correctly installed
+Be aware that for some distros the docker package has been renamed from `docker` to `docker-ce`. Make sure you install the new package.
+
+2. Add user to docker group to run dislib as non-root user.
+
+    - [Instructions](https://docs.docker.com/install/linux/linux-postinstall/)
+
+
+3. Check that docker is correctly installed
 
 ```
 docker --version
 docker ps # this should be empty as no docker processes are yet running.
 ```
 
-Install [docker-py](https://docker-py.readthedocs.io/en/stable/)
+4. Install [docker-py](https://docker-py.readthedocs.io/en/stable/)
 
 ```
 sudo pip3 install docker
@@ -185,6 +177,23 @@ dislib components add worker '127.0.0.1:6'
 * '6': desired number of available computing units for the new node.
 
 **Please be aware** that `dislib components` will not list your custom nodes because they are not docker processes and thus it can't be verified if they are up and running.
+
+## Availability
+
+Currently the following Supercomputers have already PyCOMPSs installed and ready to use. If you need help configuring your own cluster or supercomputer drop us an email and we will be pleased to help.
+
+- Marenostrum 4 - Barcelona Supercomputing Center (BSC)
+- Minotauro - Barcelona Supercomputing Center (BSC)
+- Nord 3 - Barcelona Supercomputing Center (BSC)
+- Cobi - Barcelona Supercomputing Center (BSC)
+- Juron - Jülich Supercomputing Centre (JSC)
+- Jureca - Jülich Supercomputing Centre (JSC)
+- Ultraviolet - The Genome Analysis Center (TGAC)
+- Archer - University of Edinburgh’s Advanced Computing Facility (ACF)
+
+Supported architectures:
+- [Intel SSF architectures](https://www.intel.com/content/www/us/en/high-performance-computing/ssf-architecture-specification.html)
+- [IBM's Power 9](https://www.ibm.com/it-infrastructure/power/power9-b).
 
 ## Contributing
 
