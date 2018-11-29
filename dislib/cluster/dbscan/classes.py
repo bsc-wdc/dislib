@@ -4,8 +4,7 @@ import numpy as np
 from pycompss.api.api import compss_wait_on
 
 from dislib.cluster.dbscan.tasks import count_lines, concatenate_data, \
-    orq_scan_merge, merge_cluster_labels, merge_core_points, \
-    sync_task, update_task
+    _compute_neighbours, _compute_labels, _get_neigh_labels
 
 
 class Square(object):
@@ -16,6 +15,8 @@ class Square(object):
         self.offset = defaultdict()
         self.len = defaultdict()
         self._neigh_squares_query(region_sizes, grid_shape)
+        self.subset = None
+        self.cluster_labels = defaultdict(list)
 
     def _neigh_squares_query(self, region_sizes, grid_shape):
         distances = np.ceil(self.epsilon / region_sizes)
@@ -41,7 +42,7 @@ class Square(object):
             prev += self.len[comb]
             self.len_tot += self.len[comb]
 
-        self.points = concatenate_data(*partitions)
+        self.subset = concatenate_data(*partitions)
         self._set_neigh_thres()
 
     def _set_neigh_thres(self):
@@ -50,79 +51,20 @@ class Square(object):
             out[comb] = [self.offset[comb], self.offset[comb] + self.len[comb]]
         self.neigh_thres = out
 
-    def partial_scan(self, min_points, TH_1):
-        label_list, cp_list = orq_scan_merge(self.points, self.epsilon,
-                                             min_points, TH_1, 1, 0, [], [],
-                                             self.len_tot)
+    def _partial_scan(self, min_samples, max_samples):
+        neigh_list = []
 
-        self.cluster_labels = defaultdict(list)
+        if max_samples is None:
+            max_samples = self.len_tot
 
-        for comb in self.neigh_sq_id:
-            self.cluster_labels[comb] = merge_cluster_labels(self.neigh_thres[
-                                                                 comb],
-                                                             *label_list)
+        for idx in range(0, self.len_tot, max_samples):
+            partial_list = _compute_neighbours(self.subset, self.epsilon, idx,
+                                               idx + max_samples)
+            neigh_list.append(partial_list)
 
-        self.core_points = merge_core_points(self.neigh_thres, self.coord,
-                                             *cp_list)
+        labels, self.core_points = _compute_labels(min_samples, *neigh_list)
 
-    def sync_labels(self, *labels_versions):
-        return sync_task(self.coord, self.cluster_labels[self.coord],
-                         self.core_points, self.neigh_sq_id, *labels_versions)
-
-    def update_labels(self, updated_relations):
-        self.cluster_labels[self.coord] = compss_wait_on(update_task(
-            self.cluster_labels[self.coord], self.coord, updated_relations))
-
-    def get_labels(self):
-        return self.cluster_labels[self.coord]
-
-
-class Data(object):
-    def __init__(self):
-        self.value = []
-
-
-class DisjointSet:
-    _disjoint_set = list()
-
-    #    def __init__(self, init_arr):
-    #        self._disjoint_set = []
-    #        if init_arr:
-    #            for item in list(set(init_arr)):
-    #                self._disjoint_set.append([item])
-
-    # Alternative __init__:
-    def __init__(self, init_arr):
-        self._disjoint_set = []
-        if init_arr:
-            for item in list(init_arr):
-                self._disjoint_set.append([item])
-
-    def _find_index(self, elem):
-        for item in self._disjoint_set:
-            if elem in item:
-                return self._disjoint_set.index(item)
-        return None
-
-    def find(self, elem):
-        for item in self._disjoint_set:
-            if elem in item:
-                return self._disjoint_set[self._disjoint_set.index(item)]
-        return None
-
-    def union(self, elem1, elem2):
-        index_elem1 = self._find_index(elem1)
-        index_elem2 = self._find_index(elem2)
-
-        if index_elem1 != index_elem2 \
-                and index_elem1 is not None \
-                and index_elem2 is not None:
-            self._disjoint_set[index_elem2] = self._disjoint_set[index_elem2] \
-                                              + self._disjoint_set[index_elem1]
-
-            del self._disjoint_set[index_elem1]
-
-        return self._disjoint_set
-
-    def get(self):
-        return self._disjoint_set
+        for neigh_id in self.neigh_sq_id:
+            neigh_labels = _get_neigh_labels(labels,
+                                             self.neigh_thres[neigh_id])
+            self.cluster_labels[neigh_id] = neigh_labels
