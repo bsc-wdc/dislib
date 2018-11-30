@@ -3,8 +3,8 @@ FROM compss/compss-ubuntu16:stable
 MAINTAINER COMPSs Support <support-compss@bsc.es>
 
 
-RUN pip3 install codecov coverage flake8 matplotlib && \
 # Enable ssh to localhost
+RUN pip3 install codecov coverage flake8 matplotlib && \
     yes yes | ssh-keygen -f /root/.ssh/id_rsa -t rsa -N '' > /dev/null && \
     cat /root/.ssh/id_rsa.pub > /root/.ssh/authorized_keys 
 
