@@ -2,7 +2,7 @@ from numpy.lib import format
 import numpy as np
 import tempfile
 
-from pycompss.api.parameter import *
+from pycompss.api.parameter import FILE_IN, FILE_INOUT
 from pycompss.api.task import task
 
 from dislib.data import Dataset
@@ -48,7 +48,8 @@ class NpyFile(object):
                 format._check_version(version)
             except ValueError:
                 raise ValueError('Invalid file format.')
-            self.shape, self.fortran_order, self.dtype = format._read_array_header(fp, version)
+            header_data = format._read_array_header(fp, version)
+            self.shape, self.fortran_order, self.dtype = header_data
 
 
 class RfDataset(object):
@@ -59,14 +60,18 @@ class RfDataset(object):
         """
         Constructor for RfDataset.
 
-        :param samples_path:  Path of the .npy file containing the 2-d array of samples. Must be a str or a future
-                              COMPSs object. If it is the later, self.n_samples and self.n_features must be set
-                              manually.
-        :param labels_path:   Path of the .dat file containing the 1-d array of labels. Must be a str or a future COMPSs
-                              object.
-        :param features_path: Optional. Path of the .npy file containing the 2-d array of samples transposed. The array
-                              must be C-ordered. Providing this array may improve the performance as it allows
-                              sequential access to the features.
+        :param samples_path:  Path of the .npy file containing the 2-d array of
+                              samples. Must be a str or a future COMPSs object.
+                              If it is the later, self.n_samples and
+                              self.n_features must be set manually (they can be
+                              future objects).
+        :param labels_path:   Path of the .dat file containing the 1-d array of
+                              labels. Must be a str or a future COMPSs object.
+        :param features_path: Optional. Path of the .npy file containing the
+                              2-d array of samples transposed. The array must
+                              be C-ordered. Providing this array may improve
+                              the performance as it allows sequential access to
+                              the features.
         """
         self.samples_path = samples_path
         self.labels_path = labels_path
@@ -81,8 +86,11 @@ class RfDataset(object):
     def get_n_samples(self):
         if self.n_samples is None:
             if not isinstance(self.samples_path, str):
-                raise AssertionError('Invalid state for self.samples_path and self.n_samples. If self.samples_path is a'
-                                     'future COMPSs object, self.n_samples and self.n_features must be set manually.')
+                raise AssertionError('Invalid state for self.samples_path and '
+                                     'self.n_samples. If self.samples_path is '
+                                     'a future COMPSs object, self.n_samples '
+                                     'and self.n_features must be set '
+                                     'manually.')
             shape = NpyFile(self.samples_path).get_shape()
             if len(shape) != 2:
                 raise ValueError('Cannot read 2D array from the samples file.')
@@ -99,17 +107,20 @@ class RfDataset(object):
 
     def get_y_codes(self):
         if self.y_codes is None:
-            self.y_codes, self.y_categories, self.n_classes = get_labels(self.labels_path)
+            labels = get_labels(self.labels_path)
+            self.y_codes, self.y_categories, self.n_classes = labels
         return self.y_codes
 
     def get_classes(self):
         if self.y_categories is None:
-            self.y_codes, self.y_categories, self.n_classes = get_labels(self.labels_path)
+            labels = get_labels(self.labels_path)
+            self.y_codes, self.y_categories, self.n_classes = labels
         return self.y_categories
 
     def get_n_classes(self):
         if self.n_classes is None:
-            self.y_codes, self.y_categories, self.n_classes = get_labels(self.labels_path)
+            labels = get_labels(self.labels_path)
+            self.y_codes, self.y_categories, self.n_classes = labels
         return self.n_classes
 
     def validate_features_file(self):
@@ -119,7 +130,7 @@ class RfDataset(object):
         if len(shape) != 2:
             raise ValueError('Cannot read 2D array from features_file.')
         if (self.get_n_features(), self.get_n_samples()) != shape:
-            raise ValueError('Invalid dimensions for the array in features_file.')
+            raise ValueError('Invalid dimensions for the features_file.')
         if fortran_order:
             raise ValueError('Fortran order not supported for features array.')
 
@@ -130,14 +141,18 @@ def transform_to_rf_dataset(dataset: Dataset) -> RfDataset:
         samples_shapes.append(get_shape(subset.samples))
     samples_shapes, n_samples, n_features = collect_shapes(*samples_shapes)
 
-    samples_file = tempfile.NamedTemporaryFile(mode='wb', prefix='tmp_rf_samples_', delete=False)
+    samples_file = tempfile.NamedTemporaryFile(mode='wb',
+                                               prefix='tmp_rf_samples_',
+                                               delete=False)
     samples_path = samples_file.name
     samples_file.close()
     allocate_samples_file(samples_path, n_samples, n_features)
     for i, subset in enumerate(dataset):
         fill_samples_file(samples_path, i, subset.samples, samples_shapes)
 
-    labels_file = tempfile.NamedTemporaryFile(mode='w', prefix='tmp_rf_labels_', delete=False)
+    labels_file = tempfile.NamedTemporaryFile(mode='w',
+                                              prefix='tmp_rf_labels_',
+                                              delete=False)
     labels_path = labels_file.name
     labels_file.close()
     for subset in dataset:
@@ -160,20 +175,22 @@ def collect_shapes(*samples_shapes):
     n_features = samples_shapes[0][1]
     for shape in samples_shapes:
         n_samples += shape[0]
-        assert shape[1] == n_features, 'Subsets with different number of features.'
+        assert shape[1] == n_features, 'Subsets with different n_features.'
     return samples_shapes, n_samples, n_features
 
 
 @task(samples_path=FILE_INOUT)
 def allocate_samples_file(samples_path, n_samples, n_features):
-    np.lib.format.open_memmap(samples_path, mode='w+', dtype='float32', shape=(n_samples, n_features))
+    np.lib.format.open_memmap(samples_path, mode='w+', dtype='float32',
+                              shape=(n_samples, n_features))
 
 
 @task(samples_path=FILE_INOUT)
-def fill_samples_file(samples_path, i, subset_samples, samples_shapes):
+def fill_samples_file(samples_path, i, ss_samples, samples_shapes):
     samples = np.lib.format.open_memmap(samples_path, mode='r+')
     first = sum(shape[0] for shape in samples_shapes[0:i])
-    samples[first:first+samples_shapes[i][0]] = subset_samples.astype(dtype='float32', casting='same_kind')
+    ss_samples = ss_samples.astype(dtype='float32', casting='same_kind')
+    samples[first:first+samples_shapes[i][0]] = ss_samples
 
 
 @task(labels_path=FILE_INOUT)

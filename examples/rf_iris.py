@@ -1,7 +1,7 @@
 from pycompss.api.api import compss_wait_on
 from sklearn.datasets import load_iris
 
-from dislib.classification.rf.forest import RandomForestClassifier
+from dislib.classification import RandomForestClassifier
 from dislib.data import Dataset, Subset
 
 import numpy as np
@@ -16,7 +16,6 @@ def main():
     iris_ds.append(subset_1)
     iris_ds.append(subset_2)
 
-    # forest = RandomForestClassifier(n_estimators, max_depth, try_features, distr_depth)
     forest = RandomForestClassifier(10)
     forest.fit(iris_ds)
 
