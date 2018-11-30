@@ -342,10 +342,8 @@ class RFTest(unittest.TestCase):
 
     def test_make_classification(self):
         from sklearn.datasets import make_classification
-        from dislib.data import load_data
         from dislib.classification import RandomForestClassifier
         from pycompss.api.api import compss_wait_on
-        import numpy as np
 
         x, y = make_classification(
             n_samples=3000,
