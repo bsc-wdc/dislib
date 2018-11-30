@@ -3,9 +3,9 @@ install: skip
 
 sudo: required
 
-#branches:
-#  only:
-#    - master
+branches:
+  only:
+    - master
 
 services:
   - docker
@@ -18,16 +18,11 @@ before_script:
     - docker build --tag dislib .
     - docker run $(bash <(curl -s https://codecov.io/env)) -d --name dislib dislib 
 
-jobs: 
-  include:
-    - stage: test
-      script: "docker exec dislib bash ./dislib/run_tests.sh"
-    - stage: code coverage
-      script: "docker exec dislib bash ./dislib/run_coverage.sh"
-    - stage: code style
-      script: "docker exec dislib flake8 dislib/dislib"
+script: "docker exec dislib bash ./dislib/run_tests.sh"
 
 after_success:
+  - docker exec dislib bash ./dislib/run_coverage.sh
+  - docker exec dislib flake8 dislib/dislib
   - docker exec dislib codecov --token=629589cf-e257-4262-8ec0-314dfd98f003
 after_script:
   - docker images
