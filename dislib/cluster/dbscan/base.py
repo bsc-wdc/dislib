@@ -26,7 +26,7 @@ class DBSCAN():
         to be considered as a core point. This includes the point itself.
     arrange_data: boolean, optional (default=True)
         Whether to re-arrange input data before performing clustering.
-    grid_dim : int, optional (default=10)
+    grid_dim : int, optional (default=1)
         Number of regions per dimension in which to divide the feature space.
         The number of regions generated is equal to n_features ^ grid_dim.
     max_samples : int, optional (default=None)
@@ -50,9 +50,9 @@ class DBSCAN():
         Perform DBSCAN clustering.
     """
 
-    def __init__(self, eps=0.5, min_samples=5, arrange_data=True, grid_dim=10,
+    def __init__(self, eps=0.5, min_samples=5, arrange_data=True, grid_dim=1,
                  max_samples=None):
-        assert grid_dim >= 1, "Grid dimensions must be greater than 1."
+        assert grid_dim >= 1, "Grid dimensions must be greater or equal to 1."
 
         self._eps = eps
         self._min_samples = min_samples
@@ -92,47 +92,58 @@ class DBSCAN():
 
         min_, max_ = self._get_min_max(dataset)
         bins, region_sizes = self._generate_bins(min_, max_, n_features)
+        self._set_subset_sizes(dataset)
 
         if self._arrange_data:
-            self._set_subset_sizes(dataset)
             sorted_data = self._sort_data(dataset, grid, bins)
         else:
             sorted_data = dataset
 
-        # Compute dbscan in each region of the grid
-        for idx in np.ndindex(grid.shape):
-            grid[idx] = Region(idx, self._eps, grid.shape, region_sizes)
-            grid[idx].init_data(sorted_data, grid.shape)
-            grid[idx].partial_scan(self._min_samples, self._max_samples)
+        # Create regions
+        for data_idx, region_id in enumerate(np.ndindex(grid.shape)):
+            subset = sorted_data[data_idx]
+            subset_size = self._subset_sizes[data_idx]
+            grid[region_id] = Region(region_id, subset, subset_size, self._eps)
+
+        # Set region neighbours
+        distances = np.ceil(self._eps / region_sizes)
+
+        for region_id in np.ndindex(grid.shape):
+            self._add_neighbours(grid[region_id], grid, distances)
+
+        # Run dbscan on each region
+        for region_id in np.ndindex(grid.shape):
+            region = grid[region_id]
+            region.partial_scan(self._min_samples, self._max_samples)
 
         # Update labels computed by the different neighbouring regions
-        for idx in np.ndindex(grid.shape):
-            neigh_sq_id = grid[idx].neigh_sq_id
+        for region_id in np.ndindex(grid.shape):
+            neigh_sq_id = grid[region_id].neigh_sq_id
             labels_versions = []
 
             for neigh_idx in neigh_sq_id:
-                labels_versions.append(grid[neigh_idx].cluster_labels[idx])
+                labels_versions.append(grid[neigh_idx].cluster_labels[region_id])
 
-            grid[idx].cluster_labels[idx] = _get_max_labels(*labels_versions)
+            grid[region_id].cluster_labels[region_id] = _get_max_labels(*labels_versions)
 
         # Find connected clusters between regions
         # Iterate again over labels because the above loop changed them
         # FIXME: This probably can be done in a better way
         transitions = []
 
-        for idx in np.ndindex(grid.shape):
-            neigh_sq_id = grid[idx].neigh_sq_id
+        for region_id in np.ndindex(grid.shape):
+            neigh_sq_id = grid[region_id].neigh_sq_id
 
             labels_versions = []
             neigh_indices = []
 
             for neigh_idx in neigh_sq_id:
-                labels_versions.append(grid[neigh_idx].cluster_labels[idx])
+                labels_versions.append(grid[neigh_idx].cluster_labels[region_id])
                 neigh_indices.append(neigh_idx)
 
             transitions.append(
-                _compute_neighbour_transitions(idx, neigh_indices,
-                                               grid[idx].cluster_labels[idx],
+                _compute_neighbour_transitions(region_id, neigh_indices,
+                                               grid[region_id].cluster_labels[region_id],
                                                *labels_versions))
 
         transitions = _merge_transitions(*transitions)
@@ -140,9 +151,9 @@ class DBSCAN():
 
         final_labels = []
 
-        for idx in np.ndindex(grid.shape):
-            labels = grid[idx].cluster_labels[idx]
-            final_labels.append(_update_labels(idx, labels, connected_comp))
+        for region_id in np.ndindex(grid.shape):
+            labels = grid[region_id].cluster_labels[region_id]
+            final_labels.append(_update_labels(region_id, labels, connected_comp))
 
         final_labels = compss_wait_on(final_labels)
 
@@ -177,6 +188,8 @@ class DBSCAN():
         for subset in dataset:
             self._subset_sizes.append(_get_subset_size(subset))
 
+        self._subset_sizes = compss_wait_on(self._subset_sizes)
+
     def _sort_data(self, dataset, grid, bins):
         sorted_data = Dataset(dataset.n_features)
 
@@ -202,15 +215,14 @@ class DBSCAN():
         for i in range(n_features):
             # Add up a small delta to the max to include it in the binarization
             delta = max_[i] / 1e8
-            bin = np.linspace(min_[i], max_[i] + delta, self._grid_dim + 1)
-            bins.append(bin)
-            region_sizes.append(np.max(bin[1:] - bin[0:-1]))
+            bin_ = np.linspace(min_[i], max_[i] + delta, self._grid_dim + 1)
+            bins.append(bin_)
+            region_sizes.append(np.max(bin_[1:] - bin_[0:-1]))
 
         return bins, np.array(region_sizes)
 
     def _get_sorting_indices(self):
         indices = []
-        self._subset_sizes = compss_wait_on(self._subset_sizes)
 
         for part_ind, vec_ind in self._sorting:
             vec_ind = compss_wait_on(vec_ind)
@@ -221,6 +233,15 @@ class DBSCAN():
 
         return np.array(indices, dtype=int)
 
+    def _add_neighbours(self, region, grid, distances):
+        for ind in np.ndindex(grid.shape):
+            if ind == region.id:
+                continue
+
+            d = np.abs(np.array(region.id) - np.array(ind))
+
+            if (d <= distances).all():
+                region.add_neighbour(grid[ind])
 
 @task(returns=1)
 def _get_max_labels(*labels):

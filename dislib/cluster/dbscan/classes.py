@@ -4,21 +4,24 @@ import numpy as np
 from pycompss.api.api import compss_wait_on
 from pycompss.api.task import task
 
-_CORE_POINT = -2
-_NOISE = -1
-_NO_CP = -3
-
 
 class Region(object):
-    def __init__(self, coord, epsilon, grid_shape, region_sizes):
-        self.coord = coord
+
+    def __init__(self, region_id, subset, n_samples, epsilon):
+        self.id = region_id
         self.epsilon = epsilon
+        self._neighbours = []
+        self.subset = subset
+        self.n_samples = n_samples
+        self.core_points = None
+
         self.len_tot = 0
         self.offset = defaultdict()
         self.len = defaultdict()
-        self._neigh_squares_query(region_sizes, grid_shape)
-        self.subset = None
         self.cluster_labels = defaultdict(list)
+
+    def add_neighbour(self, region):
+        self._neighbours.append(region)
 
     def init_data(self, data, grid_shape):
         prev = 0
@@ -36,17 +39,29 @@ class Region(object):
         self._set_neigh_thres()
 
     def partial_scan(self, min_samples, max_samples):
+        subsets = [self.subset]
+        n_samples = self.n_samples
+
+        # get samples from all neighbouring regions
+        for region in self._neighbours:
+            subsets.append(region.subset)
+            n_samples += region.n_samples
+
+        # if max_samples is not defined, process all samples in a single task
+        if max_samples is None:
+            max_samples = n_samples
+
+        # compute the neighbours of each sample
         neigh_list = []
 
-        if max_samples is None:
-            max_samples = self.len_tot
+        for idx in range(0, n_samples, max_samples):
+            end_idx = idx + max_samples
+            neighs = _compute_neighbours(self.epsilon, idx, end_idx, *subsets)
+            neigh_list.append(neighs)
 
-        for idx in range(0, self.len_tot, max_samples):
-            partial_list = _compute_neighbours(self.subset, self.epsilon, idx,
-                                               idx + max_samples)
-            neigh_list.append(partial_list)
+        labels = _compute_labels(min_samples, *neigh_list)
 
-        labels, self.core_points = _compute_labels(min_samples, *neigh_list)
+        # Iterar sobre los vecinos y pasarles las labels que hemos calculado
 
         for neigh_id in self.neigh_sq_id:
             neigh_labels = _get_neigh_labels(labels,
@@ -64,7 +79,7 @@ class Region(object):
         neigh_squares = []
 
         for ind in np.ndindex(grid_shape):
-            d = np.abs(np.array(self.coord) - np.array(ind))
+            d = np.abs(np.array(self.id) - np.array(ind))
 
             if (d <= distances).all():
                 neigh_squares.append(ind)
@@ -73,9 +88,9 @@ class Region(object):
 
 
 @task(returns=1)
-def _compute_neighbours(subset, epsilon, begin_idx, end_idx):
+def _compute_neighbours(epsilon, begin_idx, end_idx, *subsets):
     neighbour_list = []
-    samples = subset.samples
+    samples = _concatenate_subsets(*subsets).samples
 
     for sample in samples[begin_idx:end_idx]:
         neighbours = np.linalg.norm(samples - sample, axis=1) < epsilon
@@ -85,6 +100,15 @@ def _compute_neighbours(subset, epsilon, begin_idx, end_idx):
     return neighbour_list
 
 
+def _concatenate_subsets(*subsets):
+    set0 = subsets[0]
+
+    for set in subsets[1:]:
+        set0.concatenate(set)
+
+    return set0
+
+
 @task(returns=2)
 def _compute_labels(min_samples, *neighbour_lists):
     final_list = neighbour_lists[0]
@@ -92,13 +116,13 @@ def _compute_labels(min_samples, *neighbour_lists):
     for neighbour_list in neighbour_lists[1:]:
         final_list.extend(neighbour_list)
 
-    clusters, core_points = _compute_clusters(final_list, min_samples)
-    labels = np.full(len(final_list), _NOISE)
+    clusters = _compute_clusters(final_list, min_samples)
+    labels = np.full(len(final_list), -1)
 
     for cluster_id, sample_indices in enumerate(clusters):
         labels[sample_indices] = cluster_id
 
-    return labels, core_points
+    return labels
 
 
 @task(returns=1)
@@ -109,7 +133,6 @@ def _get_neigh_labels(labels, indices):
 def _compute_clusters(neigh_list, min_samples):
     visited = []
     clusters = []
-    core_points = np.full(len(neigh_list), _NO_CP)
 
     for sample_idx, neighs in enumerate(neigh_list):
         if sample_idx in visited:
@@ -118,15 +141,13 @@ def _compute_clusters(neigh_list, min_samples):
         if neighs.size >= min_samples:
             clusters.append([sample_idx])
             visited.append(sample_idx)
-            core_points[sample_idx] = _CORE_POINT
             _visit_neighbours(neigh_list, neighs, visited, clusters,
-                              core_points, min_samples)
+                              min_samples)
 
-    return clusters, core_points
+        return clusters
 
 
-def _visit_neighbours(neigh_list, neighbours, visited, clusters, core_points,
-                      min_samples):
+def _visit_neighbours(neigh_list, neighbours, visited, clusters, min_samples):
     for neigh_idx in neighbours:
         if neigh_idx in visited:
             continue
@@ -135,11 +156,9 @@ def _visit_neighbours(neigh_list, neighbours, visited, clusters, core_points,
         clusters[-1].append(neigh_idx)
 
         if neigh_list[neigh_idx].size >= min_samples:
-            core_points[neigh_idx] = _CORE_POINT
             new_neighbours = neigh_list[neigh_idx]
-
             _visit_neighbours(neigh_list, new_neighbours, visited, clusters,
-                              core_points, min_samples)
+                              min_samples)
 
 
 def _get_connected_components(transitions):
