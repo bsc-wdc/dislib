@@ -1,4 +1,3 @@
-from pycompss.api.api import compss_wait_on
 from sklearn.datasets import load_iris
 
 from dislib.classification import RandomForestClassifier
@@ -25,13 +24,15 @@ def main():
     test_ds.append(test_subset_1)
     test_ds.append(test_subset_2)
     prediction = forest.predict(test_ds)
+    test_ds.collect()
+
+    labels = []
+    for subset in prediction:
+        labels.append(subset.labels)
+    y_pred = np.concatenate(labels)
 
     print('y:')
     print(y)
-    y_subsets = []
-    for subset in prediction:
-        y_subsets.append(compss_wait_on(subset.labels))
-    y_pred = np.concatenate(y_subsets)
     print('y_pred:')
     print(y_pred)
 

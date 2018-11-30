@@ -287,8 +287,9 @@ def get_predicted_indices(samples, tree, nodes_info, path):
 
 
 @task(returns=1)
-def predict_branch(samples, tree, nodes_info, subtree_index, subtree,
+def predict_branch(subset, tree, nodes_info, subtree_index, subtree,
                    distr_depth):
+    samples = subset.samples
     path = get_subtree_path(subtree_index, distr_depth)
     indices_mask = get_predicted_indices(samples, tree, nodes_info, path)
     prediction = subtree.predict(samples[indices_mask])
@@ -296,8 +297,9 @@ def predict_branch(samples, tree, nodes_info, subtree_index, subtree,
 
 
 @task(returns=1)
-def predict_branch_proba(samples, tree, nodes_info, subtree_index, subtree,
+def predict_branch_proba(subset, tree, nodes_info, subtree_index, subtree,
                          distr_depth, n_classes):
+    samples = subset.samples
     path = get_subtree_path(subtree_index, distr_depth)
     indices_mask = get_predicted_indices(samples, tree, nodes_info, path)
     prediction = subtree.predict_proba(samples[indices_mask], n_classes)
@@ -305,11 +307,12 @@ def predict_branch_proba(samples, tree, nodes_info, subtree_index, subtree,
 
 
 @task(returns=list)
-def merge_branches(shape_0, shape_1, *predictions):
-    if shape_1 is not None:
-        shape = (shape_0, shape_1)
+def merge_branches(n_classes, *predictions):
+    samples_len = len(predictions[0][0])
+    if n_classes is not None:
+        shape = (samples_len, n_classes)
     else:
-        shape = (shape_0,)
+        shape = (samples_len,)
     merged_prediction = np.empty(shape, dtype=np.int64)
     for selected, prediction in predictions:
         merged_prediction[selected] = prediction
@@ -389,7 +392,7 @@ class DecisionTreeClassifier:
                 compss_delete_object(y_s)
         self.nodes_info = collect(*self.nodes_info)
 
-    def predict(self, samples):
+    def predict(self, subset):
         """ Predicts class codes for the input data using a fitted tree and
         returns a future array."""
 
@@ -397,12 +400,12 @@ class DecisionTreeClassifier:
 
         branch_predictions = []
         for i, subtree in enumerate(self.subtrees):
-            pred = predict_branch(samples, self.tree, self.nodes_info, i,
+            pred = predict_branch(subset, self.tree, self.nodes_info, i,
                                   subtree, self.distr_depth)
             branch_predictions.append(pred)
-        return merge_branches(len(samples), None, *branch_predictions)
+        return merge_branches(None, *branch_predictions)
 
-    def predict_proba(self, samples):
+    def predict_proba(self, subset):
         """ Predicts class probabilities by class code using a fitted tree and
         returns a future 1D or 2D array. """
 
@@ -410,10 +413,8 @@ class DecisionTreeClassifier:
 
         branch_predictions = []
         for i, subtree in enumerate(self.subtrees):
-            pred = predict_branch_proba(samples, self.tree, self.nodes_info, i,
+            pred = predict_branch_proba(subset, self.tree, self.nodes_info, i,
                                         subtree, self.distr_depth,
                                         self.n_classes)
             branch_predictions.append(pred)
-        shape_0 = len(samples)
-        shape_1 = self.n_classes
-        return merge_branches(shape_0, shape_1, *branch_predictions)
+        return merge_branches(self.n_classes, *branch_predictions)

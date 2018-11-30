@@ -343,7 +343,6 @@ class RFTest(unittest.TestCase):
     def test_make_classification(self):
         from sklearn.datasets import make_classification
         from dislib.classification import RandomForestClassifier
-        from pycompss.api.api import compss_wait_on
 
         x, y = make_classification(
             n_samples=3000,
@@ -367,10 +366,11 @@ class RFTest(unittest.TestCase):
 
         rf.fit(train_ds)
         prediction = rf.predict(test_ds)
-        y_subsets = []
+        prediction.collect()
+        pred_labels = []
         for subset in prediction:
-            y_subsets.append(compss_wait_on(subset.labels))
-        y_pred = np.concatenate(y_subsets)
+            pred_labels.append(subset.labels)
+        y_pred = np.concatenate(pred_labels)
         accuracy = np.count_nonzero(y_pred == y_test)/len(y_test)
         self.assertGreater(accuracy, 0.7)
 

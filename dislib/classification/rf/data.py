@@ -138,8 +138,8 @@ class RfDataset(object):
 def transform_to_rf_dataset(dataset: Dataset) -> RfDataset:
     samples_shapes = []
     for subset in dataset:
-        samples_shapes.append(get_shape(subset.samples))
-    samples_shapes, n_samples, n_features = collect_shapes(*samples_shapes)
+        samples_shapes.append(get_samples_shape(subset))
+    samples_shapes, n_samples, n_features = merge_shapes(*samples_shapes)
 
     samples_file = tempfile.NamedTemporaryFile(mode='wb',
                                                prefix='tmp_rf_samples_',
@@ -148,7 +148,7 @@ def transform_to_rf_dataset(dataset: Dataset) -> RfDataset:
     samples_file.close()
     allocate_samples_file(samples_path, n_samples, n_features)
     for i, subset in enumerate(dataset):
-        fill_samples_file(samples_path, i, subset.samples, samples_shapes)
+        fill_samples_file(samples_path, i, subset, samples_shapes)
 
     labels_file = tempfile.NamedTemporaryFile(mode='w',
                                               prefix='tmp_rf_labels_',
@@ -156,7 +156,7 @@ def transform_to_rf_dataset(dataset: Dataset) -> RfDataset:
     labels_path = labels_file.name
     labels_file.close()
     for subset in dataset:
-        fill_labels_file(labels_path, subset.labels)
+        fill_labels_file(labels_path, subset)
 
     rf_dataset = RfDataset(samples_path, labels_path)
     rf_dataset.n_samples = n_samples
@@ -165,12 +165,12 @@ def transform_to_rf_dataset(dataset: Dataset) -> RfDataset:
 
 
 @task(returns=1)
-def get_shape(array):
-    return array.shape
+def get_samples_shape(subset):
+    return subset.samples.shape
 
 
 @task(returns=3)
-def collect_shapes(*samples_shapes):
+def merge_shapes(*samples_shapes):
     n_samples = 0
     n_features = samples_shapes[0][1]
     for shape in samples_shapes:
@@ -186,14 +186,14 @@ def allocate_samples_file(samples_path, n_samples, n_features):
 
 
 @task(samples_path=FILE_INOUT)
-def fill_samples_file(samples_path, i, ss_samples, samples_shapes):
+def fill_samples_file(samples_path, i, subset, samples_shapes):
     samples = np.lib.format.open_memmap(samples_path, mode='r+')
     first = sum(shape[0] for shape in samples_shapes[0:i])
-    ss_samples = ss_samples.astype(dtype='float32', casting='same_kind')
+    ss_samples = subset.samples.astype(dtype='float32', casting='same_kind')
     samples[first:first+samples_shapes[i][0]] = ss_samples
 
 
 @task(labels_path=FILE_INOUT)
-def fill_labels_file(labels_path, subset_labels):
+def fill_labels_file(labels_path, subset):
     with open(labels_path, 'at') as f:
-        np.savetxt(f, subset_labels, fmt='%s', encoding='utf-8')
+        np.savetxt(f, subset.labels, fmt='%s', encoding='utf-8')

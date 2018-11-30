@@ -1,6 +1,7 @@
 import math
 
 from pycompss.api.api import compss_wait_on
+from pycompss.api.parameter import INOUT
 from pycompss.api.task import task
 
 from dislib.classification.rf.decision_tree import DecisionTreeClassifier
@@ -73,14 +74,14 @@ class RandomForestClassifier:
             for subset in dataset:
                 tree_predictions = []
                 for tree in self.trees:
-                    tree_predictions.append(tree.predict_proba(subset.samples))
-                subset.labels = soft_vote(self.classes, *tree_predictions)
+                    tree_predictions.append(tree.predict_proba(subset))
+                soft_vote(subset, self.classes, *tree_predictions)
         else:
             for subset in dataset:
                 tree_predictions = []
                 for tree in self.trees:
-                    tree_predictions.append(tree.predict(subset.samples))
-                subset.labels = hard_vote(self.classes, *tree_predictions)
+                    tree_predictions.append(tree.predict(subset))
+                hard_vote(subset, self.classes, *tree_predictions)
         return dataset
 
     def _resolve_distr_depth(self, dataset):
@@ -111,14 +112,14 @@ def join_predictions(*predictions):
     return aggregate/len(predictions)
 
 
-@task(returns=1)
-def soft_vote(classes, *predictions):
+@task(subset=INOUT, returns=1)
+def soft_vote(subset, classes, *predictions):
     aggregate = predictions[0]
     for p in predictions[1:]:
         aggregate += p
-    return classes[np.argmax(aggregate, axis=1)]
+    subset.labels = classes[np.argmax(aggregate, axis=1)]
 
 
-@task(returns=1)
-def hard_vote(classes, *predictions):
-    return classes[np.argmax(*predictions, axis=1)]
+@task(subset=INOUT, returns=1)
+def hard_vote(subset, classes, *predictions):
+    subset.labels = classes[np.argmax(*predictions, axis=1)]
