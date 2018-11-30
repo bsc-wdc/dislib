@@ -7,7 +7,7 @@ import time
 import numpy as np
 from sklearn.datasets import load_svmlight_file
 
-from dislib.data import load_file, load_files
+from dislib.data import *
 from dislib.classification import CascadeSVM
 
 from pycompss.api.api import barrier
@@ -63,28 +63,21 @@ def main():
     else:
         gamma = args.g
 
-    if args.libsvm:
-        fmt = "libsvm"
-    else:
-        fmt = "labeled"
-
     data = []
 
     s_time = time.time()
 
     if os.path.isdir(train_data):
+        _loader_func = load_libsvm_files if args.libsvm else load_csv_files
         for _ in range(args.nd):
-            data.append(load_files(path=train_data, fmt=fmt,
-                                   n_features=args.f, use_array=args.dense))
+            data.append(_loader_func(train_data, args.f))
     else:
+        _loader_func = load_libsvm_file if args.libsvm else load_csv_file
         for _ in range(args.nd):
-            data.append(load_file(path=train_data, part_size=args.p,
-                                  fmt=fmt, n_features=args.f,
-                                  use_array=args.dense))
+            data.append(_loader_func(train_data, args.p, args.f))
 
-    if args.dt:
+    if args.detailed_times:
         barrier()
-
 
     csvm = CascadeSVM(cascade_arity=args.a, max_iter=args.i, c=args.c,
                       gamma=gamma, check_convergence=args.convergence)
