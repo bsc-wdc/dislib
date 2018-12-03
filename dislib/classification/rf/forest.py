@@ -63,8 +63,8 @@ class RandomForestClassifier:
         for subset in dataset:
             tree_predictions = []
             for tree in self.trees:
-                tree_predictions.append(tree.predict_proba(subset.samples))
-            subset.labels = join_predictions(*tree_predictions)
+                tree_predictions.append(tree.predict_proba(subset))
+            join_predictions(subset, *tree_predictions)
         return dataset
 
     def predict(self, dataset, soft_voting=True):
@@ -104,12 +104,12 @@ def resolve_try_features(try_features, n_features):
         return int(try_features)
 
 
-@task(returns=1)
-def join_predictions(*predictions):
+@task(subset=INOUT, returns=1)
+def join_predictions(subset, *predictions):
     aggregate = predictions[0]
     for p in predictions[1:]:
         aggregate += p
-    return aggregate/len(predictions)
+    subset.labels = aggregate/len(predictions)
 
 
 @task(subset=INOUT, returns=1)
