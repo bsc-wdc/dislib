@@ -3,8 +3,11 @@ from sys import float_info
 import numpy as np
 
 
-# Maximizing the Gini gain is equivalent to minimizing this proxy function
 def gini_criteria_proxy(l_weight, l_length, r_weight, r_length, not_repeated):
+    """
+    Maximizing the Gini gain is equivalent to minimizing this proxy function.
+
+    """
     return -(l_weight / l_length + r_weight / r_length) * not_repeated
 
 
