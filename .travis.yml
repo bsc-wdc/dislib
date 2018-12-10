@@ -27,7 +27,7 @@ after_script:
 
 before_deploy:
   - docker login -u "$REGISTRY_USER" -p "$REGISTRY_PASS"
-  - docker tag dislib bscwdc/dislib:latest
+  - docker tag bscwdc/dislib bscwdc/dislib:latest
 deploy:
   provider: script
   script: docker push bscwdc/dislib:latest
