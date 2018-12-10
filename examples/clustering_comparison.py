@@ -4,9 +4,7 @@ from itertools import cycle, islice
 
 import matplotlib.pyplot as plt
 import numpy as np
-from sklearn import cluster
 from sklearn.datasets import make_blobs, make_circles, make_moons
-from sklearn.neighbors import kneighbors_graph
 from sklearn.preprocessing import StandardScaler
 
 from dislib.cluster import KMeans, DBSCAN
@@ -21,8 +19,8 @@ def main():
     # of the algorithms, but not too big to avoid too long running times
     # ============
     n_samples = 1500
-    noisy_circles = make_circles(n_samples=n_samples, factor=.5,
-                                 noise=.05, random_state=170)
+    noisy_circles = make_circles(n_samples=n_samples, factor=.5, noise=.05,
+                                 random_state=170)
     noisy_moons = make_moons(n_samples=n_samples, noise=.05)
     blobs = make_blobs(n_samples=n_samples, random_state=8)
     no_structure = np.random.rand(n_samples, 2), None
@@ -35,8 +33,7 @@ def main():
     aniso = (X_aniso, y)
 
     # blobs with varied variances
-    varied = make_blobs(n_samples=n_samples,
-                        cluster_std=[1.0, 2.5, 0.5],
+    varied = make_blobs(n_samples=n_samples, cluster_std=[1.0, 2.5, 0.5],
                         random_state=random_state)
 
     # ============
@@ -48,21 +45,17 @@ def main():
 
     plot_num = 1
 
-    default_base = {'quantile': .3,
-                    'eps': .3,
-                    'damping': .9,
-                    'preference': -200,
-                    'n_neighbors': 10,
-                    'n_clusters': 3}
+    default_base = {'quantile': .3, 'eps': .3, 'damping': .9,
+                    'preference': -200, 'n_neighbors': 10, 'n_clusters': 3}
 
-    datasets = [
-        (noisy_circles, {'damping': .77, 'preference': -240,
-                         'quantile': .2, 'n_clusters': 2}),
-        (noisy_moons, {'damping': .75, 'preference': -220, 'n_clusters': 2}),
-        (varied, {'eps': .18, 'n_neighbors': 2}),
-        (aniso, {'eps': .15, 'n_neighbors': 2}),
-        (blobs, {}),
-        (no_structure, {})]
+    datasets = [(noisy_circles,
+                 {'damping': .77, 'preference': -240, 'quantile': .2,
+                  'n_clusters': 2}), (noisy_moons,
+                                      {'damping': .75, 'preference': -220,
+                                       'n_clusters': 2}),
+                (varied, {'eps': .18, 'n_neighbors': 2}),
+                (aniso, {'eps': .15, 'n_neighbors': 2}), (blobs, {}),
+                (no_structure, {})]
 
     for i_dataset, (dataset, algo_params) in enumerate(datasets):
         # update parameters with dataset-specific values
@@ -74,42 +67,34 @@ def main():
         # normalize dataset for easier parameter selection
         X = StandardScaler().fit_transform(X)
 
-        # estimate bandwidth for mean shift
-        bandwidth = cluster.estimate_bandwidth(X, quantile=params['quantile'])
-
-        # connectivity matrix for structured Ward
-        connectivity = kneighbors_graph(
-            X, n_neighbors=params['n_neighbors'], include_self=False)
-        # make connectivity symmetric
-        connectivity = 0.5 * (connectivity + connectivity.T)
-
         # ============
         # Create cluster objects
         # ============
         kmeans = KMeans(n_clusters=params["n_clusters"])
         dbscan = DBSCAN(eps=params["eps"], grid_dim=1)
 
-        clustering_algorithms = (
-            ('K-Means', kmeans),
-            ('DBSCAN', dbscan),
-        )
+        clustering_algorithms = (('K-Means', kmeans), ('DBSCAN', dbscan),)
 
         for name, algorithm in clustering_algorithms:
             t0 = time.time()
 
             # catch warnings related to kneighbors_graph
             with warnings.catch_warnings():
-                warnings.filterwarnings(
-                    "ignore",
-                    message="the number of connected components of the " +
-                            "connectivity matrix is [0-9]{1,2}" +
-                            " > 1. Completing it to avoid stopping the tree early.",
-                    category=UserWarning)
-                warnings.filterwarnings(
-                    "ignore",
-                    message="Graph is not fully connected, spectral embedding" +
-                            " may not work as expected.",
-                    category=UserWarning)
+                warnings.filterwarnings("ignore",
+                                        message="the number of connected "
+                                                "components of the "
+                                                "connectivity matrix is ["
+                                                "0-9]{1,2} > 1. Completing "
+                                                "it to avoid stopping the "
+                                                "tree early.",
+                                        category=UserWarning)
+                warnings.filterwarnings("ignore", message="Graph is not fully "
+                                                          "connected, "
+                                                          "spectral "
+                                                          "embedding may not "
+                                                          "work as "
+                                                          "expected.",
+                                        category=UserWarning)
 
                 data = load_data(x=X, y=y, subset_size=300)
                 algorithm.fit(data)
@@ -124,11 +109,10 @@ def main():
             if i_dataset == 0:
                 plt.title(name, size=18)
 
-            colors = np.array(
-                list(islice(cycle(['#377eb8', '#ff7f00', '#4daf4a',
-                                   '#f781bf', '#a65628', '#984ea3',
-                                   '#999999', '#e41a1c', '#dede00']),
-                            int(max(y_pred) + 1))))
+            colors = np.array(list(islice(cycle(
+                ['#377eb8', '#ff7f00', '#4daf4a', '#f781bf', '#a65628',
+                 '#984ea3', '#999999', '#e41a1c', '#dede00']),
+                int(max(y_pred) + 1))))
             # add black color for outliers (if any)
             colors = np.append(colors, ["#000000"])
             plt.scatter(X[:, 0], X[:, 1], s=10, color=colors[y_pred])
