@@ -2,15 +2,13 @@ import argparse
 import csv
 import os
 
-import time
-
 import numpy as np
+from pycompss.api.api import barrier
 from sklearn.datasets import load_svmlight_file
 
-from dislib.data import *
 from dislib.classification import CascadeSVM
-
-from pycompss.api.api import barrier
+from dislib.data import (load_libsvm_file, load_libsvm_files, load_csv_file,
+                         load_csv_files)
 
 
 def main():
@@ -28,13 +26,14 @@ def main():
     parser.add_argument("-p", "--part_size", metavar="PART_SIZE", type=int,
                         help="size of the partitions in which to divide the "
                              "input dataset")
-    parser.add_argument("-i", "--iteration", metavar="MAX_ITERATIONS", type=int,
-                        help="default is 5", default=5)
+    parser.add_argument("-i", "--iteration", metavar="MAX_ITERATIONS",
+                        type=int, help="default is 5", default=5)
     parser.add_argument("-g", "--gamma", metavar="GAMMA", type=float,
                         help="(only for rbf kernel) default is 1 / n_features",
                         default=None)
     parser.add_argument("-c", metavar="C", type=float, default=1,
-                        help="Penalty parameter C of the error term. Default:1")
+                        help="Penalty parameter C of the error term. "
+                             "Default:1")
     parser.add_argument("-f", "--features", metavar="N_FEATURES", type=int,
                         help="mandatory if --libsvm option is used and "
                              "train_data is a directory (optional otherwise)",
@@ -65,8 +64,6 @@ def main():
 
     data = []
 
-    s_time = time.time()
-
     if os.path.isdir(train_data):
         _loader_func = load_libsvm_files if args.libsvm else load_csv_files
         for _ in range(args.n_datasets):
@@ -74,13 +71,15 @@ def main():
     else:
         _loader_func = load_libsvm_file if args.libsvm else load_csv_file
         for _ in range(args.n_datasets):
-            data.append(_loader_func(train_data, args.part_size, args.features))
+            data.append(
+                _loader_func(train_data, args.part_size, args.features))
 
     if args.detailed_times:
         barrier()
 
     csvm = CascadeSVM(cascade_arity=args.arity, max_iter=args.iteration,
-                      c=args.c, gamma=gamma, check_convergence=args.convergence)
+                      c=args.c, gamma=gamma,
+                      check_convergence=args.convergence)
 
     for d in data:
         csvm.fit(d)
