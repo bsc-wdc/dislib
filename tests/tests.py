@@ -1,5 +1,4 @@
 import os
-import sys
 import unittest
 
 import numpy as np
@@ -16,9 +15,6 @@ from dislib.data import load_csv_file
 from dislib.data import load_csv_files
 from dislib.data import load_data
 from dislib.data import load_libsvm_file, load_libsvm_files
-
-# sys.path.insert(0,
-#                 os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 
 # the import tests should be removed; import should be tests in class specific
