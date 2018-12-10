@@ -30,9 +30,7 @@ def main():
                 linearly_separable
                 ]
 
-    num = len(classifiers)
-
-    figure = plt.figure(figsize=(27, 9))
+    plt.figure(figsize=(27, 9))
     i = 1
     # iterate over datasets
     for ds_cnt, ds in enumerate(datasets):
