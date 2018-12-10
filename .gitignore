@@ -166,3 +166,7 @@ dkms.conf
 # Fortran module files
 *.mod
 *.smod
+
+# Ignore log files
+*.log
+
