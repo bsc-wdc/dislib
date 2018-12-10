@@ -1,1 +1,1 @@
-flake8 dislib
+python3 -m flake8 /dislib
