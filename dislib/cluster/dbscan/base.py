@@ -102,7 +102,7 @@ class DBSCAN():
         # Create regions
         for data_idx, region_id in enumerate(np.ndindex(grid.shape)):
             subset = sorted_data[data_idx]
-            subset_size = self._subset_sizes[data_idx]
+            subset_size = compss_wait_on(_get_subset_size(subset))
             grid[region_id] = Region(region_id, subset, subset_size, self._eps)
 
         # Set region neighbours
@@ -116,63 +116,100 @@ class DBSCAN():
             region = grid[region_id]
             region.partial_scan(self._min_samples, self._max_samples)
 
-        # Update labels computed by the different neighbouring regions
-        for region_id in np.ndindex(grid.shape):
-            neigh_sq_id = grid[region_id].neigh_sq_id
-            labels_versions = []
-
-            for neigh_idx in neigh_sq_id:
-                labels_versions.append(grid[neigh_idx].cluster_labels[region_id])
-
-            grid[region_id].cluster_labels[region_id] = _get_max_labels(*labels_versions)
-
-        # Find connected clusters between regions
-        # Iterate again over labels because the above loop changed them
-        # FIXME: This probably can be done in a better way
-        transitions = []
+        # Compute label equivalences between different regions
+        equiv_list = []
 
         for region_id in np.ndindex(grid.shape):
-            neigh_sq_id = grid[region_id].neigh_sq_id
+            equiv_list.append(grid[region_id].get_equivalences())
 
-            labels_versions = []
-            neigh_indices = []
+        equivalences = _merge_dicts(*equiv_list)
 
-            for neigh_idx in neigh_sq_id:
-                labels_versions.append(grid[neigh_idx].cluster_labels[region_id])
-                neigh_indices.append(neigh_idx)
+        # Compute connected components
+        components = _get_connected_components(equivalences)
 
-            transitions.append(
-                _compute_neighbour_transitions(region_id, neigh_indices,
-                                               grid[region_id].cluster_labels[region_id],
-                                               *labels_versions))
-
-        transitions = _merge_transitions(*transitions)
-        connected_comp = _get_connected_components(transitions)
-
+        # Update region labels according to equivalences
         final_labels = []
 
         for region_id in np.ndindex(grid.shape):
-            labels = grid[region_id].cluster_labels[region_id]
-            final_labels.append(_update_labels(region_id, labels, connected_comp))
+            region = grid[region_id]
+            region.update_labels(components)
+            final_labels.append(region.labels)
 
         final_labels = compss_wait_on(final_labels)
 
         for labels in final_labels:
             self.labels_ = np.concatenate((self.labels_, labels))
 
-        # Modify labels to small numbers since the merging process
-        # above can generate large labels (e.g., 150)
-        # FIXME: This probably can be avoided by improving the merging of the
-        #  labels computed by the different regions
-        unique_labels = np.unique(self.labels_)
-        unique_labels = unique_labels[unique_labels >= 0]
-
-        for unique, label in enumerate(unique_labels):
-            self.labels_[self.labels_ == label] = unique
-
         sorting_ind = self._get_sorting_indices()
-
         self.labels_ = self.labels_[np.argsort(sorting_ind)]
+
+
+
+
+
+
+        # Update labels computed by the different neighbouring regions
+        # for region_id in np.ndindex(grid.shape):
+        #     neigh_sq_id = grid[region_id].neigh_sq_id
+        #     labels_versions = []
+        #
+        #     for neigh_idx in neigh_sq_id:
+        #         labels_versions.append(
+        #             grid[neigh_idx].cluster_labels[region_id])
+        #
+        #     grid[region_id].cluster_labels[region_id] = _get_max_labels(
+        #         *labels_versions)
+        #
+        # # Find connected clusters between regions
+        # # Iterate again over labels because the above loop changed them
+        # # FIXME: This probably can be done in a better way
+        # transitions = []
+        #
+        # for region_id in np.ndindex(grid.shape):
+        #     neigh_sq_id = grid[region_id].neigh_sq_id
+        #
+        #     labels_versions = []
+        #     neigh_indices = []
+        #
+        #     for neigh_idx in neigh_sq_id:
+        #         labels_versions.append(
+        #             grid[neigh_idx].cluster_labels[region_id])
+        #         neigh_indices.append(neigh_idx)
+        #
+        #     transitions.append(
+        #         _compute_neighbour_transitions(region_id, neigh_indices,
+        #                                        grid[region_id].cluster_labels[
+        #                                            region_id],
+        #                                        *labels_versions))
+        #
+        # transitions = _merge_transitions(*transitions)
+        # connected_comp = _get_connected_components(transitions)
+        #
+        # final_labels = []
+        #
+        # for region_id in np.ndindex(grid.shape):
+        #     labels = grid[region_id].cluster_labels[region_id]
+        #     final_labels.append(
+        #         _update_labels(region_id, labels, connected_comp))
+        #
+        # final_labels = compss_wait_on(final_labels)
+        #
+        # for labels in final_labels:
+        #     self.labels_ = np.concatenate((self.labels_, labels))
+        #
+        # # Modify labels to small numbers since the merging process
+        # # above can generate large labels (e.g., 150)
+        # # FIXME: This probably can be avoided by improving the merging of the
+        # #  labels computed by the different regions
+        # unique_labels = np.unique(self.labels_)
+        # unique_labels = unique_labels[unique_labels >= 0]
+        #
+        # for unique, label in enumerate(unique_labels):
+        #     self.labels_[self.labels_ == label] = unique
+        #
+        # sorting_ind = self._get_sorting_indices()
+        #
+        # self.labels_ = self.labels_[np.argsort(sorting_ind)]
 
     @staticmethod
     def _get_min_max(dataset):
@@ -244,6 +281,16 @@ class DBSCAN():
                 region.add_neighbour(grid[ind])
 
 @task(returns=1)
+def _merge_dicts(*dicts):
+    merged_dict = {}
+
+    for dict in dicts:
+        merged_dict.update(dict)
+
+    return merged_dict
+
+
+@task(returns=1)
 def _get_max_labels(*labels):
     label_arr = np.array(labels)
     return np.max(label_arr, axis=0)
@@ -298,21 +345,22 @@ def _update_labels(region, labels, connected):
 
 
 @task(returns=1)
-def _get_connected_components(transitions):
+def _get_connected_components(equiv):
     visited = []
     connected = []
-    for node, neighbours in transitions.items():
+
+    for node, neighbours in equiv.items():
         if node in visited:
             continue
 
         connected.append([node])
 
-        _visit_neighbours(transitions, neighbours, visited, connected)
+        _visit_neighbours(equiv, neighbours, visited, connected)
 
     return connected
 
 
-def _visit_neighbours(transitions, neighbours, visited, connected):
+def _visit_neighbours(equiv, neighbours, visited, connected):
     for neighbour in neighbours:
         if neighbour in visited:
             continue
@@ -320,10 +368,10 @@ def _visit_neighbours(transitions, neighbours, visited, connected):
         visited.append(neighbour)
         connected[-1].append(neighbour)
 
-        if neighbour in transitions:
-            new_neighbours = transitions[neighbour]
+        if neighbour in equiv:
+            new_neighbours = equiv[neighbour]
 
-            _visit_neighbours(transitions, new_neighbours, visited, connected)
+            _visit_neighbours(equiv, new_neighbours, visited, connected)
 
 
 @task(returns=int)

@@ -13,7 +13,8 @@ class Region(object):
         self._neighbours = []
         self.subset = subset
         self.n_samples = n_samples
-        self.core_points = None
+        self.labels = None
+        self._neighbour_labels = defaultdict(list)
 
         self.len_tot = 0
         self.offset = defaultdict()
@@ -51,7 +52,7 @@ class Region(object):
         if max_samples is None:
             max_samples = n_samples
 
-        # compute the neighbours of each sample
+        # compute the neighbours of each sample using multiple tasks
         neigh_list = []
 
         for idx in range(0, n_samples, max_samples):
@@ -59,14 +60,29 @@ class Region(object):
             neighs = _compute_neighbours(self.epsilon, idx, end_idx, *subsets)
             neigh_list.append(neighs)
 
+        # compute the label of each sample based on their neighbours
         labels = _compute_labels(min_samples, *neigh_list)
 
-        # Iterar sobre los vecinos y pasarles las labels que hemos calculado
+        self.labels = _slice_array(labels, 0, self.n_samples)
 
-        for neigh_id in self.neigh_sq_id:
-            neigh_labels = _get_neigh_labels(labels,
-                                             self.neigh_thres[neigh_id])
-            self.cluster_labels[neigh_id] = neigh_labels
+        # send labels to each neighbouring region
+        start = self.n_samples
+
+        for region in self._neighbours:
+            finish = region.n_samples
+            neigh_labels = _slice_array(labels, start, finish)
+            region.add_labels(neigh_labels, self.id)
+            start = finish
+
+    def add_labels(self, labels, region_id):
+        self._neighbour_labels[region_id] = labels
+
+    def get_equivalences(self):
+        return _compute_equivalences(self.id, self.labels,
+                                     self._neighbour_labels)
+
+    def update_labels(self, components):
+        self.labels = _update_labels(self.id, self.labels, components)
 
     def _set_neigh_thres(self):
         out = defaultdict(list)
@@ -85,6 +101,42 @@ class Region(object):
                 neigh_squares.append(ind)
 
         self.neigh_sq_id = tuple(neigh_squares)
+
+
+@task(returns=1)
+def _update_labels(region_id, labels, components):
+    new_labels = np.full(labels.shape[0], -1, dtype=int)
+
+    for label, component in enumerate(components):
+        for key in component:
+            if key[:2] == region_id:
+                indices = np.argwhere(labels == key[2])
+                new_labels[indices] = label
+
+    return new_labels
+
+
+@task(returns=1)
+def _compute_equivalences(region_id, labels, labels_dict):
+    equiv = defaultdict(set)
+
+    for label_idx, label in enumerate(labels):
+        key = region_id + (label,)
+
+        if key not in equiv:
+            equiv[key] = set()
+
+        for neigh_id, neigh_labels in labels_dict.items():
+            neigh_label = neigh_labels[label_idx]
+            neigh_key = neigh_id + (neigh_label,)
+            equiv[key].add(neigh_key)
+
+    return equiv
+
+
+@task(returns=1)
+def _slice_array(arr, start, finish):
+    return arr[start:finish]
 
 
 @task(returns=1)
@@ -109,7 +161,7 @@ def _concatenate_subsets(*subsets):
     return set0
 
 
-@task(returns=2)
+@task(returns=1)
 def _compute_labels(min_samples, *neighbour_lists):
     final_list = neighbour_lists[0]
 
