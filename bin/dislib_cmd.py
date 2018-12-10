@@ -61,8 +61,8 @@ def _start_daemon(working_dir: str = "", restart: bool = True):
         m = client.containers.run(image=image_name, name=master_name,
                                   mounts=mounts, detach=True)
 
-        _ = _generate_resources_cfg(ips=['localhost'])
-        _ = _generate_project_cfg(ips=['localhost'])
+        _generate_resources_cfg(ips=['localhost'])
+        _generate_project_cfg(ips=['localhost'])
 
         # don't pass configs because they need to be  overwritten when adding
         # new nodes
@@ -250,12 +250,3 @@ def _components(arg: str = 'list'):
                 _add_workers(number_of_res)
             else:
                 _add_custom_worker(args[2])
-
-
-                # if resource == 'service':
-                #     number_of_res = int(args[2])
-                #     if len(args) > 3:
-                #         working_dir = args[3]
-                #         _add_workers(number_of_res, user_working_dir=working_dir)
-                #     else:
-                #         _add_workers(number_of_res)
