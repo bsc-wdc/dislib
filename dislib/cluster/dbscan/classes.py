@@ -14,7 +14,8 @@ class Region(object):
         self.subset = subset
         self.n_samples = n_samples
         self.labels = None
-        self._neighbour_labels = defaultdict(list)
+        self._neighbour_labels = []
+        self._neighbour_ids = []
 
         self.len_tot = 0
         self.offset = defaultdict()
@@ -39,7 +40,7 @@ class Region(object):
         self.subset = _concatenate_data(*partitions)
         self._set_neigh_thres()
 
-    def partial_scan(self, min_samples, max_samples):
+    def partial_dbscan(self, min_samples, max_samples):
         subsets = [self.subset]
         n_samples = self.n_samples
 
@@ -62,24 +63,25 @@ class Region(object):
 
         # compute the label of each sample based on their neighbours
         labels = _compute_labels(min_samples, *neigh_list)
-
         self.labels = _slice_array(labels, 0, self.n_samples)
 
         # send labels to each neighbouring region
         start = self.n_samples
+        finish = start
 
         for region in self._neighbours:
-            finish = region.n_samples
+            finish += region.n_samples
             neigh_labels = _slice_array(labels, start, finish)
             region.add_labels(neigh_labels, self.id)
             start = finish
 
     def add_labels(self, labels, region_id):
-        self._neighbour_labels[region_id] = labels
+        self._neighbour_labels.append(labels)
+        self._neighbour_ids.append(region_id)
 
     def get_equivalences(self):
-        return _compute_equivalences(self.id, self.labels,
-                                     self._neighbour_labels)
+        return _compute_equivalences(self.id, self.labels, self._neighbour_ids,
+                                     *self._neighbour_labels)
 
     def update_labels(self, components):
         self.labels = _update_labels(self.id, self.labels, components)
@@ -117,19 +119,24 @@ def _update_labels(region_id, labels, components):
 
 
 @task(returns=1)
-def _compute_equivalences(region_id, labels, labels_dict):
+def _compute_equivalences(region_id, labels, neigh_ids, *labels_list):
     equiv = defaultdict(set)
 
     for label_idx, label in enumerate(labels):
+        if label < 0:
+            continue
+
         key = region_id + (label,)
 
         if key not in equiv:
             equiv[key] = set()
 
-        for neigh_id, neigh_labels in labels_dict.items():
+        for neigh_id, neigh_labels in zip(neigh_ids, labels_list):
             neigh_label = neigh_labels[label_idx]
-            neigh_key = neigh_id + (neigh_label,)
-            equiv[key].add(neigh_key)
+
+            if neigh_label >= 0:
+                neigh_key = neigh_id + (neigh_label,)
+                equiv[key].add(neigh_key)
 
     return equiv
 
@@ -196,7 +203,7 @@ def _compute_clusters(neigh_list, min_samples):
             _visit_neighbours(neigh_list, neighs, visited, clusters,
                               min_samples)
 
-        return clusters
+    return clusters
 
 
 def _visit_neighbours(neigh_list, neighbours, visited, clusters, min_samples):
