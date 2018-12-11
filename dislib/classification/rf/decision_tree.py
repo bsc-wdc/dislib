@@ -10,34 +10,57 @@ from dislib.classification.rf.test_split import test_split
 
 
 class DecisionTreeClassifier:
-    """A distributed decision tree classifier."""
+    """A distributed decision tree classifier.
+
+    Parameters
+    ----------
+    try_features : int
+        The number of features to consider when looking for the best split.
+
+        Note: the search for a split does not stop until at least one
+        valid partition of the node samples is found, even if it requires
+        to effectively inspect more than ``try_features`` features.
+    max_depth : int
+        The maximum depth of the tree. If np.inf, then nodes are expanded
+        until all leaves are pure.
+    distr_depth : int
+        Number of levels of the tree in which the nodes are split in a
+        distributed way.
+    bootstrap : bool
+        Randomly select n_instances samples with repetition (used in random
+        forests).
+
+    Attributes
+    ----------
+    n_features : int
+        The number of features of the dataset. It can be a
+        pycompss.runtime.Future object.
+    n_classes : int
+        The number of classes of this RfDataset. It can be a
+        pycompss.runtime.Future object.
+    tree : None or _Node
+        The root node of the tree after the tree is fitted.
+    nodes_info : None or list of _InnerNodeInfo and _LeafInfo
+        List of the node information for the nodes of the tree in the same
+        order as obtained in the fit() method, up to ``distr_depth`` depth.
+        After fit(), it is a pycompss.runtime.Future object.
+    subtrees : None or list of _Node
+        List of subtrees of the tree at ``distr_depth`` depth  obtained in the
+        fit() method. After fit(), it is a list of pycompss.runtime.Future
+        objects.
+
+    Methods
+    -------
+    fit(dataset)
+        Fits the DecisionTreeClassifier.
+    predict(subset)
+        Predicts classes for the subset samples using a fitted tree.
+    predict_proba(subset)
+        Predicts class probabilities for the subset using a fitted tree.
+
+    """
 
     def __init__(self, try_features, max_depth, distr_depth, bootstrap):
-        """
-        Constructor for DecisionTreeClassifier
-
-        Parameters
-        ----------
-        try_features : int
-            The number of features to consider when looking for the best split.
-
-            Note: the search for a split does not stop until at least one
-            valid partition of the node samples is found, even if it requires
-            to effectively inspect more than ``try_features`` features.
-
-        max_depth : int
-            The maximum depth of the tree. If np.inf, then nodes are expanded
-            until all leaves are pure.
-
-        distr_depth : int
-            Number of levels of the tree in which the nodes are split in a
-            distributed way.
-
-        bootstrap : bool
-            Randomly select n_instances samples with repetition (used in random
-            forests).
-
-        """
         self.try_features = try_features
         self.max_depth = max_depth
         self.distr_depth = distr_depth
@@ -51,8 +74,7 @@ class DecisionTreeClassifier:
         self.subtrees = None
 
     def fit(self, dataset):
-        """
-        Fits the DecisionTreeClassifier.
+        """Fits the DecisionTreeClassifier.
 
         Parameters
         ----------
@@ -102,8 +124,7 @@ class DecisionTreeClassifier:
         self.nodes_info = _merge(*self.nodes_info)
 
     def predict(self, subset):
-        """
-        Predicts classes for the subset samples using a fitted tree.
+        """Predicts classes for the subset samples using a fitted tree.
 
         Parameters
         ----------
@@ -128,8 +149,7 @@ class DecisionTreeClassifier:
         return _merge_branches(None, *branch_predictions)
 
     def predict_proba(self, subset):
-        """
-        Predicts class probabilities for the subset using a fitted tree.
+        """Predicts class probabilities for the subset using a fitted tree.
 
         Parameters
         ----------

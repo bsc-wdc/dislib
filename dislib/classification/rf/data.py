@@ -9,30 +9,52 @@ from dislib.data import Dataset
 
 
 class RfDataset(object):
+    """Dataset format used by the fit() of the RandomForestClassifier.
+
+    The RfDataset contains a file path for the samples and another one for the
+    labels. Optionally, a path can be provided for a transposed version of the
+    samples matrix, i.e., the features.
+
+    Note: For a representation of a dataset distributed in multiple files, use
+    dislib.data.Dataset instead.
+
+    Parameters
+    ----------
+    samples_path : str
+        Path of the .npy file containing the 2-d array of samples. It can be a
+        pycompss.runtime.Future object. If so, self.n_samples and
+        self.n_features must be set manually (they can also be
+        pycompss.runtime.Future objects).
+    labels_path : str
+        Path of the .dat file containing the 1-d array of labels. It can be a
+        pycompss.runtime.Future object.
+    features_path : str, optional (default=None)
+        Path of the .npy file containing the 2-d array of samples transposed.
+        The array must be C-ordered. Providing this array may improve the
+        performance as it allows sequential access to the features.
+
+    Attributes
+    ----------
+    n_samples : int
+        The number of samples of the dataset. It can be a
+        pycompss.runtime.Future object.
+    n_features : int
+        The number of features of the dataset. It can be a
+        pycompss.runtime.Future object.
+    y_codes : ndarray
+        The codified array of labels for this RfDataset. The values are indices
+        of the array of classes, which contains the corresponding labels. The
+        dtype is np.int8. It can be a pycompss.runtime.Future object.
+    y_categories : ndarray
+        The array of classes for this RfDataset. The values are unique. It can
+        be a pycompss.runtime.Future object.
+    n_classes : int
+        The number of classes of this RfDataset. It can be a
+        pycompss.runtime.Future object.
+
     """
-    Dataset format used by dislib.classification.RandomForestClassifier.fit().
-    """
+
     def __init__(self, samples_path, labels_path, features_path=None):
-        """
-        Constructor for RfDataset.
-
-        Parameters
-        ----------
-        samples_path : str
-            Path of the .npy file containing the 2-d array of samples. It can
-            be a pycompss.runtime.Future object. If so, self.n_samples and
-            self.n_features must be set manually (they can also be
-            pycompss.runtime.Future objects).
-        labels_path : str
-            Path of the .dat file containing the 1-d array of labels. It can be
-            a pycompss.runtime.Future object.
-        features_path : str, optional
-            Path of the .npy file containing the 2-d array of samples
-            transposed. The array must be C-ordered. Providing this array may
-            improve the performance as it allows sequential access to the
-            features.
-
-        """
         self.samples_path = samples_path
         self.labels_path = labels_path
         self.features_path = features_path
@@ -44,14 +66,18 @@ class RfDataset(object):
         self.n_classes = None
 
     def get_n_samples(self):
-        """
-        Gets the number of samples, reading from the samples file if needed.
+        """Gets the number of samples obtained from the samples file.
 
         Returns
         -------
         n_samples : int
-            The number of samples of the dataset. It can be a
-            pycompss.runtime.Future object.
+
+        Raises
+        ------
+        AssertionError
+            If self.n_samples is None and self.samples_path is not a string.
+        ValueError
+            If invalid content is encountered in the samples file.
 
         """
         if self.n_samples is None:
@@ -65,14 +91,18 @@ class RfDataset(object):
         return self.n_samples
 
     def get_n_features(self):
-        """
-        Gets the number of features, reading from the samples file if needed.
+        """Gets the number of features obtained from the samples file.
 
         Returns
         -------
         n_features : int
-            The number of features of the dataset. It can be a
-            pycompss.runtime.Future object.
+
+        Raises
+        ------
+        AssertionError
+            If self.n_features is None and self.samples_path is not a string.
+        ValueError
+            If invalid content is encountered in the samples file.
 
         """
         if self.n_features is None:
@@ -86,16 +116,11 @@ class RfDataset(object):
         return self.n_features
 
     def get_y_codes(self):
-        """
-        Produces or retrieves the codified array of labels.
+        """Obtains the codified array of labels.
 
         Returns
         -------
         y_codes : ndarray
-            The codified array of labels for this RfDataset. The values are
-            indices of the array of classes, which contains the corresponding
-            labels. The dtype is np.int8. It can be a pycompss.runtime.Future
-            object.
 
         """
         if self.y_codes is None:
@@ -104,14 +129,11 @@ class RfDataset(object):
         return self.y_codes
 
     def get_classes(self):
-        """
-        Produces or retrieves the codified array of classes.
+        """Obtains the array of label categories.
 
         Returns
         -------
-        classes : ndarray
-            The array of classes for this RfDataset. The values are unique.
-            It can be a pycompss.runtime.Future object.
+        y_categories : ndarray
 
         """
         if self.y_categories is None:
@@ -120,14 +142,11 @@ class RfDataset(object):
         return self.y_categories
 
     def get_n_classes(self):
-        """
-        Obtains the number of classes.
+        """Obtains the number of classes.
 
         Returns
         -------
         n_classes : int
-            The number of classes of this RfDataset. It can be a
-            pycompss.runtime.Future object.
 
         """
         if self.n_classes is None:
@@ -136,8 +155,14 @@ class RfDataset(object):
         return self.n_classes
 
     def validate_features_file(self):
-        """
-        Raises an exception if the features file header is not valid.
+        """Validates the features file header information.
+
+        Raises
+        ------
+        ValueError
+            If the shape of the array in the features_file doesn't match this
+            class n_samples and n_features or if the array is in fortran order.
+
         """
         features_npy_file = _NpyFile(self.features_path)
         shape = features_npy_file.get_shape()
@@ -151,14 +176,10 @@ class RfDataset(object):
 
 
 def transform_to_rf_dataset(dataset: Dataset) -> RfDataset:
-    """
-    Transforms a Dataset to a RfDataset, used by the RandomForestClassifier.
+    """Creates a RfDataset with data from a Dataset.
 
-    The Dataset data is distributed in multiple files. However, the
-    dislib.classification.RandomForestClassifier uses a RfDataset internally,
-    which contains a single file for the samples and another one for the
-    features. This function concatenates the samples and the features of a
-    Dataset in order to obtain a RfDataset.
+    This function concatenates the samples and the features of a
+    dislib.data.Dataset creating a dislib.classification.rf.data.RfDataset.
 
     Parameters
     ----------

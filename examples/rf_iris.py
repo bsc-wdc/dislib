@@ -1,7 +1,7 @@
 from sklearn.datasets import load_iris
 
 from dislib.classification import RandomForestClassifier
-from dislib.data import Dataset, Subset, load_data
+from dislib.data import load_data
 
 import numpy as np
 

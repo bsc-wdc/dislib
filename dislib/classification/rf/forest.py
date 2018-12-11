@@ -13,40 +13,52 @@ from dislib.data import Dataset
 
 
 class RandomForestClassifier:
-    """A distributed random forest classifier."""
+    """A distributed random forest classifier.
+
+    Parameters
+    ----------
+    n_estimators : int, optional (default=10)
+        Number of trees to fit.
+    try_features : int, str or None, optional (default='sqrt')
+        The number of features to consider when looking for the best split:
+
+        - If "sqrt", then `try_features=sqrt(n_features)`.
+        - If "third", then `try_features=n_features // 3`.
+        - If None, then `try_features=n_features`.
+
+        Note: the search for a split does not stop until at least one
+        valid partition of the node samples is found, even if it requires
+        to effectively inspect more than ``try_features`` features.
+    max_depth : int or float, optional (default=np.inf)
+        The maximum depth of the tree. If np.inf, then nodes are expanded
+        until all leaves are pure.
+    distr_depth : int or str, optional (default='auto')
+        Number of levels of the tree in which the nodes are split in a
+        distributed way.
+
+    Attributes
+    ----------
+    classes : None or ndarray
+        Array of distinct classes, set at fit().
+    trees : list of DecisionTreeClassifier
+        List of the tree classifiers of this forest, populated at fit().
+
+    Methods
+    -------
+    fit(dataset)
+        Fits the RandomForestClassifier.
+    predict_proba(dataset)
+        Predicts class probabilities using a fitted forest.
+    predict(dataset, soft_voting=True)
+        Predicts classes using a fitted forest.
+
+    """
 
     def __init__(self,
                  n_estimators=10,
                  try_features='sqrt',
                  max_depth=np.inf,
                  distr_depth='auto'):
-        """
-        Constructor for RandomForestClassifier
-
-        Parameters
-        ----------
-        n_estimators : int, optional (default=10)
-            Number of trees to fit.
-
-        try_features : int, str or None, optional (default='sqrt')
-            The number of features to consider when looking for the best split:
-
-            - If "sqrt", then `try_features=sqrt(n_features)`.
-            - If "third", then `try_features=n_features // 3`.
-            - If None, then `try_features=n_features`.
-
-            Note: the search for a split does not stop until at least one
-            valid partition of the node samples is found, even if it requires
-            to effectively inspect more than ``try_features`` features.
-
-        max_depth : int or float, optional (default=np.inf)
-            The maximum depth of the tree. If np.inf, then nodes are expanded
-            until all leaves are pure.
-
-        distr_depth : int or str, optional (default='auto')
-            Number of levels of the tree in which the nodes are split in a
-            distributed way.
-        """
         self.n_estimators = n_estimators
         self.try_features = try_features
         self.max_depth = max_depth
@@ -56,17 +68,15 @@ class RandomForestClassifier:
         self.trees = []
 
     def fit(self, dataset):
-        """
-        Fits the RandomForestClassifier.
+        """Fits the RandomForestClassifier.
 
         Parameters
         ----------
         dataset : dislib.data.Dataset
-            Note: For this particular algorithm, the dataset is transformed
-            internally to a dislib.classification.rf.data.RfDataset. To avoid
-            the cost of the transformation, RfDataset objects are exceptionally
-            accepted as argument. The data in a RfDataset is not distributed,
-            so it is discouraged to use it in other situations.
+            Note: In the implementation of this method, the dataset is
+            transformed to a dislib.classification.rf.data.RfDataset. To avoid
+            the cost of the transformation, RfDataset objects are additionally
+            accepted as argument.
 
         """
 
@@ -97,8 +107,7 @@ class RandomForestClassifier:
             tree.fit(dataset)
 
     def predict_proba(self, dataset):
-        """
-        Predicts class probabilities using a fitted forest.
+        """Predicts class probabilities using a fitted forest.
 
         The probabilities are obtained as an average of the probabilities of
         each decision tree.
@@ -112,7 +121,7 @@ class RandomForestClassifier:
         -------
         dataset : dislib.data.Dataset
             The given dataset, where the labels attribute for each dataset has
-            been set to a bidimensional array with the predicted probabilities.
+            been set to a 2-dimensional array with the predicted probabilities.
             The order of the classes is given by self.classes.
 
         """
@@ -125,8 +134,7 @@ class RandomForestClassifier:
         return dataset
 
     def predict(self, dataset, soft_voting=True):
-        """
-        Predicts classes using a fitted forest.
+        """Predicts classes using a fitted forest.
 
         Parameters
         ----------
