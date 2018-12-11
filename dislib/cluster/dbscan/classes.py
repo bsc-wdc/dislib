@@ -1,7 +1,6 @@
 from collections import defaultdict
 
 import numpy as np
-from pycompss.api.api import compss_wait_on
 from pycompss.api.task import task
 
 
@@ -17,28 +16,8 @@ class Region(object):
         self._neighbour_labels = []
         self._neighbour_ids = []
 
-        self.len_tot = 0
-        self.offset = defaultdict()
-        self.len = defaultdict()
-        self.cluster_labels = defaultdict(list)
-
     def add_neighbour(self, region):
         self._neighbours.append(region)
-
-    def init_data(self, data, grid_shape):
-        prev = 0
-        partitions = []
-
-        for comb in self.neigh_sq_id:
-            self.offset[comb] = prev
-            part = data[np.ravel_multi_index(comb, grid_shape)]
-            self.len[comb] = compss_wait_on(_count_lines(part))
-            partitions.append(part)
-            prev += self.len[comb]
-            self.len_tot += self.len[comb]
-
-        self.subset = _concatenate_data(*partitions)
-        self._set_neigh_thres()
 
     def partial_dbscan(self, min_samples, max_samples):
         subsets = [self.subset]
@@ -85,24 +64,6 @@ class Region(object):
 
     def update_labels(self, components):
         self.labels = _update_labels(self.id, self.labels, components)
-
-    def _set_neigh_thres(self):
-        out = defaultdict(list)
-        for comb in self.neigh_sq_id:
-            out[comb] = [self.offset[comb], self.offset[comb] + self.len[comb]]
-        self.neigh_thres = out
-
-    def _neigh_squares_query(self, region_sizes, grid_shape):
-        distances = np.ceil(self.epsilon / region_sizes)
-        neigh_squares = []
-
-        for ind in np.ndindex(grid_shape):
-            d = np.abs(np.array(self.id) - np.array(ind))
-
-            if (d <= distances).all():
-                neigh_squares.append(ind)
-
-        self.neigh_sq_id = tuple(neigh_squares)
 
 
 @task(returns=1)
@@ -160,12 +121,12 @@ def _compute_neighbours(epsilon, begin_idx, end_idx, *subsets):
 
 
 def _concatenate_subsets(*subsets):
-    set0 = subsets[0]
+    subset = subsets[0].copy()
 
     for set in subsets[1:]:
-        set0.concatenate(set)
+        subset.concatenate(set)
 
-    return set0
+    return subset
 
 
 @task(returns=1)
@@ -231,24 +192,3 @@ def _get_connected_components(transitions):
 
         _visit_neighbours(transitions, neighbours, visited, connected)
     return connected
-
-
-@task(returns=1)
-def _merge_core_points(chunks, comb, *cp_list):
-    tmp = [max(i) for i in list(zip(*cp_list))]
-    return tmp[chunks[comb][0]: chunks[comb][1]]
-
-
-@task(returns=1)
-def _concatenate_data(*subsets):
-    set0 = subsets[0]
-
-    for set in subsets[1:]:
-        set0.concatenate(set)
-
-    return set0
-
-
-@task(returns=int)
-def _count_lines(subset):
-    return subset.samples.shape[0]

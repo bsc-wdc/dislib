@@ -1,5 +1,3 @@
-from collections import defaultdict
-
 import numpy as np
 from pycompss.api.api import compss_wait_on
 from pycompss.api.task import task
@@ -153,6 +151,17 @@ class DBSCAN():
         minmax = compss_wait_on(minmax)
         return np.min(minmax, axis=0)[0], np.max(minmax, axis=0)[1]
 
+    @staticmethod
+    def _add_neighbours(region, grid, distances):
+        for ind in np.ndindex(grid.shape):
+            if ind == region.id:
+                continue
+
+            d = np.abs(np.array(region.id) - np.array(ind))
+
+            if (d <= distances).all():
+                region.add_neighbour(grid[ind])
+
     def _set_subset_sizes(self, dataset):
         for subset in dataset:
             self._subset_sizes.append(_get_subset_size(subset))
@@ -172,7 +181,7 @@ class DBSCAN():
                 self._sorting.append((set_idx, indices))
 
             # create a new partition representing the grid region
-            sorted_data.append(_merge(*sample_list))
+            sorted_data.append(_create_subset(*sample_list))
 
         return sorted_data
 
@@ -202,16 +211,6 @@ class DBSCAN():
 
         return np.array(indices, dtype=int)
 
-    def _add_neighbours(self, region, grid, distances):
-        for ind in np.ndindex(grid.shape):
-            if ind == region.id:
-                continue
-
-            d = np.abs(np.array(region.id) - np.array(ind))
-
-            if (d <= distances).all():
-                region.add_neighbour(grid[ind])
-
 
 @task(returns=1)
 def _merge_dicts(*dicts):
@@ -221,60 +220,6 @@ def _merge_dicts(*dicts):
         merged_dict.update(dict)
 
     return merged_dict
-
-
-@task(returns=1)
-def _get_max_labels(*labels):
-    label_arr = np.array(labels)
-    return np.max(label_arr, axis=0)
-
-
-@task(returns=1)
-def _compute_neighbour_transitions(region_idx, neigh_indices, labels,
-                                   *neigh_labels):
-    transitions = defaultdict(set)
-
-    for label_idx, label in enumerate(labels):
-        if label < 0:
-            continue
-
-        label_key = region_idx + (label,)
-
-        for neigh_idx, neigh_label in enumerate(neigh_labels):
-            if neigh_indices[neigh_idx] != region_idx:
-                neigh_key = neigh_indices[neigh_idx] + (
-                    neigh_label[label_idx],)
-                transitions[label_key].add(neigh_key)
-
-    return transitions
-
-
-@task(returns=1)
-def _merge_transitions(*transitions):
-    trans0 = transitions[0]
-
-    for transition in transitions[1:]:
-        trans0.update(transition)
-
-    return trans0
-
-
-@task(returns=1)
-def _update_labels(region, labels, connected):
-    for component in connected:
-        old_label = -1
-        min_ = np.inf
-
-        for tup in component:
-            min_ = min(min_, tup[-1])
-
-            if tup[:-1] == region:
-                old_label = tup[-1]
-
-        if old_label >= 0:
-            labels[labels == old_label] = min_
-
-    return labels
 
 
 @task(returns=1)
@@ -313,7 +258,7 @@ def _get_subset_size(subset):
 
 
 @task(returns=1)
-def _merge(*samples):
+def _create_subset(*samples):
     from dislib.data import Subset
     return Subset(np.vstack(samples))
 
