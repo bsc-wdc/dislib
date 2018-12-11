@@ -1,132 +1,202 @@
-import os
-import warnings
-from collections import Counter
-from math import sqrt
+import math
 
-import numpy as np
-from numpy.lib import format
 from pycompss.api.api import compss_wait_on
+from pycompss.api.parameter import INOUT
+from pycompss.api.task import task
 
 from dislib.classification.rf.decision_tree import DecisionTreeClassifier
-from dislib.classification.rf.decision_tree import get_features_file
-from dislib.classification.rf.decision_tree import get_y
+
+import numpy as np
+
+from .data import RfDataset, transform_to_rf_dataset
+from dislib.data import Dataset
 
 
 class RandomForestClassifier:
+    """A distributed random forest classifier.
+
+    Parameters
+    ----------
+    n_estimators : int, optional (default=10)
+        Number of trees to fit.
+    try_features : int, str or None, optional (default='sqrt')
+        The number of features to consider when looking for the best split:
+
+        - If "sqrt", then `try_features=sqrt(n_features)`.
+        - If "third", then `try_features=n_features // 3`.
+        - If None, then `try_features=n_features`.
+
+        Note: the search for a split does not stop until at least one
+        valid partition of the node samples is found, even if it requires
+        to effectively inspect more than ``try_features`` features.
+    max_depth : int or float, optional (default=np.inf)
+        The maximum depth of the tree. If np.inf, then nodes are expanded
+        until all leaves are pure.
+    distr_depth : int or str, optional (default='auto')
+        Number of levels of the tree in which the nodes are split in a
+        distributed way.
+
+    Attributes
+    ----------
+    classes : None or ndarray
+        Array of distinct classes, set at fit().
+    trees : list of DecisionTreeClassifier
+        List of the tree classifiers of this forest, populated at fit().
+
+    Methods
+    -------
+    fit(dataset)
+        Fits the RandomForestClassifier.
+    predict_proba(dataset)
+        Predicts class probabilities using a fitted forest.
+    predict(dataset, soft_voting=True)
+        Predicts classes using a fitted forest.
+
+    """
+
     def __init__(self,
-                 path_in,
-                 n_instances,
-                 n_features,
-                 path_out,
                  n_estimators=10,
-                 max_depth=None,
-                 distr_depth=None,
-                 try_features=None):
-        self.path_in = path_in
-        self.n_instances = n_instances
-        self.n_features = n_features
-        self.path_out = path_out
+                 try_features='sqrt',
+                 max_depth=np.inf,
+                 distr_depth='auto'):
         self.n_estimators = n_estimators
+        self.try_features = try_features
         self.max_depth = max_depth
         self.distr_depth = distr_depth
-        if try_features is None:
-            self.try_features = max(1, int(sqrt(n_features)))
-        elif try_features == 'sqrt':
-            self.try_features = max(1, int(sqrt(n_features)))
-        elif try_features == 'third':
-            self.try_features = max(1, int(n_features / 3))
-        else:
-            self.try_features = int(try_features)
 
-        self.y = None
-        self.y_codes = None
-        self.n_classes = None
+        self.classes = None
         self.trees = []
 
-    def fit(self):
+    def fit(self, dataset):
+        """Fits the RandomForestClassifier.
+
+        Parameters
+        ----------
+        dataset : dislib.data.Dataset
+            Note: In the implementation of this method, the dataset is
+            transformed to a dislib.classification.rf.data.RfDataset. To avoid
+            the cost of the transformation, RfDataset objects are additionally
+            accepted as argument.
+
         """
-        Fits the RandomForestClassifier.
-        """
-        features_file = get_features_file(self.path_in)
-        if features_file is not None:
-            self._features_file_check(features_file)
-        self.y, self.y_codes, self.n_classes = get_y(self.path_in)
+
+        if not isinstance(dataset, (Dataset, RfDataset)):
+            raise TypeError('Invalid type for param dataset.')
+        if isinstance(dataset, Dataset):
+            dataset = transform_to_rf_dataset(dataset)
+
+        if isinstance(dataset.features_path, str):
+            dataset.validate_features_file()
+
+        n_features = dataset.get_n_features()
+        self.try_features = _resolve_try_features(self.try_features,
+                                                  n_features)
+        self.classes = dataset.get_classes()
+
+        if self.distr_depth is 'auto':
+            dataset.n_samples = compss_wait_on(dataset.get_n_samples())
+            self.distr_depth = max(0, int(math.log10(dataset.n_samples)) - 4)
+            self.distr_depth = min(self.distr_depth, self.max_depth)
 
         for i in range(self.n_estimators):
-            tree = DecisionTreeClassifier(self.path_in, self.n_instances,
-                                          self.n_features, self.path_out,
-                                          'tree_' + str(i), self.max_depth,
-                                          self.distr_depth, True,
-                                          self.try_features)
-            tree.y_codes = self.y_codes
-            tree.n_classes = self.n_classes
+            tree = DecisionTreeClassifier(self.try_features, self.max_depth,
+                                          self.distr_depth, bootstrap=True)
             self.trees.append(tree)
 
         for tree in self.trees:
-            tree.fit()
+            tree.fit(dataset)
 
-        self.y, self.y_codes, self.n_classes = compss_wait_on(self.y,
-                                                              self.y_codes,
-                                                              self.n_classes)
+    def predict_proba(self, dataset):
+        """Predicts class probabilities using a fitted forest.
 
-        for tree in self.trees:
-            tree.n_classes = self.n_classes
+        The probabilities are obtained as an average of the probabilities of
+        each decision tree.
 
-    def predict_probabilities(self, x_test):
-        """ Predicts class probabilities by class code using a fitted forest
-        and returns a 1D or 2D array. """
+        Parameters
+        ----------
+        dataset : dislib.data.Dataset
+            Dataset with samples for predicting their probabilities.
 
-        return np.sum(tree.predict_probabilities(x_test) for tree
-                      in self.trees) / len(self.trees)
+        Returns
+        -------
+        dataset : dislib.data.Dataset
+            The given dataset, where the labels attribute for each dataset has
+            been set to a 2-dimensional array with the predicted probabilities.
+            The order of the classes is given by self.classes.
 
-    def predict(self, file_name='x_test.npy', soft_voting=True):
-        """ Predicts classes using a fitted forest and returns an integer
-        or an array. """
-        try:
-            x_test = np.load(os.path.join(self.path_in, file_name),
-                             allow_pickle=False)
-        except IOError:
-            warnings.warn(
-                'The test data file does not exist or cannot be read.')
-            return
+        """
+        assert self.trees is not None, 'The random forest is not fitted.'
+        for subset in dataset:
+            tree_predictions = []
+            for tree in self.trees:
+                tree_predictions.append(tree.predict_proba(subset))
+            _join_predictions(subset, *tree_predictions)
+        return dataset
 
+    def predict(self, dataset, soft_voting=True):
+        """Predicts classes using a fitted forest.
+
+        Parameters
+        ----------
+        dataset : dislib.data.Dataset
+            Dataset with samples to predict.
+
+        soft_voting : bool, optional (default=True)
+            If True, it takes the class with the higher probability given by
+            predict_proba(), which is an average of the probabilities given by
+            the decision trees. If False, it uses majority voting over the
+            predict() result of the decision tree predictions.
+
+        Returns
+        -------
+        dataset : dislib.data.Dataset
+            The given dataset, with the labels set to their predicted values.
+
+        """
+        assert self.trees is not None, 'The random forest is not fitted.'
         if soft_voting:
-            probabilities = self.predict_probabilities(x_test)
-            return self.y.categories[np.argmax(probabilities, axis=1)]
-
-        if len(x_test.shape) == 1:
-            predicted = Counter(tree.predict(x_test) for tree in self.trees) \
-                .most_common(1)[0][0]
-            return self.y.categories[predicted]  # Convert code to real value
-        elif len(x_test.shape) == 2:
-            my_array = np.empty((len(self.trees), len(x_test)), np.int64)
-            for i, tree in enumerate(self.trees):
-                my_array[i, :] = tree.predict(x_test)
-            predicted = np.apply_along_axis(
-                lambda x: np.argmax(np.bincount(x)),
-                0, my_array)
-            return self.y.categories[predicted]  # Convert codes to real values
+            for subset in dataset:
+                tree_predictions = []
+                for tree in self.trees:
+                    tree_predictions.append(tree.predict_proba(subset))
+                _soft_vote(subset, self.classes, *tree_predictions)
         else:
-            raise ValueError
+            for subset in dataset:
+                tree_predictions = []
+                for tree in self.trees:
+                    tree_predictions.append(tree.predict(subset))
+                _hard_vote(subset, self.classes, *tree_predictions)
+        return dataset
 
-    def _features_file_check(self, features_file):
-        with open(features_file, 'rb') as fp:
-            version = format.read_magic(fp)
-            try:
-                format._check_version(version)
-            except ValueError:
-                raise ValueError('Unknown version of the features file.')
-            shape, fortran_order, dtype = format._read_array_header(fp,
-                                                                    version)
-            if len(shape) != 2:
-                raise ValueError(
-                    'Cannot read 2D array from the features file.')
-            if (self.n_features, self.n_instances) != shape:
-                raise ValueError('The dimensions of the features file are '
-                                 'different than the given dimensions.')
-            if fortran_order:
-                raise ValueError(
-                    'Fortran order unsupported for features array')
-            if dtype != np.float32:
-                warnings.warn(
-                    'Datatype ' + str(dtype) + ' has not been tested')
+
+@task(returns=1)
+def _resolve_try_features(try_features, n_features):
+    if try_features is None:
+        return n_features
+    elif try_features == 'sqrt':
+        return int(math.sqrt(n_features))
+    elif try_features == 'third':
+        return max(1, n_features // 3)
+    else:
+        return int(try_features)
+
+
+@task(subset=INOUT, returns=1)
+def _join_predictions(subset, *predictions):
+    aggregate = predictions[0]
+    for p in predictions[1:]:
+        aggregate += p
+    subset.labels = aggregate/len(predictions)
+
+
+@task(subset=INOUT, returns=1)
+def _soft_vote(subset, classes, *predictions):
+    aggregate = predictions[0]
+    for p in predictions[1:]:
+        aggregate += p
+    subset.labels = classes[np.argmax(aggregate, axis=1)]
+
+
+@task(subset=INOUT, returns=1)
+def _hard_vote(subset, classes, *predictions):
+    subset.labels = classes[np.argmax(*predictions, axis=1)]
