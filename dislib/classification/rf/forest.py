@@ -9,7 +9,7 @@ from dislib.classification.rf.decision_tree import DecisionTreeClassifier
 import numpy as np
 
 from .data import RfDataset, transform_to_rf_dataset
-from dislib.data import Dataset
+from dislib.data import Dataset, load_data
 
 
 class RandomForestClassifier:
@@ -51,6 +51,8 @@ class RandomForestClassifier:
         Predicts class probabilities using a fitted forest.
     predict(dataset, soft_voting=True)
         Predicts classes using a fitted forest.
+    score(x_test, y_test)
+        Accuracy classification score.
 
     """
 
@@ -167,6 +169,28 @@ class RandomForestClassifier:
                     tree_predictions.append(tree.predict(subset))
                 _hard_vote(subset, self.classes, *tree_predictions)
         return dataset
+
+    def score(self, x_test, y_test):
+        """Accuracy classification score.
+
+        Parameters
+        ----------
+        x_test : ndarray
+            Test samples.
+        y_test : ndarray
+            Correct test labels.
+
+        Returns
+        -------
+        score : float
+            Fraction of correctly classified samples.
+
+        """
+        ds = load_data(x=x_test, subset_size=x_test.shape[0])
+        self.predict(ds)
+        ds.collect()
+        y_pred = ds[0].labels
+        return np.count_nonzero(y_pred == y_test) / len(y_test)
 
 
 @task(returns=1)
