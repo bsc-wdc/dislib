@@ -141,7 +141,7 @@ def load_csv_files(path, n_features, label_col=None):
                        delimiter=",", label_col=label_col)
 
 
-def _load_file(path, part_size, fmt, n_features, delimiter=",",
+def _load_file(path, subset_size, fmt, n_features, delimiter=",",
                label_col=None, store_sparse=False):
     lines = []
     dataset = Dataset(n_features)
@@ -150,7 +150,7 @@ def _load_file(path, part_size, fmt, n_features, delimiter=",",
         for line in f:
             lines.append(line.encode())
 
-            if len(lines) == part_size:
+            if len(lines) == subset_size:
                 subset = _read_lines(lines, fmt, n_features, label_col,
                                      store_sparse)
                 dataset.append(subset)
