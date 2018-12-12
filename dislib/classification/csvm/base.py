@@ -76,7 +76,7 @@ class CascadeSVM(object):
     """
     _name_to_kernel = {"linear": "_linear_kernel", "rbf": "_rbf_kernel"}
 
-    def __init__(self, cascade_arity=2, max_iter=5, tol=1 ** -3,
+    def __init__(self, cascade_arity=2, max_iter=5, tol=10 ** -3,
                  kernel="rbf", c=1, gamma='scale', check_convergence=True,
                  random_state=None, verbose=False):
 
@@ -269,6 +269,7 @@ class CascadeSVM(object):
 
         if self._last_w:
             delta = np.abs((w - self._last_w) / self._last_w)
+
             if delta < self._tol:
                 self.converged = True
 
