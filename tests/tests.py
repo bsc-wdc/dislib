@@ -360,18 +360,11 @@ class RFTest(unittest.TestCase):
         y_test = y[len(y)//2:]
 
         train_ds = load_data(x=x_train, y=y_train, subset_size=300)
-        test_ds = load_data(x=x_test, subset_size=300)
 
         rf = RandomForestClassifier()
 
         rf.fit(train_ds)
-        prediction = rf.predict(test_ds)
-        prediction.collect()
-        pred_labels = []
-        for subset in prediction:
-            pred_labels.append(subset.labels)
-        y_pred = np.concatenate(pred_labels)
-        accuracy = np.count_nonzero(y_pred == y_test)/len(y_test)
+        accuracy = rf.score(x_test, y_test)
         self.assertGreater(accuracy, 0.7)
 
 

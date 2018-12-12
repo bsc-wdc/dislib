@@ -5,18 +5,19 @@ from sklearn.datasets import make_moons, make_circles, make_classification
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
-from dislib.classification import CascadeSVM
+from dislib.classification import CascadeSVM, RandomForestClassifier
 from dislib.data import load_data
 
 
 def main():
     h = .02  # step size in the mesh
 
-    names = ["Linear C-SVM", "RBF C-SVM"]
+    names = ["Linear C-SVM", "RBF C-SVM", "Random forest"]
 
     classifiers = [
         CascadeSVM(kernel="linear", c=0.025, max_iter=5),
-        CascadeSVM(gamma=2, c=1, max_iter=5)
+        CascadeSVM(gamma=2, c=1, max_iter=5),
+        RandomForestClassifier()
     ]
 
     x, y = make_classification(n_features=2, n_redundant=0, n_informative=2,
@@ -74,10 +75,14 @@ def main():
 
             # Plot the decision boundary. For that, we will assign a color to
             # each point in the mesh [x_min, x_max]x[y_min, y_max].
+            mesh = np.c_[xx.ravel(), yy.ravel()]
             if hasattr(clf, "decision_function"):
-                Z = clf.decision_function(np.c_[xx.ravel(), yy.ravel()])
+                Z = clf.decision_function(mesh)
             else:
-                Z = clf.predict_proba(np.c_[xx.ravel(), yy.ravel()])[:, 1]
+                mesh_ds = load_data(x=mesh, subset_size=mesh.shape[0])
+                clf.predict_proba(mesh_ds)
+                mesh_ds.collect()
+                Z = mesh_ds[0].labels[:, 1]
 
             # Put the result into a color plot
             Z = Z.reshape(xx.shape)
