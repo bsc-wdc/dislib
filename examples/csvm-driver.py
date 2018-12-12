@@ -6,6 +6,8 @@ import numpy as np
 from pycompss.api.api import barrier
 from sklearn.datasets import load_svmlight_file
 
+import time
+
 from dislib.classification import CascadeSVM
 from dislib.data import (load_libsvm_file, load_libsvm_files, load_csv_file,
                          load_csv_files)
@@ -55,6 +57,9 @@ def main():
 
     train_data = args.train_data
 
+    s_time = time.time()
+    read_time = 0
+
     if not args.gamma:
         gamma = "auto"
     else:
@@ -87,6 +92,8 @@ def main():
 
     if args.detailed_times:
         barrier()
+        read_time = time.time() - s_time
+        s_time = time.time()
 
     csvm = CascadeSVM(cascade_arity=args.arity, max_iter=args.iteration,
                       c=args.c, gamma=gamma,
@@ -95,8 +102,11 @@ def main():
     for d in data:
         csvm.fit(d)
 
+    barrier()
+    fit_time = time.time() - s_time
+
     out = [args.kernel, args.arity, args.part_size, csvm._clf_params["gamma"],
-           args.c, csvm.iterations, csvm.converged]
+           args.c, csvm.iterations, csvm.converged, read_time, fit_time]
 
     if os.path.isdir(train_data):
         n_files = os.listdir(train_data)
