@@ -35,9 +35,7 @@ def main():
                         help="Penalty parameter C of the error term. "
                              "Default:1")
     parser.add_argument("-f", "--features", metavar="N_FEATURES", type=int,
-                        help="mandatory if --libsvm option is used and "
-                             "train_data is a directory (optional otherwise)",
-                        default=None)
+                        default=None, required=True)
     parser.add_argument("-t", "--test-file", metavar="TEST_FILE_PATH",
                         help="test CSV file path", type=str, required=False)
     parser.add_argument("-o", "--output_file", metavar="OUTPUT_FILE_PATH",
@@ -51,8 +49,8 @@ def main():
     parser.add_argument("train_data",
                         help="File or directory containing files "
                              "(if a directory is provided PART_SIZE is "
-                             "ignored)",
-                        type=str)
+                             "ignored)", type=str)
+    parser.add_argument("-v", "--verbose", action="store_true")
     args = parser.parse_args()
 
     train_data = args.train_data
@@ -63,23 +61,36 @@ def main():
         gamma = args.gamma
 
     data = []
+    sparse = not args.dense
 
     if os.path.isdir(train_data):
-        _loader_func = load_libsvm_files if args.libsvm else load_csv_files
-        for _ in range(args.n_datasets):
-            data.append(_loader_func(train_data, args.features))
+        if args.libsvm:
+            for _ in range(args.n_datasets):
+                data.append(load_libsvm_files(train_data, args.features,
+                                              store_sparse=sparse))
+        else:
+            for _ in range(args.n_datasets):
+                data.append(load_csv_files(train_data, args.features,
+                                           label_col="last"))
     else:
-        _loader_func = load_libsvm_file if args.libsvm else load_csv_file
-        for _ in range(args.n_datasets):
-            data.append(
-                _loader_func(train_data, args.part_size, args.features))
+        if args.libsvm:
+            for _ in range(args.n_datasets):
+                data.append(
+                    load_libsvm_file(train_data, subset_size=args.part_size,
+                                     n_features=args.features,
+                                     store_sparse=sparse))
+        else:
+            for _ in range(args.n_datasets):
+                data.append(
+                    load_csv_file(train_data, subset_size=args.part_size,
+                                  n_features=args.features, label_col="last"))
 
     if args.detailed_times:
         barrier()
 
     csvm = CascadeSVM(cascade_arity=args.arity, max_iter=args.iteration,
                       c=args.c, gamma=gamma,
-                      check_convergence=args.convergence)
+                      check_convergence=args.convergence, verbose=args.verbose)
 
     for d in data:
         csvm.fit(d)
