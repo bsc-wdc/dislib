@@ -25,7 +25,7 @@ def main():
                         help="default is 2", default=2)
     parser.add_argument("-p", "--part_size", metavar="PART_SIZE", type=int,
                         help="size of the partitions in which to divide the "
-                             "input dataset")
+                             "input dataset (default is 100)", default=100)
     parser.add_argument("-i", "--iteration", metavar="MAX_ITERATIONS",
                         type=int, help="default is 5", default=5)
     parser.add_argument("-g", "--gamma", metavar="GAMMA", type=float,
