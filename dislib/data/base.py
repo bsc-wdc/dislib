@@ -208,7 +208,7 @@ def _read_file(file, fmt, n_features, label_col, store_sparse):
 
         subset = Subset(x, y)
     else:
-        samples = np.loadtxt(file, delimiter=",")
+        samples = np.genfromtxt(file, delimiter=",")
 
         if label_col == "first":
             subset = Subset(samples[:, 1:], samples[:, 0])
