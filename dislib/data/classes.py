@@ -2,7 +2,7 @@ from uuid import uuid4
 
 import numpy as np
 from pycompss.api.api import compss_wait_on
-from scipy.sparse import issparse, vstack
+from scipy.sparse import issparse, vstack, csr_matrix
 
 
 class Dataset(object):
@@ -50,11 +50,31 @@ class Subset(object):
     """
 
     def __init__(self, samples, labels=None):
-        self.samples = samples
-        self.labels = labels
+        if issparse(samples):
+            self.samples = csr_matrix(samples)
+        else:
+            self.samples = np.array(samples)
+
+        if labels is not None:
+            self.labels = np.array(labels)
+        else:
+            self.labels = None
 
         idx = [uuid4().int for _ in range(samples.shape[0])]
         self._ids = np.array(idx)
+
+    def copy(self):
+        """ Return a copy of this Subset
+
+        Returns
+        -------
+        subset : Subset
+            A copy of this Subset.
+        """
+
+        subset = Subset(samples=self.samples, labels=self.labels)
+        subset._ids = np.array(self._ids)
+        return subset
 
     def concatenate(self, subset, remove_duplicates=False):
         """ Vertically concatenates this Subset to another.

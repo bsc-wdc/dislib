@@ -1,5 +1,3 @@
-from collections import defaultdict
-
 import numpy as np
 from pycompss.api.api import compss_wait_on
 from pycompss.api.task import task
@@ -26,7 +24,7 @@ class DBSCAN():
         to be considered as a core point. This includes the point itself.
     arrange_data: boolean, optional (default=True)
         Whether to re-arrange input data before performing clustering.
-    grid_dim : int, optional (default=10)
+    grid_dim : int, optional (default=1)
         Number of regions per dimension in which to divide the feature space.
         The number of regions generated is equal to n_features ^ grid_dim.
     max_samples : int, optional (default=None)
@@ -50,9 +48,9 @@ class DBSCAN():
         Perform DBSCAN clustering.
     """
 
-    def __init__(self, eps=0.5, min_samples=5, arrange_data=True, grid_dim=10,
+    def __init__(self, eps=0.5, min_samples=5, arrange_data=True, grid_dim=1,
                  max_samples=None):
-        assert grid_dim >= 1, "Grid dimensions must be greater than 1."
+        assert grid_dim >= 1, "Grid dimensions must be greater or equal to 1."
 
         self._eps = eps
         self._min_samples = min_samples
@@ -92,75 +90,55 @@ class DBSCAN():
 
         min_, max_ = self._get_min_max(dataset)
         bins, region_sizes = self._generate_bins(min_, max_, n_features)
+        self._set_subset_sizes(dataset)
 
         if self._arrange_data:
-            self._set_subset_sizes(dataset)
             sorted_data = self._sort_data(dataset, grid, bins)
         else:
             sorted_data = dataset
 
-        # Compute dbscan in each region of the grid
-        for idx in np.ndindex(grid.shape):
-            grid[idx] = Region(idx, self._eps, grid.shape, region_sizes)
-            grid[idx].init_data(sorted_data, grid.shape)
-            grid[idx].partial_scan(self._min_samples, self._max_samples)
+        # Create regions
+        for data_idx, region_id in enumerate(np.ndindex(grid.shape)):
+            subset = sorted_data[data_idx]
+            subset_size = compss_wait_on(_get_subset_size(subset))
+            grid[region_id] = Region(region_id, subset, subset_size, self._eps)
 
-        # Update labels computed by the different neighbouring regions
-        for idx in np.ndindex(grid.shape):
-            neigh_sq_id = grid[idx].neigh_sq_id
-            labels_versions = []
+        # Set region neighbours
+        distances = np.ceil(self._eps / region_sizes)
 
-            for neigh_idx in neigh_sq_id:
-                labels_versions.append(grid[neigh_idx].cluster_labels[idx])
+        for region_id in np.ndindex(grid.shape):
+            self._add_neighbours(grid[region_id], grid, distances)
 
-            grid[idx].cluster_labels[idx] = _get_max_labels(*labels_versions)
+        # Run dbscan on each region
+        for region_id in np.ndindex(grid.shape):
+            region = grid[region_id]
+            region.partial_dbscan(self._min_samples, self._max_samples)
 
-        # Find connected clusters between regions
-        # Iterate again over labels because the above loop changed them
-        # FIXME: This probably can be done in a better way
-        transitions = []
+        # Compute label equivalences between different regions
+        equiv_list = []
 
-        for idx in np.ndindex(grid.shape):
-            neigh_sq_id = grid[idx].neigh_sq_id
+        for region_id in np.ndindex(grid.shape):
+            equiv_list.append(grid[region_id].get_equivalences())
 
-            labels_versions = []
-            neigh_indices = []
+        equivalences = _merge_dicts(*equiv_list)
 
-            for neigh_idx in neigh_sq_id:
-                labels_versions.append(grid[neigh_idx].cluster_labels[idx])
-                neigh_indices.append(neigh_idx)
+        # Compute connected components
+        components = _get_connected_components(equivalences)
 
-            transitions.append(
-                _compute_neighbour_transitions(idx, neigh_indices,
-                                               grid[idx].cluster_labels[idx],
-                                               *labels_versions))
-
-        transitions = _merge_transitions(*transitions)
-        connected_comp = _get_connected_components(transitions)
-
+        # Update region labels according to equivalences
         final_labels = []
 
-        for idx in np.ndindex(grid.shape):
-            labels = grid[idx].cluster_labels[idx]
-            final_labels.append(_update_labels(idx, labels, connected_comp))
+        for region_id in np.ndindex(grid.shape):
+            region = grid[region_id]
+            region.update_labels(components)
+            final_labels.append(region.labels)
 
         final_labels = compss_wait_on(final_labels)
 
         for labels in final_labels:
             self.labels_ = np.concatenate((self.labels_, labels))
 
-        # Modify labels to small numbers since the merging process
-        # above can generate large labels (e.g., 150)
-        # FIXME: This probably can be avoided by improving the merging of the
-        #  labels computed by the different regions
-        unique_labels = np.unique(self.labels_)
-        unique_labels = unique_labels[unique_labels >= 0]
-
-        for unique, label in enumerate(unique_labels):
-            self.labels_[self.labels_ == label] = unique
-
         sorting_ind = self._get_sorting_indices()
-
         self.labels_ = self.labels_[np.argsort(sorting_ind)]
 
     @staticmethod
@@ -173,9 +151,22 @@ class DBSCAN():
         minmax = compss_wait_on(minmax)
         return np.min(minmax, axis=0)[0], np.max(minmax, axis=0)[1]
 
+    @staticmethod
+    def _add_neighbours(region, grid, distances):
+        for ind in np.ndindex(grid.shape):
+            if ind == region.id:
+                continue
+
+            d = np.abs(np.array(region.id) - np.array(ind))
+
+            if (d <= distances).all():
+                region.add_neighbour(grid[ind])
+
     def _set_subset_sizes(self, dataset):
         for subset in dataset:
             self._subset_sizes.append(_get_subset_size(subset))
+
+        self._subset_sizes = compss_wait_on(self._subset_sizes)
 
     def _sort_data(self, dataset, grid, bins):
         sorted_data = Dataset(dataset.n_features)
@@ -190,7 +181,7 @@ class DBSCAN():
                 self._sorting.append((set_idx, indices))
 
             # create a new partition representing the grid region
-            sorted_data.append(_merge(*sample_list))
+            sorted_data.append(_create_subset(*sample_list))
 
         return sorted_data
 
@@ -202,15 +193,14 @@ class DBSCAN():
         for i in range(n_features):
             # Add up a small delta to the max to include it in the binarization
             delta = max_[i] / 1e8
-            bin = np.linspace(min_[i], max_[i] + delta, self._grid_dim + 1)
-            bins.append(bin)
-            region_sizes.append(np.max(bin[1:] - bin[0:-1]))
+            bin_ = np.linspace(min_[i], max_[i] + delta, self._grid_dim + 1)
+            bins.append(bin_)
+            region_sizes.append(np.max(bin_[1:] - bin_[0:-1]))
 
         return bins, np.array(region_sizes)
 
     def _get_sorting_indices(self):
         indices = []
-        self._subset_sizes = compss_wait_on(self._subset_sizes)
 
         for part_ind, vec_ind in self._sorting:
             vec_ind = compss_wait_on(vec_ind)
@@ -223,75 +213,32 @@ class DBSCAN():
 
 
 @task(returns=1)
-def _get_max_labels(*labels):
-    label_arr = np.array(labels)
-    return np.max(label_arr, axis=0)
+def _merge_dicts(*dicts):
+    merged_dict = {}
+
+    for dict in dicts:
+        merged_dict.update(dict)
+
+    return merged_dict
 
 
 @task(returns=1)
-def _compute_neighbour_transitions(region_idx, neigh_indices, labels,
-                                   *neigh_labels):
-    transitions = defaultdict(set)
-
-    for label_idx, label in enumerate(labels):
-        if label < 0:
-            continue
-
-        label_key = region_idx + (label,)
-
-        for neigh_idx, neigh_label in enumerate(neigh_labels):
-            if neigh_indices[neigh_idx] != region_idx:
-                neigh_key = neigh_indices[neigh_idx] + (
-                    neigh_label[label_idx],)
-                transitions[label_key].add(neigh_key)
-
-    return transitions
-
-
-@task(returns=1)
-def _merge_transitions(*transitions):
-    trans0 = transitions[0]
-
-    for transition in transitions[1:]:
-        trans0.update(transition)
-
-    return trans0
-
-
-@task(returns=1)
-def _update_labels(region, labels, connected):
-    for component in connected:
-        old_label = -1
-        min_ = np.inf
-
-        for tup in component:
-            min_ = min(min_, tup[-1])
-
-            if tup[:-1] == region:
-                old_label = tup[-1]
-
-        if old_label >= 0:
-            labels[labels == old_label] = min_
-
-    return labels
-
-
-@task(returns=1)
-def _get_connected_components(transitions):
+def _get_connected_components(equiv):
     visited = []
     connected = []
-    for node, neighbours in transitions.items():
+
+    for node, neighbours in equiv.items():
         if node in visited:
             continue
 
         connected.append([node])
 
-        _visit_neighbours(transitions, neighbours, visited, connected)
+        _visit_neighbours(equiv, neighbours, visited, connected)
 
     return connected
 
 
-def _visit_neighbours(transitions, neighbours, visited, connected):
+def _visit_neighbours(equiv, neighbours, visited, connected):
     for neighbour in neighbours:
         if neighbour in visited:
             continue
@@ -299,10 +246,10 @@ def _visit_neighbours(transitions, neighbours, visited, connected):
         visited.append(neighbour)
         connected[-1].append(neighbour)
 
-        if neighbour in transitions:
-            new_neighbours = transitions[neighbour]
+        if neighbour in equiv:
+            new_neighbours = equiv[neighbour]
 
-            _visit_neighbours(transitions, new_neighbours, visited, connected)
+            _visit_neighbours(equiv, new_neighbours, visited, connected)
 
 
 @task(returns=int)
@@ -311,7 +258,7 @@ def _get_subset_size(subset):
 
 
 @task(returns=1)
-def _merge(*samples):
+def _create_subset(*samples):
     from dislib.data import Subset
     return Subset(np.vstack(samples))
 
