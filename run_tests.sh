@@ -11,7 +11,7 @@ export ComputingUnits=4
 runcompss \
     --pythonpath=$(pwd) \
     --python_interpreter=python3 \
-    ./tests/tests.py &> (tee output.log)
+    ./tests/tests.py &> >(tee output.log)
 
 result=$(cat output.log | egrep "OK|FAILED")
 
