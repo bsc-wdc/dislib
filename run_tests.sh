@@ -13,6 +13,10 @@ runcompss \
     --python_interpreter=python3 \
     ./tests/tests.py 2>&1 | tee output.log
 
+if [ "${PIPESTATUS[0]}" == "1" ]; then 
+    exit 1
+fi
+
 result=$(cat output.log | egrep "OK|FAILED")
 
 echo "Tests result: ${result}"
