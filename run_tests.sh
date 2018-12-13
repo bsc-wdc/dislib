@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -e
 
 
 root_path="$(dirname "$(readlink -f "$0")")"
@@ -11,11 +11,7 @@ export ComputingUnits=4
 runcompss \
     --pythonpath=$(pwd) \
     --python_interpreter=python3 \
-    ./tests/tests.py 2>&1 | tee output.log
-
-if [ "${PIPESTATUS[0]}" == "1" ]; then 
-    exit 1
-fi
+    ./tests/tests.py &> (tee output.log)
 
 result=$(cat output.log | egrep "OK|FAILED")
 
