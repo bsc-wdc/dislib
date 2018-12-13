@@ -189,14 +189,16 @@ class _Node:
         if isinstance(node_content, _LeafInfo):
             return np.full((len(sample),), node_content.mode)
         if isinstance(node_content, _SkTreeWrapper):
-            return node_content.sk_tree.predict(sample)
+            if len(sample) > 0:
+                return node_content.sk_tree.predict(sample)
         if isinstance(node_content, _InnerNodeInfo):
             pred = np.empty((len(sample),), dtype=np.int64)
             left_mask = sample[:, node_content.index] <= node_content.value
             pred[left_mask] = self.left.predict(sample[left_mask])
             pred[~left_mask] = self.right.predict(sample[~left_mask])
             return pred
-        assert False, 'Type not supported'
+        assert len(sample) == 0, 'Type not supported'
+        return np.empty((0,), dtype=np.int64)
 
     def predict_proba(self, sample, n_classes):
         node_content = self.content
@@ -204,17 +206,19 @@ class _Node:
             single_pred = node_content.frequencies/node_content.size
             return np.repeat(single_pred, len(sample), 1)
         if isinstance(node_content, _SkTreeWrapper):
-            sk_tree_pred = node_content.sk_tree.predict_proba(sample)
-            pred = np.zeros((len(sample), n_classes), dtype=np.int64)
-            pred[:, node_content.sk_tree.classes_] = sk_tree_pred
-            return pred
+            if len(sample) > 0:
+                sk_tree_pred = node_content.sk_tree.predict_proba(sample)
+                pred = np.zeros((len(sample), n_classes), dtype=np.int64)
+                pred[:, node_content.sk_tree.classes_] = sk_tree_pred
+                return pred
         if isinstance(node_content, _InnerNodeInfo):
             pred = np.empty((len(sample), n_classes), dtype=np.int64)
             left_mask = sample[:, node_content.index] <= node_content.value
             pred[left_mask] = self.left.predict_proba(sample[left_mask])
             pred[~left_mask] = self.right.predict_proba(sample[~left_mask])
             return pred
-        assert False, 'Type not supported'  # Execution shouldn't reach here
+        assert len(sample) == 0, 'Type not supported'
+        return np.empty((0, n_classes), dtype=np.int64)
 
 
 class _InnerNodeInfo:
@@ -354,6 +358,10 @@ def _compute_split(sample, n_features, y_s, n_classes, m_try, features_mmap):
             if len(tried_indices) == n_features:
                 split_ended = True
                 node_info = _compute_leaf_info(y_s, n_classes)
+                left_group = sample
+                y_l = y_s
+                right_group = np.array([], dtype=np.int64)
+                y_r = np.array([], dtype=np.int8)
 
     return node_info, left_group, y_l, right_group, y_r
 
@@ -390,7 +398,7 @@ def _compute_build_subtree(sample, y_s, n_features, max_depth, n_classes,
                            use_sklearn=True, sklearn_max=1e8):
     np.random.seed()
     if not sample.size:
-        return []
+        return _Node()
     if features_file is not None:
         mmap = np.load(features_file, mmap_mode='r', allow_pickle=False)
     else:
@@ -443,18 +451,22 @@ def _get_subtree_path(subtree_index, distr_depth):
 
 
 def _get_predicted_indices(samples, tree, nodes_info, path):
-    indices_mask = np.full((len(samples),), True)
+    idx_mask = np.full((len(samples),), True)
     for direction in path:
         node_info = nodes_info[tree.content]
-        col = node_info.index
-        value = node_info.value
-        if direction == '0':
-            indices_mask[indices_mask] = samples[indices_mask, col] <= value
-            tree = tree.left
+        if isinstance(node_info, _LeafInfo):
+            if direction == '1':
+                idx_mask[:] = 0
         else:
-            indices_mask[indices_mask] = samples[indices_mask, col] > value
-            tree = tree.right
-    return indices_mask
+            col = node_info.index
+            value = node_info.value
+            if direction == '0':
+                idx_mask[idx_mask] = samples[idx_mask, col] <= value
+                tree = tree.left
+            else:
+                idx_mask[idx_mask] = samples[idx_mask, col] > value
+                tree = tree.right
+    return idx_mask
 
 
 @task(returns=1)

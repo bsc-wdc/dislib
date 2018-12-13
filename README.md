@@ -9,7 +9,7 @@
   <br>
 </h1>
 
-<h3 align="center">Distributed Computing library implemented using PyCOMPSs programming model for HPC.</h3>
+<h3 align="center">Distributed computing library implemented over PyCOMPSs programming model for HPC.</h3>
 
 <p align="center">
   <a href="https://dislib.readthedocs.io/en/latest/?badge=latest">
@@ -40,7 +40,7 @@
 
 ## Introduction
 
-The Distributed Computing library is a project which aims to provide distributed machine learning algorithms ready to use as a library. Is is developed on top of PyCOMPSs programming model and is being developed by the [Workflows and Distributed Computing group](https://github.com/bsc-wdc) of the [Barcelona Supercomputing Center](https://www.bsc.es/). The library is designed to allow easy local development through docker. Once the code is finished, it can be run directly into a supercomputer / cloud without any further changes. For more information on which supercomputers and architectures are supported refer to [Availability](#availability)
+The Distributed Computing Library (dislib) provides distributed machine learning algorithms ready to use as a library. Dislib has been implemented on top of PyCOMPSs programming model, and it is being developed by the [Workflows and Distributed Computing group](https://github.com/bsc-wdc) of the [Barcelona Supercomputing Center](https://www.bsc.es/). The library is designed to allow easy local development through docker. Once the code is finished, it can be run directly on any distributed platform without any further changes. This includes clusters, supercomputers, clouds, and containerized platforms. For more information on which infrastructures and architectures are supported refer to [Availability](#availability)
 
 
 
