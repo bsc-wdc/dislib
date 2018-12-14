@@ -11,7 +11,7 @@ client = docker.from_env()
 # api_client = docker.APIClient()
 api_client = docker.APIClient(base_url='unix://var/run/docker.sock')
 
-image_name = 'bscwdc/dislib'
+image_name = 'bscwdc/dislib:latest'
 master_name = 'dislib-master'
 worker_name = 'dislib-worker'
 service_name = 'dislib-service'
@@ -66,7 +66,7 @@ def _start_daemon(working_dir: str = "", restart: bool = True):
 
         # don't pass configs because they need to be  overwritten when adding
         # new nodes
-        exit_code, output = (m.exec_run(cmd=['/cfg.sh',
+        exit_code, output = (m.exec_run(cmd=['/dislib/bin/cfg.sh',
                                              working_dir, "", ""]))
 
         if exit_code != 0:
@@ -97,7 +97,7 @@ def _generate_project_cfg(curr_cfg: str = '', ips: list = (), cpus: int = 4,
                           worker_dir: str = default_workdir):
     # ./generate_project.sh project.xml "172.17.0.3:4:/opt/COMPSs:/tmp"
     master = _get_master()
-    proj_cmd = '/generate_project.sh'
+    proj_cmd = '/opt/COMPSs/Runtime/scripts/system/xmls/generate_project.sh'
     proj_arg = curr_cfg + ' ' + ' '.join(
         ["%s:%s:%s:%s" % (ip, cpus, install_dir, worker_dir) for ip in
          ips])
@@ -116,7 +116,7 @@ def _generate_resources_cfg(curr_cfg: str = '', ips: list = (), cpus: int = 4):
 
     master = _get_master()
 
-    res_cmd = '/generate_resources.sh'
+    res_cmd = '/opt/COMPSs/Runtime/scripts/system/xmls/generate_resources.sh'
     res_arg = curr_cfg + ' ' + ' '.join(["%s:%s" % (ip, cpus) for ip in ips])
 
     cmd = "%s /resources.xml '%s'" % (res_cmd, res_arg)
@@ -144,7 +144,7 @@ def _update_cfg(master, cfg: dict, ips, cpus):
     # Generate resources.xml
     new_res_cfg = _generate_resources_cfg(cfg['resources'], ips, cpus=cpus)
 
-    exit_code, output = master.exec_run(cmd=['/cfg.sh',
+    exit_code, output = master.exec_run(cmd=['/dislib/bin/cfg.sh',
                                              cfg['working_dir'],
                                              new_res_cfg, new_proj_cfg])
 
