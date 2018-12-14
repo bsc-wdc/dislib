@@ -4,6 +4,8 @@
 root_path="$(dirname "$(readlink -f "$0")")"
 
 cd ${root_path}
+mkdir -p tests/log
+rm -f tests/log/*
 
 # Default process per worker
 export ComputingUnits=4
@@ -18,18 +20,20 @@ for test_path in $(ls ./tests/*py); do
     runcompss \
         --pythonpath=$(pwd) \
         --python_interpreter=python3 \
-        ./tests/${test_file} > >(tee -a ${test_file}.log) 2> >(tee -a ${test_file}.log >&2)
+        ./tests/${test_file} &> >(tee ./tests/log/${test_file}.log)
 
     # (1) Script fails fast (-e) so at this point testing will stop if runcompss returns 1
 
     # Check the unittest result
-    result=$(cat ${test_file}.log | egrep "OK|FAILED")
+    result=$(cat tests/log/${test_file}.log | egrep "OK|FAILED")
 
     # Print the unittest result
-    echo "[${test_file}] Test result: ${result}"
+    echo "[${test_file}] Test result: ${result}" > >(tee -a tests/log/results.log)
 
     # If the unittest fail the testing is stopped to mirror the (-e) behaviour in (1)
     if [[ $result =~ FAILED ]]; then 
         exit 1
     fi
 done
+
+cat tests/log/results.log
