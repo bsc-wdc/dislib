@@ -3,7 +3,6 @@ from pycompss.api.api import compss_wait_on
 from pycompss.api.task import task
 
 from dislib.cluster.dbscan.classes import Region
-from dislib.data import Dataset
 from dislib.utils import as_grid
 
 
