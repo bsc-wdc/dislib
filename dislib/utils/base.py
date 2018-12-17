@@ -161,8 +161,8 @@ def _merge_subsets(*subsets):
 @task(returns=3)
 def _filter(subset, idx, bins):
     filtered_samples = subset.samples
-    filtered_labels = None
-    final_ind = np.array(range(filtered_samples.shape[0]))
+    filtered_labels = np.empty(0)
+    final_ind = np.array(range(subset.samples.shape[0]))
 
     # filter vectors by checking if they lie in the given region (specified
     # by idx)
@@ -184,7 +184,7 @@ def _filter(subset, idx, bins):
 
 @task(returns=1)
 def _create_subset(samples, labels):
-    if (labels == [None]).all():
+    if labels.size == 0:
         return Subset(samples=samples)
     else:
         return Subset(samples=samples, labels=labels)
