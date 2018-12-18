@@ -5,11 +5,10 @@ MAINTAINER COMPSs Support <support-compss@bsc.es>
 # Configuration required to use the image for jenkins testing
 # =============================================================================
 
-# Install Essentials
 RUN apt-get update && \
 # Install Packages
-    apt-get install -y \
-	git  \
+    apt-get install -y --no-install-recommends \
+    git  \
     vim \
     wget \
     openssh-server \
@@ -30,19 +29,22 @@ RUN apt-get update && \
 # =============================================================================
 # Dependencies for building COMPSs
 # =============================================================================
-    apt-get update && \
 # Build dependencies
-    apt-get -y install maven && \
+    apt-get install -y --no-install-recommends maven \
 # Runtime dependencies
-    apt-get -y install openjdk-8-jdk graphviz xdg-utils && \
+    openjdk-8-jdk graphviz xdg-utils \
 # Bindings-common-dependencies
-    apt-get -y install libtool automake build-essential && \
+    libtool automake build-essential \
+# C-binding dependencies
+    libboost-all-dev libxml2-dev csh \
+# Extrae dependencies
+    libxml2 gfortran libpapi-dev papi-tools \
 # Misc. dependencies
-    apt-get -y install uuid-runtime curl bc && \
+    openmpi-bin openmpi-doc libopenmpi-dev uuid-runtime curl bc \
 # Python-binding dependencies
-    apt-get -y install python-dev python3-pip && \
-    pip3 install numpy==1.15.4 dill decorator  && \
-    pip3 install scipy==1.0.0 scikit-learn==0.19.1 pandas==0.23.1 matplotlib==2.2.3 flake8 codecov coverage psutil && \
+    python-dev python3-pip python3-setuptools && \
+    pip3 install wheel dill decorator coverage psutil numpy==1.15.4 scipy==1.0.0 \
+    scikit-learn==0.19.1 pandas==0.23.1 matplotlib==2.2.3 flake8 codecov && \
 # Configure user environment
 # =============================================================================
 # System configuration
@@ -59,7 +61,8 @@ RUN apt-get update && \
     ./submodules_get.sh && \
     ./submodules_patch.sh && \
     sudo -E /framework/builders/buildlocal -T -M -A -B -p /opt/COMPSs && \
-    rm -rf /framework /root/.m2 /root/.cache /home/jenkins/.COMPSs /tmp/*
+    rm -rf /framework /root/.m2 /root/.cache /home/jenkins/.COMPSs /tmp/* && \
+    rm -rf /var/lib/apt/lists/*
 
 ENV JAVA_HOME /usr/lib/jvm/java-8-openjdk-amd64/
 ENV PATH $PATH:/opt/COMPSs/Runtime/scripts/user:/opt/COMPSs/Bindings/c/bin:/opt/COMPSs/Runtime/scripts/utils
