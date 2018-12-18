@@ -11,12 +11,13 @@ export ComputingUnits=4
 runcompss \
     --pythonpath=$(pwd) \
     --python_interpreter=python3 \
-    ./tests/tests.py &> >(tee output.log)
+    ./tests/__main__.py &> >(tee output.log)
 
 result=$(cat output.log | egrep "OK|FAILED")
 
 echo "Tests result: ${result}"
 
 if [[ $result =~ FAILED ]]; then 
-    exit 1
-fi
+        exit 1
+    fi
+
