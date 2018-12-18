@@ -173,6 +173,17 @@ class DBSCANTest(unittest.TestCase):
         n_clusters = n_clusters[n_clusters >= 0].size
         self.assertEqual(n_clusters, 4)
 
+    def test_zero_samples(self):
+        n_samples = 2
+        x, y = make_blobs(n_samples=n_samples, n_features=2, random_state=8)
+        dbscan = DBSCAN(grid_dim=3, eps=.2, arrange_data=True, max_samples=100)
+        x = StandardScaler().fit_transform(x)
+        dataset = load_data(x=x, y=y, subset_size=300)
+        dbscan.fit(dataset)
+        n_clusters = np.unique(dbscan.labels_)
+        n_clusters = n_clusters[n_clusters >= 0].size
+        self.assertEqual(n_clusters, 0)
+
 
 def main():
     unittest.main()

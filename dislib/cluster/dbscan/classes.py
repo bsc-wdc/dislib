@@ -28,6 +28,10 @@ class Region(object):
             subsets.append(region.subset)
             n_samples += region.n_samples
 
+        if n_samples == 0:
+            self.labels = np.empty(0)
+            return
+
         # if max_samples is not defined, process all samples in a single task
         if max_samples is None:
             max_samples = n_samples
