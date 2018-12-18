@@ -20,7 +20,19 @@ class Dataset(object):
     def __len__(self):
         return len(self._subsets)
 
-    def append(self, subset):
+    def __iter__(self):
+        return self._subsets.__iter__()
+
+    def append(self, subset, n_samples=None):
+        """ Extends this Dataset with one or more Subsets.
+
+        Parameters
+        ----------
+        subset : Subset
+            Subset to add to this Dataset.
+        n_samples : int, optional (default=None)
+            Number of samples in subset.
+        """
         self._subsets.append(subset)
 
     def extend(self, *subsets):
@@ -88,8 +100,8 @@ class Dataset(object):
             minmax.append(_get_min_max(subset))
 
         minmax = compss_wait_on(minmax)
-        self._min_features = np.min(minmax, axis=0)[0]
-        self._max_features = np.max(minmax, axis=0)[1]
+        self._min_features = np.nanmin(minmax, axis=0)[0]
+        self._max_features = np.nanmax(minmax, axis=0)[1]
 
 
 class Subset(object):

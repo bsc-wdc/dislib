@@ -111,21 +111,8 @@ def _sort_data(dataset, grid_shape, bins):
     sorting = []
 
     for idx in np.ndindex(grid_shape):
-        sample_list = []
-        label_list = []
-
-        # for each partition get the vectors in a particular region
-        for set_idx, subset in enumerate(dataset):
-            indices, samples, labels = _filter(subset, idx, bins)
-            sample_list.append(samples)
-            label_list.append(labels)
-            sorting.append((set_idx, indices))
-
-        # create a new partition representing the grid region
-        all_samples = _merge_samples(*sample_list)
-        all_labels = _merge_labels(*label_list)
-        new_subset = _create_subset(all_samples, all_labels)
-        sorted_data.append(new_subset)
+        subset = _filter(idx, bins, *dataset)
+        sorted_data.append(subset)
 
     return sorted_data, sorting
 
@@ -158,28 +145,37 @@ def _merge_subsets(*subsets):
     return set0
 
 
-@task(returns=3)
-def _filter(subset, idx, bins):
-    filtered_samples = subset.samples
-    filtered_labels = None
-    final_ind = np.array(range(subset.samples.shape[0]))
+@task(returns=Subset)
+def _filter(idx, bins, *dataset):
+    filtered_samples = []
+    filtered_labels = []
 
-    # filter vectors by checking if they lie in the given region (specified
-    # by idx)
-    for col_ind in range(filtered_samples.shape[1]):
-        col = filtered_samples[:, col_ind]
-        indices = np.digitize(col, bins[col_ind]) - 1
-        mask = (indices == idx[col_ind])
-        filtered_samples = filtered_samples[mask]
-        final_ind = final_ind[mask]
+    for subset in dataset:
+        filtered_samples.append(subset.samples)
+        final_ind = np.array(range(subset.samples.shape[0]))
 
-        if filtered_samples.size == 0:
-            break
+        # filter vectors by checking if they lie in the given region (specified
+        # by idx)
+        for col_ind in range(filtered_samples[-1].shape[1]):
+            col = filtered_samples[-1][:, col_ind]
+            indices = np.digitize(col, bins[col_ind]) - 1
+            mask = (indices == idx[col_ind])
+            filtered_samples[-1] = filtered_samples[-1][mask]
+            final_ind = final_ind[mask]
+
+            if filtered_samples[-1].size == 0:
+                break
+
+        if subset.labels is not None:
+            filtered_labels.append(subset.labels[final_ind])
+
+    final_samples = np.vstack(filtered_samples)
+    final_labels = None
 
     if subset.labels is not None:
-        filtered_labels = subset.labels[final_ind]
+        final_labels = np.concatenate(filtered_labels)
 
-    return final_ind, filtered_samples, filtered_labels
+    return Subset(samples=final_samples, labels=final_labels)
 
 
 @task(returns=1)
@@ -188,13 +184,3 @@ def _create_subset(samples, labels):
         return Subset(samples=samples)
     else:
         return Subset(samples=samples, labels=labels)
-
-
-@task(returns=1)
-def _merge_samples(*samples):
-    return np.vstack(samples)
-
-
-@task(returns=1)
-def _merge_labels(*labels):
-    return np.hstack(labels)

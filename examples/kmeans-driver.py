@@ -69,7 +69,7 @@ def main():
     barrier()
     fit_time = time.time() - s_time
 
-    out = [args.kernel, args.arity, args.part_size, read_time, fit_time]
+    out = [args.clusters, args.arity, args.part_size, read_time, fit_time]
 
     print(out)
 
