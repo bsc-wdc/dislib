@@ -391,6 +391,17 @@ class DBSCANTest(unittest.TestCase):
         n_clusters = n_clusters[n_clusters >= 0].size
         self.assertEqual(n_clusters, 4)
 
+    def test_zero_samples(self):
+        n_samples = 2
+        x, y = make_blobs(n_samples=n_samples, n_features=2, random_state=8)
+        dbscan = DBSCAN(grid_dim=3, eps=.2, arrange_data=True, max_samples=100)
+        x = StandardScaler().fit_transform(x)
+        dataset = load_data(x=x, y=y, subset_size=300)
+        dbscan.fit(dataset)
+        n_clusters = np.unique(dbscan.labels_)
+        n_clusters = n_clusters[n_clusters >= 0].size
+        self.assertEqual(n_clusters, 0)
+
 
 class RFTest(unittest.TestCase):
 
@@ -408,10 +419,10 @@ class RFTest(unittest.TestCase):
             n_clusters_per_class=2,
             shuffle=True,
             random_state=0)
-        x_train = x[:len(x)//2]
-        y_train = y[:len(y)//2]
-        x_test = x[len(x)//2:]
-        y_test = y[len(y)//2:]
+        x_train = x[:len(x) // 2]
+        y_train = y[:len(y) // 2]
+        x_test = x[len(x) // 2:]
+        y_test = y[len(y) // 2:]
 
         train_ds = load_data(x=x_train, y=y_train, subset_size=300)
 
