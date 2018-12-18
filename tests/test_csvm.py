@@ -19,7 +19,7 @@ class CSVMTest(unittest.TestCase):
         gamma = 0.1
         check_convergence = True
         seed = 666
-        verbose = True
+        verbose = False
 
         csvm = CascadeSVM(cascade_arity=cascade_arity, max_iter=max_iter,
                           tol=tol, kernel=kernel, c=c, gamma=gamma,
@@ -53,7 +53,7 @@ class CSVMTest(unittest.TestCase):
         csvm = CascadeSVM(cascade_arity=3, max_iter=5,
                           tol=1e-4, kernel='linear', c=2, gamma=0.1,
                           check_convergence=True,
-                          random_state=seed, verbose=True)
+                          random_state=seed, verbose=False)
 
         csvm.fit(dataset)
 
@@ -62,7 +62,7 @@ class CSVMTest(unittest.TestCase):
         csvm = CascadeSVM(cascade_arity=3, max_iter=1,
                           tol=1e-4, kernel='linear', c=2, gamma=0.1,
                           check_convergence=False,
-                          random_state=seed, verbose=True)
+                          random_state=seed, verbose=False)
 
         csvm.fit(dataset)
         self.assertFalse(csvm.converged)
