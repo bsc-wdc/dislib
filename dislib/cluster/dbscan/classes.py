@@ -172,7 +172,11 @@ def _compute_clusters(neigh_list, min_samples):
 
 
 def _visit_neighbours(neigh_list, neighbours, visited, clusters, min_samples):
-    for neigh_idx in neighbours:
+    to_visit = list(neighbours)
+
+    while len(to_visit) > 0:
+        neigh_idx = to_visit.pop()
+
         if neigh_idx in visited:
             continue
 
@@ -180,9 +184,7 @@ def _visit_neighbours(neigh_list, neighbours, visited, clusters, min_samples):
         clusters[-1].append(neigh_idx)
 
         if neigh_list[neigh_idx].size >= min_samples:
-            new_neighbours = neigh_list[neigh_idx]
-            _visit_neighbours(neigh_list, new_neighbours, visited, clusters,
-                              min_samples)
+            to_visit.extend(neigh_list[neigh_idx])
 
 
 def _get_connected_components(transitions):

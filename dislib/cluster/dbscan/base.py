@@ -180,14 +180,17 @@ def _get_connected_components(equiv):
             continue
 
         connected.append([node])
-
         _visit_neighbours(equiv, neighbours, visited, connected)
 
     return connected
 
 
 def _visit_neighbours(equiv, neighbours, visited, connected):
-    for neighbour in neighbours:
+    to_visit = list(neighbours)
+
+    while len(to_visit) > 0:
+        neighbour = to_visit.pop()
+
         if neighbour in visited:
             continue
 
@@ -195,6 +198,4 @@ def _visit_neighbours(equiv, neighbours, visited, connected):
         connected[-1].append(neighbour)
 
         if neighbour in equiv:
-            new_neighbours = equiv[neighbour]
-
-            _visit_neighbours(equiv, new_neighbours, visited, connected)
+            to_visit.extend(equiv[neighbour])
