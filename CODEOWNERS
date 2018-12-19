@@ -1,0 +1,6 @@
+*                             @bsc-wdc/dislib
+
+/dislib/classification/csvm/  @javicid @kafkasl
+/dislib/classification/rf/    @salvisolamartinell
+/dislib/cluster/dbscan/       @javicid
+/dislib/cluster/kmeans/       @kafkasl @javicid
