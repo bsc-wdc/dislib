@@ -29,7 +29,6 @@ class DataLoadingTest(unittest.TestCase):
         self.assertTrue((read_y == y).all())
         self.assertEqual(len(data), 15)
 
-
     def test_load_data_without_labels(self):
         x, y = make_blobs(n_samples=1500)
         data = load_data(x=x, subset_size=100)
@@ -41,7 +40,6 @@ class DataLoadingTest(unittest.TestCase):
 
         self.assertTrue((read_x == x).all())
         self.assertEqual(len(data), 15)
-
 
     def test_load_libsvm_file_sparse(self):
         file_ = "tests/files/libsvm/2"
@@ -61,7 +59,6 @@ class DataLoadingTest(unittest.TestCase):
         self.assertTrue((read_y == y).all())
         self.assertEqual(len(data), 6)
 
-
     def test_load_libsvm_file_dense(self):
         file_ = "tests/files/libsvm/1"
 
@@ -80,7 +77,6 @@ class DataLoadingTest(unittest.TestCase):
         self.assertTrue((read_y == y).all())
         self.assertEqual(len(data), 4)
 
-
     def test_load_libsvm_files_sparse(self):
         dir_ = "tests/files/libsvm"
 
@@ -97,7 +93,6 @@ class DataLoadingTest(unittest.TestCase):
             self.assertTrue((subset.labels == y).all())
 
         self.assertEqual(len(data), 3)
-
 
     def test_load_libsvm_files_dense(self):
         dir_ = "tests/files/libsvm"
@@ -116,7 +111,6 @@ class DataLoadingTest(unittest.TestCase):
 
         self.assertEqual(len(data), 3)
 
-
     def test_load_csv_file(self):
         csv_file = "tests/files/csv/1"
 
@@ -132,7 +126,6 @@ class DataLoadingTest(unittest.TestCase):
         self.assertTrue((read_x == csv).all())
         self.assertEqual(len(data), 15)
         self.assertIsNone(subset.labels)
-
 
     def test_load_csv_file_labels_last(self):
         csv_file = "tests/files/csv/1"
@@ -153,7 +146,6 @@ class DataLoadingTest(unittest.TestCase):
         self.assertTrue((read_y == csv[:, -1]).all())
         self.assertEqual(len(data), 5)
 
-
     def test_load_csv_file_labels_first(self):
         csv_file = "tests/files/csv/2"
 
@@ -173,7 +165,6 @@ class DataLoadingTest(unittest.TestCase):
         self.assertTrue((read_y == csv[:, 0]).all())
         self.assertEqual(len(data), 44)
 
-
     def test_load_csv_files(self):
         csv_dir = "tests/files/csv"
 
@@ -188,7 +179,6 @@ class DataLoadingTest(unittest.TestCase):
             self.assertTrue((subset.samples == csv).all())
 
         self.assertEqual(len(data), 3)
-
 
     def test_load_csv_files_labels_last(self):
         csv_dir = "tests/files/csv"
@@ -205,7 +195,6 @@ class DataLoadingTest(unittest.TestCase):
             self.assertTrue((subset.labels == csv[:, -1]).all())
 
         self.assertEqual(len(data), 3)
-
 
     def test_load_csv_files_labels_first(self):
         csv_dir = "tests/files/csv"
