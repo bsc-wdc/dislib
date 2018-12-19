@@ -71,7 +71,7 @@ def main():
         # Create cluster objects
         # ============
         kmeans = KMeans(n_clusters=params["n_clusters"])
-        dbscan = DBSCAN(eps=params["eps"], grid_dim=1)
+        dbscan = DBSCAN(eps=params["eps"], n_regions=1)
 
         clustering_algorithms = (('K-Means', kmeans), ('DBSCAN', dbscan),)
 

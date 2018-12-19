@@ -6,7 +6,7 @@ from scipy.sparse import csr_matrix
 from sklearn.datasets import load_svmlight_file
 from sklearn.datasets import make_blobs
 
-from dislib.data import Subset
+from dislib.data import Subset, Dataset
 from dislib.data import load_csv_file
 from dislib.data import load_csv_files
 from dislib.data import load_data
@@ -29,199 +29,188 @@ class DataLoadingTest(unittest.TestCase):
         self.assertTrue((read_y == y).all())
         self.assertEqual(len(data), 15)
 
+    def test_load_data_without_labels(self):
+        x, y = make_blobs(n_samples=1500)
+        data = load_data(x=x, subset_size=100)
 
-def test_load_data_without_labels(self):
-    x, y = make_blobs(n_samples=1500)
-    data = load_data(x=x, subset_size=100)
+        read_x = np.empty((0, x.shape[1]))
 
-    read_x = np.empty((0, x.shape[1]))
+        for subset in data:
+            read_x = np.concatenate((read_x, subset.samples))
 
-    for subset in data:
-        read_x = np.concatenate((read_x, subset.samples))
+        self.assertTrue((read_x == x).all())
+        self.assertEqual(len(data), 15)
 
-    self.assertTrue((read_x == x).all())
-    self.assertEqual(len(data), 15)
+    def test_load_libsvm_file_sparse(self):
+        file_ = "tests/files/libsvm/2"
 
-
-def test_load_libsvm_file_sparse(self):
-    file_ = "tests/files/libsvm/2"
-
-    data = load_libsvm_file(file_, 10, 780)
-    data.collect()
-    x, y = load_svmlight_file(file_, n_features=780)
-
-    read_x = np.empty((0, x.shape[1]))
-    read_y = np.empty(0)
-
-    for subset in data:
-        read_x = np.concatenate((read_x, subset.samples.toarray()))
-        read_y = np.concatenate((read_y, subset.labels))
-
-    self.assertTrue((read_x == x.toarray()).all())
-    self.assertTrue((read_y == y).all())
-    self.assertEqual(len(data), 6)
-
-
-def test_load_libsvm_file_dense(self):
-    file_ = "tests/files/libsvm/1"
-
-    data = load_libsvm_file(file_, 20, 780, False)
-    data.collect()
-    x, y = load_svmlight_file(file_, n_features=780)
-
-    read_x = np.empty((0, x.shape[1]))
-    read_y = np.empty(0)
-
-    for subset in data:
-        read_x = np.concatenate((read_x, subset.samples))
-        read_y = np.concatenate((read_y, subset.labels))
-
-    self.assertTrue((read_x == x.toarray()).all())
-    self.assertTrue((read_y == y).all())
-    self.assertEqual(len(data), 4)
-
-
-def test_load_libsvm_files_sparse(self):
-    dir_ = "tests/files/libsvm"
-
-    file_list = os.listdir(dir_)
-    data = load_libsvm_files(dir_, 780)
-    data.collect()
-
-    for i, subset in enumerate(data):
-        samples = subset.samples.toarray()
-        file_ = os.path.join(dir_, file_list[i])
+        data = load_libsvm_file(file_, 10, 780)
+        data.collect()
         x, y = load_svmlight_file(file_, n_features=780)
 
-        self.assertTrue((samples == x).all())
-        self.assertTrue((subset.labels == y).all())
+        read_x = np.empty((0, x.shape[1]))
+        read_y = np.empty(0)
 
-    self.assertEqual(len(data), 3)
+        for subset in data:
+            read_x = np.concatenate((read_x, subset.samples.toarray()))
+            read_y = np.concatenate((read_y, subset.labels))
 
+        self.assertTrue((read_x == x.toarray()).all())
+        self.assertTrue((read_y == y).all())
+        self.assertEqual(len(data), 6)
 
-def test_load_libsvm_files_dense(self):
-    dir_ = "tests/files/libsvm"
+    def test_load_libsvm_file_dense(self):
+        file_ = "tests/files/libsvm/1"
 
-    file_list = os.listdir(dir_)
-    data = load_libsvm_files(dir_, 780, False)
-    data.collect()
-
-    for i, subset in enumerate(data):
-        samples = subset.samples
-        file_ = os.path.join(dir_, file_list[i])
+        data = load_libsvm_file(file_, 20, 780, False)
+        data.collect()
         x, y = load_svmlight_file(file_, n_features=780)
 
-        self.assertTrue((samples == x).all())
-        self.assertTrue((subset.labels == y).all())
+        read_x = np.empty((0, x.shape[1]))
+        read_y = np.empty(0)
 
-    self.assertEqual(len(data), 3)
+        for subset in data:
+            read_x = np.concatenate((read_x, subset.samples))
+            read_y = np.concatenate((read_y, subset.labels))
 
+        self.assertTrue((read_x == x.toarray()).all())
+        self.assertTrue((read_y == y).all())
+        self.assertEqual(len(data), 4)
 
-def test_load_csv_file(self):
-    csv_file = "tests/files/csv/1"
+    def test_load_libsvm_files_sparse(self):
+        dir_ = "tests/files/libsvm"
 
-    data = load_csv_file(csv_file, subset_size=300, n_features=122)
-    data.collect()
-    csv = np.loadtxt(csv_file, delimiter=",")
+        file_list = os.listdir(dir_)
+        data = load_libsvm_files(dir_, 780)
+        data.collect()
 
-    read_x = np.empty((0, csv.shape[1]))
+        for i, subset in enumerate(data):
+            samples = subset.samples.toarray()
+            file_ = os.path.join(dir_, file_list[i])
+            x, y = load_svmlight_file(file_, n_features=780)
 
-    for subset in data:
-        read_x = np.concatenate((read_x, subset.samples))
+            self.assertTrue((samples == x).all())
+            self.assertTrue((subset.labels == y).all())
 
-    self.assertTrue((read_x == csv).all())
-    self.assertEqual(len(data), 15)
-    self.assertIsNone(subset.labels)
+        self.assertEqual(len(data), 3)
 
+    def test_load_libsvm_files_dense(self):
+        dir_ = "tests/files/libsvm"
 
-def test_load_csv_file_labels_last(self):
-    csv_file = "tests/files/csv/1"
+        file_list = os.listdir(dir_)
+        data = load_libsvm_files(dir_, 780, False)
+        data.collect()
 
-    data = load_csv_file(csv_file, subset_size=1000, n_features=121,
-                         label_col="last")
-    data.collect()
-    csv = np.loadtxt(csv_file, delimiter=",")
+        for i, subset in enumerate(data):
+            samples = subset.samples
+            file_ = os.path.join(dir_, file_list[i])
+            x, y = load_svmlight_file(file_, n_features=780)
 
-    read_x = np.empty((0, csv.shape[1] - 1))
-    read_y = np.empty(0)
+            self.assertTrue((samples == x).all())
+            self.assertTrue((subset.labels == y).all())
 
-    for subset in data:
-        read_x = np.concatenate((read_x, subset.samples))
-        read_y = np.concatenate((read_y, subset.labels))
+        self.assertEqual(len(data), 3)
 
-    self.assertTrue((read_x == csv[:, :-1]).all())
-    self.assertTrue((read_y == csv[:, -1]).all())
-    self.assertEqual(len(data), 5)
+    def test_load_csv_file(self):
+        csv_file = "tests/files/csv/1"
 
-
-def test_load_csv_file_labels_first(self):
-    csv_file = "tests/files/csv/2"
-
-    data = load_csv_file(csv_file, subset_size=100, n_features=121,
-                         label_col="first")
-    data.collect()
-    csv = np.loadtxt(csv_file, delimiter=",")
-
-    read_x = np.empty((0, csv.shape[1] - 1))
-    read_y = np.empty(0)
-
-    for subset in data:
-        read_x = np.concatenate((read_x, subset.samples))
-        read_y = np.concatenate((read_y, subset.labels))
-
-    self.assertTrue((read_x == csv[:, 1:]).all())
-    self.assertTrue((read_y == csv[:, 0]).all())
-    self.assertEqual(len(data), 44)
-
-
-def test_load_csv_files(self):
-    csv_dir = "tests/files/csv"
-
-    file_list = os.listdir(csv_dir)
-    data = load_csv_files(csv_dir, n_features=122)
-    data.collect()
-
-    for i, subset in enumerate(data):
-        csv_file = os.path.join(csv_dir, file_list[i])
+        data = load_csv_file(csv_file, subset_size=300, n_features=122)
+        data.collect()
         csv = np.loadtxt(csv_file, delimiter=",")
 
-        self.assertTrue((subset.samples == csv).all())
+        read_x = np.empty((0, csv.shape[1]))
 
-    self.assertEqual(len(data), 3)
+        for subset in data:
+            read_x = np.concatenate((read_x, subset.samples))
 
+        self.assertTrue((read_x == csv).all())
+        self.assertEqual(len(data), 15)
+        self.assertIsNone(subset.labels)
 
-def test_load_csv_files_labels_last(self):
-    csv_dir = "tests/files/csv"
+    def test_load_csv_file_labels_last(self):
+        csv_file = "tests/files/csv/1"
 
-    file_list = os.listdir(csv_dir)
-    data = load_csv_files(csv_dir, n_features=122, label_col="last")
-    data.collect()
-
-    for i, subset in enumerate(data):
-        csv_file = os.path.join(csv_dir, file_list[i])
+        data = load_csv_file(csv_file, subset_size=1000, n_features=121,
+                             label_col="last")
+        data.collect()
         csv = np.loadtxt(csv_file, delimiter=",")
 
-        self.assertTrue((subset.samples == csv[:, :-1]).all())
-        self.assertTrue((subset.labels == csv[:, -1]).all())
+        read_x = np.empty((0, csv.shape[1] - 1))
+        read_y = np.empty(0)
 
-    self.assertEqual(len(data), 3)
+        for subset in data:
+            read_x = np.concatenate((read_x, subset.samples))
+            read_y = np.concatenate((read_y, subset.labels))
 
+        self.assertTrue((read_x == csv[:, :-1]).all())
+        self.assertTrue((read_y == csv[:, -1]).all())
+        self.assertEqual(len(data), 5)
 
-def test_load_csv_files_labels_first(self):
-    csv_dir = "tests/files/csv"
+    def test_load_csv_file_labels_first(self):
+        csv_file = "tests/files/csv/2"
 
-    file_list = os.listdir(csv_dir)
-    data = load_csv_files(csv_dir, n_features=122, label_col="first")
-    data.collect()
-
-    for i, subset in enumerate(data):
-        csv_file = os.path.join(csv_dir, file_list[i])
+        data = load_csv_file(csv_file, subset_size=100, n_features=121,
+                             label_col="first")
+        data.collect()
         csv = np.loadtxt(csv_file, delimiter=",")
 
-        self.assertTrue((subset.samples == csv[:, 1:]).all())
-        self.assertTrue((subset.labels == csv[:, 0]).all())
+        read_x = np.empty((0, csv.shape[1] - 1))
+        read_y = np.empty(0)
 
-    self.assertEqual(len(data), 3)
+        for subset in data:
+            read_x = np.concatenate((read_x, subset.samples))
+            read_y = np.concatenate((read_y, subset.labels))
+
+        self.assertTrue((read_x == csv[:, 1:]).all())
+        self.assertTrue((read_y == csv[:, 0]).all())
+        self.assertEqual(len(data), 44)
+
+    def test_load_csv_files(self):
+        csv_dir = "tests/files/csv"
+
+        file_list = os.listdir(csv_dir)
+        data = load_csv_files(csv_dir, n_features=122)
+        data.collect()
+
+        for i, subset in enumerate(data):
+            csv_file = os.path.join(csv_dir, file_list[i])
+            csv = np.loadtxt(csv_file, delimiter=",")
+
+            self.assertTrue((subset.samples == csv).all())
+
+        self.assertEqual(len(data), 3)
+
+    def test_load_csv_files_labels_last(self):
+        csv_dir = "tests/files/csv"
+
+        file_list = os.listdir(csv_dir)
+        data = load_csv_files(csv_dir, n_features=122, label_col="last")
+        data.collect()
+
+        for i, subset in enumerate(data):
+            csv_file = os.path.join(csv_dir, file_list[i])
+            csv = np.loadtxt(csv_file, delimiter=",")
+
+            self.assertTrue((subset.samples == csv[:, :-1]).all())
+            self.assertTrue((subset.labels == csv[:, -1]).all())
+
+        self.assertEqual(len(data), 3)
+
+    def test_load_csv_files_labels_first(self):
+        csv_dir = "tests/files/csv"
+
+        file_list = os.listdir(csv_dir)
+        data = load_csv_files(csv_dir, n_features=122, label_col="first")
+        data.collect()
+
+        for i, subset in enumerate(data):
+            csv_file = os.path.join(csv_dir, file_list[i])
+            csv = np.loadtxt(csv_file, delimiter=",")
+
+            self.assertTrue((subset.samples == csv[:, 1:]).all())
+            self.assertTrue((subset.labels == csv[:, 0]).all())
+
+        self.assertEqual(len(data), 3)
 
 
 class DataClassesTest(unittest.TestCase):
@@ -322,6 +311,24 @@ class DataClassesTest(unittest.TestCase):
 
         self.assertTrue((item.samples == np.array(range(10, 20))).all())
         self.assertEqual(item.labels, 4)
+
+    def test_min_max_features(self):
+        s1 = Subset(samples=np.array([[1, 2], [4, 5], [2, 2], [6, 6]]),
+                    labels=np.array([0, 1, 1, 1]))
+        s2 = Subset(samples=np.array([[7, 8], [9, 8], [0, 4]]),
+                    labels=np.array([0, 1, 1]))
+        s3 = Subset(samples=np.array([[3, 9], [0, 7], [6, 1], [0, 8]]),
+                    labels=np.array([0, 1, 1, 1]))
+        dataset = Dataset(n_features=2)
+        dataset.append(s1)
+        dataset.append(s2)
+        dataset.append(s3)
+
+        min_ = dataset.min_features()
+        max_ = dataset.max_features()
+
+        self.assertTrue(np.array_equal(min_, np.array([0, 1])))
+        self.assertTrue(np.array_equal(max_, np.array([9, 9])))
 
 
 def main():

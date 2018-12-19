@@ -3,7 +3,7 @@ from pycompss.api.api import compss_wait_on
 from pycompss.api.task import task
 
 from dislib.cluster.dbscan.classes import Region
-from dislib.data import Dataset
+from dislib.utils import as_grid
 
 
 class DBSCAN():
@@ -24,9 +24,10 @@ class DBSCAN():
         to be considered as a core point. This includes the point itself.
     arrange_data: boolean, optional (default=True)
         Whether to re-arrange input data before performing clustering.
-    grid_dim : int, optional (default=1)
+    n_regions : int, optional (default=1)
         Number of regions per dimension in which to divide the feature space.
-        The number of regions generated is equal to n_features ^ grid_dim.
+        The total number of regions generated is equal to n_regions ^
+        n_features.
     max_samples : int, optional (default=None)
         Setting max_samples to an integer results in the parallelization of
         the computation of distances inside each region of the grid. That
@@ -48,13 +49,14 @@ class DBSCAN():
         Perform DBSCAN clustering.
     """
 
-    def __init__(self, eps=0.5, min_samples=5, arrange_data=True, grid_dim=1,
+    def __init__(self, eps=0.5, min_samples=5, arrange_data=True, n_regions=1,
                  max_samples=None):
-        assert grid_dim >= 1, "Grid dimensions must be greater or equal to 1."
+        assert n_regions >= 1, \
+            "Number of regions must be greater or equal to 1."
 
         self._eps = eps
         self._min_samples = min_samples
-        self._grid_dim = grid_dim
+        self._n_regions = n_regions
         self._arrange_data = arrange_data
         self.labels_ = np.empty(0, dtype=int)
         self._subset_sizes = []
@@ -65,18 +67,18 @@ class DBSCAN():
         """ Perform DBSCAN clustering on data.
 
         If arrange_data=True, data is initially rearranged in a
-        multidimensional grid with grid_dim regions per dimension. Regions
+        multidimensional grid with n_regions regions per dimension. Regions
         are uniform in size.
 
         For example, suppose that data contains N partitions of 2-dimensional
         samples (n_features=2), where the first feature ranges from 1 to 5 and
-        the second feature ranges from 0 to 1. Then, grid_dim=10 re-arranges
+        the second feature ranges from 0 to 1. Then, n_regions=10 re-arranges
         data into 10^2=100 new partitions, where each partition contains the
         samples that lie in one region of the grid. numpy.linspace() is
         employed to divide the feature space into uniform regions.
 
         If data is already arranged in a grid, then the number of partitions
-        in data must be equal to grid_dim ^ n_features. The equivalence
+        in data must be equal to n_regions ^ n_features. The equivalence
         between partition and region index is computed using
         numpy.ravel_multi_index().
 
@@ -86,25 +88,24 @@ class DBSCAN():
             Input data.
         """
         n_features = dataset.n_features
-        grid = np.empty([self._grid_dim] * n_features, dtype=object)
-
-        min_, max_ = self._get_min_max(dataset)
-        bins, region_sizes = self._generate_bins(min_, max_, n_features)
-        self._set_subset_sizes(dataset)
 
         if self._arrange_data:
-            sorted_data = self._sort_data(dataset, grid, bins)
+            sorted_data, sorting_ind = as_grid(dataset, self._n_regions, True)
         else:
+            self._n_regions = int(np.power(len(dataset), 1 / n_features))
             sorted_data = dataset
 
+        grid = np.empty([self._n_regions] * n_features, dtype=object)
+        region_widths = self._compute_region_widths(dataset)
+
         # Create regions
-        for data_idx, region_id in enumerate(np.ndindex(grid.shape)):
-            subset = sorted_data[data_idx]
-            subset_size = compss_wait_on(_get_subset_size(subset))
+        for subset_idx, region_id in enumerate(np.ndindex(grid.shape)):
+            subset = sorted_data[subset_idx]
+            subset_size = sorted_data.subset_size(subset_idx)
             grid[region_id] = Region(region_id, subset, subset_size, self._eps)
 
         # Set region neighbours
-        distances = np.ceil(self._eps / region_sizes)
+        distances = np.ceil(self._eps / region_widths)
 
         for region_id in np.ndindex(grid.shape):
             self._add_neighbours(grid[region_id], grid, distances)
@@ -138,18 +139,8 @@ class DBSCAN():
         for labels in final_labels:
             self.labels_ = np.concatenate((self.labels_, labels))
 
-        sorting_ind = self._get_sorting_indices()
-        self.labels_ = self.labels_[np.argsort(sorting_ind)]
-
-    @staticmethod
-    def _get_min_max(dataset):
-        minmax = []
-
-        for subset in dataset:
-            minmax.append(_min_max(subset))
-
-        minmax = compss_wait_on(minmax)
-        return np.min(minmax, axis=0)[0], np.max(minmax, axis=0)[1]
+        if self._arrange_data:
+            self.labels_ = self.labels_[sorting_ind]
 
     @staticmethod
     def _add_neighbours(region, grid, distances):
@@ -162,54 +153,11 @@ class DBSCAN():
             if (d <= distances).all():
                 region.add_neighbour(grid[ind])
 
-    def _set_subset_sizes(self, dataset):
-        for subset in dataset:
-            self._subset_sizes.append(_get_subset_size(subset))
-
-        self._subset_sizes = compss_wait_on(self._subset_sizes)
-
-    def _sort_data(self, dataset, grid, bins):
-        sorted_data = Dataset(dataset.n_features)
-
-        for idx in np.ndindex(grid.shape):
-            sample_list = []
-
-            # for each partition get the vectors in a particular region
-            for set_idx, subset in enumerate(dataset):
-                indices, samples = _filter(subset, idx, bins)
-                sample_list.append(samples)
-                self._sorting.append((set_idx, indices))
-
-            # create a new partition representing the grid region
-            sorted_data.append(_create_subset(*sample_list))
-
-        return sorted_data
-
-    def _generate_bins(self, min_, max_, n_features):
-        bins = []
-        region_sizes = []
-
-        # create bins for the different regions in the grid in every dimension
-        for i in range(n_features):
-            # Add up a small delta to the max to include it in the binarization
-            delta = max_[i] / 1e8
-            bin_ = np.linspace(min_[i], max_[i] + delta, self._grid_dim + 1)
-            bins.append(bin_)
-            region_sizes.append(np.max(bin_[1:] - bin_[0:-1]))
-
-        return bins, np.array(region_sizes)
-
-    def _get_sorting_indices(self):
-        indices = []
-
-        for part_ind, vec_ind in self._sorting:
-            vec_ind = compss_wait_on(vec_ind)
-            offset = np.sum(self._subset_sizes[:part_ind])
-
-            for ind in vec_ind:
-                indices.append(ind + offset)
-
-        return np.array(indices, dtype=int)
+    def _compute_region_widths(self, dataset):
+        min_ = dataset.min_features()
+        max_ = dataset.max_features()
+        widths = (max_ - min_) / self._n_regions
+        return widths
 
 
 @task(returns=1)
@@ -250,41 +198,3 @@ def _visit_neighbours(equiv, neighbours, visited, connected):
             new_neighbours = equiv[neighbour]
 
             _visit_neighbours(equiv, new_neighbours, visited, connected)
-
-
-@task(returns=int)
-def _get_subset_size(subset):
-    return subset.samples.shape[0]
-
-
-@task(returns=1)
-def _create_subset(*samples):
-    from dislib.data import Subset
-    return Subset(np.vstack(samples))
-
-
-@task(returns=2)
-def _filter(subset, idx, bins):
-    filtered_samples = subset.samples
-    final_ind = np.array(range(filtered_samples.shape[0]))
-
-    # filter vectors by checking if they lie in the given region (specified
-    # by idx)
-    for col_ind in range(filtered_samples.shape[1]):
-        col = filtered_samples[:, col_ind]
-        indices = np.digitize(col, bins[col_ind]) - 1
-        mask = (indices == idx[col_ind])
-        filtered_samples = filtered_samples[mask]
-        final_ind = final_ind[mask]
-
-        if filtered_samples.size == 0:
-            break
-
-    return final_ind, filtered_samples
-
-
-@task(returns=np.array)
-def _min_max(subset):
-    mn = np.min(subset.samples, axis=0)
-    mx = np.max(subset.samples, axis=0)
-    return np.array([mn, mx])

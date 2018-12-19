@@ -2,6 +2,7 @@ from uuid import uuid4
 
 import numpy as np
 from pycompss.api.api import compss_wait_on
+from pycompss.api.task import task
 from scipy.sparse import issparse, vstack, csr_matrix
 
 
@@ -9,6 +10,9 @@ class Dataset(object):
     def __init__(self, n_features):
         self._subsets = list()
         self.n_features = n_features
+        self._sizes = list()
+        self._max_features = None
+        self._min_features = None
 
     def __getitem__(self, item):
         return self._subsets.__getitem__(item)
@@ -16,14 +20,89 @@ class Dataset(object):
     def __len__(self):
         return len(self._subsets)
 
-    def append(self, subset):
+    def __iter__(self):
+        return self._subsets.__iter__()
+
+    def append(self, subset, n_samples=None):
+        """ Extends this Dataset with one or more Subsets.
+
+        Parameters
+        ----------
+        subset : Subset
+            Subset to add to this Dataset.
+        n_samples : int, optional (default=None)
+            Number of samples in subset.
+        """
         self._subsets.append(subset)
+        self._sizes.append(None)
 
     def extend(self, *subsets):
         self._subsets.extend(subsets)
+        self._sizes.extend([None] * len(subsets))
+
+    def subset_size(self, index):
+        """ Returns the number of samples in the Subset referenced by index.
+        If the size is unknown, this method performs a synchronization on
+        Subset.samples.shape[0].
+
+        Parameters
+        ----------
+        index : int
+            Index of the Subset.
+
+        Returns
+        -------
+        n_samples : int
+            Number of samples.
+        """
+        if self._sizes[index] is None:
+            size = compss_wait_on(_subset_size(self._subsets[index]))
+            self._sizes[index] = size
+
+        return self._sizes[index]
+
+    def min_features(self):
+        """ Returns the minimum value of each feature in the dataset. This
+        method might compute the minimum and perform a synchronization.
+
+        Returns
+        -------
+        min_features : array, shape = [n_features,]
+            Array representing the minimum value that each feature takes in
+            the dataset.
+        """
+        if self._min_features is None:
+            self._compute_min_max()
+
+        return self._min_features
+
+    def max_features(self):
+        """ Returns the maximum value of each feature in the dataset. This
+        method might compute the maximum and perform a synchronization.
+
+        Returns
+        -------
+        max_features : array, shape = [n_features,]
+            Array representing the maximum value that each feature takes in
+            the dataset.
+        """
+        if self._max_features is None:
+            self._compute_min_max()
+
+        return self._max_features
 
     def collect(self):
         self._subsets = compss_wait_on(self._subsets)
+
+    def _compute_min_max(self):
+        minmax = []
+
+        for subset in self._subsets:
+            minmax.append(_get_min_max(subset))
+
+        minmax = compss_wait_on(minmax)
+        self._min_features = np.nanmin(minmax, axis=0)[0]
+        self._max_features = np.nanmax(minmax, axis=0)[1]
 
 
 class Subset(object):
@@ -136,3 +215,15 @@ class Subset(object):
 
         subset._ids = self._ids[item]
         return subset
+
+
+@task(returns=int)
+def _subset_size(subset):
+    return subset.samples.shape[0]
+
+
+@task(returns=np.array)
+def _get_min_max(subset):
+    mn = np.min(subset.samples, axis=0)
+    mx = np.max(subset.samples, axis=0)
+    return np.array([mn, mx])
