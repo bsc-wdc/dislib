@@ -16,7 +16,7 @@ class DBSCANTest(unittest.TestCase):
 
         # Test blobs
         x, y = make_blobs(n_samples=n_samples, n_features=2, random_state=8)
-        dbscan = DBSCAN(grid_dim=1, eps=.3)
+        dbscan = DBSCAN(n_regions=1, eps=.3)
         x = StandardScaler().fit_transform(x)
         dataset = load_data(x=x, y=y, subset_size=300)
         dbscan.fit(dataset)
@@ -29,7 +29,7 @@ class DBSCANTest(unittest.TestCase):
 
         # Test circles
         x, y = make_circles(n_samples=n_samples, factor=.5, noise=.05)
-        dbscan = DBSCAN(grid_dim=1, eps=.15)
+        dbscan = DBSCAN(n_regions=1, eps=.15)
         x = StandardScaler().fit_transform(x)
         dataset = load_data(x=x, y=y, subset_size=300)
         dbscan.fit(dataset)
@@ -42,7 +42,7 @@ class DBSCANTest(unittest.TestCase):
 
         # Test moons
         x, y = make_moons(n_samples=n_samples, noise=.05)
-        dbscan = DBSCAN(grid_dim=1, eps=.3)
+        dbscan = DBSCAN(n_regions=1, eps=.3)
         x = StandardScaler().fit_transform(x)
         dataset = load_data(x=x, y=y, subset_size=300)
         dbscan.fit(dataset)
@@ -55,7 +55,7 @@ class DBSCANTest(unittest.TestCase):
 
         # Test aniso
         x, y = make_blobs(n_samples=n_samples, random_state=170)
-        dbscan = DBSCAN(grid_dim=1, eps=.15)
+        dbscan = DBSCAN(n_regions=1, eps=.15)
         transformation = [[0.6, -0.6], [-0.4, 0.8]]
         x = np.dot(x, transformation)
         x = StandardScaler().fit_transform(x)
@@ -70,7 +70,7 @@ class DBSCANTest(unittest.TestCase):
 
         # Test blobs
         x, y = make_blobs(n_samples=n_samples, n_features=2, random_state=8)
-        dbscan = DBSCAN(grid_dim=1, eps=.3, max_samples=500)
+        dbscan = DBSCAN(n_regions=1, eps=.3, max_samples=500)
         x = StandardScaler().fit_transform(x)
         dataset = load_data(x=x, y=y, subset_size=300)
         dbscan.fit(dataset)
@@ -83,7 +83,7 @@ class DBSCANTest(unittest.TestCase):
 
         # Test circles
         x, y = make_circles(n_samples=n_samples, factor=.5, noise=.05)
-        dbscan = DBSCAN(grid_dim=1, eps=.15, max_samples=500)
+        dbscan = DBSCAN(n_regions=1, eps=.15, max_samples=500)
         x = StandardScaler().fit_transform(x)
         dataset = load_data(x=x, y=y, subset_size=300)
         dbscan.fit(dataset)
@@ -96,7 +96,7 @@ class DBSCANTest(unittest.TestCase):
 
         # Test moons
         x, y = make_moons(n_samples=n_samples, noise=.05)
-        dbscan = DBSCAN(grid_dim=1, eps=.3, max_samples=500)
+        dbscan = DBSCAN(n_regions=1, eps=.3, max_samples=500)
         x = StandardScaler().fit_transform(x)
         dataset = load_data(x=x, y=y, subset_size=300)
         dbscan.fit(dataset)
@@ -109,7 +109,7 @@ class DBSCANTest(unittest.TestCase):
 
         # Test aniso
         x, y = make_blobs(n_samples=n_samples, random_state=170)
-        dbscan = DBSCAN(grid_dim=1, eps=.15, max_samples=500)
+        dbscan = DBSCAN(n_regions=1, eps=.15, max_samples=500)
         transformation = [[0.6, -0.6], [-0.4, 0.8]]
         x = np.dot(x, transformation)
         x = StandardScaler().fit_transform(x)
@@ -124,7 +124,7 @@ class DBSCANTest(unittest.TestCase):
 
         # Test blobs
         x, y = make_blobs(n_samples=n_samples, n_features=2, random_state=8)
-        dbscan = DBSCAN(grid_dim=2, eps=.3, max_samples=300)
+        dbscan = DBSCAN(n_regions=2, eps=.3, max_samples=300)
         x = StandardScaler().fit_transform(x)
         dataset = load_data(x=x, y=y, subset_size=300)
         dbscan.fit(dataset)
@@ -137,7 +137,7 @@ class DBSCANTest(unittest.TestCase):
 
         # Test circles
         x, y = make_circles(n_samples=n_samples, factor=.5, noise=.05)
-        dbscan = DBSCAN(grid_dim=2, eps=.15, max_samples=700)
+        dbscan = DBSCAN(n_regions=2, eps=.15, max_samples=700)
         x = StandardScaler().fit_transform(x)
         dataset = load_data(x=x, y=y, subset_size=300)
         dbscan.fit(dataset)
@@ -150,7 +150,7 @@ class DBSCANTest(unittest.TestCase):
 
         # Test moons
         x, y = make_moons(n_samples=n_samples, noise=.05)
-        dbscan = DBSCAN(grid_dim=2, eps=.3, max_samples=600)
+        dbscan = DBSCAN(n_regions=2, eps=.3, max_samples=600)
         x = StandardScaler().fit_transform(x)
         dataset = load_data(x=x, y=y, subset_size=300)
         dbscan.fit(dataset)
@@ -163,7 +163,7 @@ class DBSCANTest(unittest.TestCase):
 
         # Test aniso
         x, y = make_blobs(n_samples=n_samples, random_state=170)
-        dbscan = DBSCAN(grid_dim=2, eps=.15, max_samples=500)
+        dbscan = DBSCAN(n_regions=2, eps=.15, max_samples=500)
         transformation = [[0.6, -0.6], [-0.4, 0.8]]
         x = np.dot(x, transformation)
         x = StandardScaler().fit_transform(x)
@@ -176,7 +176,8 @@ class DBSCANTest(unittest.TestCase):
     def test_zero_samples(self):
         n_samples = 2
         x, y = make_blobs(n_samples=n_samples, n_features=2, random_state=8)
-        dbscan = DBSCAN(grid_dim=3, eps=.2, arrange_data=True, max_samples=100)
+        dbscan = DBSCAN(n_regions=3, eps=.2, arrange_data=True,
+                        max_samples=100)
         x = StandardScaler().fit_transform(x)
         dataset = load_data(x=x, y=y, subset_size=300)
         dbscan.fit(dataset)

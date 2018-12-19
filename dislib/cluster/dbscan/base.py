@@ -93,6 +93,7 @@ class DBSCAN():
             sorted_data, sorting_ind = as_grid(dataset, self._n_regions, True)
         else:
             self._n_regions = int(np.power(len(dataset), 1 / n_features))
+            sorted_data = dataset
 
         grid = np.empty([self._n_regions] * n_features, dtype=object)
         region_widths = self._compute_region_widths(dataset)

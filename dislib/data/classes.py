@@ -34,6 +34,7 @@ class Dataset(object):
             Number of samples in subset.
         """
         self._subsets.append(subset)
+        self._sizes.append(None)
 
     def extend(self, *subsets):
         self._subsets.extend(subsets)

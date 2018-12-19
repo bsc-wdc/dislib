@@ -108,20 +108,23 @@ def _generate_bins(min_, max_, n_features, n_regions):
 
 def _sort_data(dataset, grid_shape, bins):
     sorted_data = Dataset(dataset.n_features)
-    sorting = []
+    sorting_list = []
 
     for idx in np.ndindex(grid_shape):
-        subset = _filter(idx, bins, *dataset)
+        subset, sorting = _filter(idx, bins, *dataset)
         sorted_data.append(subset)
+        sorting_list.append(sorting)
+
+    sorting = _merge_sorting(*sorting_list)
 
     return sorted_data, sorting
 
 
 def _get_sorting_indices(sorting, subset_sizes):
     indices = []
+    sorting = compss_wait_on(sorting)
 
     for part_ind, vec_ind in sorting:
-        vec_ind = compss_wait_on(vec_ind)
         offset = np.sum(subset_sizes[:part_ind])
 
         for ind in vec_ind:
@@ -145,12 +148,13 @@ def _merge_subsets(*subsets):
     return set0
 
 
-@task(returns=Subset)
+@task(returns=2)
 def _filter(idx, bins, *dataset):
     filtered_samples = []
     filtered_labels = []
+    sorting = []
 
-    for subset in dataset:
+    for set_idx, subset in enumerate(dataset):
         filtered_samples.append(subset.samples)
         final_ind = np.array(range(subset.samples.shape[0]))
 
@@ -169,13 +173,15 @@ def _filter(idx, bins, *dataset):
         if subset.labels is not None:
             filtered_labels.append(subset.labels[final_ind])
 
+        sorting.append((set_idx, final_ind))
+
     final_samples = np.vstack(filtered_samples)
     final_labels = None
 
     if subset.labels is not None:
         final_labels = np.concatenate(filtered_labels)
 
-    return Subset(samples=final_samples, labels=final_labels)
+    return Subset(samples=final_samples, labels=final_labels), sorting
 
 
 @task(returns=1)
@@ -184,3 +190,13 @@ def _create_subset(samples, labels):
         return Subset(samples=samples)
     else:
         return Subset(samples=samples, labels=labels)
+
+
+@task(returns=1)
+def _merge_sorting(*sorting_list):
+    sorting_final = []
+
+    for sorting in sorting_list:
+        sorting_final.extend(sorting)
+
+    return sorting_final
