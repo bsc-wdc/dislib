@@ -111,8 +111,8 @@ def _sort_data(dataset, grid_shape, bins):
     sorting_list = []
 
     for idx in np.ndindex(grid_shape):
-        subset, sorting = _filter(idx, bins, *dataset)
-        sorted_data.append(subset)
+        subset, subset_size, sorting = _filter(idx, bins, *dataset)
+        sorted_data.append(subset, subset_size)
         sorting_list.append(sorting)
 
     sorting = _merge_sorting(*sorting_list)
@@ -148,7 +148,7 @@ def _merge_subsets(*subsets):
     return set0
 
 
-@task(returns=2)
+@task(returns=3)
 def _filter(idx, bins, *dataset):
     filtered_samples = []
     filtered_labels = []
@@ -181,7 +181,9 @@ def _filter(idx, bins, *dataset):
     if subset.labels is not None:
         final_labels = np.concatenate(filtered_labels)
 
-    return Subset(samples=final_samples, labels=final_labels), sorting
+    filtered_subset = Subset(samples=final_samples, labels=final_labels)
+
+    return filtered_subset, final_samples.shape[0], sorting
 
 
 @task(returns=1)

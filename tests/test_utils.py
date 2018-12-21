@@ -107,3 +107,19 @@ class UtilsTest(unittest.TestCase):
 
         self.assertTrue(np.array_equal(all_samples, true_samples))
         self.assertTrue(np.array_equal(all_labels, true_labels))
+
+    def test_as_grid_sizes(self):
+        """
+        Tests whether as_grid correctly sets subset sizes, and that sizes
+        can be properly retrieved later by calling Dataset.subset_size,
+        which involves a synchronization.
+        """
+        s1 = Subset(samples=np.array([[1, 1], [8, 8], [2, 5]]))
+        s2 = Subset(samples=np.array([[1, 7], [4, 4], [5, 9]]))
+        s3 = Subset(samples=np.array([[4, 0], [8, 1], [7, 4]]))
+
+        dataset = Dataset(n_features=2)
+        dataset.extend(s1, s2, s3)
+        sort = as_grid(dataset, n_regions=3)
+
+        self.assertEqual(sort.subset_size(0), 1)

@@ -34,7 +34,7 @@ class Dataset(object):
             Number of samples in subset.
         """
         self._subsets.append(subset)
-        self._sizes.append(None)
+        self._sizes.append(n_samples)
 
     def extend(self, *subsets):
         self._subsets.extend(subsets)
@@ -58,6 +58,8 @@ class Dataset(object):
         if self._sizes[index] is None:
             size = compss_wait_on(_subset_size(self._subsets[index]))
             self._sizes[index] = size
+        elif type(self._sizes[index]) != int:
+            self._sizes = compss_wait_on(self._sizes)
 
         return self._sizes[index]
 
