@@ -1,6 +1,7 @@
 import warnings
 
 import numpy as np
+from numpy.random.mtrand import RandomState
 from pycompss.api.api import compss_wait_on
 from scipy import linalg
 from sklearn.utils import validation
@@ -379,7 +380,7 @@ class GaussianMixture:
             (n_features, n_features)               if 'tied',
             (n_components, n_features)             if 'diag',
             (n_components, n_features, n_features) if 'full'
-    random_state : int, RandomState instance or None, optional (default=None)
+    random_state : int, RandomState or None, optional (default=None)
         If int, random_state is the seed used by the random number generator;
         If RandomState instance, random_state is the random number generator;
         If None, the random number generator is the RandomState instance used
@@ -665,9 +666,12 @@ class GaussianMixture:
             for labeled_subset in dataset:
                 resp.append(_resp_subset(labeled_subset, n_components))
         elif self.init_params == 'random':
-            for subset in dataset:
+            chunks = len(dataset)
+            seeds = random_state.randint(np.iinfo(np.int32).max, size=chunks)
+            for i in range(chunks):
+                subset = dataset[i]
                 resp.append(_random_resp_subset(subset, n_components,
-                                                random_state))
+                                                seeds[i]))
         else:
             raise ValueError("Unimplemented initialization method '%s'"
                              % self.init_params)
@@ -705,8 +709,8 @@ def _resp_subset(labeled_subset, n_components):
 
 
 @task(returns=1)
-def _random_resp_subset(subset, n_components, random_state):
+def _random_resp_subset(subset, n_components, seed):
     n_samples = len(subset.samples)
-    resp_chunk = random_state.rand(n_samples, n_components)
+    resp_chunk = RandomState(seed).rand(n_samples, n_components)
     resp_chunk /= resp_chunk.sum(axis=1)[:, np.newaxis]
     return Subset(resp_chunk)
