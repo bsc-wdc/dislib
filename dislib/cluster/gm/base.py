@@ -53,9 +53,9 @@ def _estimate_parameters_subset(subset, resp):
 @task(returns=3)
 def _merge_estimate_parameters(*subsets_params):
     n_samples = sum(params[0] for params in subsets_params)
-    nk = np.sum(params[1] for params in subsets_params)
+    nk = sum(params[1] for params in subsets_params)
     nk += 10 * np.finfo(nk.dtype).eps
-    means = np.sum(params[2] for params in subsets_params) / nk[:, np.newaxis]
+    means = sum(params[2] for params in subsets_params) / nk[:, np.newaxis]
     weights = nk / n_samples
     return weights, nk, means
 
@@ -116,7 +116,7 @@ def _estimate_covariances_full(resp, subset, means):
 
 @task(returns=2)
 def _merge_covariances_full(covariance_type, reg_covar, nk, *subsets_covs):
-    covariances = np.sum(cov for cov in subsets_covs)
+    covariances = sum(cov for cov in subsets_covs)
     n_components, n_features, _ = covariances.shape
     for k in range(n_components):
         covariances[k] /= nk[k]
