@@ -109,6 +109,34 @@ class GaussianMixtureTest(unittest.TestCase):
         accuracy = np.count_nonzero(labels == y_real) / len(labels)
         self.assertGreater(accuracy, 0.99)
 
+    def test_check_n_components(self):
+        x = np.array([[0, 0], [0, 1], [1, 0]])
+        dataset = load_data(x, subset_size=10)
+        with self.assertRaises(ValueError):
+            gm = GaussianMixture(n_components=0)
+            gm.fit(dataset)
+
+    def test_check_tol(self):
+        x = np.array([[0, 0], [0, 1], [1, 0]])
+        dataset = load_data(x, subset_size=10)
+        with self.assertRaises(ValueError):
+            gm = GaussianMixture(tol=-0.1)
+            gm.fit(dataset)
+
+    def test_check_reg_covar(self):
+        x = np.array([[0, 0], [0, 1], [1, 0]])
+        dataset = load_data(x, subset_size=10)
+        with self.assertRaises(ValueError):
+            gm = GaussianMixture(reg_covar=-0.1)
+            gm.fit(dataset)
+
+    def test_check_covariance_type(self):
+        x = np.array([[0, 0], [0, 1], [1, 0]])
+        dataset = load_data(x, subset_size=10)
+        with self.assertRaises(ValueError):
+            gm = GaussianMixture(covariance_type='')
+            gm.fit(dataset)
+
 
 def main():
     unittest.main()

@@ -660,7 +660,7 @@ class GaussianMixture:
         n_components = self.n_components
         resp = Dataset(n_components)
         if self.init_params == 'kmeans':
-            seed = random_state.randint(0, 1e8)
+            seed = random_state.randint(0, int(1e8))
             kmeans = KMeans(n_clusters=n_components, random_state=seed)
             kmeans.fit(dataset)
             for labeled_subset in dataset:
