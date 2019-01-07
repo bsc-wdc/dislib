@@ -28,7 +28,7 @@ and Distributed Computing <https://www.bsc
 
 
 Contents
-========
+--------
 
 * :doc:`API Reference <api-reference>`
 
