@@ -126,10 +126,10 @@ html_theme = 'scipy'
 # further.  For a list of options available for each theme, see the
 # documentation.
 html_theme_options = {
-        "edit_link": False,
-        "sidebar": "right",
-        "scipy_org_logo": False,
-        "rootlinks": []
+    "edit_link": False,
+    "sidebar": "right",
+    "scipy_org_logo": False,
+    "rootlinks": []
 }
 
 # Add any paths that contain custom themes here, relative to this directory.
@@ -172,15 +172,16 @@ html_static_path = ['_static']
 
 # Custom sidebar templates, maps document names to template names.
 # html_sidebars = {}
-#html_sidebars = {
+# html_sidebars = {
 #    '**': [
 #        'about.html',
 #        'navigation.html',
-#        'relations.html',  # needs 'show_related': True theme option to display
+#        'relations.html',  # needs 'show_related': True theme option to
+#        display
 #        'searchbox.html',
 #        'donate.html',
 #    ]
-#}
+# }
 
 # Additional templates that should be rendered to pages, maps page names to
 # template names.
@@ -290,6 +291,9 @@ man_pages = [
 
 # -- Source code links --------------------------------------------------
 
+import inspect
+
+
 def linkcode_resolve(domain, info):
     """
     Determine the URL corresponding to Python object
@@ -337,10 +341,11 @@ def linkcode_resolve(domain, info):
     else:
         linespec = ""
 
-    fn = relpath(fn, start=dirname(numpy.__file__))    
-    
-    return "http://github.com/bsc-wdc/dislib/blob/master/dislib/%s%s" 
-    % (fn, linespec)
+    # fn = relpath(fn, start=dirname(numpy.__file__))
+
+    return "http://github.com/bsc-wdc/dislib/blob/master/dislib/%s%s" \
+           % (fn, linespec)
+
 
 # -- Options for Texinfo output -------------------------------------------
 
