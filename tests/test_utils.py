@@ -8,6 +8,10 @@ from dislib.utils import as_grid, shuffle
 
 class UtilsTest(unittest.TestCase):
     def test_shuffle(self):
+        """ Tests that the content of the subsets of a dataset changes after
+        running shuffle, and that the sizes of the original and shuffled
+        datasets are equal.
+        """
         s1 = Subset(samples=np.array([[1, 2], [4, 5], [2, 2], [6, 6]]),
                     labels=np.array([0, 1, 1, 1]))
         s2 = Subset(samples=np.array([[7, 8], [9, 8], [0, 4]]),
@@ -32,6 +36,7 @@ class UtilsTest(unittest.TestCase):
         self.assertEqual(total_size, 9)
 
     def test_as_grid(self):
+        """ Tests the as_grid method with toy data."""
         s1 = Subset(samples=np.array([[1, 1], [8, 8], [2, 5]]))
         s2 = Subset(samples=np.array([[1, 7], [4, 4], [5, 9]]))
         s3 = Subset(samples=np.array([[4, 0], [8, 1], [7, 4]]))
@@ -61,6 +66,8 @@ class UtilsTest(unittest.TestCase):
         self.assertTrue(np.array_equal(all_samples, true_samples))
 
     def test_as_grid_indices(self):
+        """ Tests that as_grid returns correct indices with toy data.
+        """
         s1 = Subset(samples=np.array([[1, 1], [8, 8], [2, 5]]))
         s2 = Subset(samples=np.array([[1, 7], [4, 4], [5, 9]]))
         s3 = Subset(samples=np.array([[4, 0], [8, 1], [7, 4]]))
@@ -73,6 +80,8 @@ class UtilsTest(unittest.TestCase):
         self.assertTrue(np.array_equal(indices, true_indices))
 
     def test_as_grid_labels(self):
+        """ Tests as_grid method with a labeled toy dataset.
+        """
         s1 = Subset(samples=np.array([[1, 1], [8, 8], [2, 5]]),
                     labels=np.array([1, 2, 3]))
         s2 = Subset(samples=np.array([[1, 7], [4, 4], [5, 9]]),
