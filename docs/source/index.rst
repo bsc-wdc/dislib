@@ -26,10 +26,11 @@ and Distributed Computing <https://www.bsc
 -computing>`_ group of the `Barcelona Supercomputing Center <http://www.bsc
 .es>`_.
 
-:doc:`API <api-reference>`
---------------------------
 
-The complete API reference.
+Contents
+========
+
+* :doc:`API Reference <api-reference>`
 
 
 Indices and tables
