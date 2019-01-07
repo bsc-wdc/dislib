@@ -301,8 +301,6 @@ def linkcode_resolve(domain, info):
     if domain != 'py':
         return None
 
-    print(info)
-    
     modname = info['module']
     fullname = info['fullname']
 
