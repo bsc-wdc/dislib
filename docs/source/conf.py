@@ -341,10 +341,8 @@ def linkcode_resolve(domain, info):
     else:
         linespec = ""
 
-    # fn = relpath(fn, start=dirname(numpy.__file__))
-
     return "http://github.com/bsc-wdc/dislib/blob/master/dislib/%s%s" \
-           % (fn, linespec)
+           % (fullname.replace(".", "/"), linespec)
 
 
 # -- Options for Texinfo output -------------------------------------------
