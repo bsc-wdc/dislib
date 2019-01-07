@@ -67,12 +67,13 @@ class CascadeSVM(object):
     References
     ----------
 
-    .. [1] Graf, H. P., Cosatto, E., Bottou, L., Dourdanovic, I., & Vapnik,
-    V. (2005). Parallel support vector machines: The cascade svm. In
-    Advances in neural information processing systems (pp. 521-528).
+    .. [1] Graf, H. P., Cosatto, E., Bottou, L., Dourdanovic, I., & Vapnik, V.
+        (2005). Parallel support vector machines: The cascade svm. In Advances
+        in neural information processing systems (pp. 521-528).
 
-    .. [2] Sklearn SVM classifier:
-    http://scikit-learn.org/stable/modules/generated/sklearn.svm.SVC.html
+    .. [2] `Scikit-learn SVC classifier
+    <http://scikit-learn.org/stable/modules/generated/sklearn.svm.SVC.html>`_:
+
     """
     _name_to_kernel = {"linear": "_linear_kernel", "rbf": "_rbf_kernel"}
 
