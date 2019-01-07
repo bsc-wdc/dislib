@@ -71,9 +71,8 @@ class CascadeSVM(object):
         (2005). Parallel support vector machines: The cascade svm. In Advances
         in neural information processing systems (pp. 521-528).
 
-    .. [2] `Scikit-learn SVC classifier
-        <http://scikit-learn.org/stable/modules/generated/sklearn.svm.SVC.html>
-        `_:
+    .. [2] `Scikit-learn SVC classifier <http://scikit-learn.org/stable/
+        modules/generated/sklearn.svm.SVC.html>`_:
 
     """
     _name_to_kernel = {"linear": "_linear_kernel", "rbf": "_rbf_kernel"}
