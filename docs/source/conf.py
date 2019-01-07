@@ -229,6 +229,8 @@ html_static_path = ['_static']
 # Output file base name for HTML help builder.
 htmlhelp_basename = 'dislibdoc'
 
+html_copy_source = False
+
 # -- Options for LaTeX output ---------------------------------------------
 
 latex_elements = {
