@@ -125,7 +125,12 @@ html_theme = 'scipy'
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
-# html_theme_options = {}
+html_theme_options = {
+        "edit_link": False,
+        "sidebar": "left",
+        "scipy_org_logo": False,
+        "rootlinks": []
+}
 
 # Add any paths that contain custom themes here, relative to this directory.
 html_theme_path = [os.path.join(os.pardir, 'scipy-sphinx-theme', '_theme')]
@@ -167,15 +172,15 @@ html_static_path = ['_static']
 
 # Custom sidebar templates, maps document names to template names.
 # html_sidebars = {}
-html_sidebars = {
-    '**': [
-        'about.html',
-        'navigation.html',
-        'relations.html',  # needs 'show_related': True theme option to display
-        'searchbox.html',
-        'donate.html',
-    ]
-}
+#html_sidebars = {
+#    '**': [
+#        'about.html',
+#        'navigation.html',
+#        'relations.html',  # needs 'show_related': True theme option to display
+#        'searchbox.html',
+#        'donate.html',
+#    ]
+#}
 
 # Additional templates that should be rendered to pages, maps page names to
 # template names.
