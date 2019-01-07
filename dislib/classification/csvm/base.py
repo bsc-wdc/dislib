@@ -72,7 +72,8 @@ class CascadeSVM(object):
         in neural information processing systems (pp. 521-528).
 
     .. [2] `Scikit-learn SVC classifier
-        <http://scikit-learn.org/stable/modules/generated/sklearn.svm.SVC.html>`_:
+        <http://scikit-learn.org/stable/modules/generated/sklearn.svm.SVC.html>
+        `_:
 
     """
     _name_to_kernel = {"linear": "_linear_kernel", "rbf": "_rbf_kernel"}
