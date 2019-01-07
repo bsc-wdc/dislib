@@ -341,8 +341,8 @@ def linkcode_resolve(domain, info):
     else:
         linespec = ""
 
-    return "http://github.com/bsc-wdc/dislib/blob/master/dislib/%s%s" \
-           % (fullname.replace(".", "/"), linespec)
+    return "http://github.com/bsc-wdc/dislib/blob/master/dislib/%s%s%s" \
+           % (modname.replace(".", "/"), fullname.replace(".", "/"), linespec)
 
 
 # -- Options for Texinfo output -------------------------------------------
