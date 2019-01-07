@@ -32,7 +32,7 @@ sys.path.insert(0, os.path.abspath('../../'))
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.intersphinx',
-    'sphinx.ext.viewcode',
+    'sphinx.ext.linkcode',
     'sphinx.ext.napoleon',
     'sphinx.ext.autosummary',
 ]
@@ -288,6 +288,59 @@ man_pages = [
 # If true, show URL addresses after external links.
 # man_show_urls = False
 
+# -- Source code links --------------------------------------------------
+
+def linkcode_resolve(domain, info):
+    """
+    Determine the URL corresponding to Python object
+    """
+    if domain != 'py':
+        return None
+
+    modname = info['module']
+    fullname = info['fullname']
+
+    submod = sys.modules.get(modname)
+    if submod is None:
+        return None
+
+    obj = submod
+    for part in fullname.split('.'):
+        try:
+            obj = getattr(obj, part)
+        except Exception:
+            return None
+
+    # strip decorators, which would resolve to the source of the decorator
+    # possibly an upstream bug in getsourcefile, bpo-1764286
+    try:
+        unwrap = inspect.unwrap
+    except AttributeError:
+        pass
+    else:
+        obj = unwrap(obj)
+
+    try:
+        fn = inspect.getsourcefile(obj)
+    except Exception:
+        fn = None
+    if not fn:
+        return None
+
+    try:
+        source, lineno = inspect.getsourcelines(obj)
+    except Exception:
+        lineno = None
+
+    if lineno:
+        linespec = "#L%d-L%d" % (lineno, lineno + len(source) - 1)
+    else:
+        linespec = ""
+
+    fn = relpath(fn, start=dirname(numpy.__file__))    
+    
+    return "http://github.com/bsc-wdc/dislib/blob/master/dislib/%s%s" 
+            % (fn, linespec)
 
 # -- Options for Texinfo output -------------------------------------------
 
