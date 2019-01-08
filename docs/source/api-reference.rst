@@ -1,8 +1,8 @@
 API Reference
 =============
 
-:mod:`dislib.data <dislib.data.base>`: Data handling utilities
---------------------------------------------------------------
+dislib.data: Data handling utilities
+------------------------------------
 
 Classes
 .......
@@ -25,16 +25,16 @@ Functions
 :meth:`data.load_libsvm_files <dislib.data.base.load_csv_files>`
 
 
-:mod:`dislib.utils <dislib.utils>`: Other utility functions
------------------------------------------------------------
+dislib.utils: Other utility functions
+-------------------------------------
 
 :meth:`utils.as_grid <dislib.utils.base.as_grid>`
 
 :meth:`utils.shuffle <dislib.utils.base.shuffle>`
 
 
-:mod:`dislib.cluster<dislib.cluster>`: Clustering
--------------------------------------------------
+dislib.cluster: Clustering
+--------------------------
 
 Classes
 .......
@@ -46,16 +46,15 @@ Classes
 :class:`cluster.KMedoids <dislib.cluster.kmedoids.base.KMedoids>`
 
 
-:mod:`dislib.classification <dislib.classification>`: Classification
---------------------------------------------------------------------
+dislib.classification: Classification
+-------------------------------------
 
 Classes
 .......
 
 :class:`classification.CascadeSVM <dislib.classification.csvm.base.CascadeSVM>`
 
-:class:`classification.RandomForestClassifier
-    <dislib.classification.rf.forest.RandomForestClassifier>`
+:class:`classification.RandomForestClassifier <dislib.classification.rf.forest.RandomForestClassifier>`
 
 
 Other functions
