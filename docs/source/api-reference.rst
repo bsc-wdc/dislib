@@ -7,8 +7,8 @@ dislib.data: Data handling utilities
 Classes
 .......
 
-:doc:`data.Dataset <dislib.data.dataset>` |
-:doc:`data.Subset <dislib.data.subset>` |
+:doc:`data.Dataset <dislib.data.dataset>`
+| :doc:`data.Subset <dislib.data.subset>`
 
 Functions
 .........
