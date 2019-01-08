@@ -8,13 +8,16 @@ Classes
 .......
 
 :doc:`data.Dataset <dislib.data.dataset>`
-| :doc:`data.Subset <dislib.data.subset>`
+
+:doc:`data.Subset <dislib.data.subset>`
 
 Functions
 .........
 
 :doc:`data.load_data <dislib.data.load_data>`
+
 :doc:`data.load_libsvm_file <dislib.data.load_libsvm_file>`
+
 :doc:`data.load_libsvm_files <dislib.data.load_libsvm_files>`
 :doc:`data.load_libsvm_file <dislib.data.load_csv_file>`
 :doc:`data.load_libsvm_files <dislib.data.load_csv_files>`
