@@ -7,30 +7,34 @@ dislib.data: Data handling utilities
 Classes
 .......
 
+:doc:`data.Dataset <dislib.data.dataset>`
+:doc:`data.Subset <dislib.data.subset>`
+
+Functions
+.........
+
+:doc:`data.load_data <dislib.data.load_data>`
+:doc:`data.load_libsvm_file <dislib.data.load_libsvm_file>`
+:doc:`data.load_libsvm_files <dislib.data.load_libsvm_files>`
+:doc:`data.load_libsvm_file <dislib.data.load_csv_file>`
+:doc:`data.load_libsvm_files <dislib.data.load_csv_files>`
 
 
-.. automodule:: dislib.data
-    :members:
-    :undoc-members:
-    :show-inheritance:
+dislib.utils: Other utility functions
+-------------------------------------
 
-
-dislib.utils: Other utility methods
------------------------------------
-
-.. automodule:: dislib.utils
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
+:doc:`utils.as_grid <dislib.utils.as_grid>`
+:doc:`utils.shuffle <dislib.utils.shuffle>`
 
 dislib.cluster: Clustering
 --------------------------
 
-.. automodule:: dislib.cluster
-    :members:
-    :undoc-members:
-    :show-inheritance:
+Classes
+.......
+
+:doc:`cluster.DBSCAN <dislib.cluster.dbscan>`
+:doc:`cluster.KMeans <dislib.cluster.kmeans>`
+:doc:`cluster.KMedoids <dislib.cluster.kmedoids>`
 
 
 dislib.classification: Classification
@@ -39,14 +43,10 @@ dislib.classification: Classification
 Classes
 .......
 
-:doc:`classification.CascadeSVM <dislib.classification.csvm.base>`
+:doc:`classification.CascadeSVM <dislib.classification.csvm>`
+:doc:`classification.RandomForestClassifier <dislib.classification.rf>`
 
 
-Others
-------
-
-.. automodule:: dislib.fft
-    :members:
-    :undoc-members:
-    :show-inheritance:
+Other functions
+---------------
 
