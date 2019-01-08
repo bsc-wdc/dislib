@@ -1,8 +1,8 @@
 API Reference
 =============
 
-:mod:`dislib.data <dislib.data>`: Data handling utilities
----------------------------------------------------------
+:mod:`dislib.data <dislib.data.base>`: Data handling utilities
+--------------------------------------------------------------
 
 Classes
 .......
@@ -54,7 +54,8 @@ Classes
 
 :class:`classification.CascadeSVM <dislib.classification.csvm.base.CascadeSVM>`
 
-:class:`classification.RandomForestClassifier <dislib.classification.rf.forest.RandomForestClassifier>`
+:class:`classification.RandomForestClassifier
+    <dislib.classification.rf.forest.RandomForestClassifier>`
 
 
 Other functions
