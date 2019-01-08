@@ -7,9 +7,9 @@ dislib.data: Data handling utilities
 Classes
 .......
 
-:class:`data.Dataset <dislib.data.base.Dataset>`
+:class:`data.Dataset <dislib.data.classes.Dataset>`
 
-:class:`data.Subset <dislib.data.base.Subset>`
+:class:`data.Subset <dislib.data.classes.Subset>`
 
 Functions
 .........
@@ -55,7 +55,7 @@ Classes
 :class:`classification.CascadeSVM <dislib.classification.csvm.base.CascadeSVM>`
 
 :class:`classification.RandomForestClassifier <dislib.classification.rf.base
-.RandomForestClassifier>`
+        .RandomForestClassifier>`
 
 
 Other functions
