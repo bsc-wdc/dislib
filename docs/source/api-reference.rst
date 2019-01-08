@@ -42,7 +42,7 @@ dislib.utils: Other utility functions
 :meth:`utils.as_grid <dislib.utils.base.as_grid>` - Re-organizes samples in a
 :class:`Dataset <dislib.data.classes.Dataset>`
 in a hyper-dimensional grid, where each
-:class:`Dataset <dislib.data.classes.Subset>` represents a region in this space.
+:class:`Subset <dislib.data.classes.Subset>` represents a region in this space.
 
 :meth:`utils.shuffle <dislib.utils.base.shuffle>` - Randomly shuffles the
 samples in a :class:`Dataset <dislib.data.classes.Dataset>`.
@@ -58,7 +58,7 @@ Classes
 clustering.
 
 :class:`cluster.KMeans <dislib.cluster.kmeans.base.KMeans>` - Perform K-Means
- clustering.
+clustering.
 
 :class:`cluster.KMedoids <dislib.cluster.kmedoids.base.KMedoids>` - Perform
 K-Medoids clustering.
