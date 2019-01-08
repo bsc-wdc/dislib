@@ -14,9 +14,6 @@ Subpackages
     dislib.data
     dislib.fft
 
-Module contents
----------------
-
 .. automodule:: dislib
     :members:
     :undoc-members:
