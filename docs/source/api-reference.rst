@@ -14,7 +14,7 @@ Classes
 Functions
 .........
 
-:meth:`data.load_data <dislib.data.load_data>`
+:meth:`data.load_data <dislib.data.base.load_data>`
 
 :doc:`data.load_libsvm_file <dislib.data.load_libsvm_file>`
 
@@ -35,7 +35,7 @@ dislib.cluster: Clustering
 Classes
 .......
 
-:doc:`cluster.DBSCAN <dislib.cluster.dbscan>`
+:class:`cluster.DBSCAN <dislib.cluster.dbscan.base.DBSCAN>`
 :doc:`cluster.KMeans <dislib.cluster.kmeans>`
 :doc:`cluster.KMedoids <dislib.cluster.kmedoids>`
 
