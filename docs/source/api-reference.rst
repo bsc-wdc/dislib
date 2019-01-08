@@ -1,7 +1,7 @@
 API Reference
 =============
 
-.. automodule:: dislib
+.. automodule:: dislib.cluster
     :members:
     :undoc-members:
     :show-inheritance:
