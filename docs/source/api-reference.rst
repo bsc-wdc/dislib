@@ -54,8 +54,7 @@ Classes
 
 :class:`classification.CascadeSVM <dislib.classification.csvm.base.CascadeSVM>`
 
-:class:`classification.RandomForestClassifier <dislib.classification.rf.forest
-.RandomForestClassifier>`
+:class:`classification.RandomForestClassifier <dislib.classification.rf.forest.RandomForestClassifier>`
 
 
 Other functions
