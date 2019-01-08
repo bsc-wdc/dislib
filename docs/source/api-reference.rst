@@ -7,27 +7,31 @@ dislib.data: Data handling utilities
 Classes
 .......
 
-:doc:`data.Dataset <dislib.data.dataset>`
+:class:`data.Dataset <dislib.data.base.Dataset>`
 
-:doc:`data.Subset <dislib.data.subset>`
+:class:`data.Subset <dislib.data.base.Subset>`
 
 Functions
 .........
 
 :meth:`data.load_data <dislib.data.base.load_data>`
 
-:doc:`data.load_libsvm_file <dislib.data.load_libsvm_file>`
+:meth:`data.load_libsvm_file <dislib.data.base.load_libsvm_file>`
 
-:doc:`data.load_libsvm_files <dislib.data.load_libsvm_files>`
-:doc:`data.load_libsvm_file <dislib.data.load_csv_file>`
-:doc:`data.load_libsvm_files <dislib.data.load_csv_files>`
+:meth:`data.load_libsvm_files <dislib.data.base.load_libsvm_files>`
+
+:meth:`data.load_libsvm_file <dislib.data.base.load_csv_file>`
+
+:meth:`data.load_libsvm_files <dislib.data.base.load_csv_files>`
 
 
 dislib.utils: Other utility functions
 -------------------------------------
 
-:doc:`utils.as_grid <dislib.utils.as_grid>`
-:doc:`utils.shuffle <dislib.utils.shuffle>`
+:meth:`utils.as_grid <dislib.utils.base.as_grid>`
+
+:meth:`utils.shuffle <dislib.utils.base.shuffle>`
+
 
 dislib.cluster: Clustering
 --------------------------
@@ -36,8 +40,10 @@ Classes
 .......
 
 :class:`cluster.DBSCAN <dislib.cluster.dbscan.base.DBSCAN>`
-:doc:`cluster.KMeans <dislib.cluster.kmeans>`
-:doc:`cluster.KMedoids <dislib.cluster.kmedoids>`
+
+:class:`cluster.KMeans <dislib.cluster.kmeans.base.KMeans>`
+
+:class:`cluster.KMedoids <dislib.cluster.kmedoids.base.KMedoids>`
 
 
 dislib.classification: Classification
@@ -46,10 +52,15 @@ dislib.classification: Classification
 Classes
 .......
 
-:doc:`classification.CascadeSVM <dislib.classification.csvm>`
-:doc:`classification.RandomForestClassifier <dislib.classification.rf>`
+:class:`classification.CascadeSVM <dislib.classification.csvm.base.CascadeSVM>`
+
+:class:`classification.RandomForestClassifier <dislib.classification.rf.base
+.RandomForestClassifier>`
 
 
 Other functions
 ---------------
+
+:meth:`fft <dislib.fft.base.fft>`
+
 
