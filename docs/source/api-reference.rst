@@ -7,11 +7,11 @@ dislib.data: Data handling utilities
 Classes
 .......
 
-:class:`data.Dataset <dislib.data.classes.Dataset>`     Main data structure for
+:class:`data.Dataset <dislib.data.classes.Dataset>` - Main data structure for
 handling distributed datasets. Dataset works as a list of Subset.
 
-:class:`data.Subset <dislib.data.classes.Subset>`       Collection of samples
-and (optionally) labels.
+:class:`data.Subset <dislib.data.classes.Subset>` - Collection of samples and
+(optionally) labels.
 
 
 Functions
