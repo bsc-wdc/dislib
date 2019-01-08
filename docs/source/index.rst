@@ -1,8 +1,3 @@
-.. dislib documentation master file, created by
-sphinx-quickstart on Thu Nov 22 18:44:04 2018.
-You can adapt this file completely to your liking, but it should at least
-contain the root `toctree` directive.
-
 Documentation of dislib 0.1
 ===========================
 
@@ -30,7 +25,21 @@ and Distributed Computing <https://www.bsc
 Contents
 --------
 
+* :doc:`Quickstart <quickstart>`
 * :doc:`API Reference <api-reference>`
+* :doc:`FAQ <faq>`
+
+Source code
+-----------
+
+The source code of dislib is available online at `Github <https://github
+.com/bsc-wdc/dislib`_.
+
+Support
+-------
+
+You can send us an e-mail to `support-compss@bsc.es
+<mailto:support-compss@bsc.es>`_
 
 
 Indices and tables
