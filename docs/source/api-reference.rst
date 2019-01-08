@@ -1,7 +1,7 @@
 API Reference
 =============
 
-:mod:`dislib.data <dislib.data>`: Data handling utilities
+:mod:`dislib.data <dislib.data>`_: Data handling utilities
 ---------------------------------------------------------
 
 Classes
