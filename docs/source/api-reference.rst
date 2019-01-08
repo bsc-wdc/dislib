@@ -14,7 +14,7 @@ Classes
 Functions
 .........
 
-:doc:`data.load_data <dislib.data.load_data>`
+:meth:`data.load_data <dislib.data.load_data>`
 
 :doc:`data.load_libsvm_file <dislib.data.load_libsvm_file>`
 
