@@ -1,8 +1,5 @@
-cluster.kmedoids package
-========================
-
-dislib.cluster.kmedoids module
------------------------------------
+KMedoids
+========
 
 .. automodule:: dislib.cluster.kmedoids.base
     :members:

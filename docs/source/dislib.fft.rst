@@ -1,8 +1,5 @@
-fft package
-==================
-
-dislib.fft module
-----------------------
+Other functions
+===============
 
 .. automodule:: dislib.fft.base
     :members:
