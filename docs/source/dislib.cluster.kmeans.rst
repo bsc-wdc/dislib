@@ -1,8 +1,5 @@
-cluster.kmeans package
-======================
-
-dislib.cluster.kmeans module
----------------------------------
+K-Means
+=======
 
 .. automodule:: dislib.cluster.kmeans.base
     :members:

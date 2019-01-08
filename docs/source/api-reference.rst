@@ -4,6 +4,11 @@ API Reference
 dislib.data: Data handling utilities
 ------------------------------------
 
+Classes
+.......
+
+
+
 .. automodule:: dislib.data
     :members:
     :undoc-members:
@@ -31,10 +36,10 @@ dislib.cluster: Clustering
 dislib.classification: Classification
 -------------------------------------
 
-.. automodule:: dislib.classification
-    :members:
-    :undoc-members:
-    :show-inheritance:
+Classes
+.......
+
+:doc:`classification.CascadeSVM <dislib.classification.csvm.base>`
 
 
 Others

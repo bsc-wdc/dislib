@@ -1,8 +1,5 @@
-classification.csvm package
-==================================
-
-dislib.classification.csvm module
---------------------------------------
+CascadeSVM
+==========
 
 .. automodule:: dislib.classification.csvm.base
     :members:
