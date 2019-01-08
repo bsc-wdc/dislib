@@ -17,7 +17,8 @@ handling distributed datasets. Dataset works as a list of Subset.
 Functions
 .........
 
-:meth:`data.load_data <dislib.data.base.load_data>`
+:meth:`data.load_data <dislib.data.base.load_data>` - Build a dislib.data
+.classes.Dataset from an ndarray.
 
 :meth:`data.load_libsvm_file <dislib.data.base.load_libsvm_file>`
 
