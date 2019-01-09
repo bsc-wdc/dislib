@@ -128,7 +128,7 @@ def _compute_neighbours(epsilon, min_samples, begin_idx, end_idx, *subsets):
         neighbours = np.linalg.norm(samples - sample, axis=1) < epsilon
         neigh_indices = np.where(neighbours)[0]
         neighbour_list.append(neigh_indices)
-        core_points.append(neigh_indices.size > min_samples)
+        core_points.append(neigh_indices.size >= min_samples)
 
     return neighbour_list, core_points
 
@@ -152,35 +152,29 @@ def _compute_labels(min_samples, n_samples, core_points, *neighbour_lists):
     adj_matrix = lil_matrix((n_samples, n_samples))
     row_idx = 0
 
+    # Build adjacency matrix such that non-core points have a single
+    # core point as neighbour. In this manner, non-core points will have
+    # weak connections to all neighbours except one of the core points.
     for neighbour_list in neighbour_lists:
         for neighbours in neighbour_list:
             if core_points[row_idx]:
                 adj_matrix.rows[row_idx] = neighbours
                 adj_matrix.data[row_idx] = [1] * len(neighbours)
             elif len(neighbours) > 0:
-                adj_matrix.rows[row_idx].append(neighbours[0])
-                adj_matrix.data[row_idx].append(1)
+                for neighbour in neighbours:
+                    if core_points[neighbour]:
+                        adj_matrix.rows[row_idx].append(neighbour)
+                        adj_matrix.data[row_idx].append(1)
+                        break
 
             row_idx += 1
 
+    # ignores weak connections from core points to non-core points
     components, labels = connected_components(adj_matrix, connection="strong")
 
     for label in range(components):
         if labels[labels == label].size < min_samples:
             labels[labels == label] = -1
-
-
-    print(components)
-    # final_list = neighbour_lists[0]
-    #
-    # for neighbour_list in neighbour_lists[1:]:
-    #     final_list.extend(neighbour_list)
-    #
-    # clusters = _compute_clusters(final_list, min_samples)
-    # labels = np.full(len(final_list), -1)
-    #
-    # for cluster_id, sample_indices in enumerate(clusters):
-    #     labels[sample_indices] = cluster_id
 
     return labels
 
