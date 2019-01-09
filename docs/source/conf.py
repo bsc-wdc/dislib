@@ -13,6 +13,7 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
+import inspect
 import os
 import sys
 
@@ -286,13 +287,11 @@ man_pages = [
      [author], 1)
 ]
 
+
 # If true, show URL addresses after external links.
 # man_show_urls = False
 
 # -- Source code links --------------------------------------------------
-
-import inspect
-
 
 def linkcode_resolve(domain, info):
     """

@@ -33,7 +33,7 @@ Source code
 -----------
 
 The source code of dislib is available online at `Github <https://github
-.com/bsc-wdc/dislib`_.
+.com/bsc-wdc/dislib>`_.
 
 Support
 -------

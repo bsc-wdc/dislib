@@ -1,21 +1,19 @@
-data package
-===================
+Data handling
+=============
 
-Submodules
-----------
+Classes
+-------
 
-base module
------------------------
-
-.. automodule:: dislib.data.base
+.. automodule:: dislib.data.classes
     :members:
     :undoc-members:
     :show-inheritance:
 
-classes module
---------------------------
 
-.. automodule:: dislib.data.classes
+Functions
+---------
+
+.. automodule:: dislib.data.base
     :members:
     :undoc-members:
     :show-inheritance:
