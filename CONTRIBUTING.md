@@ -68,15 +68,13 @@ pip3 install coverage
 -  **Check the code style** before attempting to merge. If there is any warning the PR will be rejected. You can run them locally with:
 ```
 pip3 install flake8
-flake8 ./dislib
+./run_style.sh
 ```
 -  **Docker image**. All tests and code checks are run inside a docker image. If you want to run the tests in the same environment that travis will use:
 ```
-    docker build --pull --cache-from bscwdc/dislib --tag bscwdc/dislib .
-    docker run -d --name dislib bscwdc/dislib 
-    docker exec dislib bash run_tests.sh
-    docker exec dislib bash run_coverage.sh
-    docker exec dislib flake8 dislib
+    docker build --tag bscwdc/dislib .
+    docker run -d --name dislib bscwdc/dislib
+    docker exec dislib /dislib/run_ci_checks.sh
 ```
 -  Follow the coding-guidelines defined by default [flake8](http://flake8.pycqa.org/en/latest/).
 
@@ -109,7 +107,7 @@ flake8 ./dislib
    example script in the ``examples/`` folder. Have a look at other
    examples for reference. Examples should demonstrate why the new
    functionality is useful in practice and, if possible, compare it
-   to other methods available in scikit-learn.
+   to other methods available.
 
 -  Documentation and high-coverage tests are necessary for enhancements to be
    accepted. Bug-fixes or new features should be provided with 
@@ -119,24 +117,6 @@ flake8 ./dislib
    with the desired behavior.
    For the Bug-fixes case, at the time of the PR, this tests should fail for
    the code base in master and pass for the PR code.
-
-
-You can also check for common programming errors with the following
-tools:
-
--  Code with good unittest **coverage** (at least 80%), check with:
-
-  ```bash
-  $ pip3 install coverage
-  $ coverage run --source dislib tests/tests.py
-  ```
-
--  No flake8 warnings, check with:
-
-  ```bash
-  $ pip install flake8
-  $ flake8 dislib
-  ```
 
 Bonus points for contributions that include a performance analysis with
 a benchmark script and profiling output (please report on the mailing
@@ -171,7 +151,7 @@ New contributor tips
 --------------------
 
 A great way to start contributing to dislib is to choose a possible algorithm from sklearn or one of your interest and
-get in touch with us! We are open to research collaborations.
+get in touch with us! We are fully open to research collaborations.
 
 Documentation
 -------------
