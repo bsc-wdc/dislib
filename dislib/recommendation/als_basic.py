@@ -32,18 +32,18 @@ class ALS(object):
             user feature matrix
         """
 
-        M = np.zeros((self.n_f, n_m), dtype=np.float32)
+        M = np.zeros((n_m, self.n_f), dtype=np.float32)
 
         for m in range(0, n_m):
             users = sparse.find(r[:, m])[0]
 
-            U_m = U[:, users]
-            U_Ut = U_m.dot(U_m.T)
+            U_m = U[users]
+            U_Ut = U_m.T.dot(U_m)
 
             A_i = U_Ut + self.lambda_ * n_mj[m] * np.eye(self.n_f)
-            V_i = U_m.dot(r[users, m].toarray())
+            V_i = U_m.T.dot(r[users, m].toarray())
 
-            M[:, m] = inv(A_i).dot(V_i).reshape(-1)
+            M[m] = inv(A_i).dot(V_i).reshape(-1)
 
         return M
 
@@ -58,18 +58,18 @@ class ALS(object):
             movie feature matrix
         """
 
-        U = np.zeros((self.n_f, n_u), dtype=np.float32)
+        U = np.zeros((n_u, self.n_f), dtype=np.float32)
 
         for u in range(0, n_u):
             movies = sparse.find(r[u])[1]
 
-            M_u = M[:, movies]
-            M_Mt = M_u.dot(M_u.T)
+            M_u = M[movies]
+            M_Mt = M_u.T.dot(M_u)
 
             A_i = M_Mt + self.lambda_ * n_ui[u] * np.eye(self.n_f)
-            V_i = M_u.dot(r[u, movies].toarray().T)
+            V_i = M_u.T.dot(r[u, movies].toarray().T)
 
-            U[:, u] = inv(A_i).dot(V_i).reshape(-1)
+            U[u] = inv(A_i).dot(V_i).reshape(-1)
 
         return U
 
@@ -90,10 +90,10 @@ class ALS(object):
 
         np.random.seed(self.seed)
         U = None
-        M = np.random.rand(self.n_f, n_m)
+        M = np.random.rand(n_m, self.n_f)
         # Assign average rating as first feature
         average_ratings = [np.mean(r[:, i].data) for i in range(0, r.shape[1])]
-        M[0] = average_ratings
+        M[:, 0] = average_ratings
 
         rmse, last_rmse = np.inf, np.NaN
         i = 0
@@ -106,7 +106,7 @@ class ALS(object):
             if test is not None:
                 x_idxs, y_idxs, recs = sparse.find(test)
                 indices = zip(x_idxs, y_idxs)
-                preds = [U[:, i].T.dot(M[:, j]) for i, j in indices]
+                preds = [U[i].dot(M[j].T) for i, j in indices]
                 rmse = sqrt(mean_squared_error(recs, preds))
                 print("Test RMSE: %.3f  [%s]" % (rmse, abs(last_rmse - rmse)))
 
@@ -120,7 +120,7 @@ class ALS(object):
         if user_id > self.U.shape[1]:
             return np.full([self.M.shape[1]], np.nan)
 
-        return self.U[:, user_id].T.dot(self.M)
+        return self.U[user_id].dot(self.M.T)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
