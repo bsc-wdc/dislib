@@ -4,11 +4,15 @@ from math import sqrt
 import numpy as np
 import pandas as pd
 from numpy.linalg import inv
+from pycompss.api.api import compss_wait_on
+from pycompss.api.task import task
 from scipy import sparse
 from sklearn.metrics import mean_squared_error
 
 
 # from dislib.data import load_data
+from dislib.data import load_data
+
 
 class ALS(object):
     def __init__(self, seed=666, n_f=100, lambda_=0.065,
@@ -23,7 +27,7 @@ class ALS(object):
         self.U = None
         self.M = None
 
-    def _update(self, r, X, n_c):
+    def _update(self, r, X):
         """ Returns updated matrix M given U (if X=U), or matrix U given M
         otherwise
 
@@ -36,35 +40,34 @@ class ALS(object):
         n_c : np.array
             Number of ratings of a given movie (if X=U), user ratings otherwise
         """
-
-        n_chunks = 4
-        stride = r.shape[0] // n_chunks
         results = []
-        for offset in range(0, r.shape[0], stride):
+        for subset in r:
 
-            end = offset + stride
-            if end > r.shape[0]:
-                end = r.shape[0]
-            chunk_res = self._update_chunk(r[offset:end], X, n_c[offset:end])
+            chunk_res = self._update_chunk(subset, X, n_f=self.n_f, lambda_=self.lambda_)
             results.append(chunk_res)
+
+        results = compss_wait_on(results)
 
         return np.vstack(results)
 
-    def _update_chunk(self, r_chunk, X, n_c):
-        n = r_chunk.shape[0]
-        Y = np.zeros((n, self.n_f), dtype=np.float32)
+    @task(returns=np.array, is_modifier=False)
+    def _update_chunk(self, subset, X, n_f, lambda_):
 
+        r_chunk = subset.samples
+        n = r_chunk.shape[0]
+        Y = np.zeros((n, n_f), dtype=np.float32)
+        n_c = np.array(
+            [len(sparse.find(r_chunk[i])[0]) for i in range(0, r_chunk.shape[0])])
         # print("Shape of X: %s, %s" % (X.shape[0], X.shape[1]))
         for element in range(0, n):
             indices = sparse.find(r_chunk[element])[1]
 
             X_Xt = X[indices].T.dot(X[indices])
 
-            A_i = X_Xt + self.lambda_ * n_c[element] * np.eye(self.n_f)
+            A_i = X_Xt + lambda_ * n_c[element] * np.eye(n_f)
             V_i = X[indices].T.dot(r_chunk[element, indices].toarray().T)
 
             Y[element] = inv(A_i).dot(V_i).reshape(-1)
-
         return Y
 
     def _update_u(self, r_u, M, n_ui):
@@ -131,19 +134,17 @@ class ALS(object):
 
     def fit(self, r, test=None):
 
-        # r_u = load_data(train, train[0] // 4)
-        # r_m = load_data(train.T, train[1] // 4)
-
         r_u = r
         r_m = r.transpose(copy=True).tocsr()
 
+        d_u = r_u
+        d_m = r_m
+        d_u = load_data(r_u, r_u.shape[0] // 4)
+        d_m = load_data(r_m, r_m.shape[0] // 4)
+
+
         n_u = r.shape[0]
         n_m = r.shape[1]
-
-        n_ui = np.array(
-            [len(sparse.find(r[i])[0]) for i in range(0, r.shape[0])])
-        n_mj = np.array(
-            [len(sparse.find(r[:, i])[0]) for i in range(0, r.shape[1])])
 
         np.random.seed(self.seed)
         U = None
@@ -158,15 +159,14 @@ class ALS(object):
             last_rmse = rmse
 
             # U = self._update_u(r_u, M, n_ui)
-            U = self._update(r=r_u, X=M, n_c=n_ui)
+            U = self._update(r=d_u, X=M)
             # M = self._update_m(r_m, U, n_mj)
-            M = self._update(r=r_m, X=U, n_c=n_mj)
+            M = self._update(r=d_m, X=U)
 
             if test is not None:
                 x_idxs, y_idxs, recs = sparse.find(test)
                 indices = zip(x_idxs, y_idxs)
                 preds = [U[x].dot(M[y].T) for x, y in indices]
-                # TODO ask Sergio wtf, why if x is called i it shadows outer scope
                 rmse = sqrt(mean_squared_error(recs, preds))
                 print("Test RMSE: %.3f  [%s]" % (rmse, abs(last_rmse - rmse)))
 
@@ -182,6 +182,27 @@ class ALS(object):
 
         return self.U[user_id].dot(self.M.T)
 
+
+@task(returns=np.array)
+def _update_chunk(subset, X, n_f, lambda_):
+
+    r_chunk = subset.samples
+    n = r_chunk.shape[0]
+    Y = np.zeros((n, n_f), dtype=np.float32)
+    n_c = np.array(
+        [len(sparse.find(r_chunk[i])[0]) for i in range(0, r_chunk.shape[0])])
+    # print("Shape of X: %s, %s" % (X.shape[0], X.shape[1]))
+    for element in range(0, n):
+        indices = sparse.find(r_chunk[element])[1]
+
+        X_Xt = X[indices].T.dot(X[indices])
+
+        A_i = X_Xt + lambda_ * n_c[element] * np.eye(n_f)
+        V_i = X[indices].T.dot(r_chunk[element, indices].toarray().T)
+
+        Y[element] = inv(A_i).dot(V_i).reshape(-1)
+
+    return Y
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -212,7 +233,7 @@ if __name__ == '__main__':
     valid = sparse.csr_matrix((valid_df.rating,
                                (valid_df.user_id, valid_df.movie_id)))
 
-    als = ALS(convergence_threshold=0.0001, max_iter=10)
+    als = ALS(convergence_threshold=0.0001, max_iter=5)
 
     als.fit(train, test)
 
