@@ -322,7 +322,7 @@ def _train(return_classifier, random_state, *subsets, **params):
 
 
 def _merge(*subsets):
-    set0 = subsets[0]
+    set0 = subsets[0].copy()
 
     for setx in subsets[1:]:
         set0.concatenate(setx, remove_duplicates=True)
