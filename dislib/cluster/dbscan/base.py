@@ -172,7 +172,7 @@ def _merge_dicts(*dicts):
 
 @task(returns=1)
 def _get_connected_components(equiv):
-    visited = []
+    visited = set()
     connected = []
 
     for node, neighbours in equiv.items():
@@ -194,7 +194,7 @@ def _visit_neighbours(equiv, neighbours, visited, connected):
         if neighbour in visited:
             continue
 
-        visited.append(neighbour)
+        visited.add(neighbour)
         connected[-1].append(neighbour)
 
         if neighbour in equiv:
