@@ -6,7 +6,7 @@ import pandas as pd
 from numpy.linalg import inv
 from scipy import sparse
 from sklearn.metrics import mean_squared_error
-
+# from dislib.data import load_data
 
 class ALS(object):
     def __init__(self, seed=666, n_f=100, lambda_=0.065,
@@ -21,7 +21,7 @@ class ALS(object):
         self.U = None
         self.M = None
 
-    def _update_m(self, r, U, n_mj):
+    def _update_m(self, r_m, U, n_mj):
         """ Update matrix M given U
 
         Parameters
@@ -35,19 +35,19 @@ class ALS(object):
         M = np.zeros((n_m, self.n_f), dtype=np.float32)
 
         for m in range(0, n_m):
-            users = sparse.find(r[:, m])[0]
+            users = sparse.find(r_m[m])[0]
 
             U_m = U[users]
             U_Ut = U_m.T.dot(U_m)
 
             A_i = U_Ut + self.lambda_ * n_mj[m] * np.eye(self.n_f)
-            V_i = U_m.T.dot(r[users, m].toarray())
+            V_i = U_m.T.dot(r_m[m, users].toarray().T)
 
             M[m] = inv(A_i).dot(V_i).reshape(-1)
 
         return M
 
-    def _update_u(self, r, M, n_ui):
+    def _update_u(self, r_u, M, n_ui):
         """ Update matrix U given M
 
         Parameters
@@ -61,13 +61,13 @@ class ALS(object):
         U = np.zeros((n_u, self.n_f), dtype=np.float32)
 
         for u in range(0, n_u):
-            movies = sparse.find(r[u])[1]
+            movies = sparse.find(r_u[u])[1]
 
             M_u = M[movies]
             M_Mt = M_u.T.dot(M_u)
 
             A_i = M_Mt + self.lambda_ * n_ui[u] * np.eye(self.n_f)
-            V_i = M_u.T.dot(r[u, movies].toarray().T)
+            V_i = M_u.T.dot(r_u[u, movies].toarray().T)
 
             U[u] = inv(A_i).dot(V_i).reshape(-1)
 
@@ -79,6 +79,12 @@ class ALS(object):
         return False
 
     def fit(self, r, test=None):
+
+        # r_u = load_data(train, train[0] // 4)
+        # r_m = load_data(train.T, train[1] // 4)
+
+        r_u = train
+        r_m = train.T
 
         n_u = r.shape[0]
         n_m = r.shape[1]
@@ -100,8 +106,8 @@ class ALS(object):
         while not self._has_converged(last_rmse, rmse, i):
             last_rmse = rmse
 
-            U = self._update_u(r, M, n_ui=n_ui)
-            M = self._update_m(r, U, n_mj=n_mj)
+            U = self._update_u(r_u=r_u, M=M, n_ui=n_ui)
+            M = self._update_m(r_m=r_m, U=U, n_mj=n_mj)
 
             if test is not None:
                 x_idxs, y_idxs, recs = sparse.find(test)
@@ -116,11 +122,12 @@ class ALS(object):
 
         return U, M
 
-    def predict(self, user_id):
+    def predict_user(self, user_id):
         if user_id > self.U.shape[1]:
             return np.full([self.M.shape[1]], np.nan)
 
         return self.U[user_id].dot(self.M.T)
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -131,6 +138,7 @@ if __name__ == '__main__':
                      delimiter='::',
                      names=cols,
                      usecols=cols[0:3]).sample(frac=1)
+    valid_df = pd.read_csv('./test.data', names=cols[:3])
 
     # just in case there are movies/user without rating
     n_m = max(df.movie_id.nunique(), max(df.movie_id) + 1)
@@ -147,6 +155,16 @@ if __name__ == '__main__':
     test = sparse.csr_matrix(
         (test_df.rating, (test_df.user_id, test_df.movie_id)))
 
-    als = ALS()
+    valid = sparse.csr_matrix((valid_df.rating,
+                              (valid_df.user_id, valid_df.movie_id)))
+
+    als = ALS(convergence_threshold=0.00001)
 
     als.fit(train, test)
+
+    # cx = sparse.find(valid)
+    # preds = []
+    # for i, j, r in zip(cx[0], cx[1], cx[2]):
+    #     pred = als.predict_user(i)[j]
+    #     preds.append(pred)
+    #     print("Rating vs prediction: %.1f - %1.f" % (r, pred))
