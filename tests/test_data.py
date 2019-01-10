@@ -237,10 +237,9 @@ class DataLoadingTest(unittest.TestCase):
         self.assertEqual(len(data), 3)
 
 
-class DataClassesTest(unittest.TestCase):
+class DatasetTest(unittest.TestCase):
     def test_dataset_get_item(self):
-        """ Tests Dataset item getter.
-        """
+        """ Tests Dataset item getter. """
         arr = np.array((range(10), range(10, 20)))
         dataset = load_data(arr, subset_size=2)
         samples = dataset[0].samples
@@ -248,16 +247,14 @@ class DataClassesTest(unittest.TestCase):
         self.assertTrue((samples[0] == arr[0]).all())
 
     def test_dataset_len(self):
-        """ Tests len() on a Dataset.
-        """
+        """ Tests len() on a Dataset. """
         arr = np.zeros((40, 25))
         dataset = load_data(arr, subset_size=5)
 
         self.assertEqual(len(dataset), 8)
 
     def test_dataset_append(self):
-        """ Tests Dataset's append().
-        """
+        """ Tests Dataset's append(). """
         arr = np.zeros((40, 25))
         dataset = load_data(arr, subset_size=5)
         subset = Subset(samples=arr)
@@ -266,8 +263,7 @@ class DataClassesTest(unittest.TestCase):
         self.assertEqual(len(dataset), 9)
 
     def test_dataset_extend(self):
-        """ Tests Dataset's extend().
-        """
+        """ Tests Dataset's extend(). """
         arr = np.zeros((40, 25))
         dataset = load_data(arr, subset_size=5)
         subset1 = Subset(samples=np.zeros((20, 18)))
@@ -277,8 +273,7 @@ class DataClassesTest(unittest.TestCase):
         self.assertEqual(len(dataset), 10)
 
     def test_dataset_collect(self):
-        """ Tests Dataset's collect().
-        """
+        """ Tests Dataset's collect(). """
         csv_file = "tests/files/csv/3"
 
         dataset = load_csv_file(csv_file, subset_size=300, n_features=122)
@@ -286,9 +281,28 @@ class DataClassesTest(unittest.TestCase):
 
         self.assertIsInstance(dataset[0], Subset)
 
+    def test_dataset_samples_labels(self):
+        """ Tests the access to Dataset.samples and Dataset.labels """
+        csv_file = "tests/files/csv/3"
+
+        dataset = load_csv_file(csv_file, subset_size=300, n_features=122,
+                                label_col="last")
+
+        self.assertEqual(dataset.samples.shape[0], 4179)
+        self.assertEqual(dataset.labels.shape[0], 4179)
+
+    def test_dataset_empty_labels(self):
+        """ Tests the access Dataset.labels for unlabeled datasets """
+        csv_file = "tests/files/csv/3"
+
+        dataset = load_csv_file(csv_file, subset_size=300, n_features=122)
+
+        self.assertEqual(dataset.labels.size, 0)
+
+
+class SubsetTest(unittest.TestCase):
     def test_subset_concatenate_dense(self):
-        """ Tests the concatenation of two dense Subsets.
-        """
+        """ Tests the concatenation of two dense Subsets. """
         subset1 = Subset(samples=np.zeros((13, 2)))
         subset2 = Subset(samples=np.zeros((11, 2)))
 
@@ -297,8 +311,7 @@ class DataClassesTest(unittest.TestCase):
         self.assertEqual(subset1.samples.shape[0], 24)
 
     def test_subset_concatenate_sparse(self):
-        """ Tests the concatenation of two sparse Subsets.
-        """
+        """ Tests the concatenation of two sparse Subsets. """
         m1 = csr_matrix(np.random.random((13, 2)))
         m2 = csr_matrix(np.random.random((11, 2)))
         subset1 = Subset(samples=m1)

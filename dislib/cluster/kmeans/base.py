@@ -166,7 +166,7 @@ def _merge(*data):
 
 @task(subset=INOUT)
 def _predict(subset, centers):
-    for sample_idx, sample in enumerate(subset):
+    for sample_idx, sample in enumerate(subset.samples):
         dist = np.linalg.norm(sample - centers, axis=1)
         label = np.argmin(dist)
         subset.set_label(sample_idx, label)
