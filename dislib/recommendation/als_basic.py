@@ -6,6 +6,8 @@ import pandas as pd
 from numpy.linalg import inv
 from scipy import sparse
 from sklearn.metrics import mean_squared_error
+
+
 # from dislib.data import load_data
 
 class ALS(object):
@@ -21,40 +23,58 @@ class ALS(object):
         self.U = None
         self.M = None
 
-    def _update_m(self, r_m, U, n_mj):
-        """ Update matrix M given U
+    def _update(self, r, X, n_c):
+        """ Returns updated matrix M given U (if X=U), or matrix U given M
+        otherwise
 
         Parameters
         ----------
         r : Dataset
-            copy of R distributed by columns
-        U : Dataset
-            user feature matrix
+            copy of R with movies as rows (if X=U), users as rows otherwise
+        X : Dataset
+            User or Movie feature matrix
+        n_c : np.array
+            Number of ratings of a given movie (if X=U), user ratings otherwise
         """
 
-        M = np.zeros((n_m, self.n_f), dtype=np.float32)
+        n_chunks = 4
+        stride = r.shape[0] // n_chunks
+        results = []
+        for offset in range(0, r.shape[0], stride):
 
-        for m in range(0, n_m):
-            users = sparse.find(r_m[m])[0]
+            end = offset + stride
+            if end > r.shape[0]:
+                end = r.shape[0]
+            chunk_res = self._update_chunk(r[offset:end], X, n_c[offset:end])
+            results.append(chunk_res)
 
-            U_m = U[users]
-            U_Ut = U_m.T.dot(U_m)
+        return np.vstack(results)
 
-            A_i = U_Ut + self.lambda_ * n_mj[m] * np.eye(self.n_f)
-            V_i = U_m.T.dot(r_m[m, users].toarray().T)
+    def _update_chunk(self, r_chunk, X, n_c):
+        n = r_chunk.shape[0]
+        Y = np.zeros((n, self.n_f), dtype=np.float32)
 
-            M[m] = inv(A_i).dot(V_i).reshape(-1)
+        # print("Shape of X: %s, %s" % (X.shape[0], X.shape[1]))
+        for element in range(0, n):
+            indices = sparse.find(r_chunk[element])[1]
 
-        return M
+            X_Xt = X[indices].T.dot(X[indices])
+
+            A_i = X_Xt + self.lambda_ * n_c[element] * np.eye(self.n_f)
+            V_i = X[indices].T.dot(r_chunk[element, indices].toarray().T)
+
+            Y[element] = inv(A_i).dot(V_i).reshape(-1)
+
+        return Y
 
     def _update_u(self, r_u, M, n_ui):
         """ Update matrix U given M
 
         Parameters
         ----------
-        r : Dataset
-            copy of R distributed by columns
-        U : Dataset
+        r_u : Dataset
+            copy of R with users as rows
+        M : Dataset
             movie feature matrix
         """
 
@@ -73,8 +93,39 @@ class ALS(object):
 
         return U
 
+    def _update_m(self, r_m, U, n_mj):
+        """ Update matrix M given U
+
+        Parameters
+        ----------
+        r_m : Dataset
+            copy of R with movies as rows
+        U : Dataset
+            user feature matrix
+        """
+
+        M = np.zeros((n_m, self.n_f), dtype=np.float32)
+
+        for m in range(0, n_m):
+            users = sparse.find(r_m[m])[1]
+
+            U_m = U[users]
+            U_Ut = U_m.T.dot(U_m)
+
+            A_i = U_Ut + self.lambda_ * n_mj[m] * np.eye(self.n_f)
+            V_i = U_m.T.dot(r_m[m, users].toarray().T)
+
+            M[m] = inv(A_i).dot(V_i).reshape(-1)
+
+        return M
+
     def _has_converged(self, last_rmse, rmse, i):
-        if i > self.max_iter or (i > 0 and abs(last_rmse - rmse) < self.conv):
+        if i > self.max_iter:
+            print("Max iterations reached [%s]" % self.max_iter)
+            return True
+        if i > 0 and abs(last_rmse - rmse) < self.conv:
+            print("Converged in %s iterations to difference < %s" % (
+                i, abs(last_rmse - rmse)))
             return True
         return False
 
@@ -83,8 +134,8 @@ class ALS(object):
         # r_u = load_data(train, train[0] // 4)
         # r_m = load_data(train.T, train[1] // 4)
 
-        r_u = train
-        r_m = train.T
+        r_u = r
+        r_m = r.transpose(copy=True).tocsr()
 
         n_u = r.shape[0]
         n_m = r.shape[1]
@@ -106,13 +157,16 @@ class ALS(object):
         while not self._has_converged(last_rmse, rmse, i):
             last_rmse = rmse
 
-            U = self._update_u(r_u=r_u, M=M, n_ui=n_ui)
-            M = self._update_m(r_m=r_m, U=U, n_mj=n_mj)
+            # U = self._update_u(r_u, M, n_ui)
+            U = self._update(r=r_u, X=M, n_c=n_ui)
+            # M = self._update_m(r_m, U, n_mj)
+            M = self._update(r=r_m, X=U, n_c=n_mj)
 
             if test is not None:
                 x_idxs, y_idxs, recs = sparse.find(test)
                 indices = zip(x_idxs, y_idxs)
-                preds = [U[i].dot(M[j].T) for i, j in indices]
+                preds = [U[x].dot(M[y].T) for x, y in indices]
+                # TODO ask Sergio wtf, why if x is called i it shadows outer scope
                 rmse = sqrt(mean_squared_error(recs, preds))
                 print("Test RMSE: %.3f  [%s]" % (rmse, abs(last_rmse - rmse)))
 
@@ -156,9 +210,9 @@ if __name__ == '__main__':
         (test_df.rating, (test_df.user_id, test_df.movie_id)))
 
     valid = sparse.csr_matrix((valid_df.rating,
-                              (valid_df.user_id, valid_df.movie_id)))
+                               (valid_df.user_id, valid_df.movie_id)))
 
-    als = ALS(convergence_threshold=0.00001)
+    als = ALS(convergence_threshold=0.0001, max_iter=10)
 
     als.fit(train, test)
 
