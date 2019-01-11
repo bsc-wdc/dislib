@@ -36,8 +36,8 @@ class KMeans:
         Compute K-means clustering.
     fit_predict(dataset)
         Compute K-means clustering, and set and return cluster labels.
-    predict(x)
-        Predict the closest cluster each sample in x belongs to.
+    predict(dataset)
+        Predict the closest cluster each sample in dataset belongs to.
     """
 
     def __init__(self, n_clusters=8, max_iter=10, tol=1 ** -4, arity=50,

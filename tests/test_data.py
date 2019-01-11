@@ -268,7 +268,7 @@ class DatasetTest(unittest.TestCase):
         dataset = load_data(arr, subset_size=5)
         subset1 = Subset(samples=np.zeros((20, 18)))
         subset2 = Subset(samples=np.zeros((24, 18)))
-        dataset.extend(subset1, subset2)
+        dataset.extend([subset1, subset2])
 
         self.assertEqual(len(dataset), 10)
 
@@ -285,7 +285,7 @@ class DatasetTest(unittest.TestCase):
         """ Tests the access to Dataset.samples and Dataset.labels """
         csv_file = "tests/files/csv/3"
 
-        dataset = load_csv_file(csv_file, subset_size=300, n_features=122,
+        dataset = load_csv_file(csv_file, subset_size=300, n_features=121,
                                 label_col="last")
 
         self.assertEqual(dataset.samples.shape[0], 4179)

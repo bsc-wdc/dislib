@@ -187,8 +187,6 @@ class Dataset(object):
         self._samples = np.empty((0, self.n_features))
 
         for subset in self._subsets:
-            print(subset.samples.shape)
-
             self._samples = np.concatenate((self._samples, subset.samples))
 
 
