@@ -21,7 +21,7 @@ class DBSCANTest(unittest.TestCase):
         x = StandardScaler().fit_transform(x)
         dataset = load_data(x=x, y=y, subset_size=300)
         dbscan.fit(dataset)
-        n_clusters = np.unique(dbscan.labels_)
+        n_clusters = np.unique(dataset.labels)
         n_clusters = n_clusters[n_clusters >= 0].size
         self.assertEqual(n_clusters, 3)
 
@@ -35,7 +35,7 @@ class DBSCANTest(unittest.TestCase):
         x = StandardScaler().fit_transform(x)
         dataset = load_data(x=x, y=y, subset_size=300)
         dbscan.fit(dataset)
-        n_clusters = np.unique(dbscan.labels_)
+        n_clusters = np.unique(dataset.labels)
         n_clusters = n_clusters[n_clusters >= 0].size
         self.assertEqual(n_clusters, 2)
 
@@ -49,7 +49,7 @@ class DBSCANTest(unittest.TestCase):
         x = StandardScaler().fit_transform(x)
         dataset = load_data(x=x, y=y, subset_size=300)
         dbscan.fit(dataset)
-        n_clusters = np.unique(dbscan.labels_)
+        n_clusters = np.unique(dataset.labels)
         n_clusters = n_clusters[n_clusters >= 0].size
         self.assertEqual(n_clusters, 2)
 
@@ -65,7 +65,7 @@ class DBSCANTest(unittest.TestCase):
         x = StandardScaler().fit_transform(x)
         dataset = load_data(x=x, y=y, subset_size=300)
         dbscan.fit(dataset)
-        n_clusters = np.unique(dbscan.labels_)
+        n_clusters = np.unique(dataset.labels)
         n_clusters = n_clusters[n_clusters >= 0].size
         self.assertEqual(n_clusters, 4)
 
@@ -79,7 +79,7 @@ class DBSCANTest(unittest.TestCase):
         x = StandardScaler().fit_transform(x)
         dataset = load_data(x=x, y=y, subset_size=300)
         dbscan.fit(dataset)
-        n_clusters = np.unique(dbscan.labels_)
+        n_clusters = np.unique(dataset.labels)
         n_clusters = n_clusters[n_clusters >= 0].size
         self.assertEqual(n_clusters, 3)
 
@@ -93,7 +93,7 @@ class DBSCANTest(unittest.TestCase):
         x = StandardScaler().fit_transform(x)
         dataset = load_data(x=x, y=y, subset_size=300)
         dbscan.fit(dataset)
-        n_clusters = np.unique(dbscan.labels_)
+        n_clusters = np.unique(dataset.labels)
         n_clusters = n_clusters[n_clusters >= 0].size
         self.assertEqual(n_clusters, 2)
 
@@ -107,7 +107,7 @@ class DBSCANTest(unittest.TestCase):
         x = StandardScaler().fit_transform(x)
         dataset = load_data(x=x, y=y, subset_size=300)
         dbscan.fit(dataset)
-        n_clusters = np.unique(dbscan.labels_)
+        n_clusters = np.unique(dataset.labels)
         n_clusters = n_clusters[n_clusters >= 0].size
         self.assertEqual(n_clusters, 2)
 
@@ -123,7 +123,7 @@ class DBSCANTest(unittest.TestCase):
         x = StandardScaler().fit_transform(x)
         dataset = load_data(x=x, y=y, subset_size=300)
         dbscan.fit(dataset)
-        n_clusters = np.unique(dbscan.labels_)
+        n_clusters = np.unique(dataset.labels)
         n_clusters = n_clusters[n_clusters >= 0].size
         self.assertEqual(n_clusters, 4)
 
@@ -137,7 +137,7 @@ class DBSCANTest(unittest.TestCase):
         x = StandardScaler().fit_transform(x)
         dataset = load_data(x=x, y=y, subset_size=300)
         dbscan.fit(dataset)
-        n_clusters = np.unique(dbscan.labels_)
+        n_clusters = np.unique(dataset.labels)
         n_clusters = n_clusters[n_clusters >= 0].size
         self.assertEqual(n_clusters, 3)
 
@@ -151,7 +151,7 @@ class DBSCANTest(unittest.TestCase):
         x = StandardScaler().fit_transform(x)
         dataset = load_data(x=x, y=y, subset_size=300)
         dbscan.fit(dataset)
-        n_clusters = np.unique(dbscan.labels_)
+        n_clusters = np.unique(dataset.labels)
         n_clusters = n_clusters[n_clusters >= 0].size
         self.assertEqual(n_clusters, 2)
 
@@ -165,7 +165,7 @@ class DBSCANTest(unittest.TestCase):
         x = StandardScaler().fit_transform(x)
         dataset = load_data(x=x, y=y, subset_size=300)
         dbscan.fit(dataset)
-        n_clusters = np.unique(dbscan.labels_)
+        n_clusters = np.unique(dataset.labels)
         n_clusters = n_clusters[n_clusters >= 0].size
         self.assertEqual(n_clusters, 2)
 
@@ -181,7 +181,7 @@ class DBSCANTest(unittest.TestCase):
         x = StandardScaler().fit_transform(x)
         dataset = load_data(x=x, y=y, subset_size=300)
         dbscan.fit(dataset)
-        n_clusters = np.unique(dbscan.labels_)
+        n_clusters = np.unique(dataset.labels)
         n_clusters = n_clusters[n_clusters >= 0].size
         self.assertEqual(n_clusters, 4)
 
@@ -195,7 +195,7 @@ class DBSCANTest(unittest.TestCase):
         x = StandardScaler().fit_transform(x)
         dataset = load_data(x=x, y=y, subset_size=300)
         dbscan.fit(dataset)
-        n_clusters = np.unique(dbscan.labels_)
+        n_clusters = np.unique(dataset.labels)
         n_clusters = n_clusters[n_clusters >= 0].size
         self.assertEqual(n_clusters, 0)
 
