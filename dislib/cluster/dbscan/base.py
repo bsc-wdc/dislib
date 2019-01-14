@@ -1,5 +1,5 @@
 import numpy as np
-from pycompss.api.api import compss_wait_on
+from pycompss.api.parameter import INOUT
 from pycompss.api.task import task
 
 from dislib.cluster.dbscan.classes import Region
@@ -37,16 +37,12 @@ class DBSCAN():
         This can be used to balance the load in scenarios where samples are not
         evenly distributed in the feature space.
 
-    Attributes
-    ----------
-    labels_ : array, shape = [n_samples]
-        Cluster labels for each point in the dataset given to fit(). Noisy
-        samples are given the label -1.
-
     Methods
     -------
     fit(dataset)
         Perform DBSCAN clustering.
+    fit_predict(dataset)
+        Same as fit().
     """
 
     def __init__(self, eps=0.5, min_samples=5, arrange_data=True, n_regions=1,
@@ -58,13 +54,12 @@ class DBSCAN():
         self._min_samples = min_samples
         self._n_regions = n_regions
         self._arrange_data = arrange_data
-        self.labels_ = np.empty(0, dtype=int)
         self._subset_sizes = []
         self._sorting = []
         self._max_samples = max_samples
 
     def fit(self, dataset):
-        """ Perform DBSCAN clustering on data.
+        """ Perform DBSCAN clustering on data and sets dataset.labels.
 
         If arrange_data=True, data is initially rearranged in a
         multidimensional grid with n_regions regions per dimension. Regions
@@ -134,13 +129,29 @@ class DBSCAN():
             region.update_labels(components)
             final_labels.append(region.labels)
 
-        final_labels = compss_wait_on(final_labels)
+        final_labels = _concatenate_labels(sorting_ind, *final_labels)
+        begin = 0
+        end = 0
 
-        for labels in final_labels:
-            self.labels_ = np.concatenate((self.labels_, labels))
+        for subset_idx, subset in enumerate(dataset):
+            end += dataset.subset_size(subset_idx)
+            _set_labels(subset, begin, end, final_labels)
+            begin = end
 
-        if self._arrange_data:
-            self.labels_ = self.labels_[sorting_ind]
+    def fit_predict(self, dataset):
+        """ Perform DBSCAN clustering on dataset. This method does the same
+        as fit(), and is provided for API standardization purposes.
+
+        Parameters
+        ----------
+        dataset : Dataset
+            Input data.
+
+        See also
+        --------
+        fit
+        """
+        self.fit(dataset)
 
     @staticmethod
     def _add_neighbours(region, grid, distances):
@@ -199,3 +210,18 @@ def _visit_neighbours(equiv, neighbours, visited, connected):
 
         if neighbour in equiv:
             to_visit.extend(equiv[neighbour])
+
+
+@task(returns=1)
+def _concatenate_labels(sorting, *labels):
+    final_labels = np.empty(0, dtype=int)
+
+    for label_arr in labels:
+        final_labels = np.concatenate((final_labels, label_arr))
+
+    return final_labels[sorting]
+
+
+@task(subset=INOUT)
+def _set_labels(subset, begin, end, labels):
+    subset.labels = labels[begin:end]
