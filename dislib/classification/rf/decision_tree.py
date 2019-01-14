@@ -1,6 +1,7 @@
 from sys import float_info
 
 import numpy as np
+from numpy.random.mtrand import RandomState
 from pycompss.api.api import compss_delete_object
 from pycompss.api.parameter import FILE_IN
 from pycompss.api.task import task
@@ -29,6 +30,8 @@ class DecisionTreeClassifier:
     bootstrap : bool
         Randomly select n_instances samples with repetition (used in random
         forests).
+    random_state : RandomState instance
+        The random number generator.
 
     Attributes
     ----------
@@ -60,11 +63,13 @@ class DecisionTreeClassifier:
 
     """
 
-    def __init__(self, try_features, max_depth, distr_depth, bootstrap):
+    def __init__(self, try_features, max_depth, distr_depth, bootstrap,
+                 random_state):
         self.try_features = try_features
         self.max_depth = max_depth
         self.distr_depth = distr_depth
         self.bootstrap = bootstrap
+        self.random_state = random_state
 
         self.n_features = None
         self.n_classes = None
@@ -89,7 +94,11 @@ class DecisionTreeClassifier:
         n_samples = dataset.get_n_samples()
         y_codes = dataset.get_y_codes()
 
-        sample, y_s = _sample_selection(n_samples, y_codes, self.bootstrap)
+        seed = self.random_state.randint(np.iinfo(np.int32).max)
+
+        sample, y_s = _sample_selection(n_samples, y_codes, self.bootstrap,
+                                        seed)
+
         self.tree = _Node()
         self.nodes_info = []
         self.subtrees = []
@@ -99,6 +108,7 @@ class DecisionTreeClassifier:
             if depth < self.distr_depth:
                 split = _split_node_wrapper(sample, self.n_features, y_s,
                                             self.n_classes, self.try_features,
+                                            self.random_state,
                                             samples_file=samples_path,
                                             features_file=features_path)
                 node_info, left_group, y_l, right_group, y_r = split
@@ -116,6 +126,7 @@ class DecisionTreeClassifier:
                                                  self.max_depth - depth,
                                                  self.n_classes,
                                                  self.try_features,
+                                                 self.random_state,
                                                  samples_path, features_path)
                 node.content = len(self.subtrees)
                 self.subtrees.append(subtree)
@@ -255,19 +266,21 @@ def _get_features_mmap(features_file):
 
 
 @task(priority=True, returns=2)
-def _sample_selection(n_samples, y_codes, bootstrap):
+def _sample_selection(n_samples, y_codes, bootstrap, seed):
     if bootstrap:
-        np.random.seed()
-        selection = np.random.choice(n_samples, size=n_samples, replace=True)
+        random_state = RandomState(seed)
+        selection = random_state.choice(n_samples, size=n_samples,
+                                        replace=True)
         selection.sort()
         return selection, y_codes[selection]
     else:
         return np.arange(n_samples), y_codes
 
 
-def _feature_selection(untried_indices, m_try):
+def _feature_selection(untried_indices, m_try, random_state):
     selection_len = min(m_try, len(untried_indices))
-    return np.random.choice(untried_indices, size=selection_len, replace=False)
+    return random_state.choice(untried_indices, size=selection_len,
+                               replace=False)
 
 
 @task(returns=tuple)
@@ -306,13 +319,15 @@ def _compute_leaf_info(y_s, n_classes):
 
 
 def _split_node_wrapper(sample, n_features, y_s, n_classes, m_try,
-                        samples_file=None, features_file=None):
+                        random_state, samples_file=None, features_file=None):
+    seed = random_state.randint(np.iinfo(np.int32).max)
+
     if features_file is not None:
         return _split_node_using_features(sample, n_features, y_s, n_classes,
-                                          m_try, features_file)
+                                          m_try, features_file, seed)
     elif samples_file is not None:
         return _split_node(sample, n_features, y_s, n_classes, m_try,
-                           samples_file)
+                           samples_file, seed)
     else:
         raise ValueError('Invalid combination of arguments. samples_file is '
                          'None and features_file is None.')
@@ -320,26 +335,30 @@ def _split_node_wrapper(sample, n_features, y_s, n_classes, m_try,
 
 @task(features_file=FILE_IN, returns=(object, list, list, list, list))
 def _split_node_using_features(sample, n_features, y_s, n_classes, m_try,
-                               features_file):
+                               features_file, seed):
     features_mmap = np.load(features_file, mmap_mode='r', allow_pickle=False)
+    random_state = RandomState(seed)
     return _compute_split(sample, n_features, y_s, n_classes, m_try,
-                          features_mmap)
+                          features_mmap, random_state)
 
 
 @task(samples_file=FILE_IN, returns=(object, list, list, list, list))
-def _split_node(sample, n_features, y_s, n_classes, m_try, samples_file):
+def _split_node(sample, n_features, y_s, n_classes, m_try, samples_file, seed):
     features_mmap = np.load(samples_file, mmap_mode='r', allow_pickle=False).T
+    random_state = RandomState(seed)
     return _compute_split(sample, n_features, y_s, n_classes, m_try,
-                          features_mmap)
+                          features_mmap, random_state)
 
 
-def _compute_split(sample, n_features, y_s, n_classes, m_try, features_mmap):
+def _compute_split(sample, n_features, y_s, n_classes, m_try, features_mmap,
+                   random_state):
     node_info = left_group = y_l = right_group = y_r = None
     split_ended = False
     tried_indices = []
     while not split_ended:
         untried_indices = np.setdiff1d(np.arange(n_features), tried_indices)
-        index_selection = _feature_selection(untried_indices, m_try)
+        index_selection = _feature_selection(untried_indices, m_try,
+                                             random_state)
         b_score = float_info.max
         b_index = None
         b_value = None
@@ -367,36 +386,39 @@ def _compute_split(sample, n_features, y_s, n_classes, m_try, features_mmap):
 
 
 def _build_subtree_wrapper(sample, y_s, n_features, max_depth, n_classes,
-                           m_try, samples_file, features_file):
+                           m_try, random_state, samples_file, features_file):
+    seed = random_state.randint(np.iinfo(np.int32).max)
     if features_file is not None:
         return _build_subtree_using_features(sample, y_s, n_features,
-                                             max_depth, n_classes, m_try,
+                                             max_depth, n_classes, m_try, seed,
                                              samples_file, features_file)
     else:
         return _build_subtree(sample, y_s, n_features, max_depth, n_classes,
-                              m_try, samples_file)
+                              m_try, seed, samples_file)
 
 
 @task(samples_file=FILE_IN, features_file=FILE_IN, returns=_Node)
 def _build_subtree_using_features(sample, y_s, n_features, max_depth,
-                                  n_classes, m_try, samples_file,
+                                  n_classes, m_try, seed, samples_file,
                                   features_file):
+    random_state = RandomState(seed)
     return _compute_build_subtree(sample, y_s, n_features, max_depth,
-                                  n_classes, m_try, samples_file,
+                                  n_classes, m_try, random_state, samples_file,
                                   features_file=features_file)
 
 
 @task(samples_file=FILE_IN, returns=_Node)
-def _build_subtree(sample, y_s, n_features, max_depth, n_classes, m_try,
+def _build_subtree(sample, y_s, n_features, max_depth, n_classes, m_try, seed,
                    samples_file):
+    random_state = RandomState(seed)
     return _compute_build_subtree(sample, y_s, n_features, max_depth,
-                                  n_classes, m_try, samples_file)
+                                  n_classes, m_try, random_state, samples_file)
 
 
 def _compute_build_subtree(sample, y_s, n_features, max_depth, n_classes,
-                           m_try, samples_file, features_file=None,
-                           use_sklearn=True, sklearn_max=1e8):
-    np.random.seed()
+                           m_try, random_state, samples_file,
+                           features_file=None, use_sklearn=True,
+                           sklearn_max=1e8):
     if not sample.size:
         return _Node()
     if features_file is not None:
@@ -414,7 +436,8 @@ def _compute_build_subtree(sample, y_s, n_features, max_depth, n_classes,
                 else:
                     sklearn_max_depth = max_depth - depth
                 dt = SklearnDTClassifier(max_features=m_try,
-                                         max_depth=sklearn_max_depth)
+                                         max_depth=sklearn_max_depth,
+                                         random_state=random_state)
                 unique = np.unique(sample, return_index=True,
                                    return_counts=True)
                 sample, new_indices, sample_weight = unique
@@ -424,7 +447,7 @@ def _compute_build_subtree(sample, y_s, n_features, max_depth, n_classes,
                 node.content = _SkTreeWrapper(dt)
             else:
                 split = _compute_split(sample, n_features, y_s, n_classes,
-                                       m_try, mmap)
+                                       m_try, mmap, random_state)
                 node_info, left_group, y_l, right_group, y_r = split
                 node.content = node_info
                 if isinstance(node_info, _InnerNodeInfo):

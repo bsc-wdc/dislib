@@ -3,6 +3,7 @@ import math
 from pycompss.api.api import compss_wait_on
 from pycompss.api.parameter import INOUT
 from pycompss.api.task import task
+from sklearn.utils import check_random_state
 
 from dislib.classification.rf.decision_tree import DecisionTreeClassifier
 
@@ -29,7 +30,7 @@ class RandomForestClassifier:
         Note: the search for a split does not stop until at least one
         valid partition of the node samples is found, even if it requires
         to effectively inspect more than ``try_features`` features.
-    max_depth : int or float, optional (default=np.inf)
+    max_depth : int or np.inf, optional (default=np.inf)
         The maximum depth of the tree. If np.inf, then nodes are expanded
         until all leaves are pure.
     distr_depth : int or str, optional (default='auto')
@@ -40,6 +41,11 @@ class RandomForestClassifier:
         decision tree predictions. If False, it takes the class with the higher
         probability given by predict_proba(), which is an average of the
         probabilities given by the decision trees.
+    random_state : int, RandomState instance or None, optional (default=None)
+        If int, random_state is the seed used by the random number generator;
+        If RandomState instance, random_state is the random number generator;
+        If None, the random number generator is the RandomState instance used
+        by `np.random`.
 
     Attributes
     ----------
@@ -54,15 +60,14 @@ class RandomForestClassifier:
                  try_features='sqrt',
                  max_depth=np.inf,
                  distr_depth='auto',
-                 hard_vote=False):
+                 hard_vote=False,
+                 random_state=None):
         self.n_estimators = n_estimators
-        self.try_features = try_features
+        self.try_features_init = try_features
         self.max_depth = max_depth
-        self.distr_depth = distr_depth
+        self.distr_depth_init = distr_depth
         self.hard_vote = hard_vote
-
-        self.classes = None
-        self.trees = []
+        self.random_state = check_random_state(random_state)
 
     def fit(self, dataset):
         """Fits the RandomForestClassifier.
@@ -76,6 +81,8 @@ class RandomForestClassifier:
             accepted as argument.
 
         """
+        self.classes = None
+        self.trees = []
 
         if not isinstance(dataset, (Dataset, RfDataset)):
             raise TypeError('Invalid type for param dataset.')
@@ -86,18 +93,21 @@ class RandomForestClassifier:
             dataset.validate_features_file()
 
         n_features = dataset.get_n_features()
-        self.try_features = _resolve_try_features(self.try_features,
+        self.try_features = _resolve_try_features(self.try_features_init,
                                                   n_features)
         self.classes = dataset.get_classes()
 
-        if self.distr_depth is 'auto':
+        if self.distr_depth_init is 'auto':
             dataset.n_samples = compss_wait_on(dataset.get_n_samples())
             self.distr_depth = max(0, int(math.log10(dataset.n_samples)) - 4)
             self.distr_depth = min(self.distr_depth, self.max_depth)
+        else:
+            self.distr_depth = self.distr_depth_init
 
         for i in range(self.n_estimators):
             tree = DecisionTreeClassifier(self.try_features, self.max_depth,
-                                          self.distr_depth, bootstrap=True)
+                                          self.distr_depth, bootstrap=True,
+                                          random_state=self.random_state)
             self.trees.append(tree)
 
         for tree in self.trees:

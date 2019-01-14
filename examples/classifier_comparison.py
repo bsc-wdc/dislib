@@ -17,7 +17,7 @@ def main():
     classifiers = [
         CascadeSVM(kernel="linear", c=0.025, max_iter=5),
         CascadeSVM(gamma=2, c=1, max_iter=5),
-        RandomForestClassifier()
+        RandomForestClassifier(random_state=1)
     ]
 
     x, y = make_classification(n_features=2, n_redundant=0, n_informative=2,
