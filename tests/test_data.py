@@ -297,7 +297,7 @@ class DatasetTest(unittest.TestCase):
 
         dataset = load_csv_file(csv_file, subset_size=300, n_features=122)
 
-        self.assertEqual(dataset.labels.size, 0)
+        self.assertIsNone(dataset.labels)
 
 
 class SubsetTest(unittest.TestCase):

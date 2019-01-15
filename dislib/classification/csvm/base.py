@@ -129,9 +129,6 @@ class CascadeSVM(object):
                 self._check_convergence_and_update_w()
                 self._print_iteration()
 
-        if self._clf is None:
-            self._feedback, self._clf = self._feedback
-
     def predict(self, dataset):
         """ Perform classification on samples in dataset. This method stores
         labels in dataset.
@@ -194,8 +191,8 @@ class CascadeSVM(object):
         self._clf = None
         self._feedback = None
 
-    def _retrieve_clf(self):
-        self._feedback, self._clf = compss_wait_on(self._feedback)
+    def _collect_clf(self):
+        self._feedback, self._clf = compss_wait_on(self._feedback, self._clf)
 
     def _print_iteration(self):
         if self._verbose:
@@ -209,14 +206,14 @@ class CascadeSVM(object):
         # first level
         for subset in dataset:
             data = filter(None, [subset, self._feedback])
-            q.append(_train(False, self._random_state, *data, **params))
+            q.append(_train(False, self._random_state, *data, **params)[0])
 
         # reduction
         while len(q) > arity:
             data = q[:arity]
             del q[:arity]
 
-            q.append(_train(False, self._random_state, *data, **params))
+            q.append(_train(False, self._random_state, *data, **params)[0])
 
             # delete partial results
             for partial in data:
@@ -224,7 +221,8 @@ class CascadeSVM(object):
 
         # last layer
         get_clf = (self._check_convergence or self._is_last_iteration())
-        self._feedback = _train(get_clf, self._random_state, *q, **params)
+        _out = _train(get_clf, self._random_state, *q, **params)
+        self._feedback, self._clf = _out
         self.iterations += 1
 
     def _is_last_iteration(self):
@@ -251,7 +249,7 @@ class CascadeSVM(object):
         return w
 
     def _check_convergence_and_update_w(self):
-        self._retrieve_clf()
+        self._collect_clf()
         samples = self._feedback.samples
         labels = self._feedback.labels
 
@@ -299,7 +297,7 @@ class CascadeSVM(object):
         return np.dot(x, x.T)
 
 
-@task(returns=tuple)
+@task(returns=2)
 def _train(return_classifier, random_state, *subsets, **params):
     subset = _merge(*subsets)
 
@@ -311,7 +309,7 @@ def _train(return_classifier, random_state, *subsets, **params):
     if return_classifier:
         return sup_vec, clf
     else:
-        return sup_vec
+        return sup_vec, None
 
 
 @task(subset=INOUT)
@@ -331,7 +329,7 @@ def _score(subset, clf):
     labels = clf.predict(subset.samples)
     equal = np.equal(labels, subset.labels)
 
-    return np.sum(equal), subset.samples.shape[1]
+    return np.sum(equal), subset.samples.shape[0]
 
 
 @task(returns=float)

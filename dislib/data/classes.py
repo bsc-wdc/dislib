@@ -176,11 +176,14 @@ class Dataset(object):
 
     def _update_labels(self):
         self.collect()
-        self._labels = np.empty(0)
+        labels_list = []
 
         for subset in self._subsets:
             if subset.labels is not None:
-                self._labels = np.concatenate((self._labels, subset.labels))
+                labels_list.append(subset.labels)
+
+        if len(labels_list) > 0:
+            self._labels = np.concatenate(labels_list)
 
     def _update_samples(self):
         self.collect()

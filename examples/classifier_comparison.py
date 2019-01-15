@@ -41,6 +41,7 @@ def main():
         x_train, x_test, y_train, y_test = \
             train_test_split(x, y, test_size=.4, random_state=42)
         data = load_data(x=x_train, y=y_train, subset_size=20)
+        test_data = load_data(x=x_test, y=y_test, subset_size=20)
 
         x_min, x_max = x[:, 0].min() - .5, x[:, 0].max() + .5
         y_min, y_max = x[:, 1].min() - .5, x[:, 1].max() + .5
@@ -71,18 +72,19 @@ def main():
             ax = plt.subplot(len(datasets), len(classifiers) + 1, i)
 
             clf.fit(data)
-            score = clf.score(x_test, y_test)
+            score = clf.score(test_data)
 
             # Plot the decision boundary. For that, we will assign a color to
             # each point in the mesh [x_min, x_max]x[y_min, y_max].
             mesh = np.c_[xx.ravel(), yy.ravel()]
+            mesh_dataset = load_data(x=mesh, subset_size=20)
+
             if hasattr(clf, "decision_function"):
-                Z = clf.decision_function(mesh)
+                clf.decision_function(mesh_dataset)
+                Z = mesh_dataset.labels
             else:
-                mesh_ds = load_data(x=mesh, subset_size=mesh.shape[0])
-                clf.predict_proba(mesh_ds)
-                mesh_ds.collect()
-                Z = mesh_ds[0].labels[:, 1]
+                clf.predict_proba(mesh_dataset)
+                Z = mesh_dataset.labels[:, 1]
 
             # Put the result into a color plot
             Z = Z.reshape(xx.shape)
