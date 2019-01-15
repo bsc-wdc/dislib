@@ -13,6 +13,7 @@ from dislib.data import load_data
 
 class GaussianMixtureTest(unittest.TestCase):
     def test_init_params(self):
+        """Tests that GaussianMixture params are set."""
         n_components = 2
         covariance_type = 'diag'
         tol = 1e-4
@@ -42,6 +43,7 @@ class GaussianMixtureTest(unittest.TestCase):
         self.assertEqual(expected, real)
 
     def test_fit(self):
+        """Tests GaussianMixture.fit()"""
         dataset = Dataset(n_features=2)
 
         dataset.append(Subset(np.array([[1, 2], [2, 1], [-3, -3]])))
@@ -74,6 +76,7 @@ class GaussianMixtureTest(unittest.TestCase):
         self.assertTrue((np.allclose(gm.precisions_cholesky_, expected_pc)))
 
     def test_predict(self):
+        """Tests GaussianMixture.predict()"""
         dataset = Dataset(n_features=2)
         p1, p2, p3, p4 = [1, 2], [2, 1], [-1, -2], [-2, -1]
 
@@ -91,6 +94,7 @@ class GaussianMixtureTest(unittest.TestCase):
         self.assertTrue(l3 == l4 == l6)
 
     def test_fit_predict(self):
+        """Tests GaussianMixture.fit_predict()"""
         x, y = make_blobs(n_samples=1500, random_state=170)
         x_filtered = np.vstack(
             (x[y == 0][:500], x[y == 1][:100], x[y == 2][:10]))
@@ -110,6 +114,7 @@ class GaussianMixtureTest(unittest.TestCase):
         self.assertGreater(accuracy, 0.99)
 
     def test_check_n_components(self):
+        """Tests GaussianMixture n_components validation"""
         x = np.array([[0, 0], [0, 1], [1, 0]])
         dataset = load_data(x, subset_size=10)
         with self.assertRaises(ValueError):
@@ -117,6 +122,7 @@ class GaussianMixtureTest(unittest.TestCase):
             gm.fit(dataset)
 
     def test_check_tol(self):
+        """Tests GaussianMixture tol validation"""
         x = np.array([[0, 0], [0, 1], [1, 0]])
         dataset = load_data(x, subset_size=10)
         with self.assertRaises(ValueError):
@@ -124,6 +130,7 @@ class GaussianMixtureTest(unittest.TestCase):
             gm.fit(dataset)
 
     def test_check_reg_covar(self):
+        """Tests GaussianMixture reg_covar validation"""
         x = np.array([[0, 0], [0, 1], [1, 0]])
         dataset = load_data(x, subset_size=10)
         with self.assertRaises(ValueError):
@@ -131,6 +138,7 @@ class GaussianMixtureTest(unittest.TestCase):
             gm.fit(dataset)
 
     def test_check_covariance_type(self):
+        """Tests GaussianMixture covariance_type validation"""
         x = np.array([[0, 0], [0, 1], [1, 0]])
         dataset = load_data(x, subset_size=10)
         with self.assertRaises(ValueError):
