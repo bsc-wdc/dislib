@@ -38,6 +38,21 @@ class KMeans:
         Compute K-means clustering, and set and return cluster labels.
     predict(dataset)
         Predict the closest cluster each sample in dataset belongs to.
+
+    Examples
+    --------
+    >>> from dislib.cluster import KMeans
+    >>> import numpy as np
+    >>> x = np.array([[1, 2], [1, 4], [1, 0], [4, 2], [4, 4], [4, 0]])
+    >>> from dislib.data import load_data
+    >>> train_data = load_data(x=x, subset_size=2)
+    >>> kmeans = KMeans(n_clusters=2, random_state=0)
+    >>> kmeans.fit_predict(train_data)
+    >>> print(train_data.labels)
+    >>> test_data = load_data(x=np.array([[0, 0], [4, 4]]), subset_size=2)
+    >>> kmeans.predict(test_data)
+    >>> print(test_data.labels)
+    >>> print(kmeans.centers)
     """
 
     def __init__(self, n_clusters=8, max_iter=10, tol=1 ** -4, arity=50,
