@@ -4,8 +4,9 @@ import pickle
 import sys
 from uuid import uuid4
 
-import docker
 from docker.types import Mount
+
+import docker
 
 client = docker.from_env()
 # api_client = docker.APIClient()
@@ -23,10 +24,12 @@ def _is_running(name: str):
 
     return len(cs) > 0
 
-def _exists(name: str): 
-    cs = client.containers.list(filters={'name': name}, all=True) 
 
-    return len(cs) > 0 
+def _exists(name: str):
+    cs = client.containers.list(filters={'name': name}, all=True)
+
+    return len(cs) > 0
+
 
 def _get_master():
     master = client.containers.list(filters={'name': master_name})[0]
