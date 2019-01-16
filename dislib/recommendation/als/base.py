@@ -1,8 +1,7 @@
-import argparse
 from math import sqrt
 
 import numpy as np
-import pandas as pd
+
 from numpy.linalg import inv
 from pycompss.api.api import compss_wait_on
 from pycompss.api.task import task
@@ -10,7 +9,6 @@ from scipy import sparse
 from sklearn.metrics import mean_squared_error
 
 
-# from dislib.data import load_data
 from dislib.data import load_data
 
 
@@ -58,7 +56,6 @@ class ALS(object):
         Y = np.zeros((n, n_f), dtype=np.float32)
         n_c = np.array(
             [len(sparse.find(r_chunk[i])[0]) for i in range(0, r_chunk.shape[0])])
-        # print("Shape of X: %s, %s" % (X.shape[0], X.shape[1]))
         for element in range(0, n):
             indices = sparse.find(r_chunk[element])[1]
 
@@ -142,7 +139,6 @@ class ALS(object):
         d_u = load_data(r_u, r_u.shape[0] // 4)
         d_m = load_data(r_m, r_m.shape[0] // 4)
 
-
         n_u = r.shape[0]
         n_m = r.shape[1]
 
@@ -183,63 +179,3 @@ class ALS(object):
         return self.U[user_id].dot(self.M.T)
 
 
-@task(returns=np.array)
-def _update_chunk(subset, X, n_f, lambda_):
-
-    r_chunk = subset.samples
-    n = r_chunk.shape[0]
-    Y = np.zeros((n, n_f), dtype=np.float32)
-    n_c = np.array(
-        [len(sparse.find(r_chunk[i])[0]) for i in range(0, r_chunk.shape[0])])
-    # print("Shape of X: %s, %s" % (X.shape[0], X.shape[1]))
-    for element in range(0, n):
-        indices = sparse.find(r_chunk[element])[1]
-
-        X_Xt = X[indices].T.dot(X[indices])
-
-        A_i = X_Xt + lambda_ * n_c[element] * np.eye(n_f)
-        V_i = X[indices].T.dot(r_chunk[element, indices].toarray().T)
-
-        Y[element] = inv(A_i).dot(V_i).reshape(-1)
-
-    return Y
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    args = parser.parse_args()
-    # data
-    cols = ['user_id', 'movie_id', 'rating', 'timestamp']
-    df = pd.read_csv('./sample_movielens_ratings.txt',
-                     delimiter='::',
-                     names=cols,
-                     usecols=cols[0:3]).sample(frac=1)
-    valid_df = pd.read_csv('./test.data', names=cols[:3])
-
-    # just in case there are movies/user without rating
-    n_m = max(df.movie_id.nunique(), max(df.movie_id) + 1)
-    n_u = max(df.user_id.nunique(), max(df.user_id) + 1)
-
-    idx = int(df.shape[0] * 0.8)
-
-    train_df = df.iloc[:idx]
-    test_df = df.iloc[idx:]
-
-    train = sparse.csr_matrix(
-        (train_df.rating, (train_df.user_id, train_df.movie_id)),
-        shape=(n_u, n_m))
-    test = sparse.csr_matrix(
-        (test_df.rating, (test_df.user_id, test_df.movie_id)))
-
-    valid = sparse.csr_matrix((valid_df.rating,
-                               (valid_df.user_id, valid_df.movie_id)))
-
-    als = ALS(convergence_threshold=0.0001, max_iter=5)
-
-    als.fit(train, test)
-
-    # cx = sparse.find(valid)
-    # preds = []
-    # for i, j, r in zip(cx[0], cx[1], cx[2]):
-    #     pred = als.predict_user(i)[j]
-    #     preds.append(pred)
-    #     print("Rating vs prediction: %.1f - %1.f" % (r, pred))
