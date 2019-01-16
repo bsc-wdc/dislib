@@ -67,6 +67,13 @@ class CascadeSVM(object):
     score(dataset)
         Returns the mean accuracy on the given test dataset.
 
+    References
+    ----------
+
+    .. [1] Graf, H. P., Cosatto, E., Bottou, L., Dourdanovic, I., & Vapnik, V.
+        (2005). Parallel support vector machines: The cascade svm. In Advances
+        in neural information processing systems (pp. 521-528).
+
     Examples
     --------
     >>> import numpy as np
@@ -76,17 +83,10 @@ class CascadeSVM(object):
     >>> train_data = load_data(x=x, y=y, subset_size=4)
     >>> from dislib.classification import CascadeSVM
     >>> svm = CascadeSVM()
-    >>> svm.fit(train_data) #doctest: +NORMALIZE_WHITESPACE
+    >>> svm.fit(train_data)
     >>> test_data = load_data(x=np.array([[-0.8, -1]]), subset_size=1)
     >>> svm.predict(test_data)
     >>> print(test_data.labels)
-
-    References
-    ----------
-
-    .. [1] Graf, H. P., Cosatto, E., Bottou, L., Dourdanovic, I., & Vapnik, V.
-        (2005). Parallel support vector machines: The cascade svm. In Advances
-        in neural information processing systems (pp. 521-528).
     """
     _name_to_kernel = {"linear": "_linear_kernel", "rbf": "_rbf_kernel"}
 

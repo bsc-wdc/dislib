@@ -43,6 +43,17 @@ class DBSCAN():
         Perform DBSCAN clustering.
     fit_predict(dataset)
         Same as fit().
+
+    Examples
+    --------
+    >>> from dislib.cluster import DBSCAN
+    >>> import numpy as np
+    >>> x = np.array([[1, 2], [2, 2], [2, 3], [8, 7], [8, 8], [25, 80]])
+    >>> from dislib.data import load_data
+    >>> train_data = load_data(x, subset_size=2)
+    >>> dbscan = DBSCAN(eps=3, min_samples=2)
+    >>> dbscan.fit(train_data)
+    >>> print(train_data.labels)
     """
 
     def __init__(self, eps=0.5, min_samples=5, arrange_data=True, n_regions=1,
