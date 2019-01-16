@@ -56,17 +56,6 @@ class CascadeSVM(object):
     converged : boolean
         Whether the model has converged.
 
-    Methods
-    -------
-    fit(dataset)
-        Fit a model using training data.
-    predict(dataset)
-        Perform classification on samples in dataset.
-    decision_function(dataset)
-        Distance of the samples in dataset to the separating hyperplane.
-    score(dataset)
-        Returns the mean accuracy on the given test dataset.
-
     References
     ----------
 
@@ -87,6 +76,17 @@ class CascadeSVM(object):
     >>> test_data = load_data(x=np.array([[-0.8, -1]]), subset_size=1)
     >>> svm.predict(test_data)
     >>> print(test_data.labels)
+
+    Methods
+    -------
+    fit(dataset)
+        Fit a model using training data.
+    predict(dataset)
+        Perform classification on samples in dataset.
+    decision_function(dataset)
+        Distance of the samples in dataset to the separating hyperplane.
+    score(dataset)
+        Returns the mean accuracy on the given test dataset.
     """
     _name_to_kernel = {"linear": "_linear_kernel", "rbf": "_rbf_kernel"}
 
