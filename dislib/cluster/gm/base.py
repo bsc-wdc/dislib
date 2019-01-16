@@ -176,12 +176,8 @@ def _compute_precision_cholesky(covariances, covariance_type):
 
 
 @task(returns=1)
-def _mean_reduce(*subset_tuples):
-    total = 0
-    count = 0
-    for sum_s, count_s in subset_tuples:
-        total += sum_s
-        count += count_s
+def _mean_reduce(*tuples):
+    total, count = map(sum, zip(*tuples))
     return total/count
 
 
@@ -469,7 +465,6 @@ class GaussianMixture:
         self
         """
         self.fit_predict(dataset)
-        return self
 
     def fit_predict(self, dataset):
         """Estimate model parameters using X and predict the labels for X.

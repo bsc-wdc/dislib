@@ -13,7 +13,7 @@ from dislib.data import load_data
 
 class GaussianMixtureTest(unittest.TestCase):
     def test_init_params(self):
-        """Tests that GaussianMixture params are set."""
+        """Tests that GaussianMixture params are set"""
         n_components = 2
         covariance_type = 'diag'
         tol = 1e-4
