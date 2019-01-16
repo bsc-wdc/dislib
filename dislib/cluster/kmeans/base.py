@@ -44,15 +44,6 @@ class KMeans:
     >>> kmeans.predict(test_data)
     >>> print(test_data.labels)
     >>> print(kmeans.centers)
-
-    Methods
-    -------
-    fit(dataset)
-        Compute K-means clustering.
-    fit_predict(dataset)
-        Compute K-means clustering, and set and return cluster labels.
-    predict(dataset)
-        Predict the closest cluster each sample in dataset belongs to.
     """
 
     def __init__(self, n_clusters=8, max_iter=10, tol=1 ** -4, arity=50,
