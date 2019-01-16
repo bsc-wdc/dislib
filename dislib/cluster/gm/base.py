@@ -186,7 +186,7 @@ def _mean_reduce(*subset_tuples):
 
 
 @task(returns=2)
-def _estimate_responsabilities(subset, weights, means, precisions_cholesky,
+def _estimate_responsibilities(subset, weights, means, precisions_cholesky,
                                covariance_type):
     """Estimate log-likelihood and responsibilities for a subset.
 
@@ -594,7 +594,7 @@ class GaussianMixture:
         responsibilities : dislib.data.Subset
             responsibilities for each sample and component
         """
-        return _estimate_responsabilities(subset, self.weights_, self.means_,
+        return _estimate_responsibilities(subset, self.weights_, self.means_,
                                           self.precisions_cholesky_,
                                           self.covariance_type)
 
