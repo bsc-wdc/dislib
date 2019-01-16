@@ -122,29 +122,32 @@ dislib init /home/user/replace/path/
 
 #### 4. Run a sample application
 
-First clone dislib repo:
+**Note**: running the docker dislib does not work with applications with GUI or with visual plots such as `examples/clustering_comparison.py`).
+
+First clone dislib repo and checkout release 0.1.0 (docker version and dislib code should preferably be the same to avoid inconsistencies):
 
 ```bash
 git clone https://github.com/bsc-wdc/dislib.git
+git co v0.1.0
 ```
 
-Init the dislib environment in the examples folder. This will mount the examples directory inside the container. The exec the desired example:
-
-```bash
-cd dislib/examples
-dislib init
-dislib exec clustering_comparison.py
-```
-
-The source files path are resolved from the init directory. Notice the difference if the dislib is initialized in the root of the repo:
+Init the dislib environment in the root of the repo.
+The source files path are resolved from the init directory which sometimes can be confusing. As a rule of the thumb, initialize the library in a current directory and check the paths are correct running the file with `python3 path_to/file.py` (in this case `python3 examples/rf_iris.py`).
 
 ```bash
 cd dislib
 dislib init
-dislib exec examples/clustering_comparison.py
+dislib exec examples/rf_iris.py
 ```
 
 The log files of the execution can be found at $HOME/.COMPSs.
+
+You can also init the library inside the examples folder. This will mount the examples directory inside the container so you can execute it without adding the path:
+```bash
+cd dislib/examples
+dislib init
+dislib exec rf_iris.py
+```
 
 #### 5. Adding more nodes
 
