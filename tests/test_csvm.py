@@ -68,6 +68,32 @@ class CSVMTest(unittest.TestCase):
         self.assertFalse(csvm.converged)
         self.assertEqual(csvm.iterations, 1)
 
+    def test_fit_default_gamma(self):
+        """ Tests that the fit method converges when using gamma=auto on a
+        toy dataset """
+        seed = 666
+        file_ = "tests/files/libsvm/2"
+
+        dataset = load_libsvm_file(file_, 10, 780)
+
+        csvm = CascadeSVM(cascade_arity=3, max_iter=5,
+                          tol=1e-4, kernel='linear', c=2,
+                          check_convergence=True,
+                          random_state=seed, verbose=False)
+
+        csvm.fit(dataset)
+
+        self.assertTrue(csvm.converged)
+
+        csvm = CascadeSVM(cascade_arity=3, max_iter=1,
+                          tol=1e-4, kernel='linear', c=2, gamma=0.1,
+                          check_convergence=False,
+                          random_state=seed, verbose=False)
+
+        csvm.fit(dataset)
+        self.assertFalse(csvm.converged)
+        self.assertEqual(csvm.iterations, 1)
+
     def test_predict(self):
         seed = 666
 
