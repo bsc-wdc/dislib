@@ -20,7 +20,7 @@ class UtilsTest(unittest.TestCase):
                     labels=np.array([0, 1, 1, 1]))
 
         dataset = Dataset(2)
-        dataset.extend(s1, s2, s3)
+        dataset.extend([s1, s2, s3])
         dataset._sizes = [2, 3, 4]
 
         shuffled = shuffle(dataset)
@@ -42,7 +42,7 @@ class UtilsTest(unittest.TestCase):
         s3 = Subset(samples=np.array([[4, 0], [8, 1], [7, 4]]))
 
         dataset = Dataset(n_features=2)
-        dataset.extend(s1, s2, s3)
+        dataset.extend([s1, s2, s3])
         grid = as_grid(dataset, n_regions=3)
         grid.collect()
 
@@ -73,7 +73,7 @@ class UtilsTest(unittest.TestCase):
         s3 = Subset(samples=np.array([[4, 0], [8, 1], [7, 4]]))
 
         dataset = Dataset(n_features=2)
-        dataset.extend(s1, s2, s3)
+        dataset.extend([s1, s2, s3])
         _, indices = as_grid(dataset, n_regions=3, return_indices=True)
         true_indices = np.array([0, 8, 1, 2, 4, 5, 3, 6, 7])
 
@@ -90,7 +90,7 @@ class UtilsTest(unittest.TestCase):
                     labels=np.array([7, 8, 9]))
 
         dataset = Dataset(n_features=2)
-        dataset.extend(s1, s2, s3)
+        dataset.extend([s1, s2, s3])
         grid = as_grid(dataset, n_regions=3)
         grid.collect()
 
@@ -128,7 +128,7 @@ class UtilsTest(unittest.TestCase):
         s3 = Subset(samples=np.array([[4, 0], [8, 1], [7, 4]]))
 
         dataset = Dataset(n_features=2)
-        dataset.extend(s1, s2, s3)
+        dataset.extend([s1, s2, s3])
         sort = as_grid(dataset, n_regions=3)
 
         self.assertEqual(sort.subset_size(0), 1)

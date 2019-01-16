@@ -1,6 +1,7 @@
 import numpy as np
 from pycompss.api.api import compss_delete_object
 from pycompss.api.api import compss_wait_on
+from pycompss.api.parameter import INOUT
 from pycompss.api.task import task
 from scipy.sparse import issparse
 from sklearn.svm import SVC
@@ -58,12 +59,12 @@ class CascadeSVM(object):
     -------
     fit(dataset)
         Fit a model using training data.
-    predict(x)
-        Perform classification on samples in x.
-    decision_function(x)
-        Distance of the samples x to the separating hyperplane.
-    score(x,y)
-        Returns the mean accuracy on the given test data and labels.
+    predict(dataset)
+        Perform classification on samples in dataset.
+    decision_function(dataset)
+        Distance of the samples in dataset to the separating hyperplane.
+    score(dataset)
+        Returns the mean accuracy on the given test dataset.
 
     References
     ----------
@@ -128,71 +129,60 @@ class CascadeSVM(object):
                 self._check_convergence_and_update_w()
                 self._print_iteration()
 
-    def predict(self, x):
-        """ Perform classification on samples in x.
+    def predict(self, dataset):
+        """ Perform classification on samples in dataset. This method stores
+        labels in dataset.
 
         Parameters
         ----------
-        x : array-like, shape=[n_samples, n_features]
-
-        Returns
-        -------
-        y_pred : array, shape=[n_samples,]
-            Class labels for samples in x.
+        dataset : Dataset
         """
         assert (self._clf is not None or self._feedback is not None), \
             "Model has not been initialized. Call fit() first."
 
-        if self._clf is None:
-            self._retrieve_clf()
+        for subset in dataset:
+            _predict(subset, self._clf)
 
-        return self._clf.predict(x)
-
-    def decision_function(self, x):
-        """ Distance of the samples x to the separating hyperplane.
-
-        Parameters
-        ----------
-        x : array-like, shape (n_samples, n_features)
-
-        Returns
-        -------
-        out : array-like, shape (n_samples, n_classes * (n_classes-1) / 2)
-            Returns the decision function of the sample for each class in the
-            model.
-        """
-
-        assert (self._clf is not None or self._feedback is not None), \
-            "Model has not been initialized. Call fit() first."
-
-        if self._clf is None:
-            self._retrieve_clf()
-
-        return self._clf.decision_function(x)
-
-    def score(self, x, y):
-        """
-        Returns the mean accuracy on the given test data and labels.
+    def decision_function(self, dataset):
+        """ Computes distances of the samples in dataset to the separating
+        hyperplane. Distances are stored in dataset.labels.
 
         Parameters
         ----------
-        x : array-like, shape = (n_samples, n_features)
-            Test samples.
-        y : array-like, shape = (n_samples) or (n_samples, n_outputs)
-            True labels for x.
-
-        Returns
-        -------
-        score : Mean accuracy of self.predict(x) wrt. y.
+        dataset : Dataset
         """
-
         assert (self._clf is not None or self._feedback is not None), \
             "Model has not been initialized. Call fit() first."
 
-        if self._clf is None:
-            self._retrieve_clf()
+        for subset in dataset:
+            _decision_function(subset, self._clf)
 
-        return self._clf.score(x, y)
+    def score(self, dataset):
+        """
+        Returns the mean accuracy on the given test dataset. This method
+        assumes dataset.labels are true labels.
+
+        Parameters
+        ----------
+        dataset : Dataset
+            Dataset where dataset.labels are true labels for
+            dataset.samples.
+
+        Returns
+        -------
+        score : Mean accuracy of self.predict(dataset) wrt. dataset.labels.
+        """
+        assert (self._clf is not None or self._feedback is not None), \
+            "Model has not been initialized. Call fit() first."
+
+        partial_scores = []
+
+        for subset in dataset:
+            partial_scores.append(_score(subset, self._clf))
+
+        score = compss_wait_on(_merge_scores(*partial_scores))
+
+        return score
 
     def _reset_model(self):
         self.iterations = 0
@@ -201,8 +191,8 @@ class CascadeSVM(object):
         self._clf = None
         self._feedback = None
 
-    def _retrieve_clf(self):
-        self._feedback, self._clf = compss_wait_on(self._feedback)
+    def _collect_clf(self):
+        self._feedback, self._clf = compss_wait_on(self._feedback, self._clf)
 
     def _print_iteration(self):
         if self._verbose:
@@ -216,14 +206,14 @@ class CascadeSVM(object):
         # first level
         for subset in dataset:
             data = filter(None, [subset, self._feedback])
-            q.append(_train(False, self._random_state, *data, **params))
+            q.append(_train(False, self._random_state, *data, **params)[0])
 
         # reduction
         while len(q) > arity:
             data = q[:arity]
             del q[:arity]
 
-            q.append(_train(False, self._random_state, *data, **params))
+            q.append(_train(False, self._random_state, *data, **params)[0])
 
             # delete partial results
             for partial in data:
@@ -231,7 +221,8 @@ class CascadeSVM(object):
 
         # last layer
         get_clf = (self._check_convergence or self._is_last_iteration())
-        self._feedback = _train(get_clf, self._random_state, *q, **params)
+        _out = _train(get_clf, self._random_state, *q, **params)
+        self._feedback, self._clf = _out
         self.iterations += 1
 
     def _is_last_iteration(self):
@@ -258,7 +249,7 @@ class CascadeSVM(object):
         return w
 
     def _check_convergence_and_update_w(self):
-        self._retrieve_clf()
+        self._collect_clf()
         samples = self._feedback.samples
         labels = self._feedback.labels
 
@@ -306,7 +297,7 @@ class CascadeSVM(object):
         return np.dot(x, x.T)
 
 
-@task(returns=tuple)
+@task(returns=2)
 def _train(return_classifier, random_state, *subsets, **params):
     subset = _merge(*subsets)
 
@@ -318,7 +309,39 @@ def _train(return_classifier, random_state, *subsets, **params):
     if return_classifier:
         return sup_vec, clf
     else:
-        return sup_vec
+        return sup_vec, None
+
+
+@task(subset=INOUT)
+def _predict(subset, clf):
+    labels = clf.predict(subset.samples)
+    subset.labels = labels
+
+
+@task(subset=INOUT)
+def _decision_function(subset, clf):
+    distances = clf.decision_function(subset.samples)
+    subset.labels = distances
+
+
+@task(returns=tuple)
+def _score(subset, clf):
+    labels = clf.predict(subset.samples)
+    equal = np.equal(labels, subset.labels)
+
+    return np.sum(equal), subset.samples.shape[0]
+
+
+@task(returns=float)
+def _merge_scores(*partials):
+    total_correct = 0.
+    total_size = 0.
+
+    for correct, size in partials:
+        total_correct += correct
+        total_size += size
+
+    return total_correct / total_size
 
 
 def _merge(*subsets):

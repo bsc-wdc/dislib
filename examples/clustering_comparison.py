@@ -100,10 +100,10 @@ def main():
                 algorithm.fit(data)
 
             t1 = time.time()
-            if hasattr(algorithm, 'labels_'):
-                y_pred = algorithm.labels_.astype(np.int)
-            else:
-                y_pred = algorithm.predict(X)
+            if hasattr(algorithm, 'predict'):
+                algorithm.predict(data)
+
+            y_pred = data.labels.astype(np.int)
 
             plt.subplot(len(datasets), len(clustering_algorithms), plot_num)
             if i_dataset == 0:
