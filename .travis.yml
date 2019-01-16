@@ -22,6 +22,8 @@ script: "docker exec dislib /dislib/run_ci_checks.sh"
 
 after_success:
   - docker exec dislib codecov --token=629589cf-e257-4262-8ec0-314dfd98f003
+after_failure:
+  - docker exec dislib /dislib/bin/print_tests_logs.sh
 after_script:
   - docker images
 
