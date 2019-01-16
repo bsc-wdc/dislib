@@ -4,14 +4,15 @@ import pickle
 import sys
 from uuid import uuid4
 
-import docker
 from docker.types import Mount
+
+import docker
 
 client = docker.from_env()
 # api_client = docker.APIClient()
 api_client = docker.APIClient(base_url='unix://var/run/docker.sock')
 
-image_name = 'bscwdc/dislib:latest'
+image_name = 'bscwdc/dislib:latest'  # Update when releasing new version
 master_name = 'dislib-master'
 worker_name = 'dislib-worker'
 service_name = 'dislib-service'
@@ -20,6 +21,12 @@ default_workdir = '/home/user'
 
 def _is_running(name: str):
     cs = client.containers.list(filters={'name': name})
+
+    return len(cs) > 0
+
+
+def _exists(name: str):
+    cs = client.containers.list(filters={'name': name}, all=True)
 
     return len(cs) > 0
 
@@ -44,7 +51,7 @@ def _start_daemon(working_dir: str = "", restart: bool = True):
                                      all=True)
     assert len(masters) < 2  # never should we run 2 masters
 
-    if restart:
+    if restart or _exists(master_name):
         _stop_daemon()
 
     if not _is_running(master_name):
@@ -89,8 +96,6 @@ def _get_mounts(user_working_dir: str):
 
     return mounts
 
-
-# def _cache(cmd: str):
 
 def _generate_project_cfg(curr_cfg: str = '', ips: list = (), cpus: int = 4,
                           install_dir: str = '/opt/COMPSs',
@@ -186,35 +191,13 @@ def _add_workers(num_workers: int = 1, user_working_dir: str = "",
           (num_workers, user_working_dir, cpus))
 
 
-# def _add_services(num_workers: int = 1, user_working_dir: str = "",
-#                   cpus: int = 4, install_dir: str = '/opt/COMPSs',
-#                   worker_dir: str = default_workdir):
-#     if not user_working_dir:
-#         user_working_dir = os.getcwd()
-#
-#     # If master is not running, start it
-#     if not _is_running(master_name):
-#         _start_daemon(working_dir=user_working_dir)
-#
-#     # Remove all workers because they can't be added dynamically
-#     _stop_by_name(service_name)
-#
-#     mounts = _get_mounts(user_working_dir=user_working_dir)
-#     for _ in range(num_workers):
-#         service_id = service_name + '-' + uuid4().hex[:8]
-#         container_spec = docker.types.ContainerSpec(
-#             image='dislib', mounts=mounts, workdir=default_workdir)
-#         task_tmpl = docker.types.TaskTemplate(container_spec)
-#         api_client.create_service(task_tmpl, name=service_id)
-
-
 def _stop_daemon():
     _stop_by_name(master_name)
     _stop_by_name(worker_name)
 
 
 def _stop_by_name(name: str):
-    containers = client.containers.list(filters={'name': name})
+    containers = client.containers.list(filters={'name': name}, all=True)
     for c in containers:
         c.remove(force=True)
 
@@ -234,9 +217,10 @@ def _exec_in_daemon(cmd: str):
 def _components(arg: str = 'list'):
     args = arg.split()
 
-    subcmd = args[0]
+    if len(args) > 0:
+        subcmd = args[0]
 
-    if subcmd == 'list':
+    if len(args) == 0 or subcmd == 'list':
         masters = client.containers.list(filters={'name': master_name})
         workers = client.containers.list(filters={'name': worker_name})
         for c in masters + workers:
