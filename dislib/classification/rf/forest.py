@@ -9,7 +9,7 @@ from dislib.classification.rf.decision_tree import DecisionTreeClassifier
 import numpy as np
 
 from .data import RfDataset, transform_to_rf_dataset
-from dislib.data import Dataset, load_data
+from dislib.data import Dataset
 
 
 class RandomForestClassifier:
@@ -35,6 +35,11 @@ class RandomForestClassifier:
     distr_depth : int or str, optional (default='auto')
         Number of levels of the tree in which the nodes are split in a
         distributed way.
+    hard_vote : bool, optional (default=False)
+        If True, it uses majority voting over the predict() result of the
+        decision tree predictions. If False, it takes the class with the higher
+        probability given by predict_proba(), which is an average of the
+        probabilities given by the decision trees.
 
     Attributes
     ----------
@@ -60,11 +65,13 @@ class RandomForestClassifier:
                  n_estimators=10,
                  try_features='sqrt',
                  max_depth=np.inf,
-                 distr_depth='auto'):
+                 distr_depth='auto',
+                 hard_vote=False):
         self.n_estimators = n_estimators
         self.try_features = try_features
         self.max_depth = max_depth
         self.distr_depth = distr_depth
+        self.hard_vote = hard_vote
 
         self.classes = None
         self.trees = []
@@ -108,6 +115,20 @@ class RandomForestClassifier:
         for tree in self.trees:
             tree.fit(dataset)
 
+    def fit_predict(self, dataset):
+        """Fits the forest and predicts the classes for the same dataset.
+
+        Parameters
+        ----------
+        dataset : dislib.data.Dataset
+            Dataset to fit the RandomForestClassifier. The label corresponding
+            to each sample is filled with the prediction given by the same
+            predictor.
+
+        """
+        self.fit(dataset)
+        self.predict(dataset)
+
     def predict_proba(self, dataset):
         """Predicts class probabilities using a fitted forest.
 
@@ -117,14 +138,10 @@ class RandomForestClassifier:
         Parameters
         ----------
         dataset : dislib.data.Dataset
-            Dataset with samples for predicting their probabilities.
-
-        Returns
-        -------
-        dataset : dislib.data.Dataset
-            The given dataset, where the labels attribute for each dataset has
-            been set to a 2-dimensional array with the predicted probabilities.
-            The order of the classes is given by self.classes.
+            Dataset with samples to predict. The label corresponding to each
+            sample is filled with an array of the predicted probabilities.
+            The class corresponding to each position in the array is given by
+            self.classes.
 
         """
         assert self.trees is not None, 'The random forest is not fitted.'
@@ -133,52 +150,42 @@ class RandomForestClassifier:
             for tree in self.trees:
                 tree_predictions.append(tree.predict_proba(subset))
             _join_predictions(subset, *tree_predictions)
-        return dataset
 
-    def predict(self, dataset, soft_voting=True):
+    def predict(self, dataset):
         """Predicts classes using a fitted forest.
 
         Parameters
         ----------
         dataset : dislib.data.Dataset
-            Dataset with samples to predict.
-
-        soft_voting : bool, optional (default=True)
-            If True, it takes the class with the higher probability given by
-            predict_proba(), which is an average of the probabilities given by
-            the decision trees. If False, it uses majority voting over the
-            predict() result of the decision tree predictions.
-
-        Returns
-        -------
-        dataset : dislib.data.Dataset
-            The given dataset, with the labels set to their predicted values.
+            Dataset with samples to predict. The label corresponding to each
+            sample is filled with the prediction.
 
         """
         assert self.trees is not None, 'The random forest is not fitted.'
-        if soft_voting:
-            for subset in dataset:
-                tree_predictions = []
-                for tree in self.trees:
-                    tree_predictions.append(tree.predict_proba(subset))
-                _soft_vote(subset, self.classes, *tree_predictions)
-        else:
+        if self.hard_vote:
             for subset in dataset:
                 tree_predictions = []
                 for tree in self.trees:
                     tree_predictions.append(tree.predict(subset))
                 _hard_vote(subset, self.classes, *tree_predictions)
-        return dataset
+        else:
+            for subset in dataset:
+                tree_predictions = []
+                for tree in self.trees:
+                    tree_predictions.append(tree.predict_proba(subset))
+                _soft_vote(subset, self.classes, *tree_predictions)
 
-    def score(self, x_test, y_test):
+    def score(self, dataset):
         """Accuracy classification score.
+
+        Returns the mean accuracy on the given test dataset. This method
+        assumes dataset.labels are true labels.
 
         Parameters
         ----------
-        x_test : ndarray
-            Test samples.
-        y_test : ndarray
-            Correct test labels.
+        dataset : Dataset
+            Dataset where dataset.labels are true labels for
+            dataset.samples.
 
         Returns
         -------
@@ -186,11 +193,28 @@ class RandomForestClassifier:
             Fraction of correctly classified samples.
 
         """
-        ds = load_data(x=x_test, subset_size=x_test.shape[0])
-        self.predict(ds)
-        ds.collect()
-        y_pred = ds[0].labels
-        return np.count_nonzero(y_pred == y_test) / len(y_test)
+        assert self.trees is not None, 'The random forest is not fitted.'
+        partial_scores = []
+        if self.hard_vote:
+            for subset in dataset:
+                tree_predictions = []
+                for tree in self.trees:
+                    tree_predictions.append(tree.predict(subset))
+                subset_score = _hard_vote_score(subset, self.classes,
+                                                *tree_predictions)
+                partial_scores.append(subset_score)
+        else:
+            for subset in dataset:
+                tree_predictions = []
+                for tree in self.trees:
+                    tree_predictions.append(tree.predict_proba(subset))
+                subset_score = _soft_vote_score(subset, self.classes,
+                                                *tree_predictions)
+                partial_scores.append(subset_score)
+
+        score = compss_wait_on(_merge_scores(*partial_scores))
+
+        return score
 
 
 @task(returns=1)
@@ -205,7 +229,7 @@ def _resolve_try_features(try_features, n_features):
         return int(try_features)
 
 
-@task(subset=INOUT, returns=1)
+@task(subset=INOUT)
 def _join_predictions(subset, *predictions):
     aggregate = predictions[0]
     for p in predictions[1:]:
@@ -213,7 +237,7 @@ def _join_predictions(subset, *predictions):
     subset.labels = aggregate/len(predictions)
 
 
-@task(subset=INOUT, returns=1)
+@task(subset=INOUT)
 def _soft_vote(subset, classes, *predictions):
     aggregate = predictions[0]
     for p in predictions[1:]:
@@ -221,6 +245,32 @@ def _soft_vote(subset, classes, *predictions):
     subset.labels = classes[np.argmax(aggregate, axis=1)]
 
 
-@task(subset=INOUT, returns=1)
+@task(subset=INOUT)
 def _hard_vote(subset, classes, *predictions):
     subset.labels = classes[np.argmax(*predictions, axis=1)]
+
+
+@task(returns=1)
+def _soft_vote_score(subset, classes, *predictions):
+    aggregate = predictions[0]
+    for p in predictions[1:]:
+        aggregate += p
+    predicted_labels = classes[np.argmax(aggregate, axis=1)]
+    real_labels = subset.labels
+    correct = np.count_nonzero(predicted_labels == real_labels)
+    return correct, len(real_labels)
+
+
+@task(returns=1)
+def _hard_vote_score(subset, classes, *predictions):
+    predicted_labels = classes[np.argmax(*predictions, axis=1)]
+    real_labels = subset.labels
+    correct = np.count_nonzero(predicted_labels == real_labels)
+    return correct, len(real_labels)
+
+
+@task(returns=1)
+def _merge_scores(*partial_scores):
+    correct = sum(subset_score[0] for subset_score in partial_scores)
+    total = sum(subset_score[1] for subset_score in partial_scores)
+    return correct / total

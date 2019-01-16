@@ -5,7 +5,7 @@ import numpy as np
 from dislib.classification import CascadeSVM
 from dislib.data import Dataset
 from dislib.data import Subset
-from dislib.data import load_libsvm_file
+from dislib.data import load_libsvm_file, load_data
 
 
 class CSVMTest(unittest.TestCase):
@@ -86,7 +86,12 @@ class CSVMTest(unittest.TestCase):
 
         # p5 should belong to class 0, p6 to class 1
         p5, p6 = np.array([1, 1]), np.array([-1, -1])
-        l1, l2, l3, l4, l5, l6 = csvm.predict([p1, p2, p3, p4, p5, p6])
+
+        test_set = load_data(x=np.array([p1, p2, p3, p4, p5, p6]),
+                             subset_size=2)
+        csvm.predict(test_set)
+
+        l1, l2, l3, l4, l5, l6 = test_set.labels
 
         self.assertTrue(l1 == l2 == l5 == 0)
         self.assertTrue(l3 == l4 == l6 == 1)
@@ -109,8 +114,9 @@ class CSVMTest(unittest.TestCase):
 
         # points are separable, scoring the training dataset should have 100%
         # accuracy
-        accuracy = csvm.score(np.array([p1, p2, p3, p4]),
-                              np.array([0, 0, 1, 1]))
+        test_set = load_data(x=np.array([p1, p2, p3, p4]), subset_size=2,
+                             y=np.array([0, 0, 1, 1]))
+        accuracy = csvm.score(test_set)
 
         self.assertEqual(accuracy, 1.0)
 
@@ -132,13 +138,18 @@ class CSVMTest(unittest.TestCase):
         csvm.fit(dataset)
 
         # p1 should be equidistant to p3, and p2 to p4
-        d1, d2, d3, d4 = csvm.decision_function([p1, p2, p3, p4])
+        test_set = load_data(x=np.array([p1, p2, p3, p4]), subset_size=2)
+        csvm.decision_function(test_set)
+        d1, d2, d3, d4 = test_set.labels
+
         self.assertTrue(np.isclose(abs(d1) - abs(d3), 0))
         self.assertTrue(np.isclose(abs(d2) - abs(d4), 0))
 
         # p5 and p6 should be in the decision function (distance=0)
         p5, p6 = np.array([1, 0]), np.array([-1, 0])
-        d5, d6 = csvm.decision_function([p5, p6])
+        test_set = load_data(x=np.array([p5, p6]), subset_size=1)
+        csvm.decision_function(test_set)
+        d5, d6 = test_set.labels
         self.assertTrue(np.isclose(d5, 0))
         self.assertTrue(np.isclose(d6, 0))
 

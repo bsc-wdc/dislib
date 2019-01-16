@@ -11,6 +11,8 @@ from dislib.data import load_data
 
 class KMeansTest(unittest.TestCase):
     def test_init_params(self):
+        """ Tests that KMeans object correctly sets the initialization
+        parameters """
         n_clusters = 2
         max_iter = 1
         tol = 1e-4
@@ -25,6 +27,8 @@ class KMeansTest(unittest.TestCase):
         self.assertEqual(expected, real)
 
     def test_fit(self):
+        """ Tests that the fit method returns the expected centers using a
+        toy dataset. """
         dataset = Dataset(n_features=2)
 
         dataset.append(Subset(np.array([[1, 2], [2, 1]])))
@@ -38,6 +42,7 @@ class KMeansTest(unittest.TestCase):
         self.assertTrue((km.centers == expected_centers).all())
 
     def test_predict(self):
+        """ Tests that labels are correctly predicted using a toy dataset. """
         dataset = Dataset(n_features=2)
         p1, p2, p3, p4 = [1, 2], [2, 1], [-1, -2], [-2, -1]
 
@@ -48,12 +53,18 @@ class KMeansTest(unittest.TestCase):
         km.fit(dataset)
 
         p5, p6 = [10, 10], [-10, -10]
-        l1, l2, l3, l4, l5, l6 = km.predict([p1, p2, p3, p4, p5, p6])
+
+        test_set = load_data(np.array([p1, p2, p3, p4, p5, p6]), subset_size=2)
+        km.predict(test_set)
+
+        l1, l2, l3, l4, l5, l6 = test_set.labels
 
         self.assertTrue(l1 == l2 == l5 == 0)
         self.assertTrue(l3 == l4 == l6 == 1)
 
     def test_fit_predict(self):
+        """ Tests that fit_predict computes the right centers, and that the
+        number of labels predicted is the expected one using a toy dataset."""
         x, y = make_blobs(n_samples=1500, random_state=170)
         x_filtered = np.vstack(
             (x[y == 0][:500], x[y == 1][:100], x[y == 2][:10]))
@@ -61,7 +72,8 @@ class KMeansTest(unittest.TestCase):
         dataset = load_data(x_filtered, subset_size=300)
 
         kmeans = KMeans(n_clusters=3, random_state=170)
-        labels = kmeans.fit_predict(dataset)
+        kmeans.fit_predict(dataset)
+        labels = dataset.labels
 
         centers = np.array([[-8.941375656533449, -5.481371322614891],
                             [-4.524023204953875, 0.06235042593214654],

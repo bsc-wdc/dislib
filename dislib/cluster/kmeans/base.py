@@ -36,8 +36,8 @@ class KMeans:
         Compute K-means clustering.
     fit_predict(dataset)
         Compute K-means clustering, and set and return cluster labels.
-    predict(x)
-        Predict the closest cluster each sample in x belongs to.
+    predict(dataset)
+        Predict the closest cluster each sample in dataset belongs to.
     """
 
     def __init__(self, n_clusters=8, max_iter=10, tol=1 ** -4, arity=50,
@@ -57,76 +57,52 @@ class KMeans:
         ----------
         dataset : Dataset
             Samples to cluster.
-
-        Notes
-        -----
-        This method modifies the input Dataset by setting the cluster labels.
         """
-        centers = _init_centers(dataset.n_features, self._n_clusters,
-                                self._random_state)
-        self.centers = compss_wait_on(centers)
-
-        old_centers = None
-        iter = 0
-
-        while not self._converged(old_centers, iter):
-            old_centers = np.array(self.centers)
-            partials = []
-            for subset in dataset:
-                partials.append(_partial_sum(subset, old_centers))
-
-            self._recompute_centers(partials)
-            iter += 1
-
-        self.n_iter = iter
+        self._do_fit(dataset, False)
 
     def fit_predict(self, dataset):
-        """ Performs clustering on data, and sets and returns the cluster
-        labels.
+        """ Performs clustering on data, and sets the cluster labels of the
+        input Dataset.
 
         Parameters
         ----------
         dataset : Dataset
             Samples to cluster.
-
-        Returns
-        -------
-        y : ndarray, shape=[n_samples]
-            Cluster labels.
-
-        Notes
-        -----
-        This method modifies the input Dataset by setting the cluster labels.
         """
 
-        self.fit(dataset)
-        labels = []
+        self._do_fit(dataset, True)
 
-        for subset in dataset:
-            labels.append(_get_label(subset))
-
-        return np.concatenate(compss_wait_on(labels))
-
-    def predict(self, x):
-        """ Predict the closest cluster each sample in x belongs to.
+    def predict(self, dataset):
+        """ Predict the closest cluster each sample in dataset belongs to.
+        Cluster labels are stored in dataset.
 
         Parameters
         ----------
-        x : ndarray
+        dataset : Dataset
             New data to predict.
-
-        Returns
-        -------
-        labels : ndarray
-            Index of the cluster each sample belongs to.
         """
-        labels = []
+        for subset in dataset:
+            _predict(subset, self.centers)
 
-        for sample in x:
-            dist = np.linalg.norm(sample - self.centers, axis=1)
-            labels.append(np.argmin(dist))
+    def _do_fit(self, dataset, set_labels):
+        centers = _init_centers(dataset.n_features, self._n_clusters,
+                                self._random_state)
+        self.centers = compss_wait_on(centers)
 
-        return np.array(labels)
+        old_centers = None
+        iteration = 0
+
+        while not self._converged(old_centers, iteration):
+            old_centers = np.array(self.centers)
+            partials = []
+
+            for subset in dataset:
+                partials.append(_partial_sum(subset, old_centers, set_labels))
+
+            self._recompute_centers(partials)
+            iteration += 1
+
+        self.n_iter = iteration
 
     def _converged(self, old_centers, iter):
         if old_centers is not None:
@@ -162,13 +138,16 @@ def _init_centers(n_features, n_clusters, random_state):
 
 
 @task(subset=INOUT, returns=np.array)
-def _partial_sum(subset, centers):
+def _partial_sum(subset, centers, set_labels):
     partials = np.zeros((centers.shape[0], 2), dtype=object)
 
     for idx, sample in enumerate(subset.samples):
         dist = np.linalg.norm(sample - centers, axis=1)
         min_center = np.argmin(dist)
-        subset.set_label(idx, min_center)
+
+        if set_labels:
+            subset.set_label(idx, min_center)
+
         partials[min_center][0] += sample
         partials[min_center][1] += 1
 
@@ -183,3 +162,11 @@ def _merge(*data):
         accum += d
 
     return accum
+
+
+@task(subset=INOUT)
+def _predict(subset, centers):
+    for sample_idx, sample in enumerate(subset.samples):
+        dist = np.linalg.norm(sample - centers, axis=1)
+        label = np.argmin(dist)
+        subset.set_label(sample_idx, label)

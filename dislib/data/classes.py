@@ -7,12 +7,51 @@ from scipy.sparse import issparse, vstack, csr_matrix
 
 
 class Dataset(object):
+    """ A dataset containing samples and, optionally, labels that can be
+    stored in a distributed manner.
+
+    Dataset works as a list of Subset instances, which can be future objects
+    stored remotely. Accessing Dataset.labels and Dataset.samples runs
+    collect() and transfers all the data to the local machine.
+
+    Parameters
+    ----------
+    n_features : int
+        Number of features of the samples.
+
+    Attributes
+    ----------
+    n_features : int
+        Number of features of the samples.
+    samples : ndarray
+        Samples of the dataset.
+    labels : ndarray
+        Labels of the samples.
+
+    Methods
+    -------
+    append(subset, n_samples)
+        Appends a Subset to this Dataset.
+    extend(subsets)
+        Appends multiple Subset instances to this Dataset.
+    subset_size(index)
+        Returns the size of a Subset.
+    min_features()
+        Returns the minimum features in this Dataset.
+    max_features()
+        Returns the maximum features in this Dataset.
+    collect()
+        Synchronizes the data in this Dataset.
+    """
+
     def __init__(self, n_features):
         self._subsets = list()
         self.n_features = n_features
         self._sizes = list()
         self._max_features = None
         self._min_features = None
+        self._samples = None
+        self._labels = None
 
     def __getitem__(self, item):
         return self._subsets.__getitem__(item)
@@ -24,7 +63,7 @@ class Dataset(object):
         return self._subsets.__iter__()
 
     def append(self, subset, n_samples=None):
-        """ Extends this Dataset with one or more Subsets.
+        """ Appends a Subset to this Dataset.
 
         Parameters
         ----------
@@ -35,10 +74,19 @@ class Dataset(object):
         """
         self._subsets.append(subset)
         self._sizes.append(n_samples)
+        self._reset_attributes()
 
-    def extend(self, *subsets):
+    def extend(self, subsets):
+        """ Appends one or more Subset instances to this Dataset.
+
+        Parameters
+        ----------
+        subsets : list
+            A list of Subset instances.
+        """
         self._subsets.extend(subsets)
         self._sizes.extend([None] * len(subsets))
+        self._reset_attributes()
 
     def subset_size(self, index):
         """ Returns the number of samples in the Subset referenced by index.
@@ -96,6 +144,26 @@ class Dataset(object):
     def collect(self):
         self._subsets = compss_wait_on(self._subsets)
 
+    @property
+    def labels(self):
+        if self._labels is None:
+            self._update_labels()
+
+        return self._labels
+
+    @property
+    def samples(self):
+        if self._samples is None:
+            self._update_samples()
+
+        return self._samples
+
+    def _reset_attributes(self):
+        self._max_features = None
+        self._min_features = None
+        self._samples = None
+        self._labels = None
+
     def _compute_min_max(self):
         minmax = []
 
@@ -105,6 +173,24 @@ class Dataset(object):
         minmax = compss_wait_on(minmax)
         self._min_features = np.nanmin(minmax, axis=0)[0]
         self._max_features = np.nanmax(minmax, axis=0)[1]
+
+    def _update_labels(self):
+        self.collect()
+        labels_list = []
+
+        for subset in self._subsets:
+            if subset.labels is not None:
+                labels_list.append(subset.labels)
+
+        if len(labels_list) > 0:
+            self._labels = np.concatenate(labels_list)
+
+    def _update_samples(self):
+        self.collect()
+        self._samples = np.empty((0, self.n_features))
+
+        for subset in self._subsets:
+            self._samples = np.concatenate((self._samples, subset.samples))
 
 
 class Subset(object):
@@ -120,14 +206,16 @@ class Subset(object):
     Attributes
     ----------
     samples : ndarray
-
+        Samples.
     labels : ndarray
-
+        Labels.
 
     Methods
     -------
-    concatenate(subset, remove_duplicates=False)
+    concatenate(subset, remove_duplicates)
         Vertically concatenates this Subset to another.
+    set_label(index, label)
+        Sets the label of a sample.
     """
 
     def __init__(self, samples, labels=None):

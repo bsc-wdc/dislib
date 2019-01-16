@@ -1,12 +1,9 @@
 import argparse
 import csv
 import os
-
-import numpy as np
-from pycompss.api.api import barrier
-from sklearn.datasets import load_svmlight_file
-
 import time
+
+from pycompss.api.api import barrier
 
 from dislib.classification import CascadeSVM
 from dislib.data import (load_libsvm_file, load_libsvm_files, load_csv_file,
@@ -114,15 +111,17 @@ def main():
 
     if args.test_file:
         if args.libsvm:
-            testx, testy = load_svmlight_file(args.test_file, args.features)
-
-            if args.dense:
-                testx = testx.toarray()
-
-            out.append(csvm.score(testx, testy))
+            test_data = load_libsvm_file(args.test_file,
+                                         n_features=args.features,
+                                         subset_size=args.part_size,
+                                         store_sparse=sparse)
         else:
-            test = np.loadtxt(args.test_file, delimiter=",", dtype=float)
-            out.append(csvm.score(test[:, :-1], test[:, -1]))
+            test_data = load_csv_file(args.test_file,
+                                      n_features=args.features,
+                                      subset_size=args.part_size,
+                                      label_col="last")
+
+        out.append(csvm.score(test_data))
 
     if args.output_file:
         with open(args.output_file, "ab") as f:
