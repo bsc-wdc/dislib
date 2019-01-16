@@ -657,7 +657,7 @@ class GaussianMixture:
         if self.init_params == 'kmeans':
             seed = random_state.randint(0, int(1e8))
             kmeans = KMeans(n_clusters=n_components, random_state=seed)
-            kmeans.fit(dataset)
+            kmeans.fit_predict(dataset)
             for labeled_subset in dataset:
                 resp.append(_resp_subset(labeled_subset, n_components))
         elif self.init_params == 'random':
