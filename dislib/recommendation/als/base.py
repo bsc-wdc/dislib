@@ -15,12 +15,12 @@ class ALS(object):
                  convergence_threshold=0.0001 ** 2,
                  max_iter=np.inf, verbose=False):
         # params
-        self.seed = seed
-        self.n_f = n_f
-        self.lambda_ = lambda_
-        self.conv = convergence_threshold
-        self.max_iter = max_iter
-        self.verbose = verbose
+        self._seed = seed
+        self._n_f = n_f
+        self._lambda = lambda_
+        self._conv = convergence_threshold
+        self._max_iter = max_iter
+        self._verbose = verbose
         self.u = None
         self.m = None
 
@@ -37,8 +37,8 @@ class ALS(object):
         """
         results = []
         for subset in r:
-            chunk_res = self._update_chunk(subset, X, n_f=self.n_f,
-                                           lambda_=self.lambda_)
+            chunk_res = self._update_chunk(subset, X, n_f=self._n_f,
+                                           lambda_=self._lambda)
             results.append(chunk_res)
 
         results = compss_wait_on(results)
@@ -66,12 +66,12 @@ class ALS(object):
         return Y
 
     def _has_converged(self, last_rmse, rmse, i):
-        if i > self.max_iter:
-            if self.verbose:
-                print("Max iterations reached [%s]" % self.max_iter)
+        if i > self._max_iter:
+            if self._verbose:
+                print("Max iterations reached [%s]" % self._max_iter)
             return True
-        if i > 0 and abs(last_rmse - rmse) < self.conv:
-            if self.verbose:
+        if i > 0 and abs(last_rmse - rmse) < self._conv:
+            if self._verbose:
                 print("Converged in %s iterations to difference < %s" % (
                     i, abs(last_rmse - rmse)))
             return True
@@ -88,10 +88,10 @@ class ALS(object):
         n_u = r.shape[0]
         n_m = r.shape[1]
 
-        if self.seed:
-            np.random.seed(self.seed)
+        if self._seed:
+            np.random.seed(self._seed)
         u = None
-        m = np.random.rand(n_m, self.n_f)
+        m = np.random.rand(n_m, self._n_f)
 
         # Assign average rating as first feature
         average_ratings = [np.mean(r[:, i].data) for i in range(0, r.shape[1])]
@@ -110,7 +110,7 @@ class ALS(object):
                 indices = zip(x_idxs, y_idxs)
                 preds = [u[x].dot(m[y].T) for x, y in indices]
                 rmse = sqrt(mean_squared_error(recs, preds))
-                if self.verbose:
+                if self._verbose:
                     print("RMSE: %.3f  [%s]" % (rmse, abs(last_rmse - rmse)))
 
             i += 1
@@ -120,6 +120,8 @@ class ALS(object):
         return u, m
 
     def predict_user(self, user_id):
+        if self.u is None or self.m is None:
+            raise Exception("Model not trained, call first model.fit()")
         if user_id > self.u.shape[1]:
             return np.full([self.m.shape[1]], np.nan)
 
