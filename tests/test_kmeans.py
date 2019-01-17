@@ -34,7 +34,7 @@ class KMeansTest(unittest.TestCase):
         dataset.append(Subset(np.array([[1, 2], [2, 1]])))
         dataset.append(Subset(np.array([[-1, -2], [-2, -1]])))
 
-        km = KMeans(n_clusters=2, random_state=666)
+        km = KMeans(n_clusters=2, random_state=666, verbose=True)
         km.fit(dataset)
 
         expected_centers = np.array([[1.5, 1.5], [-1.5, -1.5]])
