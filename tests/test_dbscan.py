@@ -161,7 +161,7 @@ class DBSCANTest(unittest.TestCase):
         """
         n_samples = 1500
         x, y = make_moons(n_samples=n_samples, noise=.05)
-        dbscan = DBSCAN(n_regions=2, eps=.3, max_samples=600)
+        dbscan = DBSCAN(n_regions=4, eps=.3, max_samples=600)
         x = StandardScaler().fit_transform(x)
         dataset = load_data(x=x, y=y, subset_size=300)
         dbscan.fit(dataset)
@@ -198,6 +198,22 @@ class DBSCANTest(unittest.TestCase):
         n_clusters = np.unique(dataset.labels)
         n_clusters = n_clusters[n_clusters >= 0].size
         self.assertEqual(n_clusters, 0)
+
+    def test_n_clusters_aniso(self):
+        """ Tests that DBSCAN finds the correct number of clusters when
+        dimensions is not None.
+        """
+        n_samples = 1500
+        x, y = make_blobs(n_samples=n_samples, random_state=170)
+        dbscan = DBSCAN(n_regions=5, dimensions=[1], eps=.15)
+        transformation = [[0.6, -0.6], [-0.4, 0.8]]
+        x = np.dot(x, transformation)
+        x = StandardScaler().fit_transform(x)
+        dataset = load_data(x=x, y=y, subset_size=300)
+        dbscan.fit(dataset)
+        n_clusters = np.unique(dataset.labels)
+        n_clusters = n_clusters[n_clusters >= 0].size
+        self.assertEqual(n_clusters, 4)
 
 
 def main():

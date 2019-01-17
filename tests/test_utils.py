@@ -132,3 +132,21 @@ class UtilsTest(unittest.TestCase):
         sort = as_grid(dataset, n_regions=3)
 
         self.assertEqual(sort.subset_size(0), 1)
+        self.assertEqual(len(sort), 9)
+
+    def test_as_grid_dimensions(self):
+        """
+        Tests as_grid method using a subset of the dimensions.
+        """
+        s1 = Subset(samples=np.array([[1, 1], [8, 8], [2, 5]]))
+        s2 = Subset(samples=np.array([[1, 7], [4, 4], [5, 9]]))
+        s3 = Subset(samples=np.array([[4, 0], [8, 1], [7, 4]]))
+
+        dataset = Dataset(n_features=2)
+        dataset.extend([s1, s2, s3])
+        sort = as_grid(dataset, n_regions=3, dimensions=[1])
+
+        self.assertEqual(sort.subset_size(0), 3)
+        self.assertEqual(sort.subset_size(1), 3)
+        self.assertEqual(sort.subset_size(2), 3)
+        self.assertEqual(len(sort), 3)

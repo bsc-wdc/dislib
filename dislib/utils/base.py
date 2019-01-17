@@ -5,10 +5,10 @@ from pycompss.api.task import task
 from dislib.data import Dataset, Subset
 
 
-def as_grid(dataset, n_regions, return_indices=False):
+def as_grid(dataset, n_regions, dimensions=None, return_indices=False):
     """ Arranges samples in an n-dimensional grid where each Subset contains
     samples lying in one region of the feature space. The feature space is
-    divided in n_regions equally sized regions on each dimension based on
+    divided in ``n_regions`` equally sized regions on each dimension based on
     the maximum and minimum values of each feature in the dataset.
 
     Parameters
@@ -17,6 +17,9 @@ def as_grid(dataset, n_regions, return_indices=False):
         Input data.
     n_regions : int
         Number of regions per dimension in which to split the feature space.
+    dimensions : iterable, optional (default=None)
+        Integer indices of the dimensions to split. If None, all dimensions
+        are split.
     return_indices : boolean, optional (default=False)
         Whether to return sorting indices.
 
@@ -29,13 +32,22 @@ def as_grid(dataset, n_regions, return_indices=False):
         order they have in the input Dataset.
     """
     n_features = dataset.n_features
-    grid_shape = (n_regions,) * n_features
+
+    if dimensions is None:
+        dimensions = range(n_features)
+
+    grid_shape = [1] * n_features
+
+    for dim in dimensions:
+        grid_shape[dim] = n_regions
+
+    grid_shape = tuple(grid_shape)
 
     min_ = dataset.min_features()
     max_ = dataset.max_features()
-    bins = _generate_bins(min_, max_, n_features, n_regions)
+    bins = _generate_bins(min_, max_, dimensions, n_regions)
 
-    sorted_data, sorting = _sort_data(dataset, grid_shape, bins)
+    sorted_data, sorting = _sort_data(dataset, grid_shape, bins, dimensions)
     sorted_data._min_features = np.copy(min_)
     sorted_data._max_features = np.copy(max_)
     ret_value = sorted_data
@@ -93,25 +105,25 @@ def shuffle(dataset):
     return shuffled_data
 
 
-def _generate_bins(min_, max_, n_features, n_regions):
+def _generate_bins(min_, max_, dimensions, n_regions):
     bins = []
 
     # create bins for the different regions in the grid in every dimension
-    for i in range(n_features):
+    for dim in dimensions:
         # Add up a small delta to the max to include it in the binarization
-        delta = max_[i] / 1e8
-        bin_ = np.linspace(min_[i], max_[i] + delta, n_regions + 1)
+        delta = max_[dim] / 1e8
+        bin_ = np.linspace(min_[dim], max_[dim] + delta, n_regions + 1)
         bins.append(bin_)
 
     return bins
 
 
-def _sort_data(dataset, grid_shape, bins):
+def _sort_data(dataset, grid_shape, bins, dimensions):
     sorted_data = Dataset(dataset.n_features)
     sorting_list = []
 
     for idx in np.ndindex(grid_shape):
-        subset, subset_size, sorting = _filter(idx, bins, *dataset)
+        subset, subset_size, sorting = _filter(idx, bins, dimensions, *dataset)
         sorted_data.append(subset, subset_size)
         sorting_list.append(sorting)
 
@@ -149,7 +161,7 @@ def _merge_subsets(*subsets):
 
 
 @task(returns=3)
-def _filter(idx, bins, *dataset):
+def _filter(idx, bins, dimensions, *dataset):
     filtered_samples = []
     filtered_labels = []
     sorting = []
@@ -160,10 +172,10 @@ def _filter(idx, bins, *dataset):
 
         # filter vectors by checking if they lie in the given region (specified
         # by idx)
-        for col_ind in range(filtered_samples[-1].shape[1]):
-            col = filtered_samples[-1][:, col_ind]
-            indices = np.digitize(col, bins[col_ind]) - 1
-            mask = (indices == idx[col_ind])
+        for bin_idx, col_idx in enumerate(dimensions):
+            col = filtered_samples[-1][:, col_idx]
+            indices = np.digitize(col, bins[bin_idx]) - 1
+            mask = (indices == idx[col_idx])
             filtered_samples[-1] = filtered_samples[-1][mask]
             final_ind = final_ind[mask]
 

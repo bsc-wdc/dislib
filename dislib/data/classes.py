@@ -27,21 +27,6 @@ class Dataset(object):
         Samples of the dataset.
     labels : ndarray
         Labels of the samples.
-
-    Methods
-    -------
-    append(subset, n_samples)
-        Appends a Subset to this Dataset.
-    extend(subsets)
-        Appends multiple Subset instances to this Dataset.
-    subset_size(index)
-        Returns the size of a Subset.
-    min_features()
-        Returns the minimum features in this Dataset.
-    max_features()
-        Returns the maximum features in this Dataset.
-    collect()
-        Synchronizes the data in this Dataset.
     """
 
     def __init__(self, n_features):
@@ -209,13 +194,6 @@ class Subset(object):
         Samples.
     labels : ndarray
         Labels.
-
-    Methods
-    -------
-    concatenate(subset, remove_duplicates)
-        Vertically concatenates this Subset to another.
-    set_label(index, label)
-        Sets the label of a sample.
     """
 
     def __init__(self, samples, labels=None):
