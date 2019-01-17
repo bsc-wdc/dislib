@@ -22,6 +22,8 @@ class KMeans:
     random_state : int, optional (default=None)
         Determines random number generation for centroid initialization. Use an
         int to make the randomness deterministic.
+    verbose: boolean, optional (default=False)
+        Whether to print progress information.
 
     Attributes
     ----------
@@ -47,7 +49,7 @@ class KMeans:
     """
 
     def __init__(self, n_clusters=8, max_iter=10, tol=1 ** -4, arity=50,
-                 random_state=None):
+                 random_state=None, verbose=False):
         self._n_clusters = n_clusters
         self._max_iter = max_iter
         self._tol = tol
@@ -55,6 +57,7 @@ class KMeans:
         self._arity = arity
         self.centers = None
         self.n_iter = 0
+        self._verbose = verbose
 
     def fit(self, dataset):
         """ Compute K-means clustering.
@@ -115,6 +118,9 @@ class KMeans:
             diff = 0
             for i, center in enumerate(self.centers):
                 diff += np.linalg.norm(center - old_centers[i])
+
+            if self._verbose:
+                print("Iteration %s - Convergence crit. = %s" % (iter, diff))
 
             return diff < self._tol ** 2 or iter >= self._max_iter
 
