@@ -78,20 +78,22 @@ class GaussianMixtureTest(unittest.TestCase):
     def test_predict(self):
         """Tests GaussianMixture.predict()"""
         dataset = Dataset(n_features=2)
-        p1, p2, p3, p4 = [1, 2], [2, 1], [-1, -2], [-2, -1]
+        p0, p1, p2, p3 = [1, 2], [-1, -2], [2, 1], [-2, -1]
 
-        dataset.append(Subset(np.array([p1, p3])))
-        dataset.append(Subset(np.array([p2, p4])))
+        dataset.append(Subset(np.array([p0, p1])))
+        dataset.append(Subset(np.array([p2, p3])))
 
         gm = GaussianMixture(n_components=2, random_state=666)
         gm.fit(dataset)
 
-        p5, p6 = [2, 2], [-1, -3]
-        l1, l2, l3, l4, l5, l6 = gm.predict([p1, p2, p3, p4, p5, p6])
+        p4, p5 = [2, 2], [-1, -3]
+        dataset.append(Subset(np.array([p4, p5])))
+        gm.predict(dataset)
+        prediction = dataset.labels
 
-        self.assertTrue(l1 != l3)
-        self.assertTrue(l1 == l2 == l5)
-        self.assertTrue(l3 == l4 == l6)
+        self.assertTrue(prediction[0] != prediction[1])
+        self.assertTrue(prediction[0] == prediction[2] == prediction[4])
+        self.assertTrue(prediction[1] == prediction[3] == prediction[5])
 
     def test_fit_predict(self):
         """Tests GaussianMixture.fit_predict()"""
@@ -104,13 +106,10 @@ class GaussianMixtureTest(unittest.TestCase):
 
         gm = GaussianMixture(n_components=3, random_state=170)
         gm.fit_predict(dataset)
-        labels = []
-        for subset in dataset:
-            subset = compss_wait_on(subset)
-            labels.append(subset.labels)
-        labels = np.concatenate(labels)
-        self.assertEqual(len(labels), 610)
-        accuracy = np.count_nonzero(labels == y_real) / len(labels)
+        prediction = dataset.labels
+
+        self.assertEqual(len(prediction), 610)
+        accuracy = np.count_nonzero(prediction == y_real) / len(prediction)
         self.assertGreater(accuracy, 0.99)
 
     def test_check_n_components(self):

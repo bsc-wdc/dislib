@@ -3,6 +3,7 @@ import warnings
 import numpy as np
 from numpy.random.mtrand import RandomState
 from pycompss.api.api import compss_wait_on
+from pycompss.api.parameter import INOUT
 from scipy import linalg
 from sklearn.utils import validation
 from sklearn.utils.fixes import logsumexp
@@ -327,6 +328,16 @@ def _compute_log_det_cholesky(matrix_chol, covariance_type, n_features):
     return log_det_chol
 
 
+def _assign_predictions(dataset, responsabilities):
+    for subset, resp in zip(dataset, responsabilities):
+        _assign_subset_predictions(subset, resp)
+
+
+@task(subset=INOUT)
+def _assign_subset_predictions(subset, responsabilities):
+    subset.labels = responsabilities.samples.argmax(axis=1)
+
+
 class GaussianMixture:
     """Gaussian mixture model.
 
@@ -464,7 +475,11 @@ class GaussianMixture:
         -------
         self
         """
-        self.fit_predict(dataset)
+        self._fit(dataset)
+        # Always do a final e-step to guarantee that the labels returned by
+        # fit_predict(X) are always consistent with fit(X).predict(X)
+        # for any value of max_iter and tol (and any random_state).
+        self._e_step(dataset)
 
     def fit_predict(self, dataset):
         """Estimate model parameters using X and predict the labels for X.
@@ -480,11 +495,27 @@ class GaussianMixture:
         ----------
         dataset : dislib.data.Dataset
             Data points.
-        Returns
-        -------
-        dataset : dislib.data.Dataset
-            Input dataset, with predicted component labels.
         """
+        self._fit(dataset)
+        _, resp = self._e_step(dataset)
+        _assign_predictions(dataset, resp)
+
+    def predict(self, dataset):
+        """Predict the labels for the data samples in x using trained model.
+
+        Parameters
+        ----------
+        dataset : dislib.data.Dataset
+            Data points.
+
+        """
+        validation.check_is_fitted(self,
+                                   ['weights_', 'means_',
+                                    'precisions_cholesky_'])
+        _, resp = self._e_step(dataset)
+        _assign_predictions(dataset, resp)
+
+    def _fit(self, dataset):
         self._check_initial_parameters()
 
         self.converged_ = False
@@ -509,41 +540,12 @@ class GaussianMixture:
                 self.n_iter = n_iter
                 break
 
-        # Always do a final e-step to guarantee that the labels returned by
-        # fit_predict(X) are always consistent with fit(X).predict(X)
-        # for any value of max_iter and tol (and any random_state).
-        _, log_resp = self._e_step(dataset)
-
         if not self.converged_:
             warnings.warn('Initialization did not converge. '
                           'Try different init parameters, '
                           'or increase max_iter, tol '
                           'or check for degenerate data.',
                           ConvergenceWarning)
-
-        # return log_resp.argmax(axis=1)
-
-    def predict(self, x):
-        """Predict the labels for the data samples in x using trained model.
-
-        Parameters
-        ----------
-        x : array-like, shape (n_samples, n_features)
-            List of n_features-dimensional data points. Each row
-            corresponds to a single data point.
-
-        Returns
-        -------
-        labels : array, shape (n_samples,)
-            Component labels.
-        """
-        validation.check_is_fitted(self,
-                                   ['weights_', 'means_',
-                                    'precisions_cholesky_'])
-        x = validation.check_array(x, dtype=[np.float64, np.float32])
-        _, resp = self._estimate_prob_resp(Subset(x))
-        resp = compss_wait_on(resp)
-        return resp.samples.argmax(axis=1)
 
     def _e_step(self, dataset):
         """E step.
