@@ -27,7 +27,7 @@ class RFTest(unittest.TestCase):
         train_ds = load_data(x=x_train, y=y_train, subset_size=300)
         test_ds = load_data(x=x_test, y=y_test, subset_size=300)
 
-        rf = RandomForestClassifier()
+        rf = RandomForestClassifier(random_state=0)
 
         rf.fit(train_ds)
         accuracy = rf.score(test_ds)
@@ -52,7 +52,7 @@ class RFTest(unittest.TestCase):
         train_ds = load_data(x=x_train, y=y_train, subset_size=300)
         test_ds = load_data(x=x_test, subset_size=300)
 
-        rf = RandomForestClassifier(distr_depth=2)
+        rf = RandomForestClassifier(distr_depth=2, random_state=0)
 
         rf.fit(train_ds)
         rf.predict(test_ds)
@@ -75,7 +75,7 @@ class RFTest(unittest.TestCase):
 
         train_ds = load_data(x=x_train, y=y_train, subset_size=300)
 
-        rf = RandomForestClassifier()
+        rf = RandomForestClassifier(random_state=0)
 
         rf.fit_predict(train_ds)
         accuracy = np.count_nonzero(train_ds.labels == y_train) / len(y_train)
