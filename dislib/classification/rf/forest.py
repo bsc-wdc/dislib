@@ -47,18 +47,6 @@ class RandomForestClassifier:
         Array of distinct classes, set at fit().
     trees : list of DecisionTreeClassifier
         List of the tree classifiers of this forest, populated at fit().
-
-    Methods
-    -------
-    fit(dataset)
-        Fits the RandomForestClassifier.
-    predict_proba(dataset)
-        Predicts class probabilities using a fitted forest.
-    predict(dataset, soft_voting=True)
-        Predicts classes using a fitted forest.
-    score(x_test, y_test)
-        Accuracy classification score.
-
     """
 
     def __init__(self,
