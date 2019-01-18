@@ -27,21 +27,18 @@ def main():
 
     # Test the trained RF classifier
     print("- Testing the classifier.", end='')
-    test_ds = load_data(x[test_idx], 10, y[test_idx])
+    test_ds = load_data(x[test_idx], 10)
     forest.predict(test_ds)
-    test_ds.collect()
+    y_pred = test_ds.labels
 
-    labels = []
-    for subset in test_ds:
-        labels.append(subset.labels)
-    y_pred = np.concatenate(labels)
+    test_ds = load_data(x[test_idx], 10, y[test_idx])
+    score = forest.score(test_ds)
 
     # Put results in fancy dataframe and print the accuracy
     df = pd.DataFrame(data=list(zip(y[test_idx], y_pred)),
                       columns=['Label', 'Predicted'])
     print(" Predicted values: \n\n%s" % df)
-    print("test_ds %s" % test_ds)
-    print("\n- Classifier accuracy: %s" % forest.score(test_ds))
+    print("\n- Classifier accuracy: %s" % score)
 
 
 if __name__ == "__main__":
