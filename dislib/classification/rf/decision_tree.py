@@ -215,7 +215,7 @@ class _Node:
         node_content = self.content
         if isinstance(node_content, _LeafInfo):
             single_pred = node_content.frequencies/node_content.size
-            return np.repeat(single_pred, len(sample), 1)
+            return np.tile(single_pred, (len(sample), 1))
         if isinstance(node_content, _SkTreeWrapper):
             if len(sample) > 0:
                 sk_tree_pred = node_content.sk_tree.predict_proba(sample)
@@ -224,9 +224,9 @@ class _Node:
                 return pred
         if isinstance(node_content, _InnerNodeInfo):
             pred = np.empty((len(sample), n_classes), dtype=np.int64)
-            left_mask = sample[:, node_content.index] <= node_content.value
-            pred[left_mask] = self.left.predict_proba(sample[left_mask])
-            pred[~left_mask] = self.right.predict_proba(sample[~left_mask])
+            l_msk = sample[:, node_content.index] <= node_content.value
+            pred[l_msk] = self.left.predict_proba(sample[l_msk], n_classes)
+            pred[~l_msk] = self.right.predict_proba(sample[~l_msk], n_classes)
             return pred
         assert len(sample) == 0, 'Type not supported'
         return np.empty((0, n_classes), dtype=np.int64)
