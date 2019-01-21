@@ -1,4 +1,5 @@
 import numpy as np
+from pycompss.api.api import compss_wait_on
 from pycompss.api.parameter import INOUT
 from pycompss.api.task import task
 
@@ -22,14 +23,18 @@ class DBSCAN():
         The number of samples (or total weight) in a neighborhood for a point
         to be considered as a core point. This includes the point itself.
     arrange_data: boolean, optional (default=True)
-        Whether to re-arrange input data before performing clustering.
+        Whether to re-arrange input data before performing clustering. If
+        ``arrange_data=False``, ``n_regions`` and ``dimensions`` have no
+        effect.
     n_regions : int, optional (default=1)
         Number of regions per dimension in which to divide the feature space.
         The total number of regions generated is equal to ``n_regions`` ^
-        ``len(dimensions)``.
+        ``len(dimensions)``. If ``arrange_data=False``, ``n_regions`` is
+        ignored.
     dimensions : iterable, optional (default=None)
         Integer indices of the dimensions of the feature space that should be
-        divided. If None, all dimensions are divided.
+        divided. If None, all dimensions are divided. If ``arrange_data=False``
+        , ``dimensions`` is ignored.
     max_samples : int, optional (default=None)
         Setting max_samples to an integer results in the paralellization of
         the computation of distances inside each region of the grid. That
@@ -38,6 +43,11 @@ class DBSCAN():
 
         This can be used to balance the load in scenarios where samples are not
         evenly distributed in the feature space.
+
+    Attributes
+    ----------
+    n_clusters : int
+        Number of clusters found.
 
     Examples
     --------
@@ -69,6 +79,7 @@ class DBSCAN():
         self._subset_sizes = []
         self._sorting = []
         self._max_samples = max_samples
+        self._components = None
 
     def fit(self, dataset):
         """ Perform DBSCAN clustering on data and sets dataset.labels.
@@ -110,8 +121,8 @@ class DBSCAN():
             self._n_regions = int(np.power(len(dataset), 1 / n_dims))
             sorted_data = dataset
 
-        grid = self._create_grid(n_features)
-        region_widths = self._compute_region_widths(dataset)
+        grid = np.empty((self._n_regions,) * n_dims, dtype=object)
+        region_widths = self._compute_region_widths(dataset)[self._dimensions]
 
         # Create regions
         for subset_idx, region_id in enumerate(np.ndindex(grid.shape)):
@@ -139,16 +150,18 @@ class DBSCAN():
         equivalences = _merge_dicts(*equiv_list)
 
         # Compute connected components
-        components = _get_connected_components(equivalences)
+        self._components = _get_connected_components(equivalences)
 
         # Update region labels according to equivalences
         final_labels = []
 
         for subset_idx, region_id in enumerate(np.ndindex(grid.shape)):
             region = grid[region_id]
-            region.update_labels(components)
+            region.update_labels(n_dims, self._components)
             final_labels.append(region.labels)
-            _set_labels(dataset[subset_idx], region.labels)
+
+            if not self._arrange_data:
+                _set_labels(dataset[subset_idx], region.labels)
 
         if self._arrange_data:
             self._sort_labels_back(dataset, final_labels, sorting_ind)
@@ -190,19 +203,15 @@ class DBSCAN():
             _set_labels(subset, final_labels, begin, end)
             begin = end
 
+    @property
+    def n_clusters(self):
+        self._components = compss_wait_on(self._components)
+        return len(self._components)
+
     def _compute_region_widths(self, dataset):
         min_ = dataset.min_features()
         max_ = dataset.max_features()
         return (max_ - min_) / self._n_regions
-
-    def _create_grid(self, n_features):
-        grid_shape = [1] * n_features
-
-        for dim in self._dimensions:
-            grid_shape[dim] = self._n_regions
-
-        grid = np.empty(tuple(grid_shape), dtype=object)
-        return grid
 
 
 @task(returns=1)

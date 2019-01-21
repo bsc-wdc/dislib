@@ -73,18 +73,18 @@ class Region(object):
         return _compute_equivalences(self.id, self.labels, self._neighbour_ids,
                                      *self._neighbour_labels)
 
-    def update_labels(self, components):
-        self.labels = _update_labels(self.id, self.labels, components)
+    def update_labels(self, n_dims, components):
+        self.labels = _update_labels(self.id, n_dims, self.labels, components)
 
 
 @task(returns=1)
-def _update_labels(region_id, labels, components):
+def _update_labels(region_id, n_dims, labels, components):
     new_labels = np.full(labels.shape[0], -1, dtype=int)
 
     for label, component in enumerate(components):
         for key in component:
-            if key[:2] == region_id:
-                indices = np.argwhere(labels == key[2])
+            if key[:n_dims] == region_id:
+                indices = np.argwhere(labels == key[n_dims])
                 new_labels[indices] = label
 
     return new_labels
@@ -125,8 +125,11 @@ def _compute_neighbours(epsilon, min_samples, begin_idx, end_idx, *subsets):
     samples = _concatenate_subsets(*subsets).samples
 
     for sample in samples[begin_idx:end_idx]:
-        neighbours = np.linalg.norm(samples - sample, axis=1) < epsilon
+        dist = np.linalg.norm(samples - sample, axis=1)
+        neighbours = dist < epsilon
         neigh_indices = np.where(neighbours)[0]
+        sorting = np.argsort(dist[neigh_indices])
+        neigh_indices = neigh_indices[sorting]
         neighbour_list.append(neigh_indices)
         core_points.append(neigh_indices.size >= min_samples)
 

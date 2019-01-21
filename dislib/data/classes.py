@@ -131,16 +131,12 @@ class Dataset(object):
 
     @property
     def labels(self):
-        if self._labels is None:
-            self._update_labels()
-
+        self._update_labels()
         return self._labels
 
     @property
     def samples(self):
-        if self._samples is None:
-            self._update_samples()
-
+        self._update_samples()
         return self._samples
 
     def _reset_attributes(self):
@@ -183,10 +179,10 @@ class Subset(object):
 
     Parameters
     ----------
-        samples : ndarray
-            Array of shape (n_samples, n_features).
-        labels : ndarray, optional
-            Array of shape (n_samples)
+    samples : ndarray
+        Array of shape (n_samples, n_features).
+    labels : ndarray, optional
+        Array of shape (n_samples)
 
     Attributes
     ----------

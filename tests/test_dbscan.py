@@ -8,6 +8,7 @@ from sklearn.preprocessing import StandardScaler
 
 from dislib.cluster import DBSCAN
 from dislib.data import load_data
+from dislib.utils import as_grid
 
 
 class DBSCANTest(unittest.TestCase):
@@ -21,9 +22,7 @@ class DBSCANTest(unittest.TestCase):
         x = StandardScaler().fit_transform(x)
         dataset = load_data(x=x, y=y, subset_size=300)
         dbscan.fit(dataset)
-        n_clusters = np.unique(dataset.labels)
-        n_clusters = n_clusters[n_clusters >= 0].size
-        self.assertEqual(n_clusters, 3)
+        self.assertEqual(dbscan.n_clusters, 3)
 
     def test_n_clusters_circles(self):
         """ Tests that DBSCAN finds the correct number of clusters with
@@ -35,9 +34,7 @@ class DBSCANTest(unittest.TestCase):
         x = StandardScaler().fit_transform(x)
         dataset = load_data(x=x, y=y, subset_size=300)
         dbscan.fit(dataset)
-        n_clusters = np.unique(dataset.labels)
-        n_clusters = n_clusters[n_clusters >= 0].size
-        self.assertEqual(n_clusters, 2)
+        self.assertEqual(dbscan.n_clusters, 2)
 
     def test_n_clusters_moons(self):
         """ Tests that DBSCAN finds the correct number of clusters with
@@ -49,9 +46,7 @@ class DBSCANTest(unittest.TestCase):
         x = StandardScaler().fit_transform(x)
         dataset = load_data(x=x, y=y, subset_size=300)
         dbscan.fit(dataset)
-        n_clusters = np.unique(dataset.labels)
-        n_clusters = n_clusters[n_clusters >= 0].size
-        self.assertEqual(n_clusters, 2)
+        self.assertEqual(dbscan.n_clusters, 2)
 
     def test_n_clusters_aniso(self):
         """ Tests that DBSCAN finds the correct number of clusters with
@@ -65,9 +60,16 @@ class DBSCANTest(unittest.TestCase):
         x = StandardScaler().fit_transform(x)
         dataset = load_data(x=x, y=y, subset_size=300)
         dbscan.fit(dataset)
-        n_clusters = np.unique(dataset.labels)
-        n_clusters = n_clusters[n_clusters >= 0].size
-        self.assertEqual(n_clusters, 4)
+        y_pred = dataset.labels
+        true_sizes = {19, 496, 491, 488, 6}
+        cluster_sizes = {y_pred[y_pred == -1].size,
+                         y_pred[y_pred == 0].size,
+                         y_pred[y_pred == 1].size,
+                         y_pred[y_pred == 2].size,
+                         y_pred[y_pred == 3].size}
+
+        self.assertEqual(dbscan.n_clusters, 4)
+        self.assertEqual(true_sizes, cluster_sizes)
 
     def test_n_clusters_blobs_max_samples(self):
         """ Tests that DBSCAN finds the correct number of clusters when
@@ -79,9 +81,7 @@ class DBSCANTest(unittest.TestCase):
         x = StandardScaler().fit_transform(x)
         dataset = load_data(x=x, y=y, subset_size=300)
         dbscan.fit(dataset)
-        n_clusters = np.unique(dataset.labels)
-        n_clusters = n_clusters[n_clusters >= 0].size
-        self.assertEqual(n_clusters, 3)
+        self.assertEqual(dbscan.n_clusters, 3)
 
     def test_n_clusters_circles_max_samples(self):
         """ Tests that DBSCAN finds the correct number of clusters when
@@ -93,9 +93,7 @@ class DBSCANTest(unittest.TestCase):
         x = StandardScaler().fit_transform(x)
         dataset = load_data(x=x, y=y, subset_size=300)
         dbscan.fit(dataset)
-        n_clusters = np.unique(dataset.labels)
-        n_clusters = n_clusters[n_clusters >= 0].size
-        self.assertEqual(n_clusters, 2)
+        self.assertEqual(dbscan.n_clusters, 2)
 
     def test_n_clusters_moons_max_samples(self):
         """ Tests that DBSCAN finds the correct number of clusters when
@@ -107,9 +105,7 @@ class DBSCANTest(unittest.TestCase):
         x = StandardScaler().fit_transform(x)
         dataset = load_data(x=x, y=y, subset_size=300)
         dbscan.fit(dataset)
-        n_clusters = np.unique(dataset.labels)
-        n_clusters = n_clusters[n_clusters >= 0].size
-        self.assertEqual(n_clusters, 2)
+        self.assertEqual(dbscan.n_clusters, 2)
 
     def test_n_clusters_aniso_max_samples(self):
         """ Tests that DBSCAN finds the correct number of clusters when
@@ -123,9 +119,16 @@ class DBSCANTest(unittest.TestCase):
         x = StandardScaler().fit_transform(x)
         dataset = load_data(x=x, y=y, subset_size=300)
         dbscan.fit(dataset)
-        n_clusters = np.unique(dataset.labels)
-        n_clusters = n_clusters[n_clusters >= 0].size
-        self.assertEqual(n_clusters, 4)
+        y_pred = dataset.labels
+        true_sizes = {19, 496, 491, 488, 6}
+        cluster_sizes = {y_pred[y_pred == -1].size,
+                         y_pred[y_pred == 0].size,
+                         y_pred[y_pred == 1].size,
+                         y_pred[y_pred == 2].size,
+                         y_pred[y_pred == 3].size}
+
+        self.assertEqual(dbscan.n_clusters, 4)
+        self.assertEqual(true_sizes, cluster_sizes)
 
     def test_n_clusters_blobs_grid(self):
         """ Tests that DBSCAN finds the correct number of clusters when
@@ -133,13 +136,11 @@ class DBSCANTest(unittest.TestCase):
         """
         n_samples = 1500
         x, y = make_blobs(n_samples=n_samples, n_features=2, random_state=8)
-        dbscan = DBSCAN(n_regions=2, eps=.3, max_samples=300)
+        dbscan = DBSCAN(n_regions=4, eps=.3, max_samples=300)
         x = StandardScaler().fit_transform(x)
         dataset = load_data(x=x, y=y, subset_size=300)
         dbscan.fit(dataset)
-        n_clusters = np.unique(dataset.labels)
-        n_clusters = n_clusters[n_clusters >= 0].size
-        self.assertEqual(n_clusters, 3)
+        self.assertEqual(dbscan.n_clusters, 3)
 
     def test_n_clusters_circles_grid(self):
         """ Tests that DBSCAN finds the correct number of clusters when
@@ -147,13 +148,11 @@ class DBSCANTest(unittest.TestCase):
         """
         n_samples = 1500
         x, y = make_circles(n_samples=n_samples, factor=.5, noise=.05)
-        dbscan = DBSCAN(n_regions=2, eps=.15, max_samples=700)
+        dbscan = DBSCAN(n_regions=4, eps=.15, max_samples=700)
         x = StandardScaler().fit_transform(x)
         dataset = load_data(x=x, y=y, subset_size=300)
         dbscan.fit(dataset)
-        n_clusters = np.unique(dataset.labels)
-        n_clusters = n_clusters[n_clusters >= 0].size
-        self.assertEqual(n_clusters, 2)
+        self.assertEqual(dbscan.n_clusters, 2)
 
     def test_n_clusters_moons_grid(self):
         """ Tests that DBSCAN finds the correct number of clusters when
@@ -165,9 +164,7 @@ class DBSCANTest(unittest.TestCase):
         x = StandardScaler().fit_transform(x)
         dataset = load_data(x=x, y=y, subset_size=300)
         dbscan.fit(dataset)
-        n_clusters = np.unique(dataset.labels)
-        n_clusters = n_clusters[n_clusters >= 0].size
-        self.assertEqual(n_clusters, 2)
+        self.assertEqual(dbscan.n_clusters, 2)
 
     def test_n_clusters_aniso_grid(self):
         """ Tests that DBSCAN finds the correct number of clusters when
@@ -175,15 +172,22 @@ class DBSCANTest(unittest.TestCase):
         """
         n_samples = 1500
         x, y = make_blobs(n_samples=n_samples, random_state=170)
-        dbscan = DBSCAN(n_regions=2, eps=.15, max_samples=500)
+        dbscan = DBSCAN(n_regions=4, eps=.15, max_samples=500)
         transformation = [[0.6, -0.6], [-0.4, 0.8]]
         x = np.dot(x, transformation)
         x = StandardScaler().fit_transform(x)
         dataset = load_data(x=x, y=y, subset_size=300)
         dbscan.fit(dataset)
-        n_clusters = np.unique(dataset.labels)
-        n_clusters = n_clusters[n_clusters >= 0].size
-        self.assertEqual(n_clusters, 4)
+        y_pred = dataset.labels
+        true_sizes = {19, 496, 491, 488, 6}
+        cluster_sizes = {y_pred[y_pred == -1].size,
+                         y_pred[y_pred == 0].size,
+                         y_pred[y_pred == 1].size,
+                         y_pred[y_pred == 2].size,
+                         y_pred[y_pred == 3].size}
+
+        self.assertEqual(dbscan.n_clusters, 4)
+        self.assertEqual(true_sizes, cluster_sizes)
 
     def test_zero_samples(self):
         """ Tests DBSCAN fit when some regions contain zero samples.
@@ -195,11 +199,9 @@ class DBSCANTest(unittest.TestCase):
         x = StandardScaler().fit_transform(x)
         dataset = load_data(x=x, y=y, subset_size=300)
         dbscan.fit(dataset)
-        n_clusters = np.unique(dataset.labels)
-        n_clusters = n_clusters[n_clusters >= 0].size
-        self.assertEqual(n_clusters, 0)
+        self.assertEqual(dbscan.n_clusters, 0)
 
-    def test_n_clusters_aniso(self):
+    def test_n_clusters_aniso_dimensions(self):
         """ Tests that DBSCAN finds the correct number of clusters when
         dimensions is not None.
         """
@@ -211,9 +213,38 @@ class DBSCANTest(unittest.TestCase):
         x = StandardScaler().fit_transform(x)
         dataset = load_data(x=x, y=y, subset_size=300)
         dbscan.fit(dataset)
-        n_clusters = np.unique(dataset.labels)
-        n_clusters = n_clusters[n_clusters >= 0].size
-        self.assertEqual(n_clusters, 4)
+        y_pred = dataset.labels
+        true_sizes = {19, 496, 491, 488, 6}
+        cluster_sizes = {y_pred[y_pred == -1].size,
+                         y_pred[y_pred == 0].size,
+                         y_pred[y_pred == 1].size,
+                         y_pred[y_pred == 2].size,
+                         y_pred[y_pred == 3].size}
+
+        self.assertEqual(dbscan.n_clusters, 4)
+        self.assertEqual(true_sizes, cluster_sizes)
+
+    def test_n_clusters_arranged(self):
+        """ Tests DBSCAN clustering with previously arranged data. """
+        n_samples = 1500
+        x, y = make_blobs(n_samples=n_samples, random_state=170)
+        transformation = [[0.6, -0.6], [-0.4, 0.8]]
+        x = np.dot(x, transformation)
+        x = StandardScaler().fit_transform(x)
+        dataset = load_data(x=x, y=y, subset_size=300)
+        grid_data = as_grid(dataset, n_regions=4)
+        dbscan = DBSCAN(arrange_data=False, eps=.15)
+        dbscan.fit(grid_data)
+        y_pred = grid_data.labels
+        true_sizes = {19, 496, 491, 488, 6}
+        cluster_sizes = {y_pred[y_pred == -1].size,
+                         y_pred[y_pred == 0].size,
+                         y_pred[y_pred == 1].size,
+                         y_pred[y_pred == 2].size,
+                         y_pred[y_pred == 3].size}
+
+        self.assertEqual(dbscan.n_clusters, 4)
+        self.assertEqual(true_sizes, cluster_sizes)
 
 
 def main():

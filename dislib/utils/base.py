@@ -36,12 +36,7 @@ def as_grid(dataset, n_regions, dimensions=None, return_indices=False):
     if dimensions is None:
         dimensions = range(n_features)
 
-    grid_shape = [1] * n_features
-
-    for dim in dimensions:
-        grid_shape[dim] = n_regions
-
-    grid_shape = tuple(grid_shape)
+    grid_shape = (n_regions,) * len(dimensions)
 
     min_ = dataset.min_features()
     max_ = dataset.max_features()
@@ -175,7 +170,7 @@ def _filter(idx, bins, dimensions, *dataset):
         for bin_idx, col_idx in enumerate(dimensions):
             col = filtered_samples[-1][:, col_idx]
             indices = np.digitize(col, bins[bin_idx]) - 1
-            mask = (indices == idx[col_idx])
+            mask = (indices == idx[bin_idx])
             filtered_samples[-1] = filtered_samples[-1][mask]
             final_ind = final_ind[mask]
 
