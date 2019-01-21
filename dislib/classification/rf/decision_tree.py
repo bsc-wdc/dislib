@@ -63,11 +63,12 @@ class DecisionTreeClassifier:
 
     """
 
-    def __init__(self, try_features, max_depth, distr_depth, bootstrap,
-                 random_state):
+    def __init__(self, try_features, max_depth, distr_depth, sklearn_max,
+                 bootstrap, random_state):
         self.try_features = try_features
         self.max_depth = max_depth
         self.distr_depth = distr_depth
+        self.sklearn_max = sklearn_max
         self.bootstrap = bootstrap
         self.random_state = random_state
 
@@ -126,6 +127,7 @@ class DecisionTreeClassifier:
                                                  self.max_depth - depth,
                                                  self.n_classes,
                                                  self.try_features,
+                                                 self.sklearn_max,
                                                  self.random_state,
                                                  samples_path, features_path)
                 node.content = len(self.subtrees)
@@ -283,21 +285,6 @@ def _feature_selection(untried_indices, m_try, random_state):
                                replace=False)
 
 
-@task(returns=tuple)
-def _test_splits(sample, y_s, n_classes, feature_indices, *features):
-    min_score = float_info.max
-    b_value = None
-    b_index = None
-    for t in range(len(feature_indices)):
-        feature = features[t]
-        score, value = test_split(sample, y_s, feature, n_classes)
-        if score < min_score:
-            min_score = score
-            b_index = feature_indices[t]
-            b_value = value
-    return min_score, b_value, b_index
-
-
 def _get_groups(sample, y_s, features_mmap, index, value):
     if index is None:
         empty_sample = np.array([], dtype=np.int64)
@@ -386,39 +373,41 @@ def _compute_split(sample, n_features, y_s, n_classes, m_try, features_mmap,
 
 
 def _build_subtree_wrapper(sample, y_s, n_features, max_depth, n_classes,
-                           m_try, random_state, samples_file, features_file):
+                           m_try, sklearn_max, random_state, samples_file,
+                           features_file):
     seed = random_state.randint(np.iinfo(np.int32).max)
     if features_file is not None:
         return _build_subtree_using_features(sample, y_s, n_features,
-                                             max_depth, n_classes, m_try, seed,
-                                             samples_file, features_file)
+                                             max_depth, n_classes, m_try,
+                                             sklearn_max, seed, samples_file,
+                                             features_file)
     else:
         return _build_subtree(sample, y_s, n_features, max_depth, n_classes,
-                              m_try, seed, samples_file)
+                              m_try, sklearn_max, seed, samples_file)
 
 
 @task(samples_file=FILE_IN, features_file=FILE_IN, returns=_Node)
 def _build_subtree_using_features(sample, y_s, n_features, max_depth,
-                                  n_classes, m_try, seed, samples_file,
-                                  features_file):
+                                  n_classes, m_try, sklearn_max, seed,
+                                  samples_file, features_file):
     random_state = RandomState(seed)
     return _compute_build_subtree(sample, y_s, n_features, max_depth,
-                                  n_classes, m_try, random_state, samples_file,
-                                  features_file=features_file)
+                                  n_classes, m_try, sklearn_max, random_state,
+                                  samples_file, features_file=features_file)
 
 
 @task(samples_file=FILE_IN, returns=_Node)
-def _build_subtree(sample, y_s, n_features, max_depth, n_classes, m_try, seed,
-                   samples_file):
+def _build_subtree(sample, y_s, n_features, max_depth, n_classes, m_try,
+                   sklearn_max, seed, samples_file):
     random_state = RandomState(seed)
     return _compute_build_subtree(sample, y_s, n_features, max_depth,
-                                  n_classes, m_try, random_state, samples_file)
+                                  n_classes, m_try, sklearn_max, random_state,
+                                  samples_file)
 
 
 def _compute_build_subtree(sample, y_s, n_features, max_depth, n_classes,
-                           m_try, random_state, samples_file,
-                           features_file=None, use_sklearn=True,
-                           sklearn_max=1e8):
+                           m_try, sklearn_max, random_state, samples_file,
+                           features_file=None, use_sklearn=True):
     if not sample.size:
         return _Node()
     if features_file is not None:
