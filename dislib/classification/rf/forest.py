@@ -1,4 +1,5 @@
 import math
+from collections import Counter
 
 from pycompss.api.api import compss_wait_on
 from pycompss.api.parameter import INOUT
@@ -36,6 +37,13 @@ class RandomForestClassifier:
     distr_depth : int or str, optional (default='auto')
         Number of levels of the tree in which the nodes are split in a
         distributed way.
+    sklearn_max: int or float, optional (default=1e8)
+        Maximum size (len(subsample)*n_features) of the arrays passed to
+        sklearn's DecisionTreeClassifier.fit(), which is called to fit subtrees
+        (subsamples) of our DecisionTreeClassifier. sklearn fit() is used
+        because it's faster, but requires loading the data to memory, which can
+        cause memory problems for large datasets. This parameter can be
+        adjusted to fit the hardware capabilities.
     hard_vote : bool, optional (default=False)
         If True, it uses majority voting over the predict() result of the
         decision tree predictions. If False, it takes the class with the higher
@@ -60,12 +68,14 @@ class RandomForestClassifier:
                  try_features='sqrt',
                  max_depth=np.inf,
                  distr_depth='auto',
+                 sklearn_max=1e8,
                  hard_vote=False,
                  random_state=None):
         self.n_estimators = n_estimators
         self.try_features_init = try_features
         self.max_depth = max_depth
         self.distr_depth_init = distr_depth
+        self.sklearn_max = sklearn_max
         self.hard_vote = hard_vote
         self.random_state = check_random_state(random_state)
 
@@ -106,7 +116,8 @@ class RandomForestClassifier:
 
         for i in range(self.n_estimators):
             tree = DecisionTreeClassifier(self.try_features, self.max_depth,
-                                          self.distr_depth, bootstrap=True,
+                                          self.distr_depth, self.sklearn_max,
+                                          bootstrap=True,
                                           random_state=self.random_state)
             self.trees.append(tree)
 
@@ -245,7 +256,10 @@ def _soft_vote(subset, classes, *predictions):
 
 @task(subset=INOUT)
 def _hard_vote(subset, classes, *predictions):
-    subset.labels = classes[np.argmax(*predictions, axis=1)]
+    mode = np.empty((len(predictions[0]),), dtype=int)
+    for sample_i, votes in enumerate(zip(*predictions)):
+        mode[sample_i] = Counter(votes).most_common(1)[0][0]
+    subset.labels = classes[mode]
 
 
 @task(returns=1)
@@ -261,7 +275,10 @@ def _soft_vote_score(subset, classes, *predictions):
 
 @task(returns=1)
 def _hard_vote_score(subset, classes, *predictions):
-    predicted_labels = classes[np.argmax(*predictions, axis=1)]
+    mode = np.empty((len(predictions[0]),), dtype=int)
+    for sample_i, votes in enumerate(zip(*predictions)):
+        mode[sample_i] = Counter(votes).most_common(1)[0][0]
+    predicted_labels = classes[mode]
     real_labels = subset.labels
     correct = np.count_nonzero(predicted_labels == real_labels)
     return correct, len(real_labels)
