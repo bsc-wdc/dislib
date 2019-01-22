@@ -128,6 +128,14 @@ class GaussianMixtureTest(unittest.TestCase):
             gm = GaussianMixture(tol=-0.1)
             gm.fit(dataset)
 
+    def test_check_max_iter(self):
+        """Tests GaussianMixture max_iter validation"""
+        x = np.array([[0, 0], [0, 1], [1, 0]])
+        dataset = load_data(x, subset_size=10)
+        with self.assertRaises(ValueError):
+            gm = GaussianMixture(max_iter=0)
+            gm.fit(dataset)
+
     def test_check_reg_covar(self):
         """Tests GaussianMixture reg_covar validation"""
         x = np.array([[0, 0], [0, 1], [1, 0]])

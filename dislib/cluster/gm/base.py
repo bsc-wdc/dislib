@@ -7,7 +7,6 @@ from pycompss.api.parameter import INOUT
 from scipy import linalg
 from sklearn.utils import validation
 from sklearn.utils.fixes import logsumexp
-from sklearn.utils.extmath import row_norms
 from sklearn.exceptions import ConvergenceWarning
 
 from pycompss.api.task import task
@@ -161,14 +160,15 @@ def _compute_precision_cholesky(covariances, covariance_type):
             precisions_chol[k] = linalg.solve_triangular(cov_chol,
                                                          np.eye(n_features),
                                                          lower=True).T
-    elif covariance_type == 'tied':
-        _, n_features = covariances.shape
-        try:
-            cov_chol = linalg.cholesky(covariances, lower=True)
-        except linalg.LinAlgError:
-            raise ValueError(estimate_precision_error_message)
-        precisions_chol = linalg.solve_triangular(cov_chol, np.eye(n_features),
-                                                  lower=True).T
+    # elif covariance_type == 'tied':
+    #     _, n_features = covariances.shape
+    #     try:
+    #         cov_chol = linalg.cholesky(covariances, lower=True)
+    #     except linalg.LinAlgError:
+    #         raise ValueError(estimate_precision_error_message)
+    #     precisions_chol = linalg.solve_triangular(cov_chol,
+    #                                               np.eye(n_features),
+    #                                               lower=True).T
     else:
         if np.any(np.less_equal(covariances, 0.0)):
             raise ValueError(estimate_precision_error_message)
@@ -266,23 +266,23 @@ def _estimate_log_gaussian_prob(x, means, precisions_chol, covariance_type):
             y = np.dot(x, prec_chol) - np.dot(mu, prec_chol)
             log_prob[:, k] = np.sum(np.square(y), axis=1)
 
-    elif covariance_type == 'tied':
-        log_prob = np.empty((n_samples, n_components))
-        for k, mu in enumerate(means):
-            y = np.dot(x, precisions_chol) - np.dot(mu, precisions_chol)
-            log_prob[:, k] = np.sum(np.square(y), axis=1)
-
-    elif covariance_type == 'diag':
-        precisions = precisions_chol ** 2
-        log_prob = (np.sum((means ** 2 * precisions), 1) -
-                    2. * np.dot(x, (means * precisions).T) +
-                    np.dot(x ** 2, precisions.T))
-
-    elif covariance_type == 'spherical':
-        precisions = precisions_chol ** 2
-        log_prob = (np.sum(means ** 2, 1) * precisions -
-                    2 * np.dot(x, means.T * precisions) +
-                    np.outer(row_norms(x, squared=True), precisions))
+    # elif covariance_type == 'tied':
+    #     log_prob = np.empty((n_samples, n_components))
+    #     for k, mu in enumerate(means):
+    #         y = np.dot(x, precisions_chol) - np.dot(mu, precisions_chol)
+    #         log_prob[:, k] = np.sum(np.square(y), axis=1)
+    #
+    # elif covariance_type == 'diag':
+    #     precisions = precisions_chol ** 2
+    #     log_prob = (np.sum((means ** 2 * precisions), 1) -
+    #                 2. * np.dot(x, (means * precisions).T) +
+    #                 np.dot(x ** 2, precisions.T))
+    #
+    # elif covariance_type == 'spherical':
+    #     precisions = precisions_chol ** 2
+    #     log_prob = (np.sum(means ** 2, 1) * precisions -
+    #                 2 * np.dot(x, means.T * precisions) +
+    #                 np.outer(row_norms(x, squared=True), precisions))
     else:
         raise ValueError()
     return -.5 * (n_features * np.log(2 * np.pi) + log_prob) + log_det
@@ -316,14 +316,14 @@ def _compute_log_det_cholesky(matrix_chol, covariance_type, n_features):
             matrix_chol.reshape(
                 n_components, -1)[:, ::n_features + 1]), 1))
 
-    elif covariance_type == 'tied':
-        log_det_chol = (np.sum(np.log(np.diag(matrix_chol))))
-
-    elif covariance_type == 'diag':
-        log_det_chol = (np.sum(np.log(matrix_chol), axis=1))
-
-    else:
-        log_det_chol = n_features * (np.log(matrix_chol))
+    # elif covariance_type == 'tied':
+    #     log_det_chol = (np.sum(np.log(np.diag(matrix_chol))))
+    #
+    # elif covariance_type == 'diag':
+    #     log_det_chol = (np.sum(np.log(matrix_chol), axis=1))
+    #
+    # else:
+    #     log_det_chol = n_features * (np.log(matrix_chol))
 
     return log_det_chol
 
