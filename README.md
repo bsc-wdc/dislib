@@ -40,7 +40,7 @@
 
 ## Introduction
 
-The Distributed Computing Library (dislib) provides distributed algorithms ready to use as a library. So far, dislib is highly focused on machine learning algorithms, and is greatly inspired by [Scikit-learn](https://scikit-learn.org/). However, other types of numerical algorithms might be added in the future. Dislib has been implemented on top of PyCOMPSs programming model, and it is being developed by the [Workflows and Distributed Computing group](https://github.com/bsc-wdc) of the [Barcelona Supercomputing Center](https://www.bsc.es/). The library is designed to allow easy local development through docker. Once the code is finished, it can be run directly on any distributed platform without any further changes. This includes clusters, supercomputers, clouds, and containerized platforms. For more information on which infrastructures and architectures are supported refer to [Availability](#availability)
+The Distributed Computing Library (dislib) provides distributed algorithms ready to use as a library. So far, dislib is highly focused on machine learning algorithms, and it is greatly inspired by [Scikit-learn](https://scikit-learn.org/). However, other types of numerical algorithms might be added in the future. Dislib has been implemented on top of PyCOMPSs programming model, and it is being developed by the [Workflows and Distributed Computing group](https://github.com/bsc-wdc) of the [Barcelona Supercomputing Center](https://www.bsc.es/). The library is designed to allow easy local development through docker. Once the code is finished, it can be run directly on any distributed platform without any further changes. This includes clusters, supercomputers, clouds, and containerized platforms. For more information on which infrastructures and architectures are supported refer to [Availability](#availability).
 
 
 
@@ -54,7 +54,7 @@ The Distributed Computing Library (dislib) provides distributed algorithms ready
 
 ## Quickstart
 
-Folow the steps below to get started with wdc Dislib.
+Follow the steps below to get started with wdc Dislib.
 
 #### 1. Install Docker and docker-py
 
@@ -71,7 +71,7 @@ Folow the steps below to get started with wdc Dislib.
 
 Be aware that for some distros the docker package has been renamed from `docker` to `docker-ce`. Make sure you install the new package.
 
-2. Add user to docker group to run dislib as non-root user.
+2. Add user to docker group to run dislib as a non-root user.
 
     - [Instructions](https://docs.docker.com/install/linux/linux-postinstall/)
 
@@ -109,9 +109,9 @@ sudo ln -s /opt/dislib/dislib /usr/local/bin/dislib
 
 #### 3. Start dislib in your development directory
 
-Initialize the dislib where your source code will be (you can reinit anytime). This will allow docker to access your local code and run it inside the container.
+Initialize the dislib where your source code will be (you can re-init anytime). This will allow docker to access your local code and run it inside the container.
 
-**Note** that the first time dislib needs to download the docker image from the registry and it may take a while.
+**Note** that the first time dislib needs to download the docker image from the registry, and it may take a while.
 ```
 # Without a path it operates on the current working directory.
 dislib init
@@ -132,7 +132,7 @@ git co v0.1.0
 ```
 
 Init the dislib environment in the root of the repo.
-The source files path are resolved from the init directory which sometimes can be confusing. As a rule of the thumb, initialize the library in a current directory and check the paths are correct running the file with `python3 path_to/file.py` (in this case `python3 examples/rf_iris.py`).
+The source files path are resolved from the init directory which sometimes can be confusing. As a rule of thumb, initialize the library in a current directory and check the paths are correct running the file with `python3 path_to/file.py` (in this case `python3 examples/rf_iris.py`).
 
 ```bash
 cd dislib
@@ -155,7 +155,7 @@ dislib exec rf_iris.py
 **Note**: adding more nodes is still in beta phase. Any suggestion, issue, or feedback is highly welcome and appreciated.
 
 
-To add more computing nodes you can either let docker create more workers for you or manually create and config a custom node.
+To add more computing nodes, you can either let docker create more workers for you or manually create and config a custom node.
 
 For docker just issue the desired number of workers to be added. For example, to add 2 docker workers:
 ```
@@ -168,22 +168,22 @@ You can check that both new computing nodes are up with:
 dislib components list
 ```
 
-If you want to add a custom node it needs to be reachable through ssh without user. Moreover, dislib will try to copy there the `working_dir` so it needs write permissions fot the scp.
+If you want to add a custom node it needs to be reachable through ssh without user. Moreover, dislib will try to copy the `working_dir` there, so it needs write permissions for the scp.
 
-For example, to add the local machine as worker node:
+For example, to add the local machine as a worker node:
 
 ```
 dislib components add worker '127.0.0.1:6'
 ```
 
-* '127.0.0.1': is the IP used for ssh (can also be a hostname like 'localhost', as long as it can be resolved).
+* '127.0.0.1': is the IP used for ssh (can also be a hostname like 'localhost' as long as it can be resolved).
 * '6': desired number of available computing units for the new node.
 
 **Please be aware** that `dislib components` will not list your custom nodes because they are not docker processes and thus it can't be verified if they are up and running.
 
 ## Availability
 
-Currently the following Supercomputers have already PyCOMPSs installed and ready to use. If you need help configuring your own cluster or supercomputer drop us an email and we will be pleased to help.
+Currently, the following supercomputers have already PyCOMPSs installed and ready to use. If you need help configuring your own cluster or supercomputer, drop us an email and we will be pleased to help.
 
 - Marenostrum 4 - Barcelona Supercomputing Center (BSC)
 - Minotauro - Barcelona Supercomputing Center (BSC)
@@ -196,11 +196,11 @@ Currently the following Supercomputers have already PyCOMPSs installed and ready
 
 Supported architectures:
 - [Intel SSF architectures](https://www.intel.com/content/www/us/en/high-performance-computing/ssf-architecture-specification.html)
-- [IBM's Power 9](https://www.ibm.com/it-infrastructure/power/power9-b).
+- [IBM's Power 9](https://www.ibm.com/it-infrastructure/power/power9-b)
 
 ## Contributing
 
-Contributions are **welcome and very much appreciated**. We are also open to starting research collaborations or mentoring if you are interested in or need assistance to implement new algorithms.
+Contributions are **welcome and very much appreciated**. We are also open to starting research collaborations or mentoring if you are interested in or need assistance implementing new algorithms.
 Please refer [to our Contribution Guide](CONTRIBUTING.md) for more details.
 
 
