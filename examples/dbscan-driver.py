@@ -2,6 +2,7 @@ import argparse
 import os
 import time
 
+import numpy as np
 from pycompss.api.api import barrier
 
 from dislib.cluster import DBSCAN
@@ -20,6 +21,9 @@ def main():
                         help="default is 0.5", default=0.5)
     parser.add_argument("-r", "--regions", metavar="N_REGIONS", type=int,
                         help="number of regions to create", default=1)
+    parser.add_argument("-d", "--dimensions", metavar="DIMENSIONS", type=str,
+                        help="comma separated dimensions to use in the grid",
+                        required=False)
     parser.add_argument("-x", "--max_samples", metavar="MAX_SAMPLES", type=int,
                         help="maximum samples to process per task ("
                              "default is 1000)", default=1000)
@@ -75,15 +79,23 @@ def main():
         read_time = time.time() - s_time
         s_time = time.time()
 
+    dims = None
+
+    if args.dimensions:
+        dims = args.dimensions.split(",")
+        dims = np.array(dims, dtype=int)
+
     dbscan = DBSCAN(eps=args.epsilon, min_samples=args.min_samples,
                     max_samples=args.max_samples, n_regions=args.regions,
-                    arrange_data=args.arrange)
+                    dimensions=dims, arrange_data=args.arrange)
     dbscan.fit(data)
 
     barrier()
     fit_time = time.time() - s_time
 
-    out = [args.part_size, read_time, fit_time]
+    out = [dbscan._eps, dbscan._min_samples, dbscan._max_samples,
+           dbscan._n_regions, len(dims), args.part_size, dbscan.n_clusters,
+           read_time, fit_time]
 
     print(out)
 

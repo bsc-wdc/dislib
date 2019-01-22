@@ -1,4 +1,5 @@
 import numpy as np
+from pycompss.api.api import compss_wait_on
 from pycompss.api.parameter import INOUT
 from pycompss.api.task import task
 
@@ -11,8 +12,7 @@ class DBSCAN():
 
     This algorithm requires data to be arranged in a multidimensional grid.
     The default behavior is to re-arrange input data before running the
-    clustering algorithm. See fit() for more details.
-
+    clustering algorithm. See ``fit()`` for more details.
 
     Parameters
     ----------
@@ -23,19 +23,31 @@ class DBSCAN():
         The number of samples (or total weight) in a neighborhood for a point
         to be considered as a core point. This includes the point itself.
     arrange_data: boolean, optional (default=True)
-        Whether to re-arrange input data before performing clustering.
+        Whether to re-arrange input data before performing clustering. If
+        ``arrange_data=False``, ``n_regions`` and ``dimensions`` have no
+        effect.
     n_regions : int, optional (default=1)
         Number of regions per dimension in which to divide the feature space.
-        The total number of regions generated is equal to n_regions ^
-        n_features.
+        The total number of regions generated is equal to ``n_regions`` ^
+        ``len(dimensions)``. If ``arrange_data=False``, ``n_regions`` is
+        ignored.
+    dimensions : iterable, optional (default=None)
+        Integer indices of the dimensions of the feature space that should be
+        divided. If None, all dimensions are divided. If ``arrange_data=False``
+        , ``dimensions`` is ignored.
     max_samples : int, optional (default=None)
-        Setting max_samples to an integer results in the parallelization of
+        Setting max_samples to an integer results in the paralellization of
         the computation of distances inside each region of the grid. That
         is, each region is processed using various parallel tasks, where each
         task finds the neighbours of max_samples samples.
 
         This can be used to balance the load in scenarios where samples are not
         evenly distributed in the feature space.
+
+    Attributes
+    ----------
+    n_clusters : int
+        Number of clusters found.
 
     Examples
     --------
@@ -47,38 +59,47 @@ class DBSCAN():
     >>> dbscan = DBSCAN(eps=3, min_samples=2)
     >>> dbscan.fit(train_data)
     >>> print(train_data.labels)
+
+    See also
+    --------
+    utils.as_grid()
     """
 
     def __init__(self, eps=0.5, min_samples=5, arrange_data=True, n_regions=1,
-                 max_samples=None):
+                 dimensions=None, max_samples=None):
         assert n_regions >= 1, \
             "Number of regions must be greater or equal to 1."
 
         self._eps = eps
         self._min_samples = min_samples
         self._n_regions = n_regions
+        self._dimensions_init = dimensions
+        self._dimensions = dimensions
         self._arrange_data = arrange_data
         self._subset_sizes = []
         self._sorting = []
         self._max_samples = max_samples
+        self._components = None
 
     def fit(self, dataset):
         """ Perform DBSCAN clustering on data and sets dataset.labels.
 
         If arrange_data=True, data is initially rearranged in a
-        multidimensional grid with n_regions regions per dimension. Regions
-        are uniform in size.
+        multidimensional grid with ``n_regions`` regions per dimension in
+        ``dimensions``. All regions in a specific dimension have the same
+        size.
 
         For example, suppose that data contains N partitions of 2-dimensional
-        samples (n_features=2), where the first feature ranges from 1 to 5 and
-        the second feature ranges from 0 to 1. Then, n_regions=10 re-arranges
-        data into 10^2=100 new partitions, where each partition contains the
-        samples that lie in one region of the grid. numpy.linspace() is
-        employed to divide the feature space into uniform regions.
+        samples (``n_features=2``), where the first feature ranges from 1 to 5
+        and the second feature ranges from 0 to 1. Then, n_regions=10
+        re-arranges data into 10^2=100 new partitions, where each partition
+        contains the samples that lie in one region of the grid.
+        numpy.linspace() is employed to divide the feature space into
+        uniform regions.
 
         If data is already arranged in a grid, then the number of partitions
-        in data must be equal to n_regions ^ n_features. The equivalence
-        between partition and region index is computed using
+        in data must be equal to ``n_regions`` ^ ``len(dimensions)``. The
+        equivalence between partition and region index is computed using
         numpy.ravel_multi_index().
 
         Parameters
@@ -88,14 +109,20 @@ class DBSCAN():
         """
         n_features = dataset.n_features
 
+        if self._dimensions_init is None:
+            self._dimensions = range(n_features)
+
+        n_dims = len(self._dimensions)
+
         if self._arrange_data:
-            sorted_data, sorting_ind = as_grid(dataset, self._n_regions, True)
+            sorted_data, sorting_ind = as_grid(dataset, self._n_regions,
+                                               self._dimensions, True)
         else:
-            self._n_regions = int(np.power(len(dataset), 1 / n_features))
+            self._n_regions = int(np.power(len(dataset), 1 / n_dims))
             sorted_data = dataset
 
-        grid = np.empty([self._n_regions] * n_features, dtype=object)
-        region_widths = self._compute_region_widths(dataset)
+        grid = np.empty((self._n_regions,) * n_dims, dtype=object)
+        region_widths = self._compute_region_widths(dataset)[self._dimensions]
 
         # Create regions
         for subset_idx, region_id in enumerate(np.ndindex(grid.shape)):
@@ -123,24 +150,21 @@ class DBSCAN():
         equivalences = _merge_dicts(*equiv_list)
 
         # Compute connected components
-        components = _get_connected_components(equivalences)
+        self._components = _get_connected_components(equivalences)
 
         # Update region labels according to equivalences
         final_labels = []
 
-        for region_id in np.ndindex(grid.shape):
+        for subset_idx, region_id in enumerate(np.ndindex(grid.shape)):
             region = grid[region_id]
-            region.update_labels(components)
+            region.update_labels(n_dims, self._components)
             final_labels.append(region.labels)
 
-        final_labels = _concatenate_labels(sorting_ind, *final_labels)
-        begin = 0
-        end = 0
+            if not self._arrange_data:
+                _set_labels(dataset[subset_idx], region.labels)
 
-        for subset_idx, subset in enumerate(dataset):
-            end += dataset.subset_size(subset_idx)
-            _set_labels(subset, begin, end, final_labels)
-            begin = end
+        if self._arrange_data:
+            self._sort_labels_back(dataset, final_labels, sorting_ind)
 
     def fit_predict(self, dataset):
         """ Perform DBSCAN clustering on dataset. This method does the same
@@ -168,11 +192,26 @@ class DBSCAN():
             if (d <= distances).all():
                 region.add_neighbour(grid[ind])
 
+    @staticmethod
+    def _sort_labels_back(dataset, final_labels, sorting_ind):
+        final_labels = _concatenate_labels(sorting_ind, *final_labels)
+        begin = 0
+        end = 0
+
+        for subset_idx, subset in enumerate(dataset):
+            end += dataset.subset_size(subset_idx)
+            _set_labels(subset, final_labels, begin, end)
+            begin = end
+
+    @property
+    def n_clusters(self):
+        self._components = compss_wait_on(self._components)
+        return len(self._components)
+
     def _compute_region_widths(self, dataset):
         min_ = dataset.min_features()
         max_ = dataset.max_features()
-        widths = (max_ - min_) / self._n_regions
-        return widths
+        return (max_ - min_) / self._n_regions
 
 
 @task(returns=1)
@@ -227,5 +266,5 @@ def _concatenate_labels(sorting, *labels):
 
 
 @task(subset=INOUT)
-def _set_labels(subset, begin, end, labels):
+def _set_labels(subset, labels, begin=0, end=None):
     subset.labels = labels[begin:end]
