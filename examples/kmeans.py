@@ -21,7 +21,8 @@ def main():
 
     # Incorrect number of clusters
     kmeans = KMeans(n_clusters=2, random_state=random_state)
-    y_pred = kmeans.fit_predict(dataset)
+    kmeans.fit_predict(dataset)
+    y_pred = dataset.labels
 
     plt.subplot(221)
     plt.scatter(x[:, 0], x[:, 1], c=y_pred)
@@ -36,7 +37,8 @@ def main():
     dataset = load_data(x_aniso, subset_size=300)
 
     kmeans = KMeans(n_clusters=3, random_state=random_state)
-    y_pred = kmeans.fit_predict(dataset)
+    kmeans.fit_predict(dataset)
+    y_pred = dataset.labels
 
     plt.subplot(222)
     plt.scatter(x_aniso[:, 0], x_aniso[:, 1], c=y_pred)
@@ -52,7 +54,8 @@ def main():
     dataset = load_data(x_varied, subset_size=300)
 
     kmeans = KMeans(n_clusters=3, random_state=random_state)
-    y_pred = kmeans.fit_predict(dataset)
+    kmeans.fit_predict(dataset)
+    y_pred = dataset.labels
 
     plt.subplot(223)
     plt.scatter(x_varied[:, 0], x_varied[:, 1], c=y_pred)
@@ -66,7 +69,8 @@ def main():
     dataset = load_data(x_filtered, subset_size=300)
 
     kmeans = KMeans(n_clusters=3, random_state=random_state)
-    y_pred = kmeans.fit_predict(dataset)
+    kmeans.fit_predict(dataset)
+    y_pred = dataset.labels
 
     plt.subplot(224)
     plt.scatter(x_filtered[:, 0], x_filtered[:, 1], c=y_pred)

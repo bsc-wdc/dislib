@@ -1,8 +1,10 @@
 import math
+from collections import Counter
 
 from pycompss.api.api import compss_wait_on
 from pycompss.api.parameter import INOUT
 from pycompss.api.task import task
+from sklearn.utils import check_random_state
 
 from dislib.classification.rf.decision_tree import DecisionTreeClassifier
 
@@ -29,17 +31,29 @@ class RandomForestClassifier:
         Note: the search for a split does not stop until at least one
         valid partition of the node samples is found, even if it requires
         to effectively inspect more than ``try_features`` features.
-    max_depth : int or float, optional (default=np.inf)
+    max_depth : int or np.inf, optional (default=np.inf)
         The maximum depth of the tree. If np.inf, then nodes are expanded
         until all leaves are pure.
     distr_depth : int or str, optional (default='auto')
         Number of levels of the tree in which the nodes are split in a
         distributed way.
+    sklearn_max: int or float, optional (default=1e8)
+        Maximum size (len(subsample)*n_features) of the arrays passed to
+        sklearn's DecisionTreeClassifier.fit(), which is called to fit subtrees
+        (subsamples) of our DecisionTreeClassifier. sklearn fit() is used
+        because it's faster, but requires loading the data to memory, which can
+        cause memory problems for large datasets. This parameter can be
+        adjusted to fit the hardware capabilities.
     hard_vote : bool, optional (default=False)
         If True, it uses majority voting over the predict() result of the
         decision tree predictions. If False, it takes the class with the higher
         probability given by predict_proba(), which is an average of the
         probabilities given by the decision trees.
+    random_state : int, RandomState instance or None, optional (default=None)
+        If int, random_state is the seed used by the random number generator;
+        If RandomState instance, random_state is the random number generator;
+        If None, the random number generator is the RandomState instance used
+        by `np.random`.
 
     Attributes
     ----------
@@ -47,18 +61,6 @@ class RandomForestClassifier:
         Array of distinct classes, set at fit().
     trees : list of DecisionTreeClassifier
         List of the tree classifiers of this forest, populated at fit().
-
-    Methods
-    -------
-    fit(dataset)
-        Fits the RandomForestClassifier.
-    predict_proba(dataset)
-        Predicts class probabilities using a fitted forest.
-    predict(dataset, soft_voting=True)
-        Predicts classes using a fitted forest.
-    score(x_test, y_test)
-        Accuracy classification score.
-
     """
 
     def __init__(self,
@@ -66,15 +68,16 @@ class RandomForestClassifier:
                  try_features='sqrt',
                  max_depth=np.inf,
                  distr_depth='auto',
-                 hard_vote=False):
+                 sklearn_max=1e8,
+                 hard_vote=False,
+                 random_state=None):
         self.n_estimators = n_estimators
-        self.try_features = try_features
+        self.try_features_init = try_features
         self.max_depth = max_depth
-        self.distr_depth = distr_depth
+        self.distr_depth_init = distr_depth
+        self.sklearn_max = sklearn_max
         self.hard_vote = hard_vote
-
-        self.classes = None
-        self.trees = []
+        self.random_state = check_random_state(random_state)
 
     def fit(self, dataset):
         """Fits the RandomForestClassifier.
@@ -88,6 +91,8 @@ class RandomForestClassifier:
             accepted as argument.
 
         """
+        self.classes = None
+        self.trees = []
 
         if not isinstance(dataset, (Dataset, RfDataset)):
             raise TypeError('Invalid type for param dataset.')
@@ -98,18 +103,22 @@ class RandomForestClassifier:
             dataset.validate_features_file()
 
         n_features = dataset.get_n_features()
-        self.try_features = _resolve_try_features(self.try_features,
+        self.try_features = _resolve_try_features(self.try_features_init,
                                                   n_features)
         self.classes = dataset.get_classes()
 
-        if self.distr_depth is 'auto':
+        if self.distr_depth_init is 'auto':
             dataset.n_samples = compss_wait_on(dataset.get_n_samples())
             self.distr_depth = max(0, int(math.log10(dataset.n_samples)) - 4)
             self.distr_depth = min(self.distr_depth, self.max_depth)
+        else:
+            self.distr_depth = self.distr_depth_init
 
         for i in range(self.n_estimators):
             tree = DecisionTreeClassifier(self.try_features, self.max_depth,
-                                          self.distr_depth, bootstrap=True)
+                                          self.distr_depth, self.sklearn_max,
+                                          bootstrap=True,
+                                          random_state=self.random_state)
             self.trees.append(tree)
 
         for tree in self.trees:
@@ -247,7 +256,10 @@ def _soft_vote(subset, classes, *predictions):
 
 @task(subset=INOUT)
 def _hard_vote(subset, classes, *predictions):
-    subset.labels = classes[np.argmax(*predictions, axis=1)]
+    mode = np.empty((len(predictions[0]),), dtype=int)
+    for sample_i, votes in enumerate(zip(*predictions)):
+        mode[sample_i] = Counter(votes).most_common(1)[0][0]
+    subset.labels = classes[mode]
 
 
 @task(returns=1)
@@ -263,7 +275,10 @@ def _soft_vote_score(subset, classes, *predictions):
 
 @task(returns=1)
 def _hard_vote_score(subset, classes, *predictions):
-    predicted_labels = classes[np.argmax(*predictions, axis=1)]
+    mode = np.empty((len(predictions[0]),), dtype=int)
+    for sample_i, votes in enumerate(zip(*predictions)):
+        mode[sample_i] = Counter(votes).most_common(1)[0][0]
+    predicted_labels = classes[mode]
     real_labels = subset.labels
     correct = np.count_nonzero(predicted_labels == real_labels)
     return correct, len(real_labels)

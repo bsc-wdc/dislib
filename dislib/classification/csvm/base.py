@@ -28,9 +28,10 @@ class CascadeSVM(object):
         kernels are 'linear' and 'rbf'.
     c : float, optional (default=1.0)
         Penalty parameter C of the error term.
-    gamma : float, optional (default='scale')
-        Supports 'scale' for 1 / (n_features * samples.std()) and 'auto' for
-        1 / (n_features)
+    gamma : float, optional (default='auto')
+        Kernel coefficient for 'rbf'.
+
+        Default is 'auto', which uses 1 / (n_features).
     check_convergence : boolean, optional (default=True)
         Whether to test for convergence. If False, the algorithm will run
         for cascade_iterations. Checking for convergence adds a
@@ -55,31 +56,34 @@ class CascadeSVM(object):
     converged : boolean
         Whether the model has converged.
 
-    Methods
-    -------
-    fit(dataset)
-        Fit a model using training data.
-    predict(dataset)
-        Perform classification on samples in dataset.
-    decision_function(dataset)
-        Distance of the samples in dataset to the separating hyperplane.
-    score(dataset)
-        Returns the mean accuracy on the given test dataset.
-
     References
     ----------
 
     .. [1] Graf, H. P., Cosatto, E., Bottou, L., Dourdanovic, I., & Vapnik, V.
         (2005). Parallel support vector machines: The cascade svm. In Advances
         in neural information processing systems (pp. 521-528).
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> x = np.array([[-1, -1], [-2, -1], [1, 1], [2, 1]])
+    >>> y = np.array([1, 1, 2, 2])
+    >>> from dislib.data import load_data
+    >>> train_data = load_data(x=x, y=y, subset_size=4)
+    >>> from dislib.classification import CascadeSVM
+    >>> svm = CascadeSVM()
+    >>> svm.fit(train_data)
+    >>> test_data = load_data(x=np.array([[-0.8, -1]]), subset_size=1)
+    >>> svm.predict(test_data)
+    >>> print(test_data.labels)
     """
     _name_to_kernel = {"linear": "_linear_kernel", "rbf": "_rbf_kernel"}
 
     def __init__(self, cascade_arity=2, max_iter=5, tol=10 ** -3,
-                 kernel="rbf", c=1, gamma='scale', check_convergence=True,
+                 kernel="rbf", c=1, gamma='auto', check_convergence=True,
                  random_state=None, verbose=False):
 
-        assert (gamma is "auto" or gamma is "scale" or type(gamma) == float
+        assert (gamma is "auto" or type(gamma) == float
                 or type(float(gamma)) == float), "Invalid gamma"
         assert (kernel is None or kernel in self._name_to_kernel.keys()), \
             "Incorrect kernel value [%s], available kernels are %s" % (
@@ -101,6 +105,7 @@ class CascadeSVM(object):
         self._check_convergence = check_convergence
         self._random_state = random_state
         self._verbose = verbose
+        self._gamma = gamma
 
         if kernel == "rbf":
             self._clf_params = {"kernel": kernel, "C": c, "gamma": gamma}
@@ -121,6 +126,7 @@ class CascadeSVM(object):
             Training data.
         """
         self._reset_model()
+        self._set_gamma(dataset.n_features)
 
         while not self._check_finished():
             self._do_iteration(dataset)
@@ -190,6 +196,11 @@ class CascadeSVM(object):
         self._last_w = None
         self._clf = None
         self._feedback = None
+
+    def _set_gamma(self, n_features):
+        if self._gamma == "auto":
+            self._gamma = 1. / n_features
+            self._clf_params["gamma"] = self._gamma
 
     def _collect_clf(self):
         self._feedback, self._clf = compss_wait_on(self._feedback, self._clf)
@@ -279,7 +290,7 @@ class CascadeSVM(object):
 
     def _rbf_kernel(self, x):
         # Trick: || x - y || ausmultipliziert
-        sigmaq = -1 / (2 * self._clf_params["gamma"])
+        sigmaq = -1 / (2 * self._gamma)
         n = x.shape[0]
         k = x.dot(x.T) / sigmaq
 
