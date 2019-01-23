@@ -48,7 +48,7 @@ class KMeans:
     >>> print(kmeans.centers)
     """
 
-    def __init__(self, n_clusters=8, max_iter=10, tol=1 ** -4, arity=50,
+    def __init__(self, n_clusters=8, max_iter=10, tol=1e-4, arity=50,
                  random_state=None, verbose=False):
         self._n_clusters = n_clusters
         self._max_iter = max_iter

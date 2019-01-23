@@ -7,7 +7,7 @@ import numpy as np
 from sklearn.datasets import make_blobs, make_circles, make_moons
 from sklearn.preprocessing import StandardScaler
 
-from dislib.cluster import KMeans, DBSCAN
+from dislib.cluster import KMeans, DBSCAN, GaussianMixture
 from dislib.data import load_data
 
 
@@ -72,8 +72,10 @@ def main():
         # ============
         kmeans = KMeans(n_clusters=params["n_clusters"])
         dbscan = DBSCAN(eps=params["eps"], n_regions=1)
+        gm = GaussianMixture(n_components=params["n_clusters"])
 
-        clustering_algorithms = (('K-Means', kmeans), ('DBSCAN', dbscan),)
+        clustering_algorithms = (('K-Means', kmeans), ('DBSCAN', dbscan),
+                                 ('Gaussian mixture', gm))
 
         for name, algorithm in clustering_algorithms:
             t0 = time.time()
