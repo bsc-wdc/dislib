@@ -60,6 +60,9 @@ clustering.
 :class:`cluster.KMeans <dislib.cluster.kmeans.base.KMeans>` - Perform K-Means
 clustering.
 
+:class:`cluster.GaussianMixture <dislib.cluster.gm.base.GaussianMixture>` -
+Fit a gaussian mixture model.
+
 
 dislib.classification: Classification
 -------------------------------------
