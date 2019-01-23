@@ -17,6 +17,6 @@ echo "Tests result: ${result}"
 
 # If word Failed is in the results, exit 1 so the pull request fails
 if [[ $result =~ FAILED ]]; then 
-        exit 1
-    fi
+    exit 1
+fi
 

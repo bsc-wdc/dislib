@@ -24,20 +24,20 @@ class ALS(object):
         self.u = None
         self.m = None
 
-    def _update(self, r, X):
-        """ Returns updated matrix M given U (if X=U), or matrix U given M
+    def _update(self, r, x):
+        """ Returns updated matrix M given U (if x=U), or matrix U given M
         otherwise
 
         Parameters
         ----------
         r : Dataset
-            copy of R with movies as rows (if X=U), users as rows otherwise
-        X : Dataset
+            copy of R with movies as rows (if x=U), users as rows otherwise
+        x : Dataset
             User or Movie feature matrix
         """
         results = []
         for subset in r:
-            chunk_res = self._update_chunk(subset, X, n_f=self._n_f,
+            chunk_res = self._update_chunk(subset, x, n_f=self._n_f,
                                            lambda_=self._lambda)
             results.append(chunk_res)
 
@@ -46,24 +46,24 @@ class ALS(object):
         return np.vstack(results)
 
     @task(returns=np.array, isModifier=False)
-    def _update_chunk(self, subset, X, n_f, lambda_):
+    def _update_chunk(self, subset, x, n_f, lambda_):
 
         r_chunk = subset.samples
         n = r_chunk.shape[0]
-        Y = np.zeros((n, n_f), dtype=np.float32)
+        y = np.zeros((n, n_f), dtype=np.float32)
         n_c = np.array(
             [len(sparse.find(r_chunk[i])[0]) for i in
              range(0, r_chunk.shape[0])])
         for element in range(0, n):
             indices = sparse.find(r_chunk[element])[1]
 
-            X_Xt = X[indices].T.dot(X[indices])
+            x_xt = x[indices].T.dot(x[indices])
 
-            A_i = X_Xt + lambda_ * n_c[element] * np.eye(n_f)
-            V_i = X[indices].T.dot(r_chunk[element, indices].toarray().T)
+            a_i = x_xt + lambda_ * n_c[element] * np.eye(n_f)
+            v_i = x[indices].T.dot(r_chunk[element, indices].toarray().T)
 
-            Y[element] = inv(A_i).dot(V_i).reshape(-1)
-        return Y
+            y[element] = inv(a_i).dot(v_i).reshape(-1)
+        return y
 
     def _has_converged(self, last_rmse, rmse, i):
         if i > self._max_iter:
@@ -102,8 +102,8 @@ class ALS(object):
         while not self._has_converged(last_rmse, rmse, i):
             last_rmse = rmse
 
-            u = self._update(r=d_u, X=m)
-            m = self._update(r=d_m, X=u)
+            u = self._update(r=d_u, x=m)
+            m = self._update(r=d_m, x=u)
 
             if test is not None:
                 x_idxs, y_idxs, recs = sparse.find(test)
