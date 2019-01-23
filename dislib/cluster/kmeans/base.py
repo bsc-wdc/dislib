@@ -2,6 +2,7 @@ import numpy as np
 from pycompss.api.api import compss_wait_on
 from pycompss.api.parameter import INOUT
 from pycompss.api.task import task
+from scipy.sparse import issparse
 
 
 class KMeans:
@@ -152,8 +153,12 @@ def _init_centers(n_features, n_clusters, random_state):
 @task(subset=INOUT, returns=np.array)
 def _partial_sum(subset, centers, set_labels):
     partials = np.zeros((centers.shape[0], 2), dtype=object)
+    samples = subset.samples
 
-    for idx, sample in enumerate(subset.samples):
+    if issparse(samples):
+        samples = samples.toarray()
+
+    for idx, sample in enumerate(samples):
         dist = np.linalg.norm(sample - centers, axis=1)
         min_center = np.argmin(dist)
 
@@ -178,7 +183,12 @@ def _merge(*data):
 
 @task(subset=INOUT)
 def _predict(subset, centers):
-    for sample_idx, sample in enumerate(subset.samples):
+    samples = subset.samples
+
+    if issparse(samples):
+        samples = samples.toarray()
+
+    for sample_idx, sample in enumerate(samples):
         dist = np.linalg.norm(sample - centers, axis=1)
         label = np.argmin(dist)
         subset.set_label(sample_idx, label)

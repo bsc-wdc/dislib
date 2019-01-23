@@ -6,7 +6,7 @@ from sklearn.datasets import make_blobs
 from dislib.cluster import KMeans
 from dislib.data import Dataset
 from dislib.data import Subset
-from dislib.data import load_data
+from dislib.data import load_data, load_libsvm_file
 
 
 class KMeansTest(unittest.TestCase):
@@ -81,6 +81,18 @@ class KMeansTest(unittest.TestCase):
 
         self.assertTrue((centers == kmeans.centers).all())
         self.assertEqual(labels.size, 610)
+
+    def test_sparse(self):
+        """ Tests that the algorithm works with sparse data """
+        file_ = "tests/files/libsvm/2"
+
+        dataset = load_libsvm_file(file_, 10, 780)
+        labels = dataset.labels
+        kmeans = KMeans()
+        kmeans.fit(dataset)
+        self.assertIsNotNone(kmeans.centers)
+        kmeans.predict(dataset)
+        self.assertFalse(np.equal(labels, dataset.labels).all())
 
 
 def main():
