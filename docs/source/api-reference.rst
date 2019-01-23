@@ -60,9 +60,6 @@ clustering.
 :class:`cluster.KMeans <dislib.cluster.kmeans.base.KMeans>` - Perform K-Means
 clustering.
 
-:class:`cluster.KMedoids <dislib.cluster.kmedoids.base.KMedoids>` - Perform
-K-Medoids clustering.
-
 
 dislib.classification: Classification
 -------------------------------------
