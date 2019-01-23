@@ -427,17 +427,21 @@ class GaussianMixture:
     lower_bound_ : float
         Log-likelihood of the predicted distribution with the given data.
 
-    Methods
-    -------
-    # aic(dataset)
-    # bic(dataset)
-    fit(dataset)
-    fit_predict(dataset)
-    predict(dataset)
-    # predict_proba(dataset)
-    # sample([n_samples])
-    # score(dataset)
-    # score_samples(dataset)
+    Examples
+    --------
+    >>> from pycompss.api.api import compss_wait_on
+    >>> from dislib.cluster import GaussianMixture
+    >>> from dislib.data import load_data
+    >>> import numpy as np
+    >>> x = np.array([[1, 2], [1, 4], [1, 0], [4, 2], [4, 4], [4, 0]])
+    >>> train_data = load_data(x=x, subset_size=2)
+    >>> gm = GaussianMixture(n_components=2, random_state=0)
+    >>> gm.fit_predict(train_data)
+    >>> print(train_data.labels)
+    >>> test_data = load_data(x=np.array([[0, 0], [4, 4]]), subset_size=2)
+    >>> gm.predict(test_data)
+    >>> print(test_data.labels)
+    >>> print(compss_wait_on(gm.means_))
     """
 
     def __init__(self, n_components=1, covariance_type='full', tol=1e-3,
