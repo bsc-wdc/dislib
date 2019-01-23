@@ -1,8 +1,28 @@
 import numpy as np
+from pycompss.api.api import compss_wait_on
 from pycompss.api.task import task
 
 
 def fft(a):
+    """ Compute the one-dimensional discrete Fourier transform using a
+    distributed version of the fast Fourier transform algorithm.
+
+    Parameters
+    ----------
+    a : ndarray
+        Input array.
+
+    Returns
+    -------
+
+    out : ndarray
+        The transformed input.
+
+    Examples
+    --------
+    >>> from dislib.fft import fft
+    >>> fft(np.exp(2j * np.pi * np.arange(8) / 8))
+    """
     x = a.flatten()
     n = x.size
 
@@ -21,42 +41,28 @@ def fft(a):
     while len(lin) > 1:
         lout = []
         ln = len(lin)
+        ln2 = int(ln / 2)
 
-        for k in range(ln / 2):
-            lout.append(_reduce(lin[k], lin[k + ln / 2], w))
+        for k in range(ln2):
+            lout.append(_reduce(lin[k], lin[k + ln2], w))
 
         lin = lout
 
-    return lin[0]
+    return compss_wait_on(lin[0])
 
 
 @task(returns=1)
 def _reduce(even, odd, w):
     x = np.concatenate((even, odd))
     n = len(x)
+    n2 = int(n / 2)
 
-    for k in range(n / 2):
+    for k in range(n2):
         e = x[k]
-        o = x[k + n / 2]
+        o = x[k + n2]
         wk = w[n - 1, k]
 
         x[k] = e + wk * o
-        x[k + n / 2] = e - wk * o
-
-    return x
-
-
-def _base(even, odd, w):
-    n = len(even) + len(odd)
-    x = np.zeros(n, dtype=complex)
-    e = 0
-    o = 0
-
-    for k in range(n):
-        for m in range(n / 2):
-            e += even[m] * w[2 * m, k]
-            o += odd[m] * w[2 * m, k]
-
-        x[k] = e + np.exp(-2 * np.pi * 1j * k / n) * o
+        x[k + n2] = e - wk * o
 
     return x
