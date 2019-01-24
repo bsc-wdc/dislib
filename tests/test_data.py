@@ -37,14 +37,14 @@ class DataLoadingTest(unittest.TestCase):
         x = np.random.random((100, 2))
         dataset = load_data(x=x, subset_size=10)
 
-        self.assertTrue((dataset.samples == x).all())
+        self.assertTrue(np.array_equal(dataset.samples, x))
         self.assertEqual(len(dataset), 10)
         self.assertFalse(dataset.sparse)
 
         x = csr_matrix(x)
         dataset = load_data(x=x, subset_size=10)
 
-        self.assertTrue(np.allclose(dataset.samples.toarray(), x.toarray()))
+        self.assertTrue(np.array_equal(dataset.samples.toarray(), x.toarray()))
         self.assertEqual(len(dataset), 10)
         self.assertTrue(dataset.sparse)
 
@@ -348,6 +348,125 @@ class DatasetTest(unittest.TestCase):
         samples_d = dense.samples
 
         self.assertTrue(np.array_equal(samples_sp, samples_d))
+
+    def test_transpose_dense(self):
+        """ Tests Dataset.transpose() in dense format."""
+
+        # Initial dataset: 1 subset
+        data = np.random.random((4, 4))
+        dataset = load_data(data, subset_size=4)
+
+        # Transpose with same n_subsets
+        data_t = data.transpose()
+        dataset_t = dataset.transpose()
+
+        self.assertTrue(np.allclose(dataset_t.samples, data_t))
+        self.assertEqual(len(dataset), len(dataset_t))
+        self.assertTrue(dataset_t.labels is None)
+
+        # Transpose with n_subsets=2
+        dataset_t = dataset.transpose(n_subsets=2)
+
+        self.assertTrue(np.allclose(dataset_t.samples, data_t))
+        self.assertEqual(len(dataset_t), 2)
+        self.assertTrue(dataset_t.labels is None)
+
+        # Initial dataset: 3 subsets
+        data = np.random.random((12, 8))
+        dataset = load_data(data, subset_size=4)
+
+        # Transpose with same n_subsets
+        data_t = data.transpose()
+        dataset_t = dataset.transpose()
+
+        self.assertTrue(np.allclose(dataset_t.samples, data_t))
+        self.assertEqual(len(dataset), len(dataset_t))
+        self.assertTrue(dataset_t.labels is None)
+        self.assertEqual(dataset_t.subsets_sizes(), [2, 2, 4])
+
+        # Transpose with n_subsets=2
+        dataset_t = dataset.transpose(n_subsets=2)
+
+        self.assertTrue(np.allclose(dataset_t.samples, data_t))
+        self.assertEqual(len(dataset_t), 2)
+        self.assertTrue(dataset_t.labels is None)
+        self.assertEqual(dataset_t.subsets_sizes(), [4, 4])
+
+    def test_transpose_sparse(self):
+        """ Tests Dataset.transpose() in sparse csr format."""
+
+        # Initial dataset: 1 subset
+        data = csr_matrix(np.random.random((4, 4)))
+        dataset = load_data(data, subset_size=4)
+
+        # Transpose with same n_subsets
+        data_t = data.transpose()
+        dataset_t = dataset.transpose()
+
+        self.assertTrue(
+            np.allclose(dataset_t.samples.toarray(), data_t.toarray()))
+        self.assertEqual(len(dataset), len(dataset_t))
+        self.assertTrue(dataset_t.labels is None)
+
+        # Transpose with n_subsets=2
+        dataset_t = dataset.transpose(n_subsets=2)
+        self.assertTrue(
+            np.allclose(dataset_t.samples.toarray(), data_t.toarray()))
+        self.assertEqual(len(dataset_t), 2)
+        self.assertTrue(dataset_t.labels is None)
+
+        # Initial dataset: 3 subsets
+        data = csr_matrix(np.random.random((12, 8)))
+        dataset = load_data(data, subset_size=4)
+
+        # Transpose with same n_subsets
+        data_t = data.transpose()
+        dataset_t = dataset.transpose()
+
+        self.assertTrue(
+            np.allclose(dataset_t.samples.toarray(), data_t.toarray()))
+        self.assertEqual(len(dataset), len(dataset_t))
+        self.assertTrue(dataset_t.labels is None)
+        self.assertEqual(dataset_t.subsets_sizes(), [2, 2, 4])
+
+        # Transpose with n_subsets=2
+        dataset_t = dataset.transpose(n_subsets=2)
+
+        self.assertTrue(
+            np.allclose(dataset_t.samples.toarray(), data_t.toarray()))
+        self.assertEqual(len(dataset_t), 2)
+        self.assertTrue(dataset_t.labels is None)
+        self.assertEqual(dataset_t.subsets_sizes(), [4, 4])
+
+    def test_subsets_sizes(self):
+        """ Tests Dataset.subsets_sizes() returns the correct subset sizes."""
+
+        data = np.random.random((100, 1))
+        data_csr = csr_matrix(data)
+
+        dense = load_data(data, subset_size=30)
+        sparse = load_data(data_csr, subset_size=30)
+
+        self.assertTrue(sparse.subsets_sizes(), [30, 30, 30, 10])
+        self.assertTrue(dense.subsets_sizes(), [30, 30, 30, 10])
+
+        dense = load_data(data, subset_size=25)
+        sparse = load_data(data_csr, subset_size=25)
+
+        self.assertTrue(sparse.subsets_sizes(), [25, 25, 25, 25])
+        self.assertTrue(dense.subsets_sizes(), [25, 25, 25, 25])
+
+        dense = load_data(data, subset_size=100)
+        sparse = load_data(data_csr, subset_size=100)
+
+        self.assertTrue(sparse.subsets_sizes(), [100])
+        self.assertTrue(dense.subsets_sizes(), [100])
+
+        dense = load_data(data, subset_size=1)
+        sparse = load_data(data_csr, subset_size=1)
+
+        self.assertTrue(sparse.subsets_sizes(), [1] * 100)
+        self.assertTrue(dense.subsets_sizes(), [1] * 100)
 
 
 class SubsetTest(unittest.TestCase):
