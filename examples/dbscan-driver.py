@@ -79,7 +79,7 @@ def main():
         read_time = time.time() - s_time
         s_time = time.time()
 
-    dims = None
+    dims = range(args.features)
 
     if args.dimensions:
         dims = args.dimensions.split(",")
