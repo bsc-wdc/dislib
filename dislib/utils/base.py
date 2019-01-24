@@ -1,6 +1,7 @@
 import numpy as np
 from pycompss.api.api import compss_wait_on
 from pycompss.api.task import task
+from scipy.sparse import vstack
 
 from dislib.data import Dataset, Subset
 
@@ -40,6 +41,7 @@ def as_grid(dataset, n_regions, dimensions=None, return_indices=False):
 
     min_ = dataset.min_features()
     max_ = dataset.max_features()
+
     bins = _generate_bins(min_, max_, dimensions, n_regions)
 
     sorted_data, sorting = _sort_data(dataset, grid_shape, bins, dimensions)
@@ -60,13 +62,16 @@ def as_grid(dataset, n_regions, dimensions=None, return_indices=False):
     return ret_value
 
 
-def shuffle(dataset):
+def shuffle(dataset, random_state=None):
     """ Randomly shuffles a Dataset.
 
     Parameters
     ----------
     dataset : Dataset
         Input Dataset.
+    random_state : int or RandomState, optional (default=None)
+        Seed or numpy.random.RandomState instance to use in the generation of
+        random numbers.
 
     Returns
     -------
@@ -74,16 +79,17 @@ def shuffle(dataset):
         A new ramdomly shuffled Dataset with the same number of Subsets as the
         input Dataset.
     """
-    shuffled_data = Dataset(dataset.n_features)
+    shuffled_data = Dataset(dataset.n_features, dataset.sparse)
     n_subsets = len(dataset)
     items = []
+    np.random.seed(random_state)
 
     for _ in dataset:
         items.append([])
 
     for subset_idx, subset in enumerate(dataset):
         subset_size = dataset.subset_size(subset_idx)
-        sample_size = int(np.ceil(subset_size / n_subsets))
+        sample_size = max(1, int(subset_size / n_subsets))
         indices = np.array(range(subset_size))
         i = 0
 
@@ -92,7 +98,7 @@ def shuffle(dataset):
             choice = np.random.choice(indices, n_samples, replace=False)
             indices = np.setdiff1d(indices, choice)
             items[i].append(_get_items(subset, choice))
-            i += 1
+            i = (i + 1) % len(items)
 
     for item in items:
         shuffled_data.append(_merge_subsets(*item))
@@ -105,20 +111,19 @@ def _generate_bins(min_, max_, dimensions, n_regions):
 
     # create bins for the different regions in the grid in every dimension
     for dim in dimensions:
-        # Add up a small delta to the max to include it in the binarization
-        delta = max_[dim] / 1e8
-        bin_ = np.linspace(min_[dim], max_[dim] + delta, n_regions + 1)
+        bin_ = np.linspace(min_[dim], max_[dim], n_regions + 1)
         bins.append(bin_)
 
     return bins
 
 
 def _sort_data(dataset, grid_shape, bins, dimensions):
-    sorted_data = Dataset(dataset.n_features)
+    sorted_data = Dataset(dataset.n_features, dataset.sparse)
     sorting_list = []
 
     for idx in np.ndindex(grid_shape):
-        subset, subset_size, sorting = _filter(idx, bins, dimensions, *dataset)
+        subset, subset_size, sorting = _filter(idx, bins, dimensions,
+                                               dataset.sparse, *dataset)
         sorted_data.append(subset, subset_size)
         sorting_list.append(sorting)
 
@@ -147,7 +152,7 @@ def _get_items(subset, indices):
 
 @task(returns=Dataset)
 def _merge_subsets(*subsets):
-    set0 = subsets[0]
+    set0 = subsets[0].copy()
 
     for setx in subsets[1:]:
         set0.concatenate(setx)
@@ -156,10 +161,11 @@ def _merge_subsets(*subsets):
 
 
 @task(returns=3)
-def _filter(idx, bins, dimensions, *dataset):
+def _filter(idx, bins, dimensions, sparse, *dataset):
     filtered_samples = []
     filtered_labels = []
     sorting = []
+    n_bins = bins[0].shape[0] - 1
 
     for set_idx, subset in enumerate(dataset):
         filtered_samples.append(subset.samples)
@@ -169,7 +175,12 @@ def _filter(idx, bins, dimensions, *dataset):
         # by idx)
         for bin_idx, col_idx in enumerate(dimensions):
             col = filtered_samples[-1][:, col_idx]
+
+            if sparse:
+                col = col.toarray().flatten()
+
             indices = np.digitize(col, bins[bin_idx]) - 1
+            indices[indices >= n_bins] = n_bins - 1
             mask = (indices == idx[bin_idx])
             filtered_samples[-1] = filtered_samples[-1][mask]
             final_ind = final_ind[mask]
@@ -182,7 +193,11 @@ def _filter(idx, bins, dimensions, *dataset):
 
         sorting.append((set_idx, final_ind))
 
-    final_samples = np.vstack(filtered_samples)
+    if not sparse:
+        final_samples = np.vstack(filtered_samples)
+    else:
+        final_samples = vstack(filtered_samples)
+
     final_labels = None
 
     if subset.labels is not None:

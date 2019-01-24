@@ -299,6 +299,53 @@ class DatasetTest(unittest.TestCase):
 
         self.assertIsNone(dataset.labels)
 
+    def test_min_max_features(self):
+        """ Tests that min_features and max_features correctly return min
+        and max values in a toy dataset.
+        """
+        s1 = Subset(samples=np.array([[1, 2], [4, 5], [2, 2], [6, 6]]),
+                    labels=np.array([0, 1, 1, 1]))
+        s2 = Subset(samples=np.array([[7, 8], [9, 8], [0, 4]]),
+                    labels=np.array([0, 1, 1]))
+        s3 = Subset(samples=np.array([[3, 9], [0, 7], [6, 1], [0, 8]]),
+                    labels=np.array([0, 1, 1, 1]))
+        dataset = Dataset(n_features=2)
+        dataset.append(s1)
+        dataset.append(s2)
+        dataset.append(s3)
+
+        min_ = dataset.min_features()
+        max_ = dataset.max_features()
+
+        self.assertTrue(np.array_equal(min_, np.array([0, 1])))
+        self.assertTrue(np.array_equal(max_, np.array([9, 9])))
+
+    def test_min_max_features_sparse(self):
+        """ Tests that min_features and max_features correctly return min
+        and max values with sparse dataset. """
+
+        file_ = "tests/files/libsvm/1"
+        sparse = load_libsvm_file(file_, 10, 780)
+        dense = load_libsvm_file(file_, 10, 780, store_sparse=False)
+
+        max_sp = sparse.max_features()
+        max_d = dense.max_features()
+        min_sp = sparse.min_features()
+        min_d = sparse.min_features()
+
+        self.assertTrue(np.array_equal(max_sp, max_d))
+        self.assertTrue(np.array_equal(min_sp, min_d))
+
+    def test_samples_sparse(self):
+        """ Tests that Dataset.samples works for sparse data."""
+        file_ = "tests/files/libsvm/1"
+        sparse = load_libsvm_file(file_, 10, 780)
+        dense = load_libsvm_file(file_, 10, 780, store_sparse=False)
+        samples_sp = sparse.samples.toarray()
+        samples_d = dense.samples
+
+        self.assertTrue(np.array_equal(samples_sp, samples_d))
+
 
 class SubsetTest(unittest.TestCase):
     def test_subset_concatenate_dense(self):
@@ -372,43 +419,6 @@ class SubsetTest(unittest.TestCase):
 
         self.assertTrue((item.samples == np.array(range(10, 20))).all())
         self.assertEqual(item.labels, 4)
-
-    def test_min_max_features(self):
-        """ Tests that min_features and max_features correctly return min
-        and max values in a toy dataset.
-        """
-        s1 = Subset(samples=np.array([[1, 2], [4, 5], [2, 2], [6, 6]]),
-                    labels=np.array([0, 1, 1, 1]))
-        s2 = Subset(samples=np.array([[7, 8], [9, 8], [0, 4]]),
-                    labels=np.array([0, 1, 1]))
-        s3 = Subset(samples=np.array([[3, 9], [0, 7], [6, 1], [0, 8]]),
-                    labels=np.array([0, 1, 1, 1]))
-        dataset = Dataset(n_features=2)
-        dataset.append(s1)
-        dataset.append(s2)
-        dataset.append(s3)
-
-        min_ = dataset.min_features()
-        max_ = dataset.max_features()
-
-        self.assertTrue(np.array_equal(min_, np.array([0, 1])))
-        self.assertTrue(np.array_equal(max_, np.array([9, 9])))
-
-    def test_min_max_features_sparse(self):
-        """ Tests that min_features and max_features correctly return min
-        and max values with sparse dataset. """
-
-        file_ = "tests/files/libsvm/1"
-        sparse = load_libsvm_file(file_, 10, 780)
-        dense = load_libsvm_file(file_, 10, 780, store_sparse=False)
-
-        max_sp = sparse.max_features()
-        max_d = dense.max_features()
-        min_sp = sparse.min_features()
-        min_d = sparse.min_features()
-
-        self.assertTrue(np.array_equal(max_sp, max_d))
-        self.assertTrue(np.array_equal(min_sp, min_d))
 
 
 def main():

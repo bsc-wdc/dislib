@@ -20,9 +20,9 @@ class KMeans:
     arity : int, optional (default=50)
         Arity of the reduction carried out during the computation of the new
         centroids.
-    random_state : int, optional (default=None)
-        Determines random number generation for centroid initialization. Use an
-        int to make the randomness deterministic.
+    random_state : int or RandomState, optional (default=None)
+        Seed or numpy.random.RandomState instance to generate random numbers
+        for centroid initialization.
     verbose: boolean, optional (default=False)
         Whether to print progress information.
 

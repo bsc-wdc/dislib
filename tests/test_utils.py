@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from dislib.data import Subset, Dataset
+from dislib.data import Subset, Dataset, load_libsvm_file
 from dislib.utils import as_grid, shuffle
 
 
@@ -165,10 +165,78 @@ class UtilsTest(unittest.TestCase):
         self.assertEqual(sort.subset_size(0), 1)
         self.assertEqual(sort.subset_size(1), 0)
         self.assertEqual(sort.subset_size(2), 2)
-        self.assertEqual(sort.subset_size(3), 2)
-        self.assertEqual(sort.subset_size(4), 1)
+        self.assertEqual(sort.subset_size(3), 1)
+        self.assertEqual(sort.subset_size(4), 2)
         self.assertEqual(sort.subset_size(5), 0)
         self.assertEqual(sort.subset_size(6), 2)
-        self.assertEqual(sort.subset_size(7), 1)
-        self.assertEqual(sort.subset_size(8), 0)
+        self.assertEqual(sort.subset_size(7), 0)
+        self.assertEqual(sort.subset_size(8), 1)
         self.assertEqual(len(sort), 9)
+
+    def test_as_grid_same_min_max(self):
+        """ Tests that as_grid works when one of the features only takes
+        one value """
+        s1 = Subset(samples=np.array([[1, 0], [8, 0], [2, 0]]))
+        s2 = Subset(samples=np.array([[2, 0], [3, 0], [5, 0]]))
+        dataset = Dataset(n_features=2)
+        dataset.extend([s1, s2])
+
+        sort = as_grid(dataset, n_regions=3)
+        sort.collect()
+
+        self.assertEqual(len(sort), 9)
+        self.assertTrue(sort.subset_size(2), 4)
+        self.assertTrue(sort.subset_size(5), 1)
+        self.assertTrue(sort.subset_size(8), 1)
+
+    def test_as_grid_sparse(self):
+        """ Tests that as_grid produces the same results with sparse and
+        dense data structures."""
+        file_ = "tests/files/libsvm/2"
+
+        sparse = load_libsvm_file(file_, 10, 780)
+        dense = load_libsvm_file(file_, 10, 780, store_sparse=False)
+        grid_d, ind_d = as_grid(dense, 3, [0, 1], True)
+        grid_sp, ind_sp = as_grid(sparse, 3, [0, 1], True)
+        grid_sp.collect()
+        grid_d.collect()
+
+        self.assertEqual(len(grid_sp), len(grid_d))
+        self.assertTrue(np.array_equal(ind_sp, ind_d))
+        self.assertFalse(grid_d.sparse)
+        self.assertTrue(grid_sp.sparse)
+
+        for index in range(len(grid_sp)):
+            samples_sp = grid_sp[index].samples.toarray()
+            samples_d = grid_d[index].samples
+            self.assertTrue(np.array_equal(samples_sp, samples_d))
+
+    def test_shuffle_sparse(self):
+        """ Tests that shuffle produces the same results with sparse and
+        dense data structures. """
+        file_ = "tests/files/libsvm/1"
+        random_state = 170
+
+        sparse = load_libsvm_file(file_, 10, 780)
+        dense = load_libsvm_file(file_, 10, 780, store_sparse=False)
+        shuf_d = shuffle(dense, random_state)
+        shuf_sp = shuffle(sparse, random_state)
+        shuf_sp.collect()
+        shuf_d.collect()
+
+        self.assertEqual(len(shuf_sp), len(shuf_d))
+        self.assertFalse(shuf_d.sparse)
+        self.assertTrue(shuf_sp.sparse)
+
+        for index in range(len(shuf_sp)):
+            samples_sp = shuf_sp[index].samples.toarray()
+            samples_d = shuf_d[index].samples
+            self.assertTrue(np.array_equal(samples_sp, samples_d))
+
+
+def main():
+    unittest.main()
+
+
+if __name__ == '__main__':
+    main()
