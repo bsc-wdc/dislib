@@ -394,6 +394,22 @@ class SubsetTest(unittest.TestCase):
         self.assertTrue(np.array_equal(min_, np.array([0, 1])))
         self.assertTrue(np.array_equal(max_, np.array([9, 9])))
 
+    def test_min_max_features_sparse(self):
+        """ Tests that min_features and max_features correctly return min
+        and max values with sparse dataset. """
+
+        file_ = "tests/files/libsvm/1"
+        sparse = load_libsvm_file(file_, 10, 780)
+        dense = load_libsvm_file(file_, 10, 780, store_sparse=False)
+
+        max_sp = sparse.max_features()
+        max_d = dense.max_features()
+        min_sp = sparse.min_features()
+        min_d = sparse.min_features()
+
+        self.assertTrue(np.array_equal(max_sp, max_d))
+        self.assertTrue(np.array_equal(min_sp, min_d))
+
 
 def main():
     unittest.main()

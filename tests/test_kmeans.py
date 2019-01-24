@@ -83,16 +83,22 @@ class KMeansTest(unittest.TestCase):
         self.assertEqual(labels.size, 610)
 
     def test_sparse(self):
-        """ Tests that the algorithm works with sparse data """
+        """ Tests K-means produces the same results using dense and sparse
+        data structures. """
         file_ = "tests/files/libsvm/2"
 
-        dataset = load_libsvm_file(file_, 10, 780)
-        labels = dataset.labels
-        kmeans = KMeans()
-        kmeans.fit(dataset)
-        self.assertIsNotNone(kmeans.centers)
-        kmeans.predict(dataset)
-        self.assertFalse(np.equal(labels, dataset.labels).all())
+        sparse = load_libsvm_file(file_, 10, 780)
+        dense = load_libsvm_file(file_, 10, 780, store_sparse=False)
+
+        kmeans = KMeans(random_state=170)
+        kmeans.fit_predict(sparse)
+        sparse_c = kmeans.centers
+
+        kmeans.fit_predict(dense)
+        dense_c = kmeans.centers
+
+        self.assertTrue(np.array_equal(sparse_c, dense_c))
+        self.assertTrue(np.array_equal(sparse.labels, dense.labels))
 
 
 def main():

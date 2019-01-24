@@ -292,9 +292,7 @@ def _get_min_max(subset):
     mx = np.max(subset.samples, axis=0)
 
     if issparse(subset.samples):
-        print(mn.shape)
-        mn = mn.toarray()
-        print(mn.shape)
-        mx = mx.toarray()
+        mn = mn.toarray()[0]
+        mx = mx.toarray()[0]
 
     return np.array([mn, mx])
