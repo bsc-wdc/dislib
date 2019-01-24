@@ -18,6 +18,8 @@ class Dataset(object):
     ----------
     n_features : int
         Number of features of the samples.
+    sparse : boolean, optional (default=False)
+        Whether this dataset uses sparse data structures.
 
     Attributes
     ----------
@@ -27,9 +29,11 @@ class Dataset(object):
         Samples of the dataset.
     labels : ndarray
         Labels of the samples.
+    sparse: boolean
+        True if this dataset uses sparse data structures.
     """
 
-    def __init__(self, n_features):
+    def __init__(self, n_features, sparse=False):
         self._subsets = list()
         self.n_features = n_features
         self._sizes = list()
@@ -37,6 +41,7 @@ class Dataset(object):
         self._min_features = None
         self._samples = None
         self._labels = None
+        self._sparse = sparse
 
     def __getitem__(self, item):
         return self._subsets.__getitem__(item)
@@ -136,8 +141,16 @@ class Dataset(object):
 
     @property
     def samples(self):
-        self._update_samples()
+        if not self._sparse:
+            self._update_samples()
+        else:
+            self._update_samples_sparse()
+
         return self._samples
+
+    @property
+    def sparse(self):
+        return self._sparse
 
     def _reset_attributes(self):
         self._max_features = None
@@ -172,6 +185,13 @@ class Dataset(object):
 
         for subset in self._subsets:
             self._samples = np.concatenate((self._samples, subset.samples))
+
+    def _update_samples_sparse(self):
+        self.collect()
+        self._samples = csr_matrix((0, self.n_features))
+
+        for subset in self._subsets:
+            self._samples = vstack([self._samples, subset.samples])
 
 
 class Subset(object):
@@ -290,4 +310,9 @@ def _subset_size(subset):
 def _get_min_max(subset):
     mn = np.min(subset.samples, axis=0)
     mx = np.max(subset.samples, axis=0)
+
+    if issparse(subset.samples):
+        mn = mn.toarray()[0]
+        mx = mx.toarray()[0]
+
     return np.array([mn, mx])

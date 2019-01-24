@@ -6,7 +6,7 @@ from sklearn.datasets import make_blobs
 from dislib.cluster import KMeans
 from dislib.data import Dataset
 from dislib.data import Subset
-from dislib.data import load_data
+from dislib.data import load_data, load_libsvm_file
 
 
 class KMeansTest(unittest.TestCase):
@@ -81,6 +81,24 @@ class KMeansTest(unittest.TestCase):
 
         self.assertTrue((centers == kmeans.centers).all())
         self.assertEqual(labels.size, 610)
+
+    def test_sparse(self):
+        """ Tests K-means produces the same results using dense and sparse
+        data structures. """
+        file_ = "tests/files/libsvm/2"
+
+        sparse = load_libsvm_file(file_, 10, 780)
+        dense = load_libsvm_file(file_, 10, 780, store_sparse=False)
+
+        kmeans = KMeans(random_state=170)
+        kmeans.fit_predict(sparse)
+        sparse_c = kmeans.centers
+
+        kmeans.fit_predict(dense)
+        dense_c = kmeans.centers
+
+        self.assertTrue(np.array_equal(sparse_c, dense_c))
+        self.assertTrue(np.array_equal(sparse.labels, dense.labels))
 
 
 def main():

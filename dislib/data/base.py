@@ -144,7 +144,7 @@ def load_csv_files(path, n_features, label_col=None):
 def _load_file(path, subset_size, fmt, n_features, delimiter=",",
                label_col=None, store_sparse=False):
     lines = []
-    dataset = Dataset(n_features)
+    dataset = Dataset(n_features, store_sparse)
 
     with open(path, "r") as f:
         for line in f:
@@ -168,7 +168,7 @@ def _load_files(path, fmt, n_features, delimiter=",", label_col=None,
     assert os.path.isdir(path), "Path is not a directory."
 
     files = os.listdir(path)
-    subsets = Dataset(n_features)
+    subsets = Dataset(n_features, store_sparse)
 
     for file_ in files:
         full_path = os.path.join(path, file_)
