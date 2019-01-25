@@ -27,8 +27,8 @@ def load_data(x, subset_size, y=None):
         A distributed representation of the data divided in Subsets of
         subset_size.
     """
-
     dataset = Dataset(n_features=x.shape[1], sparse=issparse(x))
+
     for i in range(0, x.shape[0], subset_size):
         if y is not None:
             subset = Subset(x[i: i + subset_size], y[i: i + subset_size])

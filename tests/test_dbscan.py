@@ -1,6 +1,7 @@
 import unittest
 
 import numpy as np
+from scipy.sparse import csr_matrix
 from sklearn.datasets import make_blobs
 from sklearn.datasets import make_circles
 from sklearn.datasets import make_moons
@@ -245,6 +246,25 @@ class DBSCANTest(unittest.TestCase):
 
         self.assertEqual(dbscan.n_clusters, 4)
         self.assertEqual(true_sizes, cluster_sizes)
+
+    def test_sparse(self):
+        """ Tests that DBSCAN produces the same results with sparse and
+        dense data.
+        """
+        n_samples = 1500
+        x, y = make_blobs(n_samples=n_samples, random_state=170)
+        dbscan = DBSCAN(n_regions=1, eps=.15)
+        transformation = [[0.6, -0.6], [-0.4, 0.8]]
+        x = np.dot(x, transformation)
+        x = StandardScaler().fit_transform(x)
+
+        dense = load_data(x=x, y=y, subset_size=300)
+        sparse = load_data(x=csr_matrix(x), y=y, subset_size=300)
+
+        dbscan.fit(dense)
+        dbscan.fit(sparse)
+
+        self.assertTrue(np.array_equal(dense.labels, sparse.labels))
 
 
 def main():

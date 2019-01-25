@@ -2,7 +2,8 @@ import numpy as np
 from pycompss.api.api import compss_wait_on
 from pycompss.api.parameter import INOUT
 from pycompss.api.task import task
-from scipy.sparse import issparse
+from scipy.sparse import csr_matrix
+from sklearn.metrics import pairwise_distances
 
 
 class KMeans:
@@ -92,50 +93,58 @@ class KMeans:
             New data to predict.
         """
         for subset in dataset:
-            _predict(subset, self.centers)
+            _predict(subset, self.centers, dataset.sparse)
 
     def _do_fit(self, dataset, set_labels):
-        centers = _init_centers(dataset.n_features, self._n_clusters,
+        n_features = dataset.n_features
+        sparse = dataset.sparse
+
+        centers = _init_centers(n_features, sparse, self._n_clusters,
                                 self._random_state)
         self.centers = compss_wait_on(centers)
 
         old_centers = None
         iteration = 0
 
-        while not self._converged(old_centers, iteration):
-            old_centers = np.array(self.centers)
+        while not self._converged(old_centers, iteration, sparse):
+            old_centers = self.centers.copy()
             partials = []
 
             for subset in dataset:
-                partials.append(_partial_sum(subset, old_centers, set_labels))
+                partial = _partial_sum(subset, old_centers, set_labels, sparse)
+                partials.append(partial)
 
             self._recompute_centers(partials)
             iteration += 1
 
         self.n_iter = iteration
 
-    def _converged(self, old_centers, iter):
+    def _converged(self, old_centers, iteration, sparse):
+        dist_f = _vec_euclid if not sparse else pairwise_distances
+
         if old_centers is not None:
             diff = 0
+
             for i, center in enumerate(self.centers):
-                diff += np.linalg.norm(center - old_centers[i])
+                diff += dist_f(center, old_centers[i])
 
             if self._verbose:
-                print("Iteration %s - Convergence crit. = %s" % (iter, diff))
+                print("Iteration %s - Convergence crit. = %s"
+                      % (iteration, diff))
 
-            return diff < self._tol ** 2 or iter >= self._max_iter
+            return diff < self._tol ** 2 or iteration >= self._max_iter
 
     def _recompute_centers(self, partials):
         while len(partials) > 1:
-            subset = partials[:self._arity]
+            partials_subset = partials[:self._arity]
             partials = partials[self._arity:]
-            partials.append(_merge(*subset))
+            partials.append(_merge(*partials_subset))
 
         partials = compss_wait_on(partials)
 
-        for idx, sum in enumerate(partials[0]):
-            if sum[1] != 0:
-                self.centers[idx] = sum[0] / sum[1]
+        for idx, sum_ in enumerate(partials[0]):
+            if sum_[1] != 0:
+                self.centers[idx] = sum_[0] / sum_[1]
 
 
 @task(returns=np.array)
@@ -144,22 +153,23 @@ def _get_label(subset):
 
 
 @task(returns=np.array)
-def _init_centers(n_features, n_clusters, random_state):
+def _init_centers(n_features, sparse, n_clusters, random_state):
     np.random.seed(random_state)
     centers = np.random.random((n_clusters, n_features))
+
+    if sparse:
+        centers = csr_matrix(centers)
+
     return centers
 
 
 @task(subset=INOUT, returns=np.array)
-def _partial_sum(subset, centers, set_labels):
+def _partial_sum(subset, centers, set_labels, sparse):
     partials = np.zeros((centers.shape[0], 2), dtype=object)
-    samples = subset.samples
+    dist_f = _vec_matrix_euclid if not sparse else pairwise_distances
 
-    if issparse(samples):
-        samples = samples.toarray()
-
-    for idx, sample in enumerate(samples):
-        dist = np.linalg.norm(sample - centers, axis=1)
+    for idx, sample in enumerate(subset.samples):
+        dist = dist_f(sample, centers)
         min_center = np.argmin(dist)
 
         if set_labels:
@@ -173,7 +183,7 @@ def _partial_sum(subset, centers, set_labels):
 
 @task(returns=dict)
 def _merge(*data):
-    accum = data[0]
+    accum = data[0].copy()
 
     for d in data[1:]:
         accum += d
@@ -182,13 +192,18 @@ def _merge(*data):
 
 
 @task(subset=INOUT)
-def _predict(subset, centers):
-    samples = subset.samples
+def _predict(subset, centers, sparse):
+    dist_f = _vec_matrix_euclid if not sparse else pairwise_distances
 
-    if issparse(samples):
-        samples = samples.toarray()
-
-    for sample_idx, sample in enumerate(samples):
-        dist = np.linalg.norm(sample - centers, axis=1)
+    for sample_idx, sample in enumerate(subset.samples):
+        dist = dist_f(sample, centers)
         label = np.argmin(dist)
         subset.set_label(sample_idx, label)
+
+
+def _vec_matrix_euclid(vector, matrix):
+    return np.linalg.norm(vector - matrix, axis=1)
+
+
+def _vec_euclid(vec1, vec2):
+    return np.linalg.norm(vec1 - vec2)

@@ -92,12 +92,12 @@ class KMeansTest(unittest.TestCase):
 
         kmeans = KMeans(random_state=170)
         kmeans.fit_predict(sparse)
-        sparse_c = kmeans.centers
+        sparse_c = kmeans.centers.toarray()
 
         kmeans.fit_predict(dense)
         dense_c = kmeans.centers
 
-        self.assertTrue(np.array_equal(sparse_c, dense_c))
+        self.assertTrue(np.allclose(sparse_c, dense_c))
         self.assertTrue(np.array_equal(sparse.labels, dense.labels))
 
 
