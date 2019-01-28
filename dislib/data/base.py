@@ -3,6 +3,7 @@ import os
 import numpy as np
 from pycompss.api.parameter import FILE_IN
 from pycompss.api.task import task
+from scipy.sparse import issparse
 
 from dislib.data import Subset, Dataset
 
@@ -27,8 +28,7 @@ def load_data(x, subset_size, y=None):
         subset_size.
     """
 
-    dataset = Dataset(n_features=x.shape[1])
-
+    dataset = Dataset(n_features=x.shape[1], sparse=issparse(x))
     for i in range(0, x.shape[0], subset_size):
         if y is not None:
             subset = Subset(x[i: i + subset_size], y[i: i + subset_size])

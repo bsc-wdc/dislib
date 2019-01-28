@@ -32,18 +32,21 @@ class DataLoadingTest(unittest.TestCase):
         self.assertEqual(len(data), 15)
 
     def test_load_data_without_labels(self):
-        """ Tests load_data with an unlabeled dataset.
+        """ Tests load_data with an unlabeled sparse and dense dataset.
         """
-        x, y = make_blobs(n_samples=1500)
-        data = load_data(x=x, subset_size=100)
+        x = np.random.random((100, 2))
+        dataset = load_data(x=x, subset_size=10)
 
-        read_x = np.empty((0, x.shape[1]))
+        self.assertTrue(np.array_equal(dataset.samples, x))
+        self.assertEqual(len(dataset), 10)
+        self.assertFalse(dataset.sparse)
 
-        for subset in data:
-            read_x = np.concatenate((read_x, subset.samples))
+        x = csr_matrix(x)
+        dataset = load_data(x=x, subset_size=10)
 
-        self.assertTrue((read_x == x).all())
-        self.assertEqual(len(data), 15)
+        self.assertTrue(np.array_equal(dataset.samples.toarray(), x.toarray()))
+        self.assertEqual(len(dataset), 10)
+        self.assertTrue(dataset.sparse)
 
     def test_load_libsvm_file_sparse(self):
         """ Tests loading a LibSVM file in sparse mode.
@@ -238,7 +241,7 @@ class DataLoadingTest(unittest.TestCase):
 
 
 class DatasetTest(unittest.TestCase):
-    def test_dataset_get_item(self):
+    def test_get_item(self):
         """ Tests Dataset item getter. """
         arr = np.array((range(10), range(10, 20)))
         dataset = load_data(arr, subset_size=2)
@@ -246,14 +249,14 @@ class DatasetTest(unittest.TestCase):
 
         self.assertTrue((samples[0] == arr[0]).all())
 
-    def test_dataset_len(self):
+    def test_len(self):
         """ Tests len() on a Dataset. """
         arr = np.zeros((40, 25))
         dataset = load_data(arr, subset_size=5)
 
         self.assertEqual(len(dataset), 8)
 
-    def test_dataset_append(self):
+    def test_append(self):
         """ Tests Dataset's append(). """
         arr = np.zeros((40, 25))
         dataset = load_data(arr, subset_size=5)
@@ -262,7 +265,7 @@ class DatasetTest(unittest.TestCase):
 
         self.assertEqual(len(dataset), 9)
 
-    def test_dataset_extend(self):
+    def test_extend(self):
         """ Tests Dataset's extend(). """
         arr = np.zeros((40, 25))
         dataset = load_data(arr, subset_size=5)
@@ -272,7 +275,7 @@ class DatasetTest(unittest.TestCase):
 
         self.assertEqual(len(dataset), 10)
 
-    def test_dataset_collect(self):
+    def test_collect(self):
         """ Tests Dataset's collect(). """
         csv_file = "tests/files/csv/3"
 
@@ -281,7 +284,7 @@ class DatasetTest(unittest.TestCase):
 
         self.assertIsInstance(dataset[0], Subset)
 
-    def test_dataset_samples_labels(self):
+    def test_samples_labels(self):
         """ Tests the access to Dataset.samples and Dataset.labels """
         csv_file = "tests/files/csv/3"
 
@@ -291,7 +294,7 @@ class DatasetTest(unittest.TestCase):
         self.assertEqual(dataset.samples.shape[0], 4179)
         self.assertEqual(dataset.labels.shape[0], 4179)
 
-    def test_dataset_empty_labels(self):
+    def test_empty_labels(self):
         """ Tests the access Dataset.labels for unlabeled datasets """
         csv_file = "tests/files/csv/3"
 
@@ -346,9 +349,128 @@ class DatasetTest(unittest.TestCase):
 
         self.assertTrue(np.array_equal(samples_sp, samples_d))
 
+    def test_transpose_dense(self):
+        """ Tests Dataset.transpose() in dense format."""
+
+        # Initial dataset: 1 subset
+        data = np.random.random((4, 4))
+        dataset = load_data(data, subset_size=4)
+
+        # Transpose with same n_subsets
+        data_t = data.transpose()
+        dataset_t = dataset.transpose()
+
+        self.assertTrue(np.allclose(dataset_t.samples, data_t))
+        self.assertEqual(len(dataset), len(dataset_t))
+        self.assertTrue(dataset_t.labels is None)
+
+        # Transpose with n_subsets=2
+        dataset_t = dataset.transpose(n_subsets=2)
+
+        self.assertTrue(np.allclose(dataset_t.samples, data_t))
+        self.assertEqual(len(dataset_t), 2)
+        self.assertTrue(dataset_t.labels is None)
+
+        # Initial dataset: 3 subsets
+        data = np.random.random((12, 8))
+        dataset = load_data(data, subset_size=4)
+
+        # Transpose with same n_subsets
+        data_t = data.transpose()
+        dataset_t = dataset.transpose()
+
+        self.assertTrue(np.allclose(dataset_t.samples, data_t))
+        self.assertEqual(len(dataset), len(dataset_t))
+        self.assertTrue(dataset_t.labels is None)
+        self.assertEqual(dataset_t.subsets_sizes(), [2, 2, 4])
+
+        # Transpose with n_subsets=2
+        dataset_t = dataset.transpose(n_subsets=2)
+
+        self.assertTrue(np.allclose(dataset_t.samples, data_t))
+        self.assertEqual(len(dataset_t), 2)
+        self.assertTrue(dataset_t.labels is None)
+        self.assertEqual(dataset_t.subsets_sizes(), [4, 4])
+
+    def test_transpose_sparse(self):
+        """ Tests Dataset.transpose() in sparse csr format."""
+
+        # Initial dataset: 1 subset
+        data = csr_matrix(np.random.random((4, 4)))
+        dataset = load_data(data, subset_size=4)
+
+        # Transpose with same n_subsets
+        data_t = data.transpose()
+        dataset_t = dataset.transpose()
+
+        self.assertTrue(
+            np.allclose(dataset_t.samples.toarray(), data_t.toarray()))
+        self.assertEqual(len(dataset), len(dataset_t))
+        self.assertTrue(dataset_t.labels is None)
+
+        # Transpose with n_subsets=2
+        dataset_t = dataset.transpose(n_subsets=2)
+        self.assertTrue(
+            np.allclose(dataset_t.samples.toarray(), data_t.toarray()))
+        self.assertEqual(len(dataset_t), 2)
+        self.assertTrue(dataset_t.labels is None)
+
+        # Initial dataset: 3 subsets
+        data = csr_matrix(np.random.random((12, 8)))
+        dataset = load_data(data, subset_size=4)
+
+        # Transpose with same n_subsets
+        data_t = data.transpose()
+        dataset_t = dataset.transpose()
+
+        self.assertTrue(
+            np.allclose(dataset_t.samples.toarray(), data_t.toarray()))
+        self.assertEqual(len(dataset), len(dataset_t))
+        self.assertTrue(dataset_t.labels is None)
+        self.assertEqual(dataset_t.subsets_sizes(), [2, 2, 4])
+
+        # Transpose with n_subsets=2
+        dataset_t = dataset.transpose(n_subsets=2)
+
+        self.assertTrue(
+            np.allclose(dataset_t.samples.toarray(), data_t.toarray()))
+        self.assertEqual(len(dataset_t), 2)
+        self.assertTrue(dataset_t.labels is None)
+        self.assertEqual(dataset_t.subsets_sizes(), [4, 4])
+
+    def test_subsets_sizes(self):
+        """ Tests Dataset.subsets_sizes() returns the correct subset sizes."""
+
+        data = np.random.random((100, 1))
+        data_csr = csr_matrix(data)
+
+        dense = load_data(data, subset_size=30)
+        sparse = load_data(data_csr, subset_size=30)
+
+        self.assertTrue(sparse.subsets_sizes(), [30, 30, 30, 10])
+        self.assertTrue(dense.subsets_sizes(), [30, 30, 30, 10])
+
+        dense = load_data(data, subset_size=25)
+        sparse = load_data(data_csr, subset_size=25)
+
+        self.assertTrue(sparse.subsets_sizes(), [25, 25, 25, 25])
+        self.assertTrue(dense.subsets_sizes(), [25, 25, 25, 25])
+
+        dense = load_data(data, subset_size=100)
+        sparse = load_data(data_csr, subset_size=100)
+
+        self.assertTrue(sparse.subsets_sizes(), [100])
+        self.assertTrue(dense.subsets_sizes(), [100])
+
+        dense = load_data(data, subset_size=1)
+        sparse = load_data(data_csr, subset_size=1)
+
+        self.assertTrue(sparse.subsets_sizes(), [1] * 100)
+        self.assertTrue(dense.subsets_sizes(), [1] * 100)
+
 
 class SubsetTest(unittest.TestCase):
-    def test_subset_concatenate_dense(self):
+    def test_concatenate_dense(self):
         """ Tests the concatenation of two dense Subsets. """
         subset1 = Subset(samples=np.zeros((13, 2)))
         subset2 = Subset(samples=np.zeros((11, 2)))
@@ -357,7 +479,7 @@ class SubsetTest(unittest.TestCase):
 
         self.assertEqual(subset1.samples.shape[0], 24)
 
-    def test_subset_concatenate_sparse(self):
+    def test_concatenate_sparse(self):
         """ Tests the concatenation of two sparse Subsets. """
         m1 = csr_matrix(np.random.random((13, 2)))
         m2 = csr_matrix(np.random.random((11, 2)))
@@ -368,7 +490,7 @@ class SubsetTest(unittest.TestCase):
 
         self.assertEqual(subset1.samples.shape[0], 24)
 
-    def test_subset_concatenate_with_labels(self):
+    def test_concatenate_with_labels(self):
         """ Tests the concatenation of two dense labeled Subsets.
         """
         subset1 = Subset(samples=np.zeros((13, 2)), labels=np.zeros((13)))
@@ -378,7 +500,7 @@ class SubsetTest(unittest.TestCase):
 
         self.assertEqual(subset1.labels.shape[0], 24)
 
-    def test_subset_concatenate_removing_duplicates(self):
+    def test_concatenate_removing_duplicates(self):
         """ Tests that concatenate() removes duplicate samples.
         """
         labels1 = np.random.random(25)
@@ -392,7 +514,7 @@ class SubsetTest(unittest.TestCase):
 
         self.assertEqual(subset2.samples.shape[0], 60)
 
-    def test_subset_set_label(self):
+    def test_set_label(self):
         """ Tests setting a label.
         """
         subset = Subset(samples=np.random.random((25, 8)))
@@ -400,7 +522,7 @@ class SubsetTest(unittest.TestCase):
 
         self.assertEqual(subset.labels[15], 3)
 
-    def test_subset_get_item(self):
+    def test_get_item(self):
         """ Tests Subset's item getter.
         """
         subset = Subset(samples=np.array([range(10), range(10, 20)]))
@@ -408,7 +530,7 @@ class SubsetTest(unittest.TestCase):
 
         self.assertTrue((item.samples == np.array(range(10, 20))).all())
 
-    def test_subset_get_item_with_labels(self):
+    def test_get_item_with_labels(self):
         """ Tests Subset's item getter with labeled samples.
         """
         samples = np.array([range(10), range(10, 20)])

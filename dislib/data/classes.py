@@ -1,9 +1,10 @@
 from uuid import uuid4
 
 import numpy as np
+import scipy.sparse as sp
 from pycompss.api.api import compss_wait_on
 from pycompss.api.task import task
-from scipy.sparse import issparse, vstack, csr_matrix
+from scipy.sparse import issparse, csr_matrix
 
 
 class Dataset(object):
@@ -25,9 +26,9 @@ class Dataset(object):
     ----------
     n_features : int
         Number of features of the samples.
-    samples : ndarray
+    _samples : ndarray
         Samples of the dataset.
-    labels : ndarray
+    _labels : ndarray
         Labels of the samples.
     sparse: boolean
         True if this dataset uses sparse data structures.
@@ -78,6 +79,33 @@ class Dataset(object):
         self._sizes.extend([None] * len(subsets))
         self._reset_attributes()
 
+    def transpose(self, n_subsets=None):
+        """ Transposes the Dataset.
+
+        Parameters
+        ----------
+        n_subsets : int, optional (default=None)
+            Number of subsets in the transposed dataset. If none, defaults to
+            the original number of subsets
+        """
+
+        if n_subsets is None:
+            n_subsets = len(self._subsets)
+
+        subsets_t = []
+        for i in range(n_subsets):
+            subsets_i = [_get_split_i(s, i, n_subsets) for s in self._subsets]
+            new_subset = _merge_split_subsets(self.sparse, *subsets_i)
+            subsets_t.append(new_subset)
+
+        n_rows = np.sum(self.subsets_sizes())
+
+        dataset_t = Dataset(n_features=n_rows, sparse=self._sparse)
+
+        dataset_t.extend(subsets_t)
+
+        return dataset_t
+
     def subset_size(self, index):
         """ Returns the number of samples in the Subset referenced by index.
         If the size is unknown, this method performs a synchronization on
@@ -100,6 +128,25 @@ class Dataset(object):
             self._sizes = compss_wait_on(self._sizes)
 
         return self._sizes[index]
+
+    def subsets_sizes(self):
+        """ Returns the number of samples in all the Subsets.
+        If the size is unknown, this method performs a synchronization on
+        Subset.samples.shape[0] for all subsets.
+
+        Returns
+        -------
+        subsets_sizes : ndarray
+            Number of samples in each subset.
+        """
+
+        for index in range(len(self)):
+            if self._sizes[index] is None:
+                self._sizes[index] = _subset_size(self._subsets[index])
+
+        self._sizes = compss_wait_on(self._sizes)
+
+        return list(self._sizes)
 
     def min_features(self):
         """ Returns the minimum value of each feature in the dataset. This
@@ -141,10 +188,7 @@ class Dataset(object):
 
     @property
     def samples(self):
-        if not self._sparse:
-            self._update_samples()
-        else:
-            self._update_samples_sparse()
+        self._update_samples()
 
         return self._samples
 
@@ -181,17 +225,14 @@ class Dataset(object):
 
     def _update_samples(self):
         self.collect()
-        self._samples = np.empty((0, self.n_features))
+        if len(self._subsets) > 0:
+            # use the first subset to init to keep the subset's dtype
+            self._samples = self._subsets[0].samples
 
-        for subset in self._subsets:
-            self._samples = np.concatenate((self._samples, subset.samples))
+            concat_f = sp.vstack if self._sparse else np.concatenate
 
-    def _update_samples_sparse(self):
-        self.collect()
-        self._samples = csr_matrix((0, self.n_features))
-
-        for subset in self._subsets:
-            self._samples = vstack([self._samples, subset.samples])
+            for subset in self._subsets[1:]:
+                self._samples = concat_f((self._samples, subset.samples))
 
 
 class Subset(object):
@@ -255,7 +296,7 @@ class Subset(object):
             "Cannot concatenate labeled data with non-labeled data"
 
         if issparse(self.samples):
-            self.samples = vstack([self.samples, subset.samples])
+            self.samples = sp.vstack([self.samples, subset.samples])
         else:
             self.samples = np.concatenate([self.samples, subset.samples])
 
@@ -316,3 +357,36 @@ def _get_min_max(subset):
         mx = mx.toarray()[0]
 
     return np.array([mn, mx])
+
+
+@task(returns=1)
+def _get_split_i(subset, i, n_subsets):
+    """
+    Returns the columns corresponding to group i, if the subset is divided
+    into n_subsets groups of columns.
+    """
+    # number of elements per group
+    stride = subset.samples.shape[1] // n_subsets
+
+    # if it's the last group, just add all remaining element (end = None)
+    start_idx = i * stride
+    end_idx = (i + 1) * stride
+    if i == n_subsets - 1:
+        end_idx = None
+
+    samples_i = subset.samples[:, start_idx:end_idx]
+
+    return samples_i
+
+
+@task(returns=1)
+def _merge_split_subsets(sparse, *split_subsets):
+    stack_f = sp.vstack if sparse else np.vstack
+
+    # each sublist (sl) contains rows with a subset of columns. Each
+    # sublist must be stacked vertical first. Then all sublists must be
+    # stacked among themselves forming the final columns.
+    col_samples = stack_f([stack_f(sl) for sl in split_subsets])
+
+    # finally we transpose the columns.
+    return Subset(samples=col_samples.transpose())
