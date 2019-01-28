@@ -108,6 +108,7 @@ class DBSCAN():
             Input data.
         """
         n_features = dataset.n_features
+        sparse = dataset.sparse
 
         if self._dimensions_init is None:
             self._dimensions = range(n_features)
@@ -128,7 +129,8 @@ class DBSCAN():
         for subset_idx, region_id in enumerate(np.ndindex(grid.shape)):
             subset = sorted_data[subset_idx]
             subset_size = sorted_data.subset_size(subset_idx)
-            grid[region_id] = Region(region_id, subset, subset_size, self._eps)
+            grid[region_id] = Region(region_id, subset, subset_size,
+                                     self._eps, sparse)
 
         # Set region neighbours
         distances = np.ceil(self._eps / region_widths)

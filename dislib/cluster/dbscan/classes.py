@@ -4,11 +4,12 @@ import numpy as np
 from pycompss.api.task import task
 from scipy.sparse import lil_matrix
 from scipy.sparse.csgraph import connected_components
+from sklearn.metrics import pairwise_distances
 
 
 class Region(object):
 
-    def __init__(self, region_id, subset, n_samples, epsilon):
+    def __init__(self, region_id, subset, n_samples, epsilon, sparse):
         self.id = region_id
         self.epsilon = epsilon
         self._neighbours = []
@@ -17,6 +18,7 @@ class Region(object):
         self.labels = None
         self._neighbour_labels = []
         self._neighbour_ids = []
+        self._sparse = sparse
 
     def add_neighbour(self, region):
         self._neighbours.append(region)
@@ -44,8 +46,9 @@ class Region(object):
 
         for idx in range(0, n_samples, max_samples):
             end_idx = idx + max_samples
-            neighs, cps = _compute_neighbours(self.epsilon, min_samples, idx,
-                                              end_idx, *subsets)
+            neighs, cps = _compute_neighbours(self.epsilon, min_samples,
+                                              self._sparse, idx, end_idx,
+                                              *subsets)
             neigh_list.append(neighs)
             cp_list.append(cps)
 
@@ -119,13 +122,15 @@ def _slice_array(arr, start, finish):
 
 
 @task(returns=2)
-def _compute_neighbours(epsilon, min_samples, begin_idx, end_idx, *subsets):
+def _compute_neighbours(epsilon, min_samples, sparse, begin_idx, end_idx,
+                        *subsets):
     neighbour_list = []
     core_points = []
     samples = _concatenate_subsets(*subsets).samples
+    dist_f = _vec_matrix_euclid if not sparse else pairwise_distances
 
     for sample in samples[begin_idx:end_idx]:
-        dist = np.linalg.norm(samples - sample, axis=1)
+        dist = dist_f(sample, samples).flatten()
         neighbours = dist < epsilon
         neigh_indices = np.where(neighbours)[0]
         sorting = np.argsort(dist[neigh_indices])
@@ -143,6 +148,10 @@ def _concatenate_subsets(*subsets):
         subset.concatenate(set)
 
     return subset
+
+
+def _vec_matrix_euclid(vector, matrix):
+    return np.linalg.norm(vector - matrix, axis=1)
 
 
 @task(returns=1)

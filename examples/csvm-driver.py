@@ -8,6 +8,7 @@ from pycompss.api.api import barrier
 from dislib.classification import CascadeSVM
 from dislib.data import (load_libsvm_file, load_libsvm_files, load_csv_file,
                          load_csv_files)
+from dislib.utils import shuffle
 
 
 def main():
@@ -50,6 +51,8 @@ def main():
                              "(if a directory is provided PART_SIZE is "
                              "ignored)", type=str)
     parser.add_argument("-v", "--verbose", action="store_true")
+    parser.add_argument("-s", "--shuffle", help="shuffle input data",
+                        action="store_true")
     args = parser.parse_args()
 
     train_data = args.train_data
@@ -97,7 +100,12 @@ def main():
                       check_convergence=args.convergence, verbose=args.verbose)
 
     for d in data:
-        csvm.fit(d)
+        dataset = d
+
+        if args.shuffle:
+            dataset = shuffle(d)
+
+        csvm.fit(dataset)
 
     barrier()
     fit_time = time.time() - s_time
