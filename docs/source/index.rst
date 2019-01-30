@@ -1,6 +1,6 @@
 .. image:: ../dislib-logo-h-full.png
    :height: 90px
-   :align: center
+   :align: left
 
 .. toctree::
    :maxdepth: 2
