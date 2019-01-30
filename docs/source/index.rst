@@ -8,6 +8,11 @@
 |
 |
 |
+|
+|
+|
+|
+
 The Distributed Computing Library (dislib) provides distributed algorithms ready
 to use as a library. So far, dislib is highly focused on machine learning
 algorithms, and is greatly inspired by `Scikit-learn <https://scikit-learn
