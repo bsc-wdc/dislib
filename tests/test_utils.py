@@ -196,8 +196,8 @@ class UtilsTest(unittest.TestCase):
 
         sparse = load_libsvm_file(file_, 10, 780)
         dense = load_libsvm_file(file_, 10, 780, store_sparse=False)
-        grid_d, ind_d = as_grid(dense, 3, [0, 1], True)
-        grid_sp, ind_sp = as_grid(sparse, 3, [0, 1], True)
+        grid_d, ind_d = as_grid(dense, 3, [128, 184], True)
+        grid_sp, ind_sp = as_grid(sparse, 3, [128, 184], True)
         grid_sp.collect()
         grid_d.collect()
 

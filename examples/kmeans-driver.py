@@ -63,7 +63,7 @@ def main():
         s_time = time.time()
 
     kmeans = KMeans(n_clusters=args.clusters, max_iter=args.iteration,
-                    arity=args.arity)
+                    arity=args.arity, verbose=True)
     kmeans.fit(data)
 
     barrier()

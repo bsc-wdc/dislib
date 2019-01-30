@@ -307,6 +307,11 @@ class Subset(object):
 
         if remove_duplicates:
             self._ids, uniques = np.unique(self._ids, return_index=True)
+
+            indices = np.argsort(uniques)
+            uniques = uniques[indices]
+            self._ids = self._ids[indices]
+
             self.samples = self.samples[uniques]
 
             if self.labels is not None:

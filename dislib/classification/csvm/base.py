@@ -79,7 +79,7 @@ class CascadeSVM(object):
     """
     _name_to_kernel = {"linear": "_linear_kernel", "rbf": "_rbf_kernel"}
 
-    def __init__(self, cascade_arity=2, max_iter=5, tol=10 ** -3,
+    def __init__(self, cascade_arity=2, max_iter=5, tol=1e-3,
                  kernel="rbf", c=1, gamma='auto', check_convergence=True,
                  random_state=None, verbose=False):
 
@@ -295,7 +295,7 @@ class CascadeSVM(object):
         k = x.dot(x.T) / sigmaq
 
         if issparse(k):
-            k = k.todense()
+            k = k.toarray()
 
         d = np.diag(k).reshape((n, 1))
         k = k - np.ones((n, 1)) * d.T / 2
