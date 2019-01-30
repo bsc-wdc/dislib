@@ -184,22 +184,24 @@ class CSVMTest(unittest.TestCase):
         data"""
         seed = 666
         train = "tests/files/libsvm/3"
-        test = "tests/files/libsvm/1"
 
         train_sp = load_libsvm_file(train, 10, 780)
         train_d = load_libsvm_file(train, 10, 780, False)
-        test_sp = load_libsvm_file(test, 10, 780)
-        test_d = load_libsvm_file(test, 10, 780, False)
 
         csvm_sp = CascadeSVM(random_state=seed)
         csvm_sp.fit(train_sp)
         csvm_d = CascadeSVM(random_state=seed)
         csvm_d.fit(train_d)
 
-        csvm_d.predict(test_d)
-        csvm_sp.predict(test_sp)
+        sv_d = csvm_d._clf.support_vectors_
+        sv_sp = csvm_sp._clf.support_vectors_.toarray()
 
-        self.assertTrue(np.array_equal(test_d.labels, test_sp.labels))
+        self.assertTrue(np.array_equal(sv_d, sv_sp))
+
+        coef_d = csvm_d._clf.dual_coef_
+        coef_sp = csvm_sp._clf.dual_coef_.toarray()
+
+        self.assertTrue(np.array_equal(coef_d, coef_sp))
 
 
 def main():
