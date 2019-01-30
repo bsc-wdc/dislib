@@ -1,12 +1,5 @@
-<h1 align="center">
-  <br>
-  <a href="https://www.bsc.es/">
-    <img src="docs/bsc_logo.png" alt="Barcelona Supercomputing Center" height="60px">
-  </a>
-  <br>
-  <br>
-  The Distributed Computing Library
-  <br>
+<h1 align="center">  
+    <img src="docs/dislib-logo-h-full.png" alt="The Distributed Computing Library" height="90px">    
 </h1>
 
 <h3 align="center">Distributed computing library implemented over PyCOMPSs programming model for HPC.</h3>
