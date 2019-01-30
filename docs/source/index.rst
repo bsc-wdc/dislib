@@ -1,5 +1,6 @@
-Documentation of dislib 0.1
-===========================
+.. image:: ../dislib-logo-h-full.png
+   :height: 90px
+   :align: center
 
 .. toctree::
    :maxdepth: 2
