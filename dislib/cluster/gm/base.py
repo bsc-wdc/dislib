@@ -422,7 +422,7 @@ class GaussianMixture:
             (n_components, n_features, n_features) if 'full'
     converged_ : bool
         True when convergence was reached in fit(), False otherwise.
-    n_iter_ : int
+    n_iter : int
         Number of EM iterations used in fit().
     lower_bound_ : float
         Log-likelihood of the predicted distribution with the given data.
@@ -523,7 +523,7 @@ class GaussianMixture:
         self._check_initial_parameters()
 
         self.converged_ = False
-        self.n_iter_ = 0
+        self.n_iter = 0
 
         random_state = validation.check_random_state(self.random_state)
 
@@ -664,6 +664,7 @@ class GaussianMixture:
             seed = random_state.randint(0, int(1e8))
             kmeans = KMeans(n_clusters=n_components, random_state=seed)
             kmeans.fit_predict(dataset)
+            self.kmeans = kmeans
             for labeled_subset in dataset:
                 resp.append(_resp_subset(labeled_subset, n_components))
         elif self.init_params == 'random':
