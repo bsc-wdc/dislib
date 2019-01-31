@@ -9,7 +9,7 @@ Subpackages
     dislib.classification.csvm
     dislib.classification.rf
     dislib.cluster.kmeans
-    dislib.cluster.kmedoids
+    dislib.cluster.knn
     dislib.cluster.dbscan
     dislib.data
     dislib.fft
