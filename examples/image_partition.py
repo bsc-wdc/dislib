@@ -39,6 +39,14 @@ def get_gm_kwargs(args):
     return kwargs
 
 
+def get_dbscan_kwargs(args):
+    kwargs = {'eps': args.eps, 'min_samples': args.min_samples}
+    n_regions = vars(args).get('n_regions', None)
+    if n_regions is not None:
+        kwargs['n_regions'] = n_regions
+    return kwargs
+
+
 def initialize(alg_names, args):
     return [{
         'KMeans': lambda x: KMeans(**get_kmeans_kwargs(x)),
@@ -86,8 +94,8 @@ def main():
                              "provided multiple times (by default all "
                              "available algorithms are used)")
     parser.add_argument('-n', '--n_clusters', type=int, default=10,
-                        help="number of clusters for KMeans or Gaussian "
-                             "Mixture (default is 10)")
+                        help="number of clusters used by KMeans or Gaussian "
+                             "Mixture to partition the image (default is 10)")
     parser.add_argument('-i', '--max_iter', type=int,
                         default=argparse.SUPPRESS,
                         help="see the docs for dislib.cluster.KMeans and "
@@ -101,6 +109,14 @@ def main():
                         help="see dislib.cluster.DBSCAN docs (default is 15.)")
     parser.add_argument('-m', '--min_samples', type=int, default=50,
                         help="see dislib.cluster.DBSCAN docs (default is 50)")
+    parser.add_argument('-r', '--n_regions', type=int,
+                        default=argparse.SUPPRESS,
+                        help="see dislib.cluster.DBSCAN docs (default is "
+                             "kept)")
+    parser.add_argument('-c', '--chunks', type=int, default=50,
+                        help="number of chunks the data should be divided for "
+                             "the distributed computation (not to confuse "
+                             "with --n_clusters) (default is 50)")
     parser.add_argument('-s', '--save', action='store_true',
                         help="save the partitioned images")
     parser.add_argument('-p', '--plot', action='store_true',
@@ -141,7 +157,7 @@ def main():
             print('Starting partition with algorithm:', alg_name)
         noise_value = get_noise_value(alg_name)
         t0 = time.time()
-        part_img = image_partition(img, alg, noise_value)
+        part_img = image_partition(img, args.chunks, alg, noise_value)
         t1 = time.time()
         if args.verbose:
             print(execution_summary(alg_name, alg))
@@ -165,7 +181,7 @@ def main():
         plt.show()
 
 
-def image_partition(img, algorithm, noise_value=None):
+def image_partition(img, n_chunks, algorithm, noise_value=None):
     height = img.shape[0]
     width = img.shape[1]
     iter_pixels = product(range(height), range(width))
@@ -174,7 +190,7 @@ def image_partition(img, algorithm, noise_value=None):
     img_data[:, 0:2] = np.fromiter(chain.from_iterable(iter_pixels),
                                    dtype=img_data.dtype).reshape(n_pixels, 2)
     img_data[:, 2:5] = img.reshape(n_pixels, 3)*sqrt(n_pixels)  # Color rescale
-    dataset = load_data(img_data, 300)
+    dataset = load_data(img_data, ceil(n_pixels / n_chunks))
 
     algorithm.fit_predict(dataset)
     labels = dataset.labels.astype(int)
