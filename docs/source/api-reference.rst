@@ -63,9 +63,6 @@ clustering.
 :class:`cluster.GaussianMixture <dislib.cluster.gm.base.GaussianMixture>` -
 Fit a gaussian mixture model.
 
-:class:`cluster.NearestNeighbors <dislib.cluster.knn.base.NearestNeighbors>` -
-Perform nearest neighbors queries.
-
 
 dislib.classification: Classification
 -------------------------------------
@@ -79,6 +76,15 @@ Classes
 :class:`classification.RandomForestClassifier <dislib.classification.rf.forest.RandomForestClassifier>` -
 Build a random forest for classification.
 
+
+dislib.neighbors: Neighbor queries
+------------------------------------
+
+Classes
+-------
+
+:class:`cluster.NearestNeighbors <dislib.neighbors.base.NearestNeighbors>` -
+Perform k-nearest neighbors queries.
 
 Other functions
 ---------------
