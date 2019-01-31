@@ -50,7 +50,7 @@ def get_dbscan_kwargs(args):
 def initialize(alg_names, args):
     return [{
         'KMeans': lambda x: KMeans(**get_kmeans_kwargs(x)),
-        'DBSCAN': lambda x: DBSCAN(eps=x.eps, min_samples=x.min_samples),
+        'DBSCAN': lambda x: DBSCAN(**get_dbscan_kwargs(x)),
         'GaussianMixture': lambda x: GaussianMixture(**get_gm_kwargs(x))
         }[name](args) for name in alg_names]
 
