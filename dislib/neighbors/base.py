@@ -5,25 +5,25 @@ from sklearn.neighbors import NearestNeighbors as SKNeighbors
 
 
 class NearestNeighbors:
+    """ Unsupervised learner for implementing neighbor searches.
+
+    Parameters
+    ----------
+    n_neighbors : int, optional (default=5)
+        Number of neighbors to use by default for kneighbors queries.
+
+    Examples
+    --------
+    >>> from dislib.neighbors import NearestNeighbors
+    >>> from dislib.data import load_data
+    >>> x = np.random.random((100, 5))
+    >>> data = load_data(x, subset_size=25)
+    >>> knn = NearestNeighbors(n_neighbors=10)
+    >>> knn.fit(data)
+    >>> distances, indices = knn.kneighbors(data)
+    """
 
     def __init__(self, n_neighbors=5):
-        """ Unsupervised learner for implementing neighbor searches.
-
-        Parameters
-        ----------
-        n_neighbors : int, optional (default=5)
-            Number of neighbors to use by default for kneighbors queries.
-
-        Examples
-        --------
-        >>> from dislib.cluster import NearestNeighbors
-        >>> from dislib.data import load_data
-        >>> x = np.random.random((100, 5))
-        >>> data = load_data(x, subset_size=25)
-        >>> knn = NearestNeighbors(n_neighbors=10)
-        >>> knn.fit(data)
-        >>> distances, indices = knn.kneighbors(data)
-        """
         self._n_neighbors = n_neighbors
         self._fit_dataset = None
 

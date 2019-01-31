@@ -3,8 +3,8 @@ import unittest
 import numpy as np
 from sklearn.neighbors import NearestNeighbors as SKNearestNeighbors
 
-from dislib.cluster import NearestNeighbors
 from dislib.data import load_data
+from dislib.neighbors import NearestNeighbors
 
 
 class NearestNeighborsTest(unittest.TestCase):

@@ -1,7 +1,7 @@
 Nearest Neighbors
-================
+=================
 
-.. automodule:: dislib.cluster.knn.base
+.. automodule:: dislib.neighbors.base
     :members:
     :undoc-members:
     :show-inheritance:
