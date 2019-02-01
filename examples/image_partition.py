@@ -44,13 +44,16 @@ def get_dbscan_kwargs(args):
     n_regions = vars(args).get('n_regions', None)
     if n_regions is not None:
         kwargs['n_regions'] = n_regions
+    max_samples = vars(args).get('max_samples', None)
+    if max_samples is not None:
+        kwargs['max_samples'] = max_samples
     return kwargs
 
 
 def initialize(alg_names, args):
     return [{
         'KMeans': lambda x: KMeans(**get_kmeans_kwargs(x)),
-        'DBSCAN': lambda x: DBSCAN(eps=x.eps, min_samples=x.min_samples),
+        'DBSCAN': lambda x: DBSCAN(**get_dbscan_kwargs(x)),
         'GaussianMixture': lambda x: GaussianMixture(**get_gm_kwargs(x))
         }[name](args) for name in alg_names]
 
@@ -105,10 +108,14 @@ def main():
                         help="see the docs for dislib.cluster.KMeans and "
                              "dislib.cluster.GaussianMixture (defaults are "
                              "kept)")
-    parser.add_argument('-e', '--eps', type=float, default=15.,
-                        help="see dislib.cluster.DBSCAN docs (default is 15.)")
-    parser.add_argument('-m', '--min_samples', type=int, default=50,
-                        help="see dislib.cluster.DBSCAN docs (default is 50)")
+    parser.add_argument('-e', '--eps', type=float, default=10.,
+                        help="see dislib.cluster.DBSCAN docs (default is 10.)")
+    parser.add_argument('-m', '--min_samples', type=int, default=35,
+                        help="see dislib.cluster.DBSCAN docs (default is 35)")
+    parser.add_argument('-M', '--max_samples', type=int,
+                        default=argparse.SUPPRESS,
+                        help="see dislib.cluster.DBSCAN docs (default is "
+                             "kept)")
     parser.add_argument('-r', '--n_regions', type=int,
                         default=argparse.SUPPRESS,
                         help="see dislib.cluster.DBSCAN docs (default is "
@@ -140,6 +147,7 @@ def main():
     algorithms = initialize(args.algorithm, args)
 
     img = mpimg.imread(args.img)
+
     if args.save:
         img_basename = basename(args.img)
         img_name, extension = splitext(img_basename)
@@ -150,8 +158,15 @@ def main():
         dim_1 = ceil(sqrt(n_images-0.5))
         dim_2 = ceil((n_images-0.5)/dim_1)
         plt.subplot(dim_1, dim_2, plot_num)
-        plt.imshow(img)
+        cmap = 'gray' if len(img.shape) == 2 else None
+        plt.imshow(img, cmap=cmap)
         plot_num += 1
+
+    if len(img.shape) == 3 and img.shape[2] == 4:
+        print("WARNING: the image contains an alpha channel (transparency "
+              "data) which is discarded for partitioning")
+        img = img[:, :, 0:3]
+
     for alg_name, alg in zip(args.algorithm, algorithms):
         if args.verbose:
             print('Starting partition with algorithm:', alg_name)
@@ -182,14 +197,22 @@ def main():
 
 
 def image_partition(img, n_chunks, algorithm, noise_value=None):
+    if len(img.shape) == 3 and img.shape[2] == 4:
+        print("WARNING: the image contains an alpha channel (transparency "
+              "data) which is discarded for partitioning")
+        img = img[:, :, 0:3]
+    gray_scaled = len(img.shape) == 2
+    n_channels = 1 if gray_scaled else img.shape[2]
+    dims = 2 + n_channels
     height = img.shape[0]
     width = img.shape[1]
     iter_pixels = product(range(height), range(width))
     n_pixels = height * width
-    img_data = np.empty((n_pixels, 5), dtype=img.dtype)
+    img_data = np.empty((n_pixels, dims), dtype=img.dtype)
     img_data[:, 0:2] = np.fromiter(chain.from_iterable(iter_pixels),
                                    dtype=img_data.dtype).reshape(n_pixels, 2)
-    img_data[:, 2:5] = img.reshape(n_pixels, 3)*sqrt(n_pixels)  # Color rescale
+    # Reescale and set the channels
+    img_data[:, 2:dims] = img.reshape(n_pixels, n_channels) * sqrt(n_pixels)
     dataset = load_data(img_data, ceil(n_pixels / n_chunks))
 
     algorithm.fit_predict(dataset)
@@ -205,6 +228,7 @@ def image_partition(img, n_chunks, algorithm, noise_value=None):
     else:
         labels = labels % n_colors
     colors = np.array(colors, dtype=np.float32)[:, 0:3]
+
     return colors[labels].reshape(height, width, 3)
 
 
