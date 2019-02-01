@@ -208,9 +208,9 @@ def image_partition(img, n_chunks, algorithm, noise_value=None):
     width = img.shape[1]
     iter_pixels = product(range(height), range(width))
     n_pixels = height * width
-    img_data = np.empty((n_pixels, dims), dtype=img.dtype)
+    img_data = np.empty((n_pixels, dims), dtype=np.float32)
     img_data[:, 0:2] = np.fromiter(chain.from_iterable(iter_pixels),
-                                   dtype=img_data.dtype).reshape(n_pixels, 2)
+                                   dtype=np.float32).reshape(n_pixels, 2)
     # Reescale and set the channels
     img_data[:, 2:dims] = img.reshape(n_pixels, n_channels) * sqrt(n_pixels)
     dataset = load_data(img_data, ceil(n_pixels / n_chunks))
