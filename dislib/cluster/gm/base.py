@@ -353,9 +353,9 @@ class GaussianMixture:
         Must be one of::
 
             'full' (each component has its own general covariance matrix),
-            'tied' (all components share the same general covariance matrix),
-            'diag' (each component has its own diagonal covariance matrix),
-            'spherical' (each component has its own single variance).
+            # 'tied' (all components share the same general covariance matrix),
+            # 'diag' (each component has its own diagonal covariance matrix),
+            # 'spherical' (each component has its own single variance).
     tol : float, defaults to 1e-3.
         The convergence threshold. EM iterations will stop when the
         lower bound average gain is below this threshold.
@@ -383,9 +383,9 @@ class GaussianMixture:
         If it None, precisions are initialized using the 'init_params' method.
         The shape depends on 'covariance_type'::
 
-            (n_components,)                        if 'spherical',
-            (n_features, n_features)               if 'tied',
-            (n_components, n_features)             if 'diag',
+            # (n_components,)                        if 'spherical',
+            # (n_features, n_features)               if 'tied',
+            # (n_components, n_features)             if 'diag',
             (n_components, n_features, n_features) if 'full'
     random_state : int, RandomState or None, optional (default=None)
         If int, random_state is the seed used by the random number generator;
@@ -403,9 +403,9 @@ class GaussianMixture:
         The covariance of each mixture component.
         The shape depends on `covariance_type`::
 
-            (n_components,)                        if 'spherical',
-            (n_features, n_features)               if 'tied',
-            (n_components, n_features)             if 'diag',
+            # (n_components,)                        if 'spherical',
+            # (n_features, n_features)               if 'tied',
+            # (n_components, n_features)             if 'diag',
             (n_components, n_features, n_features) if 'full'
     precisions_cholesky_ : array-like
         The cholesky decomposition of the precision matrices of each mixture
@@ -416,9 +416,9 @@ class GaussianMixture:
         it more efficient to compute the log-likelihood of new samples at test
         time. The shape depends on `covariance_type`::
 
-            (n_components,)                        if 'spherical',
-            (n_features, n_features)               if 'tied',
-            (n_components, n_features)             if 'diag',
+            # (n_components,)                        if 'spherical',
+            # (n_features, n_features)               if 'tied',
+            # (n_components, n_features)             if 'diag',
             (n_components, n_features, n_features) if 'full'
     converged_ : bool
         True when convergence was reached in fit(), False otherwise.
@@ -475,9 +475,6 @@ class GaussianMixture:
         ----------
         dataset : dislib.data.Dataset
             Data points.
-        Returns
-        -------
-        self
         """
         self._fit(dataset)
         # Always do a final e-step to guarantee that the labels returned by
