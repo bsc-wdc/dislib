@@ -471,6 +471,7 @@ class GaussianMixture:
         If ``warm_start`` is ``True``, then ``n_init`` is ignored and a single
         initialization is performed upon the first call. Upon consecutive
         calls, training starts where it left off.
+
         Parameters
         ----------
         dataset : dislib.data.Dataset
