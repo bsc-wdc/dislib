@@ -211,8 +211,11 @@ def image_partition(img, n_chunks, algorithm, noise_value=None):
     img_data = np.empty((n_pixels, dims), dtype=np.float32)
     img_data[:, 0:2] = np.fromiter(chain.from_iterable(iter_pixels),
                                    dtype=np.float32).reshape(n_pixels, 2)
-    # Reescale and set the channels
-    img_data[:, 2:dims] = img.reshape(n_pixels, n_channels) * sqrt(n_pixels)
+    if img.dtype == np.uint8:  # Channels expected to range between 0 and 255
+        rescaling_factor = sqrt(n_pixels) / 255
+    else:  # Channels expected to range between 0 and 1
+        rescaling_factor = sqrt(n_pixels)
+    img_data[:, 2:dims] = img.reshape(n_pixels, n_channels) * rescaling_factor
     dataset = load_data(img_data, ceil(n_pixels / n_chunks))
 
     algorithm.fit_predict(dataset)
