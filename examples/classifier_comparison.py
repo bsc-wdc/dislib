@@ -77,7 +77,7 @@ def main():
             # Plot the decision boundary. For that, we will assign a color to
             # each point in the mesh [x_min, x_max]x[y_min, y_max].
             mesh = np.c_[xx.ravel(), yy.ravel()]
-            mesh_dataset = load_data(x=mesh, subset_size=20)
+            mesh_dataset = load_data(x=mesh, subset_size=mesh.shape[0])
 
             if hasattr(clf, "decision_function"):
                 clf.decision_function(mesh_dataset)
