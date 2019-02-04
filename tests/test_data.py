@@ -7,10 +7,10 @@ from sklearn.datasets import load_svmlight_file
 from sklearn.datasets import make_blobs
 
 from dislib.data import Subset, Dataset
-from dislib.data import load_csv_file
-from dislib.data import load_csv_files
 from dislib.data import load_data
 from dislib.data import load_libsvm_file, load_libsvm_files
+from dislib.data import load_txt_file
+from dislib.data import load_txt_files
 
 
 class DataLoadingTest(unittest.TestCase):
@@ -131,7 +131,7 @@ class DataLoadingTest(unittest.TestCase):
         """
         csv_file = "tests/files/csv/1"
 
-        data = load_csv_file(csv_file, subset_size=300, n_features=122)
+        data = load_txt_file(csv_file, subset_size=300, n_features=122)
         data.collect()
         csv = np.loadtxt(csv_file, delimiter=",")
 
@@ -149,7 +149,7 @@ class DataLoadingTest(unittest.TestCase):
         """
         csv_file = "tests/files/csv/1"
 
-        data = load_csv_file(csv_file, subset_size=1000, n_features=121,
+        data = load_txt_file(csv_file, subset_size=1000, n_features=121,
                              label_col="last")
         data.collect()
         csv = np.loadtxt(csv_file, delimiter=",")
@@ -170,7 +170,7 @@ class DataLoadingTest(unittest.TestCase):
         """
         csv_file = "tests/files/csv/2"
 
-        data = load_csv_file(csv_file, subset_size=100, n_features=121,
+        data = load_txt_file(csv_file, subset_size=100, n_features=121,
                              label_col="first")
         data.collect()
         csv = np.loadtxt(csv_file, delimiter=",")
@@ -192,7 +192,7 @@ class DataLoadingTest(unittest.TestCase):
         csv_dir = "tests/files/csv"
 
         file_list = os.listdir(csv_dir)
-        data = load_csv_files(csv_dir, n_features=122)
+        data = load_txt_files(csv_dir, n_features=122)
         data.collect()
 
         for i, subset in enumerate(data):
@@ -209,7 +209,7 @@ class DataLoadingTest(unittest.TestCase):
         csv_dir = "tests/files/csv"
 
         file_list = os.listdir(csv_dir)
-        data = load_csv_files(csv_dir, n_features=122, label_col="last")
+        data = load_txt_files(csv_dir, n_features=122, label_col="last")
         data.collect()
 
         for i, subset in enumerate(data):
@@ -227,7 +227,7 @@ class DataLoadingTest(unittest.TestCase):
         csv_dir = "tests/files/csv"
 
         file_list = os.listdir(csv_dir)
-        data = load_csv_files(csv_dir, n_features=122, label_col="first")
+        data = load_txt_files(csv_dir, n_features=122, label_col="first")
         data.collect()
 
         for i, subset in enumerate(data):
@@ -238,6 +238,33 @@ class DataLoadingTest(unittest.TestCase):
             self.assertTrue((subset.labels == csv[:, 0]).all())
 
         self.assertEqual(len(data), 3)
+
+    def test_load_txt_delimiter(self):
+        """ Tests load_txt_file with a custom delimiter """
+        path_ = "tests/files/other/4"
+        data = load_txt_file(path_, n_features=122, subset_size=1000,
+                             delimiter=" ")
+        csv = np.loadtxt(path_, delimiter=" ")
+
+        self.assertTrue(np.array_equal(data.samples, csv))
+        self.assertEqual(len(data), 5)
+        self.assertIsNone(data.labels)
+
+    def test_load_txt_files_delimiter(self):
+        """ Tests loading multiple files with a custom delimiter"""
+        path_ = "tests/files/other"
+
+        file_list = os.listdir(path_)
+        data = load_txt_files(path_, n_features=122, delimiter=" ")
+        data.collect()
+
+        for i, subset in enumerate(data):
+            file_ = os.path.join(path_, file_list[i])
+            read_data = np.loadtxt(file_, delimiter=" ")
+
+            self.assertTrue(np.array_equal(subset.samples, read_data))
+
+        self.assertEqual(len(data), 2)
 
 
 class DatasetTest(unittest.TestCase):
@@ -279,7 +306,7 @@ class DatasetTest(unittest.TestCase):
         """ Tests Dataset's collect(). """
         csv_file = "tests/files/csv/3"
 
-        dataset = load_csv_file(csv_file, subset_size=300, n_features=122)
+        dataset = load_txt_file(csv_file, subset_size=300, n_features=122)
         dataset.collect()
 
         self.assertIsInstance(dataset[0], Subset)
@@ -288,7 +315,7 @@ class DatasetTest(unittest.TestCase):
         """ Tests the access to Dataset.samples and Dataset.labels """
         csv_file = "tests/files/csv/3"
 
-        dataset = load_csv_file(csv_file, subset_size=300, n_features=121,
+        dataset = load_txt_file(csv_file, subset_size=300, n_features=121,
                                 label_col="last")
 
         self.assertEqual(dataset.samples.shape[0], 4179)
@@ -298,7 +325,7 @@ class DatasetTest(unittest.TestCase):
         """ Tests the access Dataset.labels for unlabeled datasets """
         csv_file = "tests/files/csv/3"
 
-        dataset = load_csv_file(csv_file, subset_size=300, n_features=122)
+        dataset = load_txt_file(csv_file, subset_size=300, n_features=122)
 
         self.assertIsNone(dataset.labels)
 

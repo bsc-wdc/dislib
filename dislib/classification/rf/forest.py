@@ -1,17 +1,15 @@
 import math
 from collections import Counter
 
+import numpy as np
 from pycompss.api.api import compss_wait_on
 from pycompss.api.parameter import INOUT
 from pycompss.api.task import task
 from sklearn.utils import check_random_state
 
 from dislib.classification.rf.decision_tree import DecisionTreeClassifier
-
-import numpy as np
-
-from .data import RfDataset, transform_to_rf_dataset
 from dislib.data import Dataset
+from .data import RfDataset, transform_to_rf_dataset
 
 
 class RandomForestClassifier:
@@ -107,7 +105,7 @@ class RandomForestClassifier:
                                                   n_features)
         self.classes = dataset.get_classes()
 
-        if self.distr_depth_init is 'auto':
+        if self.distr_depth_init == 'auto':
             dataset.n_samples = compss_wait_on(dataset.get_n_samples())
             self.distr_depth = max(0, int(math.log10(dataset.n_samples)) - 4)
             self.distr_depth = min(self.distr_depth, self.max_depth)
@@ -243,7 +241,7 @@ def _join_predictions(subset, *predictions):
     aggregate = predictions[0]
     for p in predictions[1:]:
         aggregate += p
-    subset.labels = aggregate/len(predictions)
+    subset.labels = aggregate / len(predictions)
 
 
 @task(subset=INOUT)
