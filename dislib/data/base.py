@@ -90,8 +90,9 @@ def load_libsvm_files(path, n_features, store_sparse=True):
                        n_features=n_features)
 
 
-def load_csv_file(path, subset_size, n_features, label_col=None):
-    """ Loads a CSV file into a Dataset.
+def load_txt_file(path, subset_size, n_features, delimiter=",",
+                  label_col=None):
+    """ Loads a text file into a Dataset.
 
      Parameters
     ----------
@@ -101,7 +102,7 @@ def load_csv_file(path, subset_size, n_features, label_col=None):
         Subset size in lines.
     n_features : int
         Number of features.
-    delimiter : (currently unavailable) string, optional (default ",")
+    delimiter : string, optional (default ",")
         String that separates features in the file.
     label_col : int, optional (default=None)
         Column representing data labels. Can be 'first' or 'last'.
@@ -112,20 +113,20 @@ def load_csv_file(path, subset_size, n_features, label_col=None):
         A distributed representation of the data divided in Subsets of
         subset_size.
     """
-    return _load_file(path, subset_size, fmt="csv", n_features=n_features,
-                      delimiter=",", label_col=label_col)
+    return _load_file(path, subset_size, fmt="txt", n_features=n_features,
+                      delimiter=delimiter, label_col=label_col)
 
 
-def load_csv_files(path, n_features, label_col=None):
-    """ Loads a set of CSV files into a Dataset.
+def load_txt_files(path, n_features, delimiter=",", label_col=None):
+    """ Loads a set of text files into a Dataset.
 
     Parameters
    ----------
     path : string
-        Path to a directory containing CSV files.
+        Path to a directory containing text files.
     n_features : int
         Number of features.
-    delimiter : (currently unavailable) string, optional (default ",")
+    delimiter : string, optional (default ",")
         String that separates features in the file.
     label_col : int, optional (default=None)
         Column representing data labels. Can be 'first' or 'last'.
@@ -137,11 +138,11 @@ def load_csv_files(path, n_features, label_col=None):
        each file in path.
    """
 
-    return _load_files(path, fmt="csv", n_features=n_features,
-                       delimiter=",", label_col=label_col)
+    return _load_files(path, fmt="txt", n_features=n_features,
+                       delimiter=delimiter, label_col=label_col)
 
 
-def _load_file(path, subset_size, fmt, n_features, delimiter=",",
+def _load_file(path, subset_size, fmt, n_features, delimiter=None,
                label_col=None, store_sparse=False):
     lines = []
     dataset = Dataset(n_features, store_sparse)
@@ -151,19 +152,19 @@ def _load_file(path, subset_size, fmt, n_features, delimiter=",",
             lines.append(line.encode())
 
             if len(lines) == subset_size:
-                subset = _read_lines(lines, fmt, n_features, label_col,
-                                     store_sparse)
+                subset = _read_lines(lines, fmt, n_features, delimiter,
+                                     label_col, store_sparse)
                 dataset.append(subset)
                 lines = []
 
     if lines:
-        dataset.append(_read_lines(lines, fmt, n_features, label_col,
-                                   store_sparse))
+        dataset.append(_read_lines(lines, fmt, n_features, delimiter,
+                                   label_col, store_sparse))
 
     return dataset
 
 
-def _load_files(path, fmt, n_features, delimiter=",", label_col=None,
+def _load_files(path, fmt, n_features, delimiter=None, label_col=None,
                 store_sparse=False):
     assert os.path.isdir(path), "Path is not a directory."
 
@@ -172,7 +173,7 @@ def _load_files(path, fmt, n_features, delimiter=",", label_col=None,
 
     for file_ in files:
         full_path = os.path.join(path, file_)
-        subset = _read_file(full_path, fmt, n_features, label_col,
+        subset = _read_file(full_path, fmt, n_features, delimiter, label_col,
                             store_sparse)
         subsets.append(subset)
 
@@ -180,11 +181,11 @@ def _load_files(path, fmt, n_features, delimiter=",", label_col=None,
 
 
 @task(returns=1)
-def _read_lines(lines, fmt, n_features, label_col, store_sparse):
+def _read_lines(lines, fmt, n_features, delimiter, label_col, store_sparse):
     if fmt == "libsvm":
         subset = _read_libsvm(lines, n_features, store_sparse)
     else:
-        samples = np.genfromtxt(lines, delimiter=",")
+        samples = np.genfromtxt(lines, delimiter=delimiter)
 
         if label_col == "first":
             subset = Subset(samples[:, 1:], samples[:, 0])
@@ -197,7 +198,7 @@ def _read_lines(lines, fmt, n_features, label_col, store_sparse):
 
 
 @task(file=FILE_IN, returns=1)
-def _read_file(file, fmt, n_features, label_col, store_sparse):
+def _read_file(file, fmt, n_features, delimiter, label_col, store_sparse):
     from sklearn.datasets import load_svmlight_file
 
     if fmt == "libsvm":
@@ -208,7 +209,7 @@ def _read_file(file, fmt, n_features, label_col, store_sparse):
 
         subset = Subset(x, y)
     else:
-        samples = np.genfromtxt(file, delimiter=",")
+        samples = np.genfromtxt(file, delimiter=delimiter)
 
         if label_col == "first":
             subset = Subset(samples[:, 1:], samples[:, 0])

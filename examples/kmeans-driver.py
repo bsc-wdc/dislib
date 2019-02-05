@@ -5,8 +5,8 @@ import time
 from pycompss.api.api import barrier
 
 from dislib.cluster import KMeans
-from dislib.data import (load_libsvm_file, load_libsvm_files, load_csv_file,
-                         load_csv_files)
+from dislib.data import (load_libsvm_file, load_libsvm_files, load_txt_file,
+                         load_txt_files)
 
 
 def main():
@@ -47,14 +47,14 @@ def main():
             data = load_libsvm_files(train_data, args.features,
                                      store_sparse=sparse)
         else:
-            data = load_csv_files(train_data, args.features, label_col="last")
+            data = load_txt_files(train_data, args.features, label_col="last")
     else:
         if args.libsvm:
             data = load_libsvm_file(train_data, subset_size=args.part_size,
                                     n_features=args.features,
                                     store_sparse=sparse)
         else:
-            data = load_csv_file(train_data, subset_size=args.part_size,
+            data = load_txt_file(train_data, subset_size=args.part_size,
                                  n_features=args.features, label_col="last")
 
     if args.detailed_times:

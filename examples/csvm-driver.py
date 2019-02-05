@@ -6,8 +6,8 @@ import time
 from pycompss.api.api import barrier
 
 from dislib.classification import CascadeSVM
-from dislib.data import (load_libsvm_file, load_libsvm_files, load_csv_file,
-                         load_csv_files)
+from dislib.data import (load_libsvm_file, load_libsvm_files, load_txt_file,
+                         load_txt_files)
 from dislib.utils import shuffle
 
 
@@ -75,7 +75,7 @@ def main():
                                               store_sparse=sparse))
         else:
             for _ in range(args.n_datasets):
-                data.append(load_csv_files(train_data, args.features,
+                data.append(load_txt_files(train_data, args.features,
                                            label_col="last"))
     else:
         if args.libsvm:
@@ -87,7 +87,7 @@ def main():
         else:
             for _ in range(args.n_datasets):
                 data.append(
-                    load_csv_file(train_data, subset_size=args.part_size,
+                    load_txt_file(train_data, subset_size=args.part_size,
                                   n_features=args.features, label_col="last"))
 
     if args.detailed_times:
@@ -124,7 +124,7 @@ def main():
                                          subset_size=args.part_size,
                                          store_sparse=sparse)
         else:
-            test_data = load_csv_file(args.test_file,
+            test_data = load_txt_file(args.test_file,
                                       n_features=args.features,
                                       subset_size=args.part_size,
                                       label_col="last")

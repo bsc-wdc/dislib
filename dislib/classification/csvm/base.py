@@ -83,7 +83,7 @@ class CascadeSVM(object):
                  kernel="rbf", c=1, gamma='auto', check_convergence=True,
                  random_state=None, verbose=False):
 
-        assert (gamma is "auto" or type(gamma) == float
+        assert (gamma == "auto" or type(gamma) == float
                 or type(float(gamma)) == float), "Invalid gamma"
         assert (kernel is None or kernel in self._name_to_kernel.keys()), \
             "Incorrect kernel value [%s], available kernels are %s" % (
