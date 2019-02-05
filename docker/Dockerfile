@@ -42,8 +42,8 @@ RUN apt-get update && \
 # Misc. dependencies
     openmpi-bin openmpi-doc libopenmpi-dev uuid-runtime curl bc \
 # Python-binding dependencies
-    python-dev python3-pip python3-setuptools && \
-    pip3 install wheel dill decorator coverage psutil numpy==1.15.4 scipy==1.0.0 \
+    python3-dev python3-pip python3-setuptools && \
+    pip3 install wheel dill decorator coverage numpy==1.15.4 scipy==1.0.0 \
     scikit-learn==0.19.1 pandas==0.23.1 matplotlib==2.2.3 flake8 codecov && \
 # Configure user environment
 # =============================================================================
