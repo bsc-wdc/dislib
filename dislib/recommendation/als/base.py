@@ -1,13 +1,10 @@
 from math import sqrt
 
 import numpy as np
-from numpy.linalg import inv
 from pycompss.api.api import compss_wait_on
 from pycompss.api.task import task
 from scipy import sparse
 from sklearn.metrics import mean_squared_error
-
-from dislib.data import load_data
 
 
 class ALS(object):
@@ -62,8 +59,18 @@ class ALS(object):
             a_i = x_xt + lambda_ * n_c[element] * np.eye(n_f)
             v_i = x[indices].T.dot(r_chunk[element, indices].toarray().T)
 
-            y[element] = inv(a_i).dot(v_i).reshape(-1)
+
+            y[element] = sparse.linalg.cg(a_i, v_i)[0].reshape(-1)
         return y
+
+    @task(returns=int)
+    def _get_rmse(self, test, u, m):
+        x_idxs, y_idxs, recs = sparse.find(test.samples)
+        indices = zip(x_idxs, y_idxs)
+        preds = [u[x].dot(m[y].T) for x, y in indices]
+        rmse = sqrt(mean_squared_error(recs, preds))
+
+        return rmse
 
     def _has_converged(self, last_rmse, rmse, i):
         if i > self._max_iter:
@@ -77,16 +84,22 @@ class ALS(object):
             return True
         return False
 
-    def fit(self, r, test=None):
+    def fit(self, dataset, test=None):
+        """ Returns updated matrix M given U (if x=U), or matrix U given M
+        otherwise
 
-        r_u = r
-        r_m = r.transpose(copy=True).tocsr()
+        Parameters
+        ----------
+        dataset : Dataset
+            Ratings matrix with movies as rows and users as columns.
+        test : DataFrame
+            Dataframe used to check convergence.
+        """
 
-        d_u = load_data(r_u, r_u.shape[0] // 4)
-        d_m = load_data(r_m, r_m.shape[0] // 4)
+        d_m = dataset
+        d_u = d_m.transpose()
 
-        n_u = r.shape[0]
-        n_m = r.shape[1]
+        n_m = d_u.n_features
 
         if self._seed:
             np.random.seed(self._seed)
@@ -94,8 +107,11 @@ class ALS(object):
         m = np.random.rand(n_m, self._n_f)
 
         # Assign average rating as first feature
-        average_ratings = [np.mean(r[:, i].data) for i in range(0, r.shape[1])]
-        m[:, 0] = average_ratings
+        average_ratings = d_m._apply(lambda row: np.mean(row.data),
+                                     sparse=False)
+        average_ratings = compss_wait_on(average_ratings)
+
+        m[:, 0] = average_ratings.samples.reshape(-1)
 
         rmse, last_rmse = np.inf, np.NaN
         i = 0
@@ -111,8 +127,15 @@ class ALS(object):
                 preds = [u[x].dot(m[y].T) for x, y in indices]
                 rmse = sqrt(mean_squared_error(recs, preds))
                 if self._verbose:
-                    print("RMSE: %.3f  [%s]" % (rmse, abs(last_rmse - rmse)))
+                    print("Test RMSE: %.3f  [%s]" % (
+                    rmse, abs(last_rmse - rmse)))
 
+            else:
+                rmses = [self._get_rmse(sb, u, m) for sb in d_u._subsets]
+                rmse = np.mean(compss_wait_on(rmses))
+                if self._verbose:
+                    print("Train RMSE: %.3f  [%s]" % (
+                    rmse, abs(last_rmse - rmse)))
             i += 1
 
         self.u, self.m = u, m
