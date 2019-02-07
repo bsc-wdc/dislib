@@ -64,7 +64,12 @@ class NearestNeighbors:
         indices = []
 
         for subset in dataset:
-            dist, ind = _get_neighbors(subset, n_neighbors, *self._fit_dataset)
+            queries = []
+
+            for q_subset in self._fit_dataset:
+                queries.append(_get_neighbors(subset, q_subset, n_neighbors))
+
+            dist, ind = _merge_queries(*queries)
             distances.append(dist)
             indices.append(ind)
 
@@ -82,23 +87,12 @@ class NearestNeighbors:
 
 
 @task(returns=2)
-def _get_neighbors(subset, n_neighbors, *dataset):
-    # find the k nearest neighbors of subset in dataset by finding the k
-    # nearest neighbors of subset in every subset in dataset
-    knn = SKNeighbors(n_neighbors=n_neighbors)
-    samples = subset.samples
-    n_samples = samples.shape[0]
-    ind_offset = dataset[0].samples.shape[0]
+def _merge_queries(*queries):
+    final_dist, final_ind, offset = queries[0]
 
-    knn.fit(X=dataset[0].samples)
-    final_dist, final_ind = knn.kneighbors(X=samples)
-
-    for subset2 in dataset[1:]:
-        knn.fit(X=subset2.samples)
-        dist, ind = knn.kneighbors(X=samples)
-
-        ind += ind_offset
-        ind_offset += subset2.samples.shape[0]
+    for dist, ind, n_samples in queries[1:]:
+        ind += offset
+        offset += n_samples
 
         # keep the indices of the samples that are at minimum distance
         m_ind = _min_indices(final_dist, dist)
@@ -109,6 +103,17 @@ def _get_neighbors(subset, n_neighbors, *dataset):
         final_dist = _min_distances(final_dist, dist)
 
     return final_dist, final_ind
+
+
+@task(returns=tuple)
+def _get_neighbors(subset, q_subset, n_neighbors):
+    n_samples = q_subset.samples.shape[0]
+
+    knn = SKNeighbors(n_neighbors=n_neighbors)
+    knn.fit(X=q_subset.samples)
+    dist, ind = knn.kneighbors(X=subset.samples)
+
+    return dist, ind, n_samples
 
 
 def _min_distances(d1, d2):
