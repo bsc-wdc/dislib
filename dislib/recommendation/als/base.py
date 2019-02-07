@@ -1,4 +1,6 @@
 from math import sqrt
+import sys
+from time import time
 
 import numpy as np
 from pycompss.api.api import compss_wait_on
@@ -44,6 +46,8 @@ class ALS(object):
 
     @task(returns=np.array, isModifier=False)
     def _update_chunk(self, subset, x, n_f, lambda_):
+        pro_f = sys.getprofile()
+        sys.setprofile(None)
 
         r_chunk = subset.samples
         n = r_chunk.shape[0]
@@ -59,17 +63,25 @@ class ALS(object):
             a_i = x_xt + lambda_ * n_c[element] * np.eye(n_f)
             v_i = x[indices].T.dot(r_chunk[element, indices].toarray().T)
 
-
-            y[element] = sparse.linalg.cg(a_i, v_i)[0].reshape(-1)
+            # for movielens and 200 factors times are:
+            # y[element] = inv(a_i).dot(v_i).reshape(-1) # 20s
+            # y[element] = np.linalg.solve(a_i, v_i).reshape(-1) # 13.87
+            y[element] = sparse.linalg.cg(a_i, v_i)[0].reshape(-1)  # 4.06
+        sys.setprofile(pro_f)
         return y
 
-    @task(returns=int)
+    @task(returns=float)
     def _get_rmse(self, test, u, m):
+        pro_f = sys.getprofile()
+        sys.setprofile(None)
+
         x_idxs, y_idxs, recs = sparse.find(test.samples)
         indices = zip(x_idxs, y_idxs)
+        # import pdb
+        # pdb.set_trace()
         preds = [u[x].dot(m[y].T) for x, y in indices]
         rmse = sqrt(mean_squared_error(recs, preds))
-
+        sys.setprofile(pro_f)
         return rmse
 
     def _has_converged(self, last_rmse, rmse, i):
@@ -101,6 +113,9 @@ class ALS(object):
 
         n_m = d_u.n_features
 
+        print("Movie chunks: %s" % len(d_m))
+        print("User chunks: %s" % len(d_u))
+
         if self._seed:
             np.random.seed(self._seed)
         u = None
@@ -116,10 +131,13 @@ class ALS(object):
         rmse, last_rmse = np.inf, np.NaN
         i = 0
         while not self._has_converged(last_rmse, rmse, i):
+            start = time()
             last_rmse = rmse
 
             u = self._update(r=d_u, x=m)
             m = self._update(r=d_m, x=u)
+
+            print("Update %s: %s" % (i, time() - start))
 
             if test is not None:
                 x_idxs, y_idxs, recs = sparse.find(test)
@@ -136,6 +154,7 @@ class ALS(object):
                 if self._verbose:
                     print("Train RMSE: %.3f  [%s]" % (
                     rmse, abs(last_rmse - rmse)))
+            print("Iter %s: %s" % (i, time() - start))
             i += 1
 
         self.u, self.m = u, m

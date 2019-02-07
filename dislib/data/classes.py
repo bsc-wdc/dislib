@@ -1,5 +1,5 @@
 from uuid import uuid4
-
+import sys
 import numpy as np
 import scipy.sparse as sp
 from pycompss.api.api import compss_wait_on
@@ -105,6 +105,30 @@ class Dataset(object):
         dataset_t.extend(subsets_t)
 
         return dataset_t
+
+    def _apply(self, f, sparse=None):
+        """ Returns the result of applying function f to each sample of the
+         dataset.
+        Parameters
+        ----------
+        f : function
+            Function to be applied to each row.
+        """
+
+        if sparse is None:
+            sparse = self._sparse
+
+        new_subsets = []
+        for i in range(len(self)):
+            new_subsets.append(_subset_apply(self._subsets[i], f))
+
+        n_features = _subset_size(new_subsets[0])
+
+        dataset = Dataset(n_features=n_features, sparse=sparse)
+
+        dataset.extend(new_subsets)
+
+        return dataset
 
     def subset_size(self, index):
         """ Returns the number of samples in the Subset referenced by index.
@@ -254,17 +278,14 @@ class Subset(object):
     """
 
     def __init__(self, samples, labels=None):
-        if issparse(samples):
-            self.samples = csr_matrix(samples)
-        else:
-            self.samples = np.array(samples)
+        self.samples = samples.copy()
 
         if labels is not None:
             self.labels = np.array(labels)
         else:
             self.labels = None
 
-        idx = [uuid4().int for _ in range(samples.shape[0])]
+        idx = [uuid4().int for _ in range(self.samples.shape[0])]
         self._ids = np.array(idx)
 
     def copy(self):
@@ -347,6 +368,17 @@ def _subset_size(subset):
     return subset.samples.shape[0]
 
 
+@task(returns=object)
+def _subset_apply(subset, f):
+    pro_f = sys.getprofile()
+    sys.setprofile(None)
+    samples = [f(row) for row in subset.samples]
+    s = Subset(samples=np.array(samples).reshape(len(samples), 1))
+    sys.setprofile(pro_f)
+
+    return s
+
+
 @task(returns=np.array)
 def _get_min_max(subset):
     mn = np.min(subset.samples, axis=0)
@@ -365,6 +397,8 @@ def _get_split_i(subset, i, n_subsets):
     Returns the columns corresponding to group i, if the subset is divided
     into n_subsets groups of columns.
     """
+    pro_f = sys.getprofile()
+    sys.setprofile(None)
     # number of elements per group
     stride = subset.samples.shape[1] // n_subsets
 
@@ -375,18 +409,22 @@ def _get_split_i(subset, i, n_subsets):
         end_idx = None
 
     samples_i = subset.samples[:, start_idx:end_idx]
+    sys.setprofile(pro_f)
 
     return samples_i
 
 
 @task(returns=1)
 def _merge_split_subsets(sparse, *split_subsets):
+    pro_f = sys.getprofile()
+    sys.setprofile(None)
     stack_f = sp.vstack if sparse else np.vstack
 
     # each sublist (sl) contains rows with a subset of columns. Each
     # sublist must be stacked vertical first. Then all sublists must be
     # stacked among themselves forming the final columns.
     col_samples = stack_f([stack_f(sl) for sl in split_subsets])
+    sys.setprofile(pro_f)
 
     # finally we transpose the columns.
     return Subset(samples=col_samples.transpose())
