@@ -1,15 +1,5 @@
-docker>=3.5.0
-decorator==4.0.11
 scikit-learn==0.20.2
-scipy==1.0.0
+scipy==1.2.0
 numpy==1.16.0
-redis==2.10.6
-redis-py-cluster==1.3.4
-notebook>=5.7.2
-matplotlib==2.0.0
-jupyter-client==5.0.1
-jupyter-console==5.1.0
-jupyter-core==4.3.0
-pandas==0.20.1
 pycompss==2.4
 numpydoc==0.8.0
