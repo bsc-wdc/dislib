@@ -5,7 +5,7 @@
 <h3 align="center">Distributed computing library implemented over PyCOMPSs programming model for HPC.</h3>
 
 <p align="center">
-  <a href="https://dislib.readthedocs.io/en/latest/?badge=latest">
+  <a href="https://dislib.bsc.es/en/latest/?badge=latest">
     <img src="https://readthedocs.org/projects/dislib/badge/?version=latest"
          alt="Documentation Status"/>
   </a>
