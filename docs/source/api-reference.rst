@@ -28,12 +28,11 @@ Functions
 :class:`Dataset <dislib.data.classes.Dataset>` from multiple files in LibSVM
 format (sparse).
 
-:meth:`data.load_libsvm_file <dislib.data.base.load_csv_file>` - Build a
-:class:`Dataset <dislib.data.classes.Dataset>` from a file in CSV format.
+:meth:`data.load_txt_file <dislib.data.base.load_txt_file>` - Build a
+:class:`Dataset <dislib.data.classes.Dataset>` from a text file.
 
-:meth:`data.load_libsvm_files <dislib.data.base.load_csv_files>` - Build a
-:class:`Dataset <dislib.data.classes.Dataset>` from multiple files in CSV
-format.
+:meth:`data.load_txt_files <dislib.data.base.load_txt_files>` - Build a
+:class:`Dataset <dislib.data.classes.Dataset>` from multiple text files.
 
 
 dislib.utils: Other utility functions
