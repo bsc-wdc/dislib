@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="https://dislib.bsc.es/en/latest/?badge=latest">
-    <img src="https://readthedocs.org/projects/dislib/badge/?version=latest"
+    <img src="https://readthedocs.org/projects/dislib/badge/?version=stable"
          alt="Documentation Status"/>
   </a>
   <a href="https://github.com/bsc-wdc/dislib/releases">
@@ -26,7 +26,7 @@
 
 <p align="center"><b>
     <a href="https://dislib.bsc.es">Website</a> •  
-    <a href="https://dislib.bsc.es/en/latest/api-reference.html">Documentation</a> •
+    <a href="https://dislib.bsc.es/en/stable/api-reference.html">Documentation</a> •
     <a href="https://github.com/bsc-wdc/dislib/releases">Releases</a>
 </b></p>
 
