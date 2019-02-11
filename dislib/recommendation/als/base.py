@@ -4,6 +4,7 @@ from time import time
 
 import numpy as np
 from pycompss.api.api import compss_wait_on
+from pycompss.api.parameter import INOUT
 from pycompss.api.task import task
 from scipy import sparse
 from sklearn.metrics import mean_squared_error
@@ -40,9 +41,20 @@ class ALS(object):
                                            lambda_=self._lambda)
             results.append(chunk_res)
 
-        results = compss_wait_on(results)
+        # matrix = results[0]
+        # for i in range(1, len(results)):
+        #     self.merge(matrix, results[i])
 
-        return np.vstack(results)
+        # results = compss_wait_on(results)
+
+        # print(matrix.shape)
+        return self.merge(*results)
+
+    @task(returns=object, isModifier=False)
+    def merge(self, *chunks):
+        return np.vstack(chunks)
+        # matrix = np.vstack([matrix, chunk])
+        # print('matrix.shape: %s' % list(matrix.shape))
 
     @task(returns=np.array, isModifier=False)
     def _update_chunk(self, subset, x, n_f, lambda_):
@@ -68,6 +80,7 @@ class ALS(object):
             # y[element] = np.linalg.solve(a_i, v_i).reshape(-1) # 13.87
             y[element] = sparse.linalg.cg(a_i, v_i)[0].reshape(-1)  # 4.06
         sys.setprofile(pro_f)
+        print("y.size: %s" % list(y.shape))
         return y
 
     @task(returns=float)
@@ -85,7 +98,7 @@ class ALS(object):
         return rmse
 
     def _has_converged(self, last_rmse, rmse, i):
-        if i > self._max_iter:
+        if i >= self._max_iter:
             if self._verbose:
                 print("Max iterations reached [%s]" % self._max_iter)
             return True
@@ -157,7 +170,8 @@ class ALS(object):
             print("Iter %s: %s" % (i, time() - start))
             i += 1
 
-        self.u, self.m = u, m
+        self.u = compss_wait_on(u)
+        self.m = compss_wait_on(m)
 
         return u, m
 
