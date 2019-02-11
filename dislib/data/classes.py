@@ -1,10 +1,13 @@
-from uuid import uuid4
 import sys
+from uuid import uuid4
+
 import numpy as np
 import scipy.sparse as sp
 from pycompss.api.api import compss_wait_on
 from pycompss.api.task import task
-from scipy.sparse import issparse, csr_matrix
+from scipy.sparse import issparse
+
+shallow_tracing = True
 
 
 class Dataset(object):
@@ -106,7 +109,7 @@ class Dataset(object):
 
         return dataset_t
 
-    def _apply(self, f, sparse=None):
+    def _apply(self, f, sparse=None, return_dataset=False):
         """ Returns the result of applying function f to each sample of the
          dataset.
         Parameters
@@ -118,17 +121,21 @@ class Dataset(object):
         if sparse is None:
             sparse = self._sparse
 
-        new_subsets = []
+        new_elems = []
         for i in range(len(self)):
-            new_subsets.append(_subset_apply(self._subsets[i], f))
+            new_elems.append(_subset_apply(self._subsets[i], f,
+                                             return_subset=return_dataset))
 
-        n_features = _subset_size(new_subsets[0])
+        if return_dataset:
+            n_features = _subset_size(new_elems[0])
 
-        dataset = Dataset(n_features=n_features, sparse=sparse)
+            dataset = Dataset(n_features=n_features, sparse=sparse)
 
-        dataset.extend(new_subsets)
+            dataset.extend(new_elems)
 
-        return dataset
+            return dataset
+        else:
+            return new_elems
 
     def subset_size(self, index):
         """ Returns the number of samples in the Subset referenced by index.
@@ -369,12 +376,23 @@ def _subset_size(subset):
 
 
 @task(returns=object)
-def _subset_apply(subset, f):
-    pro_f = sys.getprofile()
-    sys.setprofile(None)
+def _subset_apply(subset, f, return_subset=False):
+    if shallow_tracing:
+        pro_f = sys.getprofile()
+        sys.setprofile(None)
+
+    print("computing subset means")
     samples = [f(row) for row in subset.samples]
-    s = Subset(samples=np.array(samples).reshape(len(samples), 1))
-    sys.setprofile(pro_f)
+    s = np.array(samples).reshape(len(samples), -1)
+    # import pdb
+    # pdb.set_trace()
+    if return_subset:
+        s = Subset(samples=s)
+
+    # print('len: %s %s' % s.samples.shape)
+
+    if shallow_tracing:
+        sys.setprofile(pro_f)
 
     return s
 
@@ -397,8 +415,9 @@ def _get_split_i(subset, i, n_subsets):
     Returns the columns corresponding to group i, if the subset is divided
     into n_subsets groups of columns.
     """
-    pro_f = sys.getprofile()
-    sys.setprofile(None)
+    if shallow_tracing:
+        pro_f = sys.getprofile()
+        sys.setprofile(None)
     # number of elements per group
     stride = subset.samples.shape[1] // n_subsets
 
@@ -409,22 +428,25 @@ def _get_split_i(subset, i, n_subsets):
         end_idx = None
 
     samples_i = subset.samples[:, start_idx:end_idx]
-    sys.setprofile(pro_f)
+    if shallow_tracing:
+        sys.setprofile(pro_f)
 
     return samples_i
 
 
 @task(returns=1)
 def _merge_split_subsets(sparse, *split_subsets):
-    pro_f = sys.getprofile()
-    sys.setprofile(None)
+    if shallow_tracing:
+        pro_f = sys.getprofile()
+        sys.setprofile(None)
     stack_f = sp.vstack if sparse else np.vstack
 
     # each sublist (sl) contains rows with a subset of columns. Each
     # sublist must be stacked vertical first. Then all sublists must be
     # stacked among themselves forming the final columns.
     col_samples = stack_f([stack_f(sl) for sl in split_subsets])
-    sys.setprofile(pro_f)
+    if shallow_tracing:
+        sys.setprofile(pro_f)
 
     # finally we transpose the columns.
     return Subset(samples=col_samples.transpose())

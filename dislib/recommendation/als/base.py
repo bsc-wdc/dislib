@@ -9,6 +9,7 @@ from pycompss.api.task import task
 from scipy import sparse
 from sklearn.metrics import mean_squared_error
 
+shallow_tracing = True
 
 class ALS(object):
     def __init__(self, seed=None, n_f=100, lambda_=0.065,
@@ -52,14 +53,23 @@ class ALS(object):
 
     @task(returns=object, isModifier=False)
     def merge(self, *chunks):
-        return np.vstack(chunks)
+        if shallow_tracing:
+            pro_f = sys.getprofile()
+            sys.setprofile(None)
+        res = np.vstack(chunks)
+
+        if shallow_tracing:
+            sys.setprofile(pro_f)
+
+        return res
         # matrix = np.vstack([matrix, chunk])
         # print('matrix.shape: %s' % list(matrix.shape))
 
     @task(returns=np.array, isModifier=False)
     def _update_chunk(self, subset, x, n_f, lambda_):
-        pro_f = sys.getprofile()
-        sys.setprofile(None)
+        if shallow_tracing:
+            pro_f = sys.getprofile()
+            sys.setprofile(None)
 
         r_chunk = subset.samples
         n = r_chunk.shape[0]
@@ -81,10 +91,18 @@ class ALS(object):
             y[element] = sparse.linalg.cg(a_i, v_i)[0].reshape(-1)  # 4.06
         sys.setprofile(pro_f)
         print("y.size: %s" % list(y.shape))
+
+        if shallow_tracing:
+            sys.setprofile(pro_f)
+
         return y
 
     @task(returns=float)
     def _get_rmse(self, test, u, m):
+        if shallow_tracing:
+            pro_f = sys.getprofile()
+            sys.setprofile(None)
+
         pro_f = sys.getprofile()
         sys.setprofile(None)
 
@@ -94,7 +112,9 @@ class ALS(object):
         # pdb.set_trace()
         preds = [u[x].dot(m[y].T) for x, y in indices]
         rmse = sqrt(mean_squared_error(recs, preds))
-        sys.setprofile(pro_f)
+
+        if shallow_tracing:
+            sys.setprofile(pro_f)
         return rmse
 
     def _has_converged(self, last_rmse, rmse, i):
@@ -136,7 +156,7 @@ class ALS(object):
 
         # Assign average rating as first feature
         average_ratings = d_m._apply(lambda row: np.mean(row.data),
-                                     sparse=False)
+                                     sparse=False, return_dataset=True)
         average_ratings = compss_wait_on(average_ratings)
 
         m[:, 0] = average_ratings.samples.reshape(-1)
