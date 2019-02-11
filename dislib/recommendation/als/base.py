@@ -97,7 +97,7 @@ class ALS(object):
 
         return y
 
-    @task(returns=float)
+    @task(returns=float, isModifier=False)
     def _get_rmse(self, test, u, m):
         if shallow_tracing:
             pro_f = sys.getprofile()
