@@ -381,15 +381,12 @@ def _subset_apply(subset, f, return_subset=False):
         pro_f = sys.getprofile()
         sys.setprofile(None)
 
-    print("computing subset means")
     samples = [f(row) for row in subset.samples]
     s = np.array(samples).reshape(len(samples), -1)
-    # import pdb
-    # pdb.set_trace()
+
+    print("Means:\n%s" % list(s))
     if return_subset:
         s = Subset(samples=s)
-
-    # print('len: %s %s' % s.samples.shape)
 
     if shallow_tracing:
         sys.setprofile(pro_f)

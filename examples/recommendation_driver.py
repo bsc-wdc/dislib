@@ -136,9 +136,10 @@ def load_netflix(data_path, debug, train_ratio=0.9, num_subsets=48):
     return dataset, test, None
 
 
-def load_netflix_libsvm(data_path, subset_size=100):
+def load_netflix_libsvm(num_subsets):
+    subset_size = int(ceil(17770 / num_subsets))
     dataset = load_libsvm_file(
-        os.path.join(data_path, 'netflix_data_libsvm.txt'),
+        '/gpfs/projects/bsc19/COMPSs_DATASETS/dislib/recommendation/netflix/netflix_data_libsvm.txt',
         subset_size=subset_size, n_features=480189)
 
     return dataset, None, None
@@ -150,7 +151,7 @@ if __name__ == '__main__':
     parser.add_argument("--num_subsets", type=int, default=48)
     parser.add_argument("--num_factors", type=int, default=100)
     parser.add_argument("--data_path", type=str, default='./data/')
-    parser.add_argument("--example", type=int, choices=range(0, 4), default=1,
+    parser.add_argument("--example", type=int, choices=range(0, 6), default=1,
                         help='Choose execution: 1->movielens for debug; '
                              '2->movielens ml-20, 3->movielesn ml-latest, 4->netflix for debug, 5->netflix full size.')
 
@@ -179,7 +180,7 @@ if __name__ == '__main__':
         train_ds = load_movielens_train(data_path, file,
                                         num_subsets=num_subsets)
     else:
-        train_ds, test, valid = load_netflix_libsvm(data_path=data_path)
+        train_ds, test, valid = load_netflix_libsvm(num_subsets=num_subsets)
         # train_ds, test, valid = load_netflix(num_subsets=num_subsets,
         #                                      debug=example == 2,
         #                                      data_path=data_path)
