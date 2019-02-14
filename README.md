@@ -33,7 +33,7 @@
 
 ## Introduction
 
-The Distributed Computing Library (dislib) provides distributed algorithms ready to use as a library. So far, dislib is highly focused on machine learning algorithms, and it is greatly inspired by [Scikit-learn](https://scikit-learn.org/). However, other types of numerical algorithms might be added in the future. Dislib has been implemented on top of PyCOMPSs programming model, and it is being developed by the [Workflows and Distributed Computing group](https://github.com/bsc-wdc) of the [Barcelona Supercomputing Center](https://www.bsc.es/). The library is designed to allow easy local development through docker. Once the code is finished, it can be run directly on any distributed platform without any further changes. This includes clusters, supercomputers, clouds, and containerized platforms. For more information on which infrastructures and architectures are supported refer to [Availability](#availability).
+The Distributed Computing Library (dislib) provides distributed algorithms ready to use as a library. So far, dislib is highly focused on machine learning algorithms, and it is greatly inspired by [Scikit-learn](https://scikit-learn.org/). However, other types of numerical algorithms might be added in the future. Dislib has been implemented on top of [PyCOMPSs programming model](http://compss.bsc.es), and it is being developed by the [Workflows and Distributed Computing group](https://github.com/bsc-wdc) of the [Barcelona Supercomputing Center](https://www.bsc.es/). The library also allows easy local development through docker. Once the code is finished, it can be run directly on any distributed platform without any further changes. This includes clusters, supercomputers, clouds, and containerized platforms. For more information on which infrastructures and architectures are supported refer to [Availability](#availability).
 
 
 
@@ -47,7 +47,34 @@ The Distributed Computing Library (dislib) provides distributed algorithms ready
 
 ## Quickstart
 
-Follow the steps below to get started with wdc Dislib.
+There are two ways in which you can get started with dislib. You can perform a manual installation, or you can download our ready-to-use docker image. 
+
+### Manual installation
+
+1. Check which PyCOMPSs version to install. 
+    * Latest dislib release requires **PyCOMPSs 2.4-rc1902** (check [here](https://github.com/bsc-wdc/dislib/releases) for information about other releases).
+    
+2. Install PyCOMPSs following these [instructions](http://compss.bsc.es/releases/compss/latest/docs/COMPSs_Installation_Manual.pdf).
+
+3. Install latest dislib version with ``pip3 install dislib``.
+
+4. You can check that everything works fine by running one of our examples:
+
+    * Download the latest source code [here](https://github.com/bsc-wdc/dislib/releases/latest).
+    
+    * Extract the contents of the tar package.
+    
+    ```bash
+    tar xzvf dislib-0.1.1.tar.gz
+    ```
+    
+    * Run an example application.
+    
+    ```bash
+    runcompss --python_interpreter=python3 dislib-0.1.1/examples/kmeans.py    
+    ```
+
+### Using docker
 
 #### 1. Install Docker and docker-py
 
@@ -84,21 +111,20 @@ sudo pip3 install docker
 
 #### 2. Install the dislib
 
-Download the **[latest release](https://github.com/bsc-wdc/dislib/releases)**.
+Download the **[latest release](https://github.com/bsc-wdc/dislib/releases/latest)**.
 
 
 Extract the tar file from your terminal:
 ```bash
-tar -zxvf dislib_v0.1.0.tar.gz
+tar -zxvf dislib-0.1.1.tar.gz
 ```
 
-Move it into your desired installation path and link the binary to be executable from anywhere:
+Move ``bin/dislib`` and ``bin/dislib_cmd.py`` to your desired installation path and link the binary to be executable from anywhere:
 ```bash
-sudo mv dislib_v* /opt/dislib
+sudo mkdir /opt/dislib
+sudo mv ./dislib-0.1.1/bin/dislib* /opt/dislib/
 sudo ln -s /opt/dislib/dislib /usr/local/bin/dislib
 ```
-
-
 
 #### 3. Start dislib in your development directory
 
