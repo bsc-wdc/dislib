@@ -61,7 +61,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'dislib'
-copyright = '2018, Workflows and Distributed Computing'
+copyright = '2019, Workflows and Distributed Computing'
 author = 'Workflows and Distributed Computing'
 
 # The version info for the project you're documenting, acts as replacement for
