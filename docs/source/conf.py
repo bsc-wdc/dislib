@@ -146,7 +146,7 @@ html_theme_path = [os.path.join(os.pardir, 'scipy-sphinx-theme', '_theme')]
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
-html_logo = '../dislib-logo-h.png'
+#html_logo = '../dislib-logo-h.png'
 
 # The name of an image file (relative to this directory) to use as a favicon of
 # the docs.  This file should be a Windows icon file (.ico) being 16x16 or
