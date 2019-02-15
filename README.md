@@ -19,7 +19,10 @@
   </a>
   <a href="https://badge.fury.io/py/dislib">
       <img src="https://badge.fury.io/py/dislib.svg" alt="PyPI version" height="18">
-  </a>    
+  </a>   
+  <a href="https://badge.fury.io/py/dislib">
+      <img src="https://img.shields.io/badge/python-3.5-blue.svg" alt="Python version" height="18">
+  </a>       
 </p>
 
 <p align="center"><b>
