@@ -36,6 +36,7 @@ extensions = [
     'sphinx.ext.linkcode',
     'sphinx.ext.napoleon',
     'sphinx.ext.autosummary',
+    'm2r',
 ]
 
 napoleon_google_docstring = False
