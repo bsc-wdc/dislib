@@ -1,1 +1,1 @@
-.. mdinclude:: quickstart.md
+.. mdinclude:: ../../quickstart.md
