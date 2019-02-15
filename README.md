@@ -8,11 +8,7 @@
   <a href="https://dislib.bsc.es/en/latest/?badge=latest">
     <img src="https://readthedocs.org/projects/dislib/badge/?version=stable"
          alt="Documentation Status"/>
-  </a>
-  <a href="https://github.com/bsc-wdc/dislib/releases">
-    <img src="https://badge.fury.io/gh/bsc-wdc%2Fdislib.svg"
-         alt="GitHub version">
-  </a>
+  </a>  
   <a href="https://travis-ci.org/bsc-wdc/dislib">
     <img src="https://travis-ci.org/bsc-wdc/dislib.svg?branch=master"
          alt="Build Status">
