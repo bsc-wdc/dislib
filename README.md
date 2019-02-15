@@ -21,7 +21,9 @@
     <img src="https://codecov.io/gh/bsc-wdc/dislib/branch/master/graph/badge.svg"
          alt="Code Coverage"/>
   </a>
-    
+  <a href="https://badge.fury.io/py/dislib">
+      <img src="https://badge.fury.io/py/dislib.svg" alt="PyPI version" height="18">
+  </a>    
 </p>
 
 <p align="center"><b>
