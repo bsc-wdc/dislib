@@ -48,7 +48,7 @@ The Distributed Computing Library (dislib) provides distributed algorithms ready
 
 ## Quickstart
 
-Get started with dislib following our [quickstart guide](https://github.com/bsc-wdc/dislib/blob/master/quickstart.md).
+Get started with dislib following our [quickstart guide](https://github.com/bsc-wdc/dislib/blob/master/QUICKSTART.md).
 
 ## Availability
 
