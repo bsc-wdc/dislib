@@ -1,6 +1,8 @@
 ## Quickstart guide
 
-There are two ways in which you can get started with dislib. You can perform a manual installation, or you can download our ready-to-use docker image. 
+There are two ways in which you can get started with dislib. You can perform 
+a [manual installation](#manual-installation), or you can download our 
+ready-to-use [docker image](#using-docker). 
 
 ### Manual installation
 
