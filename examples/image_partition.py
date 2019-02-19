@@ -17,37 +17,37 @@ from dislib.data import load_data
 available_algorithms = 'KMeans', 'GaussianMixture', 'DBSCAN'
 
 
-def get_kmeans_kwargs(args):
-    kwargs = {'n_clusters': args.n_clusters}
-    max_iter = vars(args).get('max_iter', None)
-    if max_iter is not None:
-        kwargs['max_iter'] = max_iter
-    tol = vars(args).get('tol', None)
-    if tol is not None:
-        kwargs['tol'] = tol
+def get_kwargs(args, alg_args_equivalence):
+    args = vars(args)
+    kwargs = {}
+    for alg_arg_name, args_arg_name in alg_args_equivalence:
+        if args_arg_name in args:
+            kwargs[alg_arg_name] = args[args_arg_name]
     return kwargs
+
+
+def get_kmeans_kwargs(args):
+    return get_kwargs(args,
+                      {('n_clusters', 'n_clusters'),
+                       ('random_state', 'random_seed'),
+                       ('max_iter', 'max_iter'),
+                       ('tol', 'tol')})
 
 
 def get_gm_kwargs(args):
-    kwargs = {'n_components': args.n_clusters}
-    max_iter = vars(args).get('max_iter', None)
-    if max_iter is not None:
-        kwargs['max_iter'] = max_iter
-    tol = vars(args).get('tol', None)
-    if tol is not None:
-        kwargs['tol'] = tol
-    return kwargs
+    return get_kwargs(args,
+                      {('n_components', 'n_clusters'),
+                       ('random_state', 'random_seed'),
+                       ('max_iter', 'max_iter'),
+                       ('tol', 'tol')})
 
 
 def get_dbscan_kwargs(args):
-    kwargs = {'eps': args.eps, 'min_samples': args.min_samples}
-    n_regions = vars(args).get('n_regions', None)
-    if n_regions is not None:
-        kwargs['n_regions'] = n_regions
-    max_samples = vars(args).get('max_samples', None)
-    if max_samples is not None:
-        kwargs['max_samples'] = max_samples
-    return kwargs
+    return get_kwargs(args,
+                      {('eps', 'eps'),
+                       ('min_samples', 'min_samples'),
+                       ('n_regions', 'n_regions'),
+                       ('max_samples', 'max_samples')})
 
 
 def initialize(alg_names, args):
@@ -116,14 +116,19 @@ def main():
                         default=argparse.SUPPRESS,
                         help="see dislib.cluster.DBSCAN docs (default is "
                              "kept)")
-    parser.add_argument('-r', '--n_regions', type=int,
+    parser.add_argument('-N', '--n_regions', type=int,
                         default=argparse.SUPPRESS,
-                        help="see dislib.cluster.DBSCAN docs (default is "
+                        help="(not to confuse with --n_clusters)\n"
+                             "see dislib.cluster.DBSCAN docs (default is "
                              "kept)")
     parser.add_argument('-c', '--chunks', type=int, default=50,
-                        help="number of chunks the data should be divided for "
-                             "the distributed computation (not to confuse "
-                             "with --n_clusters) (default is 50)")
+                        help="(not to confuse with --n_clusters)\n"
+                             "number of chunks the dataset should be divided "
+                             "for the distributed computation (default is 50)")
+    parser.add_argument('-r', '--random_seed', type=int,
+                        default=argparse.SUPPRESS,
+                        help="seed for the random_state parameter of the "
+                             "algorithms")
     parser.add_argument('-s', '--save', action='store_true',
                         help="save the partitioned images")
     parser.add_argument('-p', '--plot', action='store_true',
