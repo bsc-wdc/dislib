@@ -47,8 +47,11 @@ The source code of dislib is available online at `Github <https://github
 Support
 -------
 
-You can send us an e-mail to `support-compss@bsc.es
-<mailto:support-compss@bsc.es>`_
+If you have questions or issues about the dislib you can join us in `Slack
+<https://bit.ly/bsc-wdc-community>`_.
+
+Alternatively, you can send us an e-mail to `support-compss@bsc.es
+<mailto:support-compss@bsc.es>`_.
 
 
 Indices and tables
