@@ -28,11 +28,13 @@
 <p align="center"><b>
     <a href="https://dislib.bsc.es">Website</a> •  
     <a href="https://dislib.bsc.es/en/stable/api-reference.html">Documentation</a> •
-    <a href="https://github.com/bsc-wdc/dislib/releases">Releases</a>
+    <a href="https://github.com/bsc-wdc/dislib/releases">Releases</a> •
+    <a href="https://bit.ly/bsc-wdc-community">Slack</a>
 </b></p>
 
 
 ## Introduction
+
 
 The Distributed Computing Library (dislib) provides distributed algorithms ready to use as a library. So far, dislib is highly focused on machine learning algorithms, and it is greatly inspired by [Scikit-learn](https://scikit-learn.org/). However, other types of numerical algorithms might be added in the future. Dislib has been implemented on top of [PyCOMPSs programming model](http://compss.bsc.es), and it is being developed by the [Workflows and Distributed Computing group](https://github.com/bsc-wdc) of the [Barcelona Supercomputing Center](https://www.bsc.es/). The library also allows easy local development through docker. Once the code is finished, it can be run directly on any distributed platform without any further changes. This includes clusters, supercomputers, clouds, and containerized platforms. For more information on which infrastructures and architectures are supported refer to [Availability](#availability).
 
