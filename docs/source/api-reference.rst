@@ -46,6 +46,9 @@ in a hyper-dimensional grid, where each
 :meth:`utils.shuffle <dislib.utils.base.shuffle>` - Randomly shuffles the
 samples in a :class:`Dataset <dislib.data.classes.Dataset>`.
 
+:meth:`utils.resample <dislib.utils.base.resample>` - Resamples a
+:class:`Dataset <dislib.data.classes.Dataset>`.
+
 
 dislib.preprocessing: Data pre-processing
 -----------------------------------------
