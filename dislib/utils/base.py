@@ -6,6 +6,40 @@ from scipy.sparse import vstack
 from dislib.data import Dataset, Subset
 
 
+def resample(dataset, n_samples, random_state=None):
+    """ Resamples a dataset without replacement.
+
+    Parameters
+    ----------
+    dataset : Dataset
+        Input data.
+    n_samples : int
+        Number of samples to generate.
+    random_state : int or RandomState, optional (default=None)
+        Seed or numpy.random.RandomState instance to use in the generation of
+        random numbers.
+
+    Returns
+    -------
+    resampled_data : Dataset
+        Resampled dataset.
+    """
+    r_data = Dataset(dataset.n_features, dataset.sparse)
+    np.random.seed(random_state)
+    sizes = dataset.subsets_sizes()
+    indices = np.random.choice(range(sum(sizes)), size=n_samples)
+    offset = 0
+
+    for subset, size in zip(dataset, sizes):
+        subset_indices = indices - offset
+        subset_indices = subset_indices[subset_indices >= 0]
+        subset_indices = subset_indices[subset_indices < size]
+        r_data.append(_resample(subset, subset_indices))
+        offset += size
+
+    return r_data
+
+
 def as_grid(dataset, n_regions, dimensions=None, return_indices=False):
     """ Arranges samples in an n-dimensional grid where each Subset contains
     samples lying in one region of the feature space. The feature space is
@@ -224,3 +258,8 @@ def _merge_sorting(*sorting_list):
         sorting_final.extend(sorting)
 
     return sorting_final
+
+
+@task(returns=1)
+def _resample(subset, indices):
+    return subset[indices]
