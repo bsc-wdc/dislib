@@ -60,7 +60,7 @@ RUN apt-get update && \
     cd /framework && \
     ./submodules_get.sh && \
     ./submodules_patch.sh && \
-    sudo -E /framework/builders/buildlocal -T -M -A -B -p /opt/COMPSs && \
+    sudo -E /framework/builders/buildlocal -Np /opt/COMPSs && \
     rm -rf /framework /root/.m2 /root/.cache /home/jenkins/.COMPSs /tmp/* && \
     rm -rf /var/lib/apt/lists/*
 
