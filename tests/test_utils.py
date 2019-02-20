@@ -263,6 +263,14 @@ class UtilsTest(unittest.TestCase):
 
         self.assertTrue(np.array_equal(r5.samples, r6.samples))
 
+    def test_resample_empty(self):
+        """ Tests resample with empty subsets """
+        dataset = load_data(np.random.random((1000, 500)), subset_size=100)
+        r1 = resample(dataset, n_samples=1)
+
+        self.assertEqual(r1.samples.shape[0], 1)
+        self.assertEqual(len(r1), 1)
+
     def test_resample_sparse(self):
         """ Tests resample with sparse data """
         csr = csr_matrix(np.random.random((1000, 500)))

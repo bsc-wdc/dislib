@@ -50,6 +50,15 @@ samples in a :class:`Dataset <dislib.data.classes.Dataset>`.
 :class:`Dataset <dislib.data.classes.Dataset>`.
 
 
+dislib.preprocessing: Data pre-processing
+-----------------------------------------
+
+Classes
+.......
+
+:class:`preprocessing.StandardScaler <dislib.preprocessing.classes.StandardScaler>` -
+Scale data to zero mean and unit variance.
+
 dislib.cluster: Clustering
 --------------------------
 

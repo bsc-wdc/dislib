@@ -22,7 +22,8 @@ def resample(dataset, n_samples, random_state=None):
     Returns
     -------
     resampled_data : Dataset
-        Resampled dataset.
+        Resampled dataset. The number of subsets in the returned dataset is
+        less or equal to the number of subsets in the input dataset.
     """
     r_data = Dataset(dataset.n_features, dataset.sparse)
     np.random.seed(random_state)
@@ -34,7 +35,10 @@ def resample(dataset, n_samples, random_state=None):
         subset_indices = indices - offset
         subset_indices = subset_indices[subset_indices >= 0]
         subset_indices = subset_indices[subset_indices < size]
-        r_data.append(_resample(subset, subset_indices))
+
+        if subset_indices.size > 0:
+            r_data.append(_resample(subset, subset_indices))
+
         offset += size
 
     return r_data
