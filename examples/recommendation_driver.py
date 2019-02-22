@@ -12,7 +12,7 @@ from dislib.recommendation import ALS
 
 
 def load_movielens(data_path, file, delimiter=',', train_ratio=0.9,
-                   num_subsets=4):
+                   num_subsets=13):
     print("Loading movielens debug dataset.")
     cols = ['user_id', 'movie_id', 'rating', 'timestamp']
 
@@ -165,7 +165,7 @@ if __name__ == '__main__':
 
     if example == 0:
         file = 'sample_movielens_ratings.txt'
-        train_ds, test, valid = load_movielens(data_path, file, delimiter='::')
+        train_ds, test, valid = load_movielens(data_path, file)
 
     elif example == 1:
         file = 'ml-latest-small/ratings.csv'
@@ -186,7 +186,8 @@ if __name__ == '__main__':
         #                                      data_path=data_path)
 
     exec_start = time()
-    als = ALS(convergence_threshold=0.0001, max_iter=3, seed=666, n_f=n_f,
+    # als = ALS(convergence_threshold=0.0001, max_iter=10, seed=666, n_f=n_f,
+    als = ALS(tol=0.01, seed=676, n_f=n_f,
               verbose=True)
 
     als.fit(train_ds)
