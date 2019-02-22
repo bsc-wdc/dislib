@@ -18,11 +18,13 @@ Follow these steps when drafting a new release:
      .py>`_.
    - `setup.py <https://github.com/bsc-wdc/dislib/blob/master/setup.py>`_.
 
-4. Draft a new release in `Github <https://github.com/bsc-wdc/
+4. Update the `changelog <https://github.com/bsc-wdc/dislib/blob/master/CHANGELOG.md>`_.
+
+5. Draft a new release in `Github <https://github.com/bsc-wdc/
    dislib/releases>`_ using this `template <https://github
    .com/bsc-wdc/dislib/blob/master/.github/RELEASE_TEMPLATE.md>`_.
 
-5. Create a pip package and upload it to PyPi:
+6. Create a pip package and upload it to PyPi:
 
    .. code:: bash
 
