@@ -2,6 +2,7 @@ import os
 import unittest
 
 import numpy as np
+from pycompss.api.api import compss_wait_on
 from scipy.sparse import csr_matrix
 from sklearn.datasets import load_svmlight_file
 from sklearn.datasets import make_blobs
@@ -494,6 +495,51 @@ class DatasetTest(unittest.TestCase):
 
         self.assertTrue(sparse.subsets_sizes(), [1] * 100)
         self.assertTrue(dense.subsets_sizes(), [1] * 100)
+
+    def test_apply_dense(self):
+        """ Tests Dataset._apply() to compute dataset means (dense return). """
+        import numpy as np
+        # Dense
+        data = np.random.random((4, 4))
+        dataset = load_data(data, subset_size=2)
+
+        expected = [np.mean(r) for r in data]
+
+        means = dataset._apply(lambda row: np.mean(row.data),
+                               sparse=False, return_dataset=True)
+
+        means = means.samples.reshape(-1)
+        # print([np.mean(r) for r in data])
+        self.assertTrue(np.allclose(means, expected))
+
+        means = dataset._apply(lambda row: np.mean(row.data),
+                               sparse=False, return_dataset=False)
+
+        # this time means is a list of future objects
+        means = compss_wait_on(means)
+        means = np.concatenate(means).reshape(-1)
+        self.assertTrue(np.allclose(means, expected))
+
+        # Sparse
+        data = csr_matrix(data)
+        dataset = load_data(data, subset_size=2)
+
+        expected = [np.mean(r) for r in data]
+
+        means = dataset._apply(lambda row: np.mean(row.data),
+                               sparse=False, return_dataset=True)
+
+        means = means.samples.reshape(-1)
+        # print([np.mean(r) for r in data])
+        self.assertTrue(np.allclose(means, expected))
+
+        means = dataset._apply(lambda row: np.mean(row.data),
+                               sparse=False, return_dataset=False)
+
+        # this time means is a list of future objects
+        means = compss_wait_on(means)
+        means = np.concatenate(means).reshape(-1)
+        self.assertTrue(np.allclose(means, expected))
 
 
 class SubsetTest(unittest.TestCase):
