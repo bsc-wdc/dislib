@@ -10,14 +10,14 @@ from dislib.data import load_data
 from dislib.recommendation import ALS
 
 
-def load_movielens(data_path, file, delimiter=',', train_ratio=0.9,
-                   num_subsets=13):
+def load_movielens(data_path, train_ratio=0.9, num_subsets=8):
     print("Loading movielens debug dataset.")
     cols = ['user_id', 'movie_id', 'rating', 'timestamp']
+    file = 'sample_movielens_ratings.csv'
 
     # 30 users, 100 movies
     df = pd.read_csv(os.path.join(data_path, file),
-                     delimiter=delimiter,
+                     delimiter=',',
                      names=cols,
                      usecols=cols[0:3]).sample(frac=1, random_state=666)
 
@@ -53,15 +53,19 @@ if __name__ == '__main__':
 
     data_path = args.data_path
     n_f = args.num_factors
-    file = 'sample_movielens_ratings.csv'
 
-    train_ds, test = load_movielens(data_path, file)
+    train_ds, test = load_movielens(data_path=data_path,
+                                    num_subsets=num_subsets)
 
     exec_start = time()
     als = ALS(tol=0.0001, n_f=n_f, verbose=True)
 
-    als.fit(train_ds)
-    # als.fit(train_ds, test)
+    # Fit using training data to check convergence
+    # als.fit(train_ds)
+
+    # Fit using test data to check convergence
+    als.fit(train_ds, test)
+
     exec_end = time()
 
     print("Ratings for user 0:\n%s" % als.predict_user(0))

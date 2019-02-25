@@ -117,7 +117,7 @@ class Dataset(object):
         Parameters
         ----------
         f : function
-            Function to be applied to each row.
+            Function to be applied to each samples.
         sparse: bool
             Whether the dataset to be returned should be in sparse format. If
             return_dataset == False, this parameter is ignored.
@@ -128,7 +128,7 @@ class Dataset(object):
         Returns
         -------
         result : Dataset / list
-            Result of applying f to each of the dataset's rows.
+            Result of applying f to each of the dataset's samples.
         """
 
         if sparse is None:
@@ -395,7 +395,7 @@ def _subset_size(subset):
 
 @task(returns=object)
 def _subset_apply(subset, f, return_subset=False):
-    samples = [f(row) for row in subset.samples]
+    samples = [f(sample) for sample in subset.samples]
     s = np.array(samples).reshape(len(samples), -1)
 
     if return_subset:
@@ -441,7 +441,7 @@ def _get_split_i(subset, i, n_subsets):
 def _merge_split_subsets(sparse, *split_subsets):
     stack_f = sp.vstack if sparse else np.vstack
 
-    # each sublist (sl) contains rows with a subset of columns. Each
+    # each sublist (sl) contains samples with a subset of columns. Each
     # sublist must be stacked vertical first. Then all sublists must be
     # stacked among themselves forming the final columns.
     col_samples = stack_f([stack_f(sl) for sl in split_subsets])

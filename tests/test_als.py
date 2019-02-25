@@ -46,11 +46,11 @@ class ALSTest(unittest.TestCase):
         convergence_threshold = 0.1
         max_iter = 10
         verbose = True
-        merge_arity = 12
+        arity = 12
 
-        als = ALS(seed=seed, n_f=n_f, lambda_=lambda_,
+        als = ALS(random_state=seed, n_f=n_f, lambda_=lambda_,
                   tol=convergence_threshold,
-                  max_iter=max_iter, verbose=verbose, merge_arity=merge_arity)
+                  max_iter=max_iter, verbose=verbose, arity=arity)
 
         self.assertEqual(als._seed, seed)
         self.assertEqual(als._n_f, n_f)
@@ -58,12 +58,12 @@ class ALSTest(unittest.TestCase):
         self.assertEqual(als._tol, convergence_threshold)
         self.assertEqual(als._max_iter, max_iter)
         self.assertEqual(als._verbose, verbose)
-        self.assertEqual(als._merge_arity, merge_arity)
+        self.assertEqual(als._arity, arity)
 
     def test_fit(self):
         train, test = load_movielens()
 
-        als = ALS(tol=0.01, seed=666, n_f=100,
+        als = ALS(tol=0.01, random_state=666, n_f=100,
                   verbose=False)
 
         als.fit(train, test)
@@ -76,7 +76,7 @@ class ALSTest(unittest.TestCase):
         data = np.array([[0, 0, 5], [3, 0, 5], [3, 1, 2]])
         ratings = csr_matrix(data).transpose().tocsr()
         train = load_data(x=ratings, subset_size=1)
-        als = ALS(tol=0.01, seed=666, n_f=100,
+        als = ALS(tol=0.01, random_state=666, n_f=100,
                   verbose=False)
         als.fit(train)
         predictions = als.predict_user(user_id=0)

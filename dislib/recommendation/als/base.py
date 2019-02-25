@@ -1,4 +1,3 @@
-from collections import deque
 from math import sqrt
 
 import numpy as np
@@ -18,26 +17,21 @@ class ALS(object):
 
     Parameters
     ----------
-    max_iter : int, optional (default=5)
+    max_iter : int, optional (default=100)
         Maximum number of iterations to perform.
-    tol : float, optional (default=1e-3)
+    tol : float, optional (default=1e-4)
         Tolerance for the stopping criterion.
-    n_f : int, optional (default=1.0)
+    n_f : int, optional (default=100)
         Number of latent factors (i.e. dimensions) for the matrices U and I.
     lambda_ : float, optional (default=0.065)
         Regularization parameters value.
     check_convergence : boolean, optional (default=True)
-        Whether to test for convergence. If False, the algorithm will run
-        for cascade_iterations. Checking for convergence adds a
-        synchronization point after each iteration.
-
-        If ``check_convergence=False'' synchronization does not happen until
-        a call to ``predict'', ``decision_function'' or ``score''. This can
-        be useful to fit multiple models in parallel.
-    seed : int, optional (default=None)
+        Whether to test for convergence for convergence at the end of each
+        iteration.
+    random_state : int, orNone, optional (default=None)
         The seed of the pseudo random number generator used to initialize the
         items matrix I.
-    merge_arity : int, optional (default=5)
+    arity : int, optional (default=5)
         The arity of the tasks during the merge of each matrix chunk.
     verbose : boolean, optional (default=False)
         Whether to print progress information.
@@ -74,17 +68,17 @@ class ALS(object):
     >>> print('Ratings for user 0: %s' % als.predict_user(user_id=0))
     """
 
-    def __init__(self, seed=None, n_f=100, lambda_=0.065,
-                 tol=0.0001 ** 2, max_iter=np.inf, merge_arity=5,
+    def __init__(self, random_state=None, n_f=100, lambda_=0.065,
+                 tol=1e-4, max_iter=100, arity=5,
                  check_convergence=True, verbose=False):
         # params
-        self._seed = seed
+        self._seed = random_state
         self._n_f = n_f
         self._lambda = lambda_
         self._tol = tol
         self._max_iter = max_iter
         self._verbose = verbose
-        self._merge_arity = merge_arity
+        self._arity = arity
         self._check_convergence = check_convergence
         self.converged = False
         self.users = None
@@ -97,21 +91,22 @@ class ALS(object):
         Parameters
         ----------
         r : Dataset
-            copy of R with items as rows (if x=U), users as rows otherwise
+            copy of R with items as samples (if x=U), users as samples
+            otherwise
         x : Dataset
-            User or Movie feature matrix
+            User or Item feature matrix
         """
-        res = deque()
+        res = []
         for subset in r:
             chunk_res = _update_chunk(subset, x, self._n_f, self._lambda)
             res.append(chunk_res)
 
         while len(res) > 1:
-            q = deque()
+            q = []
             while len(res) > 0:
                 # we pop the future objects to merge
-                to_merge = [res.popleft() for _ in range(self._merge_arity)
-                            if len(res) > 0]
+                to_merge = res[:self._arity]
+                del res[:self._arity]
                 # if it's a single object, just add it to next step
                 aux = _merge(*to_merge) if len(to_merge) > 1 else to_merge[0]
                 q.append(aux)
@@ -120,14 +115,10 @@ class ALS(object):
         return res.pop()
 
     def _has_finished(self, i):
-        if i >= self._max_iter or self.converged:
-            return True
-        return False
+        return i >= self._max_iter or self.converged
 
     def _has_converged(self, last_rmse, rmse):
-        if abs(last_rmse - rmse) < self._tol:
-            return True
-        return False
+        return abs(last_rmse - rmse) < self._tol
 
     def _compute_train_rmse(self, d_u, U, I):
         rmses = [_get_rmse(sb, U, I) for sb in d_u._subsets]
@@ -141,9 +132,11 @@ class ALS(object):
         Parameters
         ----------
         dataset : Dataset
-            Ratings matrix with items as rows and users as columns.
-        test : DataFrame
-            Dataframe used to check convergence (used training data otherwise).
+            Dataset where each sample represents the ratings of a given item.
+        test : csr_matrix
+            Sparse matrix used to check convergence with users as rows and
+            items as columns. If not passed, uses training data to check
+            convergence.
         """
 
         d_i = dataset
