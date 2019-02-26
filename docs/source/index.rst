@@ -1,4 +1,4 @@
-.. image:: ../dislib-logo-h-full.png
+.. image:: ../logos/dislib-logo-full.png
    :height: 90px
    :align: left
 
