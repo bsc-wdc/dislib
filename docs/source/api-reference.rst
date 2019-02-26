@@ -92,7 +92,7 @@ dislib.neighbors: Neighbor queries
 ------------------------------------
 
 Classes
--------
+.......
 
 :class:`cluster.NearestNeighbors <dislib.neighbors.base.NearestNeighbors>` -
 Perform k-nearest neighbors queries.
