@@ -1,5 +1,5 @@
-DBSCAN
-======
+dislib.cluster.DBSCAN
+=====================
 
 .. automodule:: dislib.cluster.dbscan.base
     :members:

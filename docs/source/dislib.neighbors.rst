@@ -1,5 +1,5 @@
-Nearest Neighbors
-=================
+dislib.neighbors.NearestNeighbors
+=================================
 
 .. automodule:: dislib.neighbors.base
     :members:
