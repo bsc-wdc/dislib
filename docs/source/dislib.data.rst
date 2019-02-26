@@ -1,5 +1,5 @@
-Data handling
-=============
+dislib.Data
+===========
 
 Classes
 -------

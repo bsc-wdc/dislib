@@ -1,5 +1,5 @@
-CascadeSVM
-==========
+dislib.classification.CascadeSVM
+================================
 
 .. automodule:: dislib.classification.csvm.base
     :members:

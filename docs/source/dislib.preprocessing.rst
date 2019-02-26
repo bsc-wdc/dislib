@@ -1,5 +1,5 @@
-Data pre-processing
-===================
+dislib.preprocessing
+====================
 
 Classes
 -------

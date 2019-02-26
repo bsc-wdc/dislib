@@ -88,6 +88,17 @@ Classes
 Build a random forest for classification.
 
 
+dislib.recommendation: Recommendation
+-------------------------------------
+
+Classes
+.......
+
+:class:`recommendation.ALS <dislib.recommendation.als.base.ALS>`
+- Distributed alternating least squares for collaborative filtering.
+
+
+
 dislib.neighbors: Neighbor queries
 ----------------------------------
 
@@ -104,11 +115,4 @@ Other functions
 computation.
 
 
-dislib.recommendation: Recommendation
--------------------------------------
 
-Classes
-.......
-
-:class:`recommendation.ALS <dislib.recommendation.als.base.ALS>`
-- Distributed alternating least squares for collaborative filtering.

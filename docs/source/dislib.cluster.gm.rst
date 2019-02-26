@@ -1,5 +1,5 @@
-Gaussian Mixture
-================
+dislib.cluster.GaussianMixture
+==============================
 
 .. automodule:: dislib.cluster.gm.base
     :members:

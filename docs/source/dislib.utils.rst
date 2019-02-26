@@ -1,5 +1,5 @@
-Utilities
-=============
+dislib.utils
+============
 
 Functions
 ---------
