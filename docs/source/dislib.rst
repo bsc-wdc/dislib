@@ -11,6 +11,7 @@ Subpackages
     dislib.cluster.kmeans
     dislib.cluster.knn
     dislib.cluster.dbscan
+    dislib.recommendation.als
     dislib.data
     dislib.fft
 

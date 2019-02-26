@@ -4,7 +4,7 @@ import numpy as np
 import scipy.sparse as sp
 from pycompss.api.api import compss_wait_on
 from pycompss.api.task import task
-from scipy.sparse import issparse, csr_matrix
+from scipy.sparse import issparse
 
 
 class Dataset(object):
@@ -87,6 +87,11 @@ class Dataset(object):
         n_subsets : int, optional (default=None)
             Number of subsets in the transposed dataset. If none, defaults to
             the original number of subsets
+
+        Returns
+        -------
+        dataset_t: Dataset
+            Transposed dataset divided by rows.
         """
 
         if n_subsets is None:
@@ -105,6 +110,45 @@ class Dataset(object):
         dataset_t.extend(subsets_t)
 
         return dataset_t
+
+    def _apply(self, f, sparse=None, return_dataset=False):
+        """ Returns the result of applying function f to each sample of the
+         dataset.
+        Parameters
+        ----------
+        f : function
+            Function to be applied to each samples.
+        sparse: bool
+            Whether the dataset to be returned should be in sparse format. If
+            return_dataset == False, this parameter is ignored.
+        return_dataset: bool
+            Whether the results of applying function 'f' should be returned as
+            a Dataset instance.
+
+        Returns
+        -------
+        result : Dataset / list
+            Result of applying f to each of the dataset's samples.
+        """
+
+        if sparse is None:
+            sparse = self._sparse
+
+        new_elems = []
+        for i in range(len(self)):
+            new_elems.append(_subset_apply(self._subsets[i], f,
+                                           return_subset=return_dataset))
+
+        if return_dataset:
+            n_features = _subset_size(new_elems[0])
+
+            dataset = Dataset(n_features=n_features, sparse=sparse)
+
+            dataset.extend(new_elems)
+
+            return dataset
+        else:
+            return new_elems
 
     def subset_size(self, index):
         """ Returns the number of samples in the Subset referenced by index.
@@ -254,17 +298,14 @@ class Subset(object):
     """
 
     def __init__(self, samples, labels=None):
-        if issparse(samples):
-            self.samples = csr_matrix(samples)
-        else:
-            self.samples = np.array(samples)
+        self.samples = samples.copy()
 
         if labels is not None:
             self.labels = np.array(labels)
         else:
             self.labels = None
 
-        idx = [uuid4().int for _ in range(samples.shape[0])]
+        idx = [uuid4().int for _ in range(self.samples.shape[0])]
         self._ids = np.array(idx)
 
     def copy(self):
@@ -352,6 +393,17 @@ def _subset_size(subset):
     return subset.samples.shape[0]
 
 
+@task(returns=object)
+def _subset_apply(subset, f, return_subset=False):
+    samples = [f(sample) for sample in subset.samples]
+    s = np.array(samples).reshape(len(samples), -1)
+
+    if return_subset:
+        s = Subset(samples=s)
+
+    return s
+
+
 @task(returns=np.array)
 def _get_min_max(subset):
     mn = np.min(subset.samples, axis=0)
@@ -370,6 +422,7 @@ def _get_split_i(subset, i, n_subsets):
     Returns the columns corresponding to group i, if the subset is divided
     into n_subsets groups of columns.
     """
+
     # number of elements per group
     stride = subset.samples.shape[1] // n_subsets
 
@@ -388,7 +441,7 @@ def _get_split_i(subset, i, n_subsets):
 def _merge_split_subsets(sparse, *split_subsets):
     stack_f = sp.vstack if sparse else np.vstack
 
-    # each sublist (sl) contains rows with a subset of columns. Each
+    # each sublist (sl) contains samples with a subset of columns. Each
     # sublist must be stacked vertical first. Then all sublists must be
     # stacked among themselves forming the final columns.
     col_samples = stack_f([stack_f(sl) for sl in split_subsets])

@@ -4,3 +4,4 @@ tests/files/csv/1 filter=lfs diff=lfs merge=lfs -text
 tests/files/libsvm/1 filter=lfs diff=lfs merge=lfs -text
 tests/files/libsvm/2 filter=lfs diff=lfs merge=lfs -text
 tests/files/libsvm/3 filter=lfs diff=lfs merge=lfs -text
+tests/files/sample_movielens_ratings.csv filter=lfs diff=lfs merge=lfs -text
