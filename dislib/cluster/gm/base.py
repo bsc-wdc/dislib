@@ -15,32 +15,6 @@ from dislib.cluster import KMeans
 from dislib.data import Dataset, Subset
 
 
-def _estimate_parameters(dataset, resp):
-    """Estimate the Gaussian distribution weights and means.
-
-    Parameters
-    ----------
-    dataset : dislib.data.Dataset
-        The input data.
-    resp : array-like, shape (n_samples, n_components)
-        The responsibilities for each data sample in X.
-
-    Returns
-    -------
-    weights : array-like, shape (n_components,)
-        The weights of the current components.
-    nk : array-like, shape (n_components,)
-        The numbers of data samples in the current components.
-    means : array-like, shape (n_components, n_features)
-        The centers of the current components.
-    """
-    subsets_params = []
-    for ss, resp_ss in zip(dataset, resp):
-        ss_params = _estimate_parameters_subset(ss, resp_ss)
-        subsets_params.append(ss_params)
-    return _merge_estimate_parameters(*subsets_params)
-
-
 @task(returns=1)
 def _estimate_parameters_subset(subset, resp):
     subsample = subset.samples
@@ -50,17 +24,34 @@ def _estimate_parameters_subset(subset, resp):
     return len(subsample), nk_ss, means_ss
 
 
-@task(returns=3)
+def _reduce_estimate_parameters(partials, arity):
+    while len(partials) > 1:
+        partials_subset = partials[:arity]
+        partials = partials[arity:]
+        partials.append(_merge_estimate_parameters(*partials_subset))
+    return aggregate_parameters(partials[0])
+
+
+@task(returns=1)
 def _merge_estimate_parameters(*subsets_params):
     n_samples = sum(params[0] for params in subsets_params)
     nk = sum(params[1] for params in subsets_params)
+    means = sum(params[2] for params in subsets_params)
+    return n_samples, nk, means
+
+
+@task(returns=3)
+def aggregate_parameters(params):
+    n_samples = params[0]
+    nk = params[1]
     nk += 10 * np.finfo(nk.dtype).eps
-    means = sum(params[2] for params in subsets_params) / nk[:, np.newaxis]
+    means = params[2] / nk[:, np.newaxis]
     weights = nk / n_samples
     return weights, nk, means
 
 
-def _estimate_covariances(dataset, resp, nk, means, reg_covar, covar_type):
+def _estimate_covariances(dataset, resp, nk, means, reg_covar, covar_type,
+                          arity):
     """Estimate the covariances and compute the cholesky precisions.
 
     Parameters
@@ -73,6 +64,8 @@ def _estimate_covariances(dataset, resp, nk, means, reg_covar, covar_type):
         The regularization added to the diagonal of the covariance matrices.
     covar_type : {'full', 'tied', 'diag', 'spherical'}
         The type of precision matrices.
+    arity : int
+        Arity of the reductions.
 
     Returns
     -------
@@ -92,14 +85,14 @@ def _estimate_covariances(dataset, resp, nk, means, reg_covar, covar_type):
     for ss, resp_ss in zip(dataset, resp):
         ss_covariances = estimate_covariances_function(resp_ss, ss, means)
         subsets_covariances.append(ss_covariances)
-    merge_covariances_function = {
-        "full": _merge_covariances_full,
-        # "tied": _merge_covariances_tied,
-        # "diag": _merge_covariances_diag,
-        # "spherical": _merge_covariances_spherical
+    reduce_covariances_function = {
+        "full": _reduce_covariances_full,
+        # "tied": _reduce_covariances_tied,
+        # "diag": _reduce_covariances_diag,
+        # "spherical": _reduce_covariances_spherical
     }[covar_type]
-    return merge_covariances_function(covar_type, reg_covar, nk,
-                                      *subsets_covariances)
+    return reduce_covariances_function(covar_type, reg_covar, nk, arity,
+                                       subsets_covariances)
 
 
 @task(returns=1)
@@ -114,9 +107,22 @@ def _estimate_covariances_full(resp, subset, means):
     return covariances
 
 
+def _reduce_covariances_full(covariance_type, reg_covar, nk, arity, partials):
+    while len(partials) > 1:
+        partials_subset = partials[:arity]
+        partials = partials[arity:]
+        partials.append(_merge_covariances_full(*partials_subset))
+    return _aggregate_covariances_full(covariance_type, reg_covar, nk,
+                                       partials[0])
+
+
+@task(returns=1)
+def _merge_covariances_full(*subsets_covs):
+    return sum(cov for cov in subsets_covs)
+
+
 @task(returns=2)
-def _merge_covariances_full(covariance_type, reg_covar, nk, *subsets_covs):
-    covariances = sum(cov for cov in subsets_covs)
+def _aggregate_covariances_full(covariance_type, reg_covar, nk, covariances):
     n_components, n_features, _ = covariances.shape
     for k in range(n_components):
         covariances[k] /= nk[k]
@@ -177,9 +183,9 @@ def _compute_precision_cholesky(covariances, covariance_type):
 
 
 @task(returns=1)
-def _mean_reduce(*tuples):
-    total, count = map(sum, zip(*tuples))
-    return total/count
+def _merge_log_prob_norm(*partials):
+    total, count = map(sum, zip(*partials))
+    return total, count
 
 
 @task(returns=2)
@@ -392,6 +398,10 @@ class GaussianMixture:
         If RandomState instance, random_state is the random number generator;
         If None, the random number generator is the RandomState instance used
         by `np.random`.
+    arity : int, optional (default=50)
+        Arity of the reductions.
+    verbose: boolean, optional (default=False)
+        Whether to print progress information.
 
     Attributes
     ----------
@@ -447,13 +457,15 @@ class GaussianMixture:
     def __init__(self, n_components=1, covariance_type='full', tol=1e-3,
                  reg_covar=1e-6, max_iter=100, init_params='kmeans',
                  weights_init=None, means_init=None, precisions_init=None,
-                 random_state=None):
+                 arity=50, verbose=False, random_state=None):
 
         self.n_components = n_components
         self.tol = tol
         self.reg_covar = reg_covar
         self.max_iter = max_iter
         self.init_params = init_params
+        self._arity = arity
+        self._verbose = verbose
         self.random_state = random_state
         self.covariance_type = covariance_type
         self.weights_init = weights_init
@@ -527,17 +539,22 @@ class GaussianMixture:
 
         self._initialize_parameters(dataset, random_state)
         self.lower_bound_ = -np.infty
-
+        if self._verbose:
+            print("GaussianMixture EM algorithm start")
         for n_iter in range(1, self.max_iter + 1):
             prev_lower_bound = self.lower_bound_
 
             log_prob_norm, resp = self._e_step(dataset)
             self._m_step(dataset, resp)
-            self.lower_bound_ = compss_wait_on(log_prob_norm)
+            log_prob_total, log_prob_count = compss_wait_on(log_prob_norm)
+            self.lower_bound_ = log_prob_total / log_prob_count
 
-            change = self.lower_bound_ - prev_lower_bound
+            diff = abs(self.lower_bound_ - prev_lower_bound)
 
-            if abs(change) < self.tol:
+            if self._verbose:
+                print("Iteration %s - Convergence crit. = %s" % (n_iter, diff))
+
+            if diff < self.tol:
                 self.converged_ = True
                 self.n_iter = n_iter
                 break
@@ -572,7 +589,7 @@ class GaussianMixture:
             log_prob_norm_s, resp_s = self._estimate_prob_resp(s)
             log_prob_norm.append(log_prob_norm_s)
             resp.append(resp_s)
-        return _mean_reduce(*log_prob_norm), resp
+        return self._reduce_log_prob_norm(log_prob_norm), resp
 
     def _estimate_prob_resp(self, subset):
         """Estimate log-likelihood and responsibilities for a subset.
@@ -597,6 +614,13 @@ class GaussianMixture:
                                           self.precisions_cholesky_,
                                           self.covariance_type)
 
+    def _reduce_log_prob_norm(self, partials):
+        while len(partials) > 1:
+            partials_subset = partials[:self._arity]
+            partials = partials[self._arity:]
+            partials.append(_merge_log_prob_norm(*partials_subset))
+        return partials[0]
+
     def _m_step(self, dataset, resp):
         """M step.
 
@@ -608,14 +632,40 @@ class GaussianMixture:
             Posterior probabilities (or responsibilities) of the point of each
             sample in the dataset.
         """
-        weights, nk, means = _estimate_parameters(dataset, resp)
+        weights, nk, means = self._estimate_parameters(dataset, resp)
         self.weights_ = weights
         self.means_ = means
 
         cov, p_c = _estimate_covariances(dataset, resp, nk, means,
-                                         self.reg_covar, self.covariance_type)
+                                         self.reg_covar, self.covariance_type,
+                                         self._arity)
         self.covariances_ = cov
         self.precisions_cholesky_ = p_c
+
+    def _estimate_parameters(self, dataset, resp):
+        """Estimate the Gaussian distribution weights and means.
+
+        Parameters
+        ----------
+        dataset : dislib.data.Dataset
+            The input data.
+        resp : array-like, shape (n_samples, n_components)
+            The responsibilities for each data sample in X.
+
+        Returns
+        -------
+        weights : array-like, shape (n_components,)
+            The weights of the current components.
+        nk : array-like, shape (n_components,)
+            The numbers of data samples in the current components.
+        means : array-like, shape (n_components, n_features)
+            The centers of the current components.
+        """
+        subsets_params = []
+        for ss, resp_ss in zip(dataset, resp):
+            ss_params = _estimate_parameters_subset(ss, resp_ss)
+            subsets_params.append(ss_params)
+        return _reduce_estimate_parameters(subsets_params, self._arity)
 
     def _check_initial_parameters(self):
         """Check values of the basic parameters."""
@@ -659,8 +709,11 @@ class GaussianMixture:
         n_components = self.n_components
         resp = Dataset(n_components)
         if self.init_params == 'kmeans':
+            if self._verbose:
+                print("KMeans initialization start")
             seed = random_state.randint(0, int(1e8))
-            kmeans = KMeans(n_clusters=n_components, random_state=seed)
+            kmeans = KMeans(n_clusters=n_components, random_state=seed,
+                            verbose=self._verbose)
             kmeans.fit_predict(dataset)
             self.kmeans = kmeans
             for labeled_subset in dataset:
@@ -676,7 +729,7 @@ class GaussianMixture:
             raise ValueError("Unimplemented initialization method '%s'"
                              % self.init_params)
 
-        weights, nk, means = _estimate_parameters(dataset, resp)
+        weights, nk, means = self._estimate_parameters(dataset, resp)
 
         self.weights_ = (weights if self.weights_init is None else
                          self.weights_init)
@@ -685,7 +738,8 @@ class GaussianMixture:
         if self.precisions_init is None:
             cov, p_c = _estimate_covariances(dataset, resp, nk, means,
                                              self.reg_covar,
-                                             self.covariance_type)
+                                             self.covariance_type,
+                                             self._arity)
             self.covariances_ = cov
             self.precisions_cholesky_ = p_c
         elif self.covariance_type == 'full':
