@@ -20,11 +20,30 @@ Follow these steps when drafting a new release:
 
 4. Update the `changelog <https://github.com/bsc-wdc/dislib/blob/master/CHANGELOG.md>`_.
 
-5. Draft a new release in `Github <https://github.com/bsc-wdc/
+5. Create and tag a docker image for the release running the following at the repo's root (change VERSION accordingly):
+::
+
+   # Create the image
+   docker build -t bscwdc/dislib:VERSION
+   
+   # Log in and push it to dockerhub
+   docker login -u DOCKERHUB_USER -p DOCKERHUB_PASSWORD
+   docker push bscwdc/dislib:VERSION
+
+6. Update the image name used by `bin/dislib_cmp.y` to the above created one by changing line from:
+::
+
+   image_name = 'bscwdc/dislib:latest'  # Update when releasing new version
+   
+to:
+::
+   image_name = 'bscwdc/dislib:VERSION'
+
+7. Draft a new release in `Github <https://github.com/bsc-wdc/
    dislib/releases>`_ using this `template <https://github
    .com/bsc-wdc/dislib/blob/master/.github/RELEASE_TEMPLATE.md>`_.
 
-6. Create a pip package and upload it to PyPi:
+8. Create a pip package and upload it to PyPi:
 
    .. code:: bash
 
