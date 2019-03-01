@@ -39,13 +39,20 @@ to:
 ::
    image_name = 'bscwdc/dislib:VERSION'
 
-7. Draft a new release in `Github <https://github.com/bsc-wdc/
+7. Create the git tag for this release and push it to github:
+::
+   git tag VERSION
+   git push origin VERSION
+   
+8. Draft a new release in `Github <https://github.com/bsc-wdc/
    dislib/releases>`_ using this `template <https://github
    .com/bsc-wdc/dislib/blob/master/.github/RELEASE_TEMPLATE.md>`_.
 
-8. Create a pip package and upload it to PyPi:
+9. Create a pip package and upload it to PyPi:
 
    .. code:: bash
 
     python3 setup.py sdist bdist_wheel
     python3 -m twine upload dist/*
+    
+ 
