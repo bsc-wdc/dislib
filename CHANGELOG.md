@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - First implementation of Gaussian mixtures and ALS
 - Implemented a StandardScaler class as part of a new preprocessing module
 - Created a resample method in the utils module
+- Dataset transpose
+- Dataset apply function
 
 ### Changed
 - Refactored DBSCAN completely to make code more legible and fix several bugs
