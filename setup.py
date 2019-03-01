@@ -5,7 +5,7 @@ setuptools.setup(
     version="0.2.0",
     author="Barcelona Supercomputing Center",
     author_email="javier.alvarez@bsc.es",
-    description="A distributed computing library on top of PyCOMPSs",
+    description="The distributed computing library on top of PyCOMPSs",
     url="http://dislib.bsc.es",
     packages=setuptools.find_packages(),
     classifiers=[
