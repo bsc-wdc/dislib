@@ -18,41 +18,36 @@ Follow these steps when drafting a new release:
      .py>`_.
    - `setup.py <https://github.com/bsc-wdc/dislib/blob/master/setup.py>`_.
 
-4. Update the `changelog <https://github.com/bsc-wdc/dislib/blob/master/CHANGELOG.md>`_.
+4. Update the `change log <https://github.com/bsc-wdc/dislib/blob/master/CHANGELOG.md>`_.
 
-5. Create and tag a docker image for the release running the following at the repo's root (change VERSION accordingly):
-::
-
-   # Create the image
-   docker build -t bscwdc/dislib:VERSION
+5. Create and tag a docker image for the release running the following at the repo's root (change ``VERSION`` accordingly):
    
-   # Log in and push it to dockerhub
-   docker login -u DOCKERHUB_USER -p DOCKERHUB_PASSWORD
-   docker push bscwdc/dislib:VERSION
-
-6. Update the image name used by `bin/dislib_cmp.y` to the above created one by changing line from:
-::
-
-   image_name = 'bscwdc/dislib:latest'  # Update when releasing new version
+   - Create the image:
+     
+     .. code:: bash   
+     
+      docker build -t bscwdc/dislib:VERSION
    
-to:
-::
-   image_name = 'bscwdc/dislib:VERSION'
-
-7. Create the git tag for this release and push it to github:
-::
-   git tag VERSION
-   git push origin VERSION
+   - Log in and push it to dockerhub
    
-8. Draft a new release in `Github <https://github.com/bsc-wdc/
+     .. code:: bash
+     
+      docker login -u DOCKERHUB_USER -p DOCKERHUB_PASSWORD
+      docker push bscwdc/dislib:VERSION
+
+6. Update the version number in `dislib_cmp.py <https://github.com/bsc-wdc/dislib/blob/master/bin/dislib_cmd.py>`_ where it says:
+
+   .. code:: python
+
+    image_name = 'bscwdc/dislib:VERSION'   
+
+7. Draft a new release in `Github <https://github.com/bsc-wdc/
    dislib/releases>`_ using this `template <https://github
    .com/bsc-wdc/dislib/blob/master/.github/RELEASE_TEMPLATE.md>`_.
 
-9. Create a pip package and upload it to PyPi:
+8. Create a pip package and upload it to PyPi:
 
    .. code:: bash
 
     python3 setup.py sdist bdist_wheel
     python3 -m twine upload dist/*
-    
- 
