@@ -6,6 +6,7 @@ sudo: required
 branches:
   only:
     - master
+    - development
 
 services:
   - docker
