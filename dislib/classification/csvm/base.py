@@ -1,16 +1,12 @@
-from itertools import zip_longest
 from uuid import uuid4
 
 import numpy as np
-import scipy.sparse as sp
 from pycompss.api.api import compss_delete_object
 from pycompss.api.api import compss_wait_on
 from pycompss.api.parameter import INOUT
 from pycompss.api.task import task
 from scipy.sparse import issparse
 from sklearn.svm import SVC
-
-from dislib.data import Subset
 
 
 class CascadeSVM(object):
@@ -134,7 +130,7 @@ class CascadeSVM(object):
         self._reset_model()
         self._set_gamma(dataset.n_features)
 
-        dataset_ids = []
+        dataset_ids = [_create_ids(subset) for subset in dataset]
 
         while not self._check_finished():
             self._do_iteration(dataset, dataset_ids)
@@ -221,18 +217,14 @@ class CascadeSVM(object):
         q = []
         params = self._clf_params
 
-        create_ids = not dataset_ids
-
         # first level
-        for subset, subset_ids in zip_longest(dataset, dataset_ids):
+        for subset, subset_ids in zip(dataset, dataset_ids):
             data = [subset, subset_ids]
             if self._feedback is not None:
                 data.extend((self._feedback, self._feedback_ids))
             _out = _train(False, self._random_state, *data, **params)
-            sup_vec, sup_vec_ids, _, subset_ids = _out
+            sup_vec, sup_vec_ids, _ = _out
             q.extend((sup_vec, sup_vec_ids))
-            if create_ids:
-                dataset_ids.append(subset_ids)
 
         # reduction
         arity = self._arity * 2
@@ -241,7 +233,7 @@ class CascadeSVM(object):
             del q[:arity]
 
             _out = _train(False, self._random_state, *data, **params)
-            sup_vec, sup_vec_ids, _, _ = _out
+            sup_vec, sup_vec_ids, _ = _out
             q.extend((sup_vec, sup_vec_ids))
 
             # delete partial results
@@ -251,7 +243,7 @@ class CascadeSVM(object):
         # last layer
         get_clf = (self._check_convergence or self._is_last_iteration())
         _out = _train(get_clf, self._random_state, *q, **params)
-        self._feedback, self._feedback_ids, self._clf, _ = _out
+        self._feedback, self._feedback_ids, self._clf = _out
         self.iterations += 1
 
     def _is_last_iteration(self):
@@ -326,19 +318,20 @@ class CascadeSVM(object):
         return np.dot(x, x.T)
 
 
-@task(returns=4)
-def _train(return_classifier, random_state, *subsets_and_ids, **params):
-    # `subsets_and_ids` alternates subsets and arrays of indeces,
-    # which could be implemented using COLLECTION_IN instead
-    new_ids = None
-    if subsets_and_ids[1] is None:
-        subset = subsets_and_ids[0]
-        idx = [uuid4().int for _ in range(subset.samples.shape[0])]
-        subsets_and_ids = list(subsets_and_ids)
-        subsets_and_ids[1] = np.array(idx)
-        new_ids = subsets_and_ids[1]
+@task(returns=1)
+def _create_ids(subset):
+    idx = [uuid4().int for _ in range(subset.samples.shape[0])]
+    return np.array(idx)
 
-    subset, ids = _merge(*subsets_and_ids)
+
+@task(returns=3)
+def _train(return_classifier, random_state, *subsets_and_ids, **params):
+    # `subsets_and_ids` alternates subsets and ids.
+    # This could be implemented using COLLECTION_IN  and 2 lists instead.
+    subsets = subsets_and_ids[::2]
+    ids_list = subsets_and_ids[1::2]
+
+    subset, ids = _merge(subsets, ids_list)
 
     clf = SVC(random_state=random_state, **params)
     clf.fit(X=subset.samples, y=subset.labels)
@@ -347,9 +340,9 @@ def _train(return_classifier, random_state, *subsets_and_ids, **params):
     sup_vec_ids = ids[clf.support_]
 
     if return_classifier:
-        return sup_vec, sup_vec_ids, clf, new_ids
+        return sup_vec, sup_vec_ids, clf
     else:
-        return sup_vec, sup_vec_ids, None, new_ids
+        return sup_vec, sup_vec_ids, None
 
 
 @task(subset=INOUT)
@@ -384,38 +377,24 @@ def _merge_scores(*partials):
     return total_correct / total_size
 
 
-def _merge(*subsets_and_ids):
-    samples = subsets_and_ids[0].samples
-    labels = subsets_and_ids[0].labels
-    ids = subsets_and_ids[1]
+def _merge(subsets, ids_list):
+    subset = subsets[0]
+    ids = ids_list[0]
 
-    it = iter(subsets_and_ids[2:])
-    for subset_x, ids_x in zip(it, it):
-        set_x = (subset_x.samples, subset_x.labels, ids_x)
-        samples, labels, ids = _merge_pair((samples, labels, ids), set_x)
-    return Subset(samples, labels), ids
+    for subset_x, ids_x in zip(subsets[1:], ids_list[1:]):
+        subset, ids = _merge_pair((subset, ids), (subset_x, ids_x))
+    return subset, ids
 
 
 def _merge_pair(set_0, set_1):
-    samples_0, labels_0, ids_0 = set_0
-    samples_1, labels_1, ids_1 = set_1
-    assert issparse(samples_0) == issparse(samples_1), \
-        "Cannot concatenate sparse data with non-sparse data."
-    assert (labels_0 is None) == (labels_1 is None), \
-        "Cannot concatenate labeled data with non-labeled data"
-    if issparse(samples_0):
-        samples = sp.vstack((samples_0, samples_1))
-    else:
-        samples = np.concatenate((samples_0, samples_1))
-    labels = None
-    if labels_0 is not None:
-        labels = np.concatenate((labels_0, labels_1))
+    subset_0, ids_0 = set_0
+    subset_1, ids_1 = set_1
+    subset = subset_0.copy()
+    subset.concatenate(subset_1)
     ids = np.concatenate((ids_0, ids_1))
     ids, uniques = np.unique(ids, return_index=True)
     indices = np.argsort(uniques)
     uniques = uniques[indices]
     ids = ids[indices]
-    samples = samples[uniques]
-    if labels is not None:
-        labels = labels[uniques]
-    return samples, labels, ids
+    subset = subset[uniques]
+    return subset, ids
