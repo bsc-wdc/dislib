@@ -560,7 +560,7 @@ class GaussianMixture:
                 break
 
         if not self.converged_:
-            warnings.warn('Initialization did not converge. '
+            warnings.warn('The algorithm did not converge. '
                           'Try different init parameters, '
                           'or increase max_iter, tol '
                           'or check for degenerate data.',
@@ -639,6 +639,7 @@ class GaussianMixture:
         cov, p_c = _estimate_covariances(dataset, resp, nk, means,
                                          self.reg_covar, self.covariance_type,
                                          self._arity)
+
         self.covariances_ = cov
         self.precisions_cholesky_ = p_c
 
