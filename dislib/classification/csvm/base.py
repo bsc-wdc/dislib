@@ -378,7 +378,7 @@ def _merge_scores(*partials):
 
 
 def _merge(subsets, ids_list):
-    subset = subsets[0]
+    subset = subsets[0].copy()
     ids = ids_list[0]
 
     for subset_x, ids_x in zip(subsets[1:], ids_list[1:]):
@@ -389,12 +389,11 @@ def _merge(subsets, ids_list):
 def _merge_pair(set_0, set_1):
     subset_0, ids_0 = set_0
     subset_1, ids_1 = set_1
-    subset = subset_0.copy()
-    subset.concatenate(subset_1)
+    subset_0.concatenate(subset_1)
     ids = np.concatenate((ids_0, ids_1))
     ids, uniques = np.unique(ids, return_index=True)
     indices = np.argsort(uniques)
     uniques = uniques[indices]
     ids = ids[indices]
-    subset = subset[uniques]
-    return subset, ids
+    subset_0 = subset_0[uniques]
+    return subset_0, ids
