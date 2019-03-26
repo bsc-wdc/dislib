@@ -322,8 +322,6 @@ class Subset(object):
         ----------
         subset : Subset
             Subset to concatenate.
-        remove_duplicates : boolean, optional (default=False)
-            Whether to remove duplicate samples.
         """
         assert issparse(self.samples) == issparse(subset.samples), \
             "Cannot concatenate sparse data with non-sparse data."
