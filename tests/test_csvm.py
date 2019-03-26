@@ -203,6 +203,25 @@ class CSVMTest(unittest.TestCase):
 
         self.assertTrue(np.array_equal(coef_d, coef_sp))
 
+    def test_duplicates(self):
+        """ Tests that C-SVM does not generate duplicate support vectors """
+        x = load_data(np.array([[0, 1],
+                                [1, 1],
+                                [0, 1],
+                                [1, 2],
+                                [0, 0],
+                                [2, 2],
+                                [2, 1],
+                                [1, 0]]),
+                      y=np.array([1, 0, 1, 0, 1, 0, 0, 1]),
+                      subset_size=2)
+
+        csvm = CascadeSVM(c=1, random_state=1, max_iter=100, tol=0)
+        csvm.fit(x)
+
+        csvm._collect_clf()
+        self.assertEqual(csvm._clf.support_vectors_.shape[0], 6)
+
 
 def main():
     unittest.main()
