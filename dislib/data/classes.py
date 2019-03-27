@@ -1,5 +1,3 @@
-from uuid import uuid4
-
 import numpy as np
 import scipy.sparse as sp
 from pycompss.api.api import compss_wait_on
@@ -305,9 +303,6 @@ class Subset(object):
         else:
             self.labels = None
 
-        idx = [uuid4().int for _ in range(self.samples.shape[0])]
-        self._ids = np.array(idx)
-
     def copy(self):
         """ Return a copy of this Subset
 
@@ -318,18 +313,15 @@ class Subset(object):
         """
 
         subset = Subset(samples=self.samples, labels=self.labels)
-        subset._ids = np.array(self._ids)
         return subset
 
-    def concatenate(self, subset, remove_duplicates=False):
+    def concatenate(self, subset):
         """ Vertically concatenates this Subset to another.
 
         Parameters
         ----------
         subset : Subset
             Subset to concatenate.
-        remove_duplicates : boolean, optional (default=False)
-            Whether to remove duplicate samples.
         """
         assert issparse(self.samples) == issparse(subset.samples), \
             "Cannot concatenate sparse data with non-sparse data."
@@ -343,20 +335,6 @@ class Subset(object):
 
         if self.labels is not None:
             self.labels = np.concatenate([self.labels, subset.labels])
-
-        self._ids = np.concatenate([self._ids, subset._ids])
-
-        if remove_duplicates:
-            self._ids, uniques = np.unique(self._ids, return_index=True)
-
-            indices = np.argsort(uniques)
-            uniques = uniques[indices]
-            self._ids = self._ids[indices]
-
-            self.samples = self.samples[uniques]
-
-            if self.labels is not None:
-                self.labels = self.labels[uniques]
 
     def set_label(self, index, label):
         """ Sets sample labels.
@@ -383,8 +361,6 @@ class Subset(object):
             subset = Subset(self.samples[item], self.labels[item])
         else:
             subset = Subset(self.samples[item])
-
-        subset._ids = self._ids[item]
         return subset
 
 

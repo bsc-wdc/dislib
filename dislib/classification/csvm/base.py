@@ -1,3 +1,6 @@
+from itertools import chain
+from uuid import uuid4
+
 import numpy as np
 from pycompss.api.api import compss_delete_object
 from pycompss.api.api import compss_wait_on
@@ -128,8 +131,10 @@ class CascadeSVM(object):
         self._reset_model()
         self._set_gamma(dataset.n_features)
 
+        dataset_ids = [_create_ids(subset) for subset in dataset]
+
         while not self._check_finished():
-            self._do_iteration(dataset)
+            self._do_iteration(dataset, dataset_ids)
 
             if self._check_convergence:
                 self._check_convergence_and_update_w()
@@ -209,22 +214,30 @@ class CascadeSVM(object):
         if self._verbose:
             print("Iteration %s of %s." % (self.iterations, self._max_iter))
 
-    def _do_iteration(self, dataset):
+    def _do_iteration(self, dataset, dataset_ids):
         q = []
-        arity = self._arity
         params = self._clf_params
+        arity = self._arity
 
         # first level
-        for subset in dataset:
-            data = filter(None, [subset, self._feedback])
-            q.append(_train(False, self._random_state, *data, **params)[0])
+        for subset, subset_ids in zip(dataset, dataset_ids):
+            data = [(subset, subset_ids)]
+            if self._feedback is not None:
+                data.append((self._feedback, self._feedback_ids))
+            flattened_data = chain.from_iterable(data)
+            _out = _train(False, self._random_state, *flattened_data, **params)
+            sup_vec, sup_vec_ids, _ = _out
+            q.append((sup_vec, sup_vec_ids))
 
         # reduction
         while len(q) > arity:
             data = q[:arity]
             del q[:arity]
 
-            q.append(_train(False, self._random_state, *data, **params)[0])
+            flattened_data = chain.from_iterable(data)
+            _out = _train(False, self._random_state, *flattened_data, **params)
+            sup_vec, sup_vec_ids, _ = _out
+            q.append((sup_vec, sup_vec_ids))
 
             # delete partial results
             for partial in data:
@@ -232,8 +245,9 @@ class CascadeSVM(object):
 
         # last layer
         get_clf = (self._check_convergence or self._is_last_iteration())
-        _out = _train(get_clf, self._random_state, *q, **params)
-        self._feedback, self._clf = _out
+        flattened_q = chain.from_iterable(q)
+        _out = _train(get_clf, self._random_state, *flattened_q, **params)
+        self._feedback, self._feedback_ids, self._clf = _out
         self.iterations += 1
 
     def _is_last_iteration(self):
@@ -308,19 +322,28 @@ class CascadeSVM(object):
         return np.dot(x, x.T)
 
 
-@task(returns=2)
-def _train(return_classifier, random_state, *subsets, **params):
-    subset = _merge(*subsets)
+@task(returns=1)
+def _create_ids(subset):
+    idx = [uuid4().int for _ in range(subset.samples.shape[0])]
+    return np.array(idx)
+
+
+@task(returns=3)
+def _train(return_classifier, random_state, *flattened_data, **params):
+    data = list(zip(*[iter(flattened_data)]*2))  # unflatten, grouping by 2
+
+    subset, ids = _merge(data)
 
     clf = SVC(random_state=random_state, **params)
     clf.fit(X=subset.samples, y=subset.labels)
 
     sup_vec = subset[clf.support_]
+    sup_vec_ids = ids[clf.support_]
 
     if return_classifier:
-        return sup_vec, clf
+        return sup_vec, sup_vec_ids, clf
     else:
-        return sup_vec, None
+        return sup_vec, sup_vec_ids, None
 
 
 @task(subset=INOUT)
@@ -355,10 +378,21 @@ def _merge_scores(*partials):
     return total_correct / total_size
 
 
-def _merge(*subsets):
-    set0 = subsets[0].copy()
+def _merge(data):
+    subset, ids = data[0]
+    subset = subset.copy()
 
-    for setx in subsets[1:]:
-        set0.concatenate(setx, remove_duplicates=True)
+    for subset_x, ids_x in data[1:]:
+        subset, ids = _merge_pair(subset, ids, subset_x, ids_x)
+    return subset, ids
 
-    return set0
+
+def _merge_pair(subset_0, ids_0, subset_1, ids_1):
+    subset_0.concatenate(subset_1)
+    ids = np.concatenate((ids_0, ids_1))
+    ids, uniques = np.unique(ids, return_index=True)
+    indices = np.argsort(uniques)
+    uniques = uniques[indices]
+    ids = ids[indices]
+    subset_0 = subset_0[uniques]
+    return subset_0, ids

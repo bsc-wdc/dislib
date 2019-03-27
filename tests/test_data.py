@@ -527,20 +527,6 @@ class SubsetTest(unittest.TestCase):
 
         self.assertEqual(subset1.labels.shape[0], 24)
 
-    def test_concatenate_removing_duplicates(self):
-        """ Tests that concatenate() removes duplicate samples.
-        """
-        labels1 = np.random.random(25)
-        labels2 = np.random.random(35)
-
-        subset1 = Subset(samples=np.random.random((25, 8)), labels=labels1)
-        subset2 = Subset(samples=np.random.random((35, 8)), labels=labels2)
-
-        subset1.concatenate(subset2)
-        subset2.concatenate(subset1, remove_duplicates=True)
-
-        self.assertEqual(subset2.samples.shape[0], 60)
-
     def test_set_label(self):
         """ Tests setting a label.
         """
