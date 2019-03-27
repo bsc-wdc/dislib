@@ -1,3 +1,4 @@
+from itertools import chain
 from uuid import uuid4
 
 import numpy as np
@@ -216,25 +217,27 @@ class CascadeSVM(object):
     def _do_iteration(self, dataset, dataset_ids):
         q = []
         params = self._clf_params
+        arity = self._arity
 
         # first level
         for subset, subset_ids in zip(dataset, dataset_ids):
-            data = [subset, subset_ids]
+            data = [(subset, subset_ids)]
             if self._feedback is not None:
-                data.extend((self._feedback, self._feedback_ids))
-            _out = _train(False, self._random_state, *data, **params)
+                data.append((self._feedback, self._feedback_ids))
+            flattened_data = chain.from_iterable(data)
+            _out = _train(False, self._random_state, *flattened_data, **params)
             sup_vec, sup_vec_ids, _ = _out
-            q.extend((sup_vec, sup_vec_ids))
+            q.append((sup_vec, sup_vec_ids))
 
         # reduction
-        arity = self._arity * 2
         while len(q) > arity:
             data = q[:arity]
             del q[:arity]
 
-            _out = _train(False, self._random_state, *data, **params)
+            flattened_data = chain.from_iterable(data)
+            _out = _train(False, self._random_state, *flattened_data, **params)
             sup_vec, sup_vec_ids, _ = _out
-            q.extend((sup_vec, sup_vec_ids))
+            q.append((sup_vec, sup_vec_ids))
 
             # delete partial results
             for partial in data:
@@ -242,7 +245,8 @@ class CascadeSVM(object):
 
         # last layer
         get_clf = (self._check_convergence or self._is_last_iteration())
-        _out = _train(get_clf, self._random_state, *q, **params)
+        flattened_q = chain.from_iterable(q)
+        _out = _train(get_clf, self._random_state, *flattened_q, **params)
         self._feedback, self._feedback_ids, self._clf = _out
         self.iterations += 1
 
@@ -325,13 +329,10 @@ def _create_ids(subset):
 
 
 @task(returns=3)
-def _train(return_classifier, random_state, *subsets_and_ids, **params):
-    # `subsets_and_ids` alternates subsets and ids.
-    # This could be implemented using COLLECTION_IN  and 2 lists instead.
-    subsets = subsets_and_ids[::2]
-    ids_list = subsets_and_ids[1::2]
+def _train(return_classifier, random_state, *flattened_data, **params):
+    data = list(zip(*[iter(flattened_data)]*2))  # unflatten, grouping by 2
 
-    subset, ids = _merge(subsets, ids_list)
+    subset, ids = _merge(data)
 
     clf = SVC(random_state=random_state, **params)
     clf.fit(X=subset.samples, y=subset.labels)
@@ -377,18 +378,16 @@ def _merge_scores(*partials):
     return total_correct / total_size
 
 
-def _merge(subsets, ids_list):
-    subset = subsets[0].copy()
-    ids = ids_list[0]
+def _merge(data):
+    subset, ids = data[0]
+    subset = subset.copy()
 
-    for subset_x, ids_x in zip(subsets[1:], ids_list[1:]):
-        subset, ids = _merge_pair((subset, ids), (subset_x, ids_x))
+    for subset_x, ids_x in data[1:]:
+        subset, ids = _merge_pair(subset, ids, subset_x, ids_x)
     return subset, ids
 
 
-def _merge_pair(set_0, set_1):
-    subset_0, ids_0 = set_0
-    subset_1, ids_1 = set_1
+def _merge_pair(subset_0, ids_0, subset_1, ids_1):
     subset_0.concatenate(subset_1)
     ids = np.concatenate((ids_0, ids_1))
     ids, uniques = np.unique(ids, return_index=True)
