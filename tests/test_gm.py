@@ -6,12 +6,13 @@ from pycompss.api.api import compss_wait_on
 from sklearn.datasets import make_blobs
 
 from dislib.cluster import GaussianMixture
-from dislib.data import Dataset
+from dislib.data import Dataset, load_libsvm_file
 from dislib.data import Subset
 from dislib.data import load_data
 
 
 class GaussianMixtureTest(unittest.TestCase):
+
     def test_init_params(self):
         """Tests that GaussianMixture params are set"""
         n_components = 2
@@ -151,6 +152,19 @@ class GaussianMixtureTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             gm = GaussianMixture(covariance_type='')
             gm.fit(dataset)
+
+    def test_sparse(self):
+        """ Tests GaussianMixture produces the same results using dense and
+        sparse data structures. """
+        file_ = "tests/files/libsvm/2"
+
+        sparse = load_libsvm_file(file_, 10, 780)
+        dense = load_libsvm_file(file_, 10, 780, store_sparse=False)
+
+        gm = GaussianMixture(n_components=4, random_state=170)
+        gm.fit_predict(sparse)
+        gm.fit_predict(dense)
+        self.assertTrue(np.array_equal(sparse.labels, dense.labels))
 
 
 def main():
