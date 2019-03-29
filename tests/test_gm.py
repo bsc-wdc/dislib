@@ -166,6 +166,16 @@ class GaussianMixtureTest(unittest.TestCase):
         gm.fit_predict(dense)
         self.assertTrue(np.array_equal(sparse.labels, dense.labels))
 
+    def test_init_random(self):
+        """ Tests GaussianMixture random initialization."""
+        np.random.seed(0)
+        x = np.random.rand(50, 3)
+        dataset = load_data(x, subset_size=10)
+        gm = GaussianMixture(init_params='random', n_components=4,
+                             random_state=170)
+        gm.fit(dataset)
+        self.assertGreater(gm.n_iter, 5)
+
 
 def main():
     unittest.main()
