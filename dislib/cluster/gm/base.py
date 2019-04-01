@@ -5,6 +5,7 @@ from numpy.random.mtrand import RandomState
 from pycompss.api.api import compss_wait_on
 from pycompss.api.parameter import INOUT
 from scipy import linalg
+from scipy.sparse import issparse
 from sklearn.utils import validation
 from sklearn.utils.fixes import logsumexp
 from sklearn.exceptions import ConvergenceWarning
@@ -20,8 +21,12 @@ def _estimate_parameters_subset(subset, resp):
     subsample = subset.samples
     resp = resp.samples
     nk_ss = resp.sum(axis=0)
-    means_ss = np.dot(resp.T, subsample)
-    return len(subsample), nk_ss, means_ss
+    if issparse(subsample):
+        means_ss = subsample.T.dot(resp).T
+    else:
+        means_ss = np.matmul(resp.T, subsample)
+
+    return subsample.shape[0], nk_ss, means_ss
 
 
 def _reduce_estimate_parameters(partials, arity):
@@ -102,8 +107,13 @@ def _estimate_covariances_full(resp, subset, means):
     n_components, n_features = means.shape
     covariances = np.empty((n_components, n_features, n_features))
     for k in range(n_components):
-        diff = subsample - means[k]
-        covariances[k] = np.dot(resp[:, k] * diff.T, diff)
+        if issparse(subsample):
+            diff = (x - means[k] for x in subsample)
+            partial_covs = (np.dot(r*d.T, d) for d, r in zip(diff, resp[:, k]))
+            covariances[k] = sum(partial_covs)
+        else:
+            diff = subsample - means[k]
+            covariances[k] = np.dot(resp[:, k] * diff.T, diff)
     return covariances
 
 
@@ -243,7 +253,7 @@ def _estimate_log_gaussian_prob(x, means, precisions_chol, covariance_type):
 
     Parameters
     ----------
-    x : array-like, shape (n_samples, n_features)
+    x : array-like or csr_matrix, shape (n_samples, n_features)
 
     means : array-like, shape (n_components, n_features)
 
@@ -269,7 +279,10 @@ def _estimate_log_gaussian_prob(x, means, precisions_chol, covariance_type):
     if covariance_type == 'full':
         log_prob = np.empty((n_samples, n_components))
         for k, (mu, prec_chol) in enumerate(zip(means, precisions_chol)):
-            y = np.dot(x, prec_chol) - np.dot(mu, prec_chol)
+            if issparse(x):
+                y = x.dot(prec_chol) - np.dot(mu, prec_chol)
+            else:
+                y = np.matmul(x, prec_chol) - np.dot(mu, prec_chol)
             log_prob[:, k] = np.sum(np.square(y), axis=1)
 
     # elif covariance_type == 'tied':
@@ -765,7 +778,7 @@ def _resp_subset(labeled_subset, n_components):
 
 @task(returns=1)
 def _random_resp_subset(subset, n_components, seed):
-    n_samples = len(subset.samples)
+    n_samples = subset.samples.shape[0]
     resp_chunk = RandomState(seed).rand(n_samples, n_components)
     resp_chunk /= resp_chunk.sum(axis=1)[:, np.newaxis]
     return Subset(resp_chunk)
