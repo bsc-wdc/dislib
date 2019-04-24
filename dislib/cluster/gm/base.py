@@ -2,7 +2,7 @@ import warnings
 
 import numpy as np
 from numpy.random.mtrand import RandomState
-from pycompss.api.api import compss_wait_on
+from pycompss.api.api import compss_wait_on, compss_delete_object
 from pycompss.api.parameter import INOUT
 from scipy import linalg
 from scipy.sparse import issparse
@@ -559,6 +559,8 @@ class GaussianMixture:
 
             log_prob_norm, resp = self._e_step(dataset)
             self._m_step(dataset, resp)
+            for resp_subset in resp:
+                compss_delete_object(resp_subset)
             log_prob_total, log_prob_count = compss_wait_on(log_prob_norm)
             self.lower_bound_ = log_prob_total / log_prob_count
 
@@ -765,6 +767,9 @@ class GaussianMixture:
                                                         lower=True)
         else:
             self.precisions_cholesky_ = self.precisions_init
+
+        for resp_subset in resp:
+            compss_delete_object(resp_subset)
 
 
 @task(returns=1)
