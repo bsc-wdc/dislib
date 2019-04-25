@@ -65,6 +65,7 @@ Currently, the following supercomputers have already PyCOMPSs installed and read
 - Jureca - Jülich Supercomputing Centre (JSC)
 - Ultraviolet - The Genome Analysis Center (TGAC)
 - Archer - University of Edinburgh’s Advanced Computing Facility (ACF)
+- Axiom - University of Novi Sad, Faculty of Sciences (UNSPMF)
 
 Supported architectures:
 - [Intel SSF architectures](https://www.intel.com/content/www/us/en/high-performance-computing/ssf-architecture-specification.html)
