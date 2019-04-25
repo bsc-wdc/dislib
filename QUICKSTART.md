@@ -25,7 +25,8 @@ numpydoc >= 0.8.0 is requried to build the documentation.
     
 2. Install PyCOMPSs following these [instructions](http://compss.bsc.es/releases/compss/latest/docs/COMPSs_Installation_Manual.pdf).
 
-3. Install latest dislib version with ``pip3 install dislib``.
+3. Install the latest dislib version with ``pip3 install dislib``.
+   * **IMPORTANT:** dislib requires the ``pycompss`` Python module. However, this command will **NOT** install the module automatically. The module should be available after manually installing PyCOMPSs following the instructions in step 2. For more information on this, see [here](https://github.com/bsc-wdc/dislib/issues/190).
 
 4. You can check that everything works fine by running one of our examples:
 
