@@ -1,9 +1,12 @@
 import unittest
+import sys
+import io
 
 import numpy as np
 from numpy.random.mtrand import RandomState
 from pycompss.api.api import compss_wait_on
-from sklearn.datasets import make_blobs
+from sklearn.datasets import make_blobs, load_iris
+from sklearn.exceptions import ConvergenceWarning
 
 from dislib.cluster import GaussianMixture
 from dislib.data import Dataset, load_libsvm_file
@@ -153,21 +156,33 @@ class GaussianMixtureTest(unittest.TestCase):
             gm = GaussianMixture(covariance_type='')
             gm.fit(dataset)
 
+    def test_check_init_params(self):
+        """Tests GaussianMixture covariance_type validation"""
+        x = np.array([[0, 0], [0, 1], [1, 0]])
+        dataset = load_data(x, subset_size=10)
+        with self.assertRaises(ValueError):
+            gm = GaussianMixture(init_params='')
+            gm.fit(dataset)
+
     def test_sparse(self):
         """ Tests GaussianMixture produces the same results using dense and
-        sparse data structures. """
+        sparse data structures """
         file_ = "tests/files/libsvm/2"
 
         sparse = load_libsvm_file(file_, 10, 780)
         dense = load_libsvm_file(file_, 10, 780, store_sparse=False)
 
-        gm = GaussianMixture(n_components=4, random_state=170)
-        gm.fit_predict(sparse)
-        gm.fit_predict(dense)
-        self.assertTrue(np.array_equal(sparse.labels, dense.labels))
+        covariance_types = 'full', 'tied', 'diag', 'spherical'
+
+        for cov_type in covariance_types:
+            gm = GaussianMixture(n_components=4, random_state=0,
+                                 covariance_type=cov_type)
+            gm.fit_predict(sparse)
+            gm.fit_predict(dense)
+            self.assertTrue(np.array_equal(sparse.labels, dense.labels))
 
     def test_init_random(self):
-        """ Tests GaussianMixture random initialization."""
+        """ Tests GaussianMixture random initialization """
         np.random.seed(0)
         x = np.random.rand(50, 3)
         dataset = load_data(x, subset_size=10)
@@ -175,6 +190,143 @@ class GaussianMixtureTest(unittest.TestCase):
                              random_state=170)
         gm.fit(dataset)
         self.assertGreater(gm.n_iter, 5)
+
+    def test_covariance_types(self):
+        """ Tests GaussianMixture covariance types """
+        np.random.seed(0)
+        n_samples = 600
+        n_features = 2
+
+        def create_anisotropic_dataset():
+            """Create dataset with 2 anisotropic gaussians of different
+            weight"""
+            n0 = 2 * n_samples // 3
+            n1 = n_samples // 3
+            x0 = np.random.normal(size=(n0, n_features))
+            x1 = np.random.normal(size=(n1, n_features))
+            transformation = [[0.6, -0.6], [-0.4, 0.8]]
+            x0 = np.dot(x0, transformation)
+            x1 = np.dot(x1, transformation) + [0, 3]
+            x = np.concatenate((x0, x1))
+            y = np.concatenate((np.zeros(n0), np.ones(n1)))
+            return x, y
+
+        def create_spherical_blobs_dataset():
+            """Create dataset with 2 spherical gaussians of different weight,
+            variance and position"""
+            n0 = 2 * n_samples // 3
+            n1 = n_samples // 3
+            x0 = np.random.normal(size=(n0, 2), scale=0.5, loc=[2, 0])
+            x1 = np.random.normal(size=(n1, 2), scale=2.5)
+            x = np.concatenate((x0, x1))
+            y = np.concatenate((np.zeros(n0), np.ones(n1)))
+            return x, y
+
+        def create_uncorrelated_dataset():
+            """Create dataset with 2 gaussians forming a cross of uncorrelated
+            variables"""
+            n0 = 2 * n_samples // 3
+            n1 = n_samples // 3
+            x0 = np.random.normal(size=(n0, n_features))
+            x1 = np.random.normal(size=(n1, n_features))
+            x0 = np.dot(x0, [[1.2, 0], [0, 0.5]]) + [0, 3]
+            x1 = np.dot(x1, [[0.4, 0], [0, 2.5]]) + [1, 0]
+            x = np.concatenate((x0, x1))
+            y = np.concatenate((np.zeros(n0), np.ones(n1)))
+            return x, y
+
+        def create_correlated_dataset():
+            """Create dataset with 2 gaussians forming a cross of correlated
+            variables"""
+            x, y = create_uncorrelated_dataset()
+            x = np.dot(x, [[1, 1], [-1, 1]])
+            return x, y
+
+        datasets = {'aniso': create_anisotropic_dataset(),
+                    'blobs': create_spherical_blobs_dataset(),
+                    'uncorr': create_uncorrelated_dataset(),
+                    'corr': create_correlated_dataset()}
+        real_labels = {k: v[1] for k, v in datasets.items()}
+        for k, v in datasets.items():
+            datasets[k] = load_data(x=v[0], subset_size=200)
+
+        covariance_types = 'full', 'tied', 'diag', 'spherical'
+
+        def compute_accuracy(real, predicted):
+            """ Computes classification accuracy for binary (0/1) labels"""
+            equal_labels = np.count_nonzero(predicted == real)
+            equal_ratio = equal_labels / len(real)
+            return max(equal_ratio, 1-equal_ratio)
+
+        accuracy = {}
+        pred_labels = {}
+        for cov_type in covariance_types:
+            accuracy[cov_type] = {}
+            pred_labels[cov_type] = {}
+            gm = GaussianMixture(n_components=2, covariance_type=cov_type,
+                                 random_state=0)
+            for ds in datasets.values():
+                gm.fit_predict(ds)
+            for k, ds in datasets.items():
+                pred = ds.labels
+                pred_labels[cov_type][k] = pred
+                accuracy[cov_type][k] = compute_accuracy(real_labels[k], pred)
+
+        # Covariance type 'full'.
+        # Assert good accuracy in all tested datasets.
+        self.assertGreater(accuracy['full']['aniso'], 0.9)
+        self.assertGreater(accuracy['full']['blobs'], 0.9)
+        self.assertGreater(accuracy['full']['uncorr'], 0.9)
+        self.assertGreater(accuracy['full']['corr'], 0.9)
+
+        # Covariance type 'tied'.
+        # Assert good accuracy only for 'aniso'.
+        self.assertGreater(accuracy['tied']['aniso'], 0.9)
+        self.assertLess(accuracy['tied']['blobs'], 0.9)
+        self.assertLess(accuracy['tied']['uncorr'], 0.9)
+        self.assertLess(accuracy['tied']['corr'], 0.9)
+
+        # Covariance type 'diag'.
+        # Assert good accuracy only for 'blobs' and 'uncorr'.
+        self.assertLess(accuracy['diag']['aniso'], 0.9)
+        self.assertGreater(accuracy['diag']['blobs'], 0.9)
+        self.assertGreater(accuracy['diag']['uncorr'], 0.9)
+        self.assertLess(accuracy['diag']['corr'], 0.9)
+
+        # Covariance type 'spherical'.
+        # Assert good accuracy only for 'blobs'.
+        self.assertLess(accuracy['spherical']['aniso'], 0.9)
+        self.assertGreater(accuracy['spherical']['blobs'], 0.9)
+        self.assertLess(accuracy['spherical']['uncorr'], 0.9)
+        self.assertLess(accuracy['spherical']['corr'], 0.9)
+
+        # For a graphical plot of the results of this comparision, see
+        # examples/gm_covariance_types_comparision.py
+
+    def test_verbose(self):
+        """ Tests GaussianMixture verbose mode prints text """
+        saved_stdout = sys.stdout
+        try:
+            sys.stdout = io.StringIO()
+
+            # Call code that has to print
+            x = np.array([[0, 0], [0, 1], [1, 0]])
+            dataset = load_data(x, subset_size=10)
+            gm = GaussianMixture(verbose=True, max_iter=2)
+            gm.fit(dataset)
+            captured_output = sys.stdout.getvalue()
+
+        finally:
+            sys.stdout = saved_stdout
+
+        self.assertTrue(len(captured_output) > 0)
+
+    def test_not_converged_warning(self):
+        with self.assertWarns(ConvergenceWarning):
+            x, _ = load_iris(return_X_y=True)
+            dataset = load_data(x, subset_size=75)
+            gm = GaussianMixture(max_iter=1)
+            gm.fit(dataset)
 
 
 def main():

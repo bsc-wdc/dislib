@@ -7,6 +7,7 @@ from pycompss.api.parameter import INOUT
 from scipy import linalg
 from scipy.sparse import issparse
 from sklearn.utils import validation
+from sklearn.utils.extmath import row_norms
 from sklearn.utils.fixes import logsumexp
 from sklearn.exceptions import ConvergenceWarning
 
@@ -34,7 +35,7 @@ def _reduce_estimate_parameters(partials, arity):
         partials_subset = partials[:arity]
         partials = partials[arity:]
         partials.append(_merge_estimate_parameters(*partials_subset))
-    return aggregate_parameters(partials[0])
+    return _finalize_parameters(partials[0])
 
 
 @task(returns=1)
@@ -46,7 +47,7 @@ def _merge_estimate_parameters(*subsets_params):
 
 
 @task(returns=3)
-def aggregate_parameters(params):
+def _finalize_parameters(params):
     n_samples = params[0]
     nk = params[1]
     nk += 10 * np.finfo(nk.dtype).eps
@@ -80,28 +81,30 @@ def _estimate_covariances(dataset, resp, nk, means, reg_covar, covar_type,
     cholesky_precisions : array-like, shape (n_components,)
         The numbers of data samples in the current components.
     """
-    subsets_covariances = []
-    estimate_covariances_function = {
-        "full": _estimate_covariances_full,
-        # "tied": _estimate_covariances_tied,
-        # "diag": _estimate_covariances_diag,
-        # "spherical": _estimate_covariances_spherical
+    partials = []
+    partial_covar = {
+        "full": _partial_covar_full,
+        "tied": lambda r, s, m: _partial_covar_tied(s),
+        "diag": _partial_covar_diag,
+        "spherical": _partial_covar_diag  # uses same partial as diag
         }[covar_type]
     for ss, resp_ss in zip(dataset, resp):
-        ss_covariances = estimate_covariances_function(resp_ss, ss, means)
-        subsets_covariances.append(ss_covariances)
-    reduce_covariances_function = {
-        "full": _reduce_covariances_full,
-        # "tied": _reduce_covariances_tied,
-        # "diag": _reduce_covariances_diag,
-        # "spherical": _reduce_covariances_spherical
-    }[covar_type]
-    return reduce_covariances_function(covar_type, reg_covar, nk, arity,
-                                       subsets_covariances)
+        partials.append(partial_covar(resp_ss, ss, means))
+    while len(partials) > 1:
+        partials_chunk = partials[:arity]
+        partials = partials[arity:]
+        partials.append(_sum_covar_partials(*partials_chunk))
+    finalize_covariances = {
+        "full": lambda t, r, n, m, p: _finalize_covar_full(t, r, n, p),
+        "tied": _finalize_covar_tied,
+        "diag": _finalize_covar_diag,
+        "spherical": _finalize_covar_spherical
+        }[covar_type]
+    return finalize_covariances(covar_type, reg_covar, nk, means, partials[0])
 
 
 @task(returns=1)
-def _estimate_covariances_full(resp, subset, means):
+def _partial_covar_full(resp, subset, means):
     subsample = subset.samples
     resp = resp.samples
     n_components, n_features = means.shape
@@ -117,27 +120,70 @@ def _estimate_covariances_full(resp, subset, means):
     return covariances
 
 
-def _reduce_covariances_full(covariance_type, reg_covar, nk, arity, partials):
-    while len(partials) > 1:
-        partials_subset = partials[:arity]
-        partials = partials[arity:]
-        partials.append(_merge_covariances_full(*partials_subset))
-    return _aggregate_covariances_full(covariance_type, reg_covar, nk,
-                                       partials[0])
+@task(returns=1)
+def _partial_covar_tied(subset):
+    subsample = subset.samples
+    if issparse(subsample):
+        avg_sample_2 = subsample.T.dot(subsample)
+    else:
+        avg_sample_2 = np.dot(subsample.T, subsample)
+    return avg_sample_2
 
 
 @task(returns=1)
-def _merge_covariances_full(*subsets_covs):
-    return sum(cov for cov in subsets_covs)
+def _partial_covar_diag(resp, subset, means):
+    subsample = subset.samples
+    resp = resp.samples
+    if issparse(subsample):
+        avg_resp_sample_2 = subsample.multiply(subsample).T.dot(resp).T
+        avg_sample_means = means * subsample.T.dot(resp).T
+    else:
+        avg_resp_sample_2 = np.dot(resp.T, subsample * subsample)
+        avg_sample_means = means * np.dot(resp.T, subsample)
+    return avg_resp_sample_2 - 2 * avg_sample_means
+
+
+@task(returns=1)
+def _sum_covar_partials(*covar_partials):
+    return sum(covar_partials)
 
 
 @task(returns=2)
-def _aggregate_covariances_full(covariance_type, reg_covar, nk, covariances):
+def _finalize_covar_full(covar_type, reg_covar, nk, covariances):
     n_components, n_features, _ = covariances.shape
     for k in range(n_components):
         covariances[k] /= nk[k]
         covariances[k].flat[::n_features + 1] += reg_covar
-    precisions_chol = _compute_precision_cholesky(covariances, covariance_type)
+    precisions_chol = _compute_precision_cholesky(covariances, covar_type)
+    return covariances, precisions_chol
+
+
+@task(returns=2)
+def _finalize_covar_tied(covar_type, reg_covar, nk, means, covariances):
+    avg_means2 = np.dot(nk * means.T, means)
+    covariances -= avg_means2
+    covariances /= nk.sum()
+    covariances.flat[::len(covariances) + 1] += reg_covar
+    precisions_chol = _compute_precision_cholesky(covariances, covar_type)
+    return covariances, precisions_chol
+
+
+@task(returns=2)
+def _finalize_covar_diag(covar_type, reg_covar, nk, means, covariances):
+    covariances /= nk[:, np.newaxis]
+    covariances += means ** 2
+    covariances += reg_covar
+    precisions_chol = _compute_precision_cholesky(covariances, covar_type)
+    return covariances, precisions_chol
+
+
+@task(returns=2)
+def _finalize_covar_spherical(covar_type, reg_covar, nk, means, covariances):
+    covariances /= nk[:, np.newaxis]
+    covariances += means ** 2
+    covariances += reg_covar
+    covariances = covariances.mean(1)
+    precisions_chol = _compute_precision_cholesky(covariances, covar_type)
     return covariances, precisions_chol
 
 
@@ -176,15 +222,15 @@ def _compute_precision_cholesky(covariances, covariance_type):
             precisions_chol[k] = linalg.solve_triangular(cov_chol,
                                                          np.eye(n_features),
                                                          lower=True).T
-    # elif covariance_type == 'tied':
-    #     _, n_features = covariances.shape
-    #     try:
-    #         cov_chol = linalg.cholesky(covariances, lower=True)
-    #     except linalg.LinAlgError:
-    #         raise ValueError(estimate_precision_error_message)
-    #     precisions_chol = linalg.solve_triangular(cov_chol,
-    #                                               np.eye(n_features),
-    #                                               lower=True).T
+    elif covariance_type == 'tied':
+        _, n_features = covariances.shape
+        try:
+            cov_chol = linalg.cholesky(covariances, lower=True)
+        except linalg.LinAlgError:
+            raise ValueError(estimate_precision_error_message)
+        precisions_chol = linalg.solve_triangular(cov_chol,
+                                                  np.eye(n_features),
+                                                  lower=True).T
     else:
         if np.any(np.less_equal(covariances, 0.0)):
             raise ValueError(estimate_precision_error_message)
@@ -285,24 +331,37 @@ def _estimate_log_gaussian_prob(x, means, precisions_chol, covariance_type):
                 y = np.matmul(x, prec_chol) - np.dot(mu, prec_chol)
             log_prob[:, k] = np.sum(np.square(y), axis=1)
 
-    # elif covariance_type == 'tied':
-    #     log_prob = np.empty((n_samples, n_components))
-    #     for k, mu in enumerate(means):
-    #         y = np.dot(x, precisions_chol) - np.dot(mu, precisions_chol)
-    #         log_prob[:, k] = np.sum(np.square(y), axis=1)
-    #
-    # elif covariance_type == 'diag':
-    #     precisions = precisions_chol ** 2
-    #     log_prob = (np.sum((means ** 2 * precisions), 1) -
-    #                 2. * np.dot(x, (means * precisions).T) +
-    #                 np.dot(x ** 2, precisions.T))
-    #
-    # elif covariance_type == 'spherical':
-    #     precisions = precisions_chol ** 2
-    #     log_prob = (np.sum(means ** 2, 1) * precisions -
-    #                 2 * np.dot(x, means.T * precisions) +
-    #                 np.outer(row_norms(x, squared=True), precisions))
-    else:
+    elif covariance_type == 'tied':
+        log_prob = np.empty((n_samples, n_components))
+        for k, mu in enumerate(means):
+            if issparse(x):
+                y = x.dot(precisions_chol) - np.dot(mu, precisions_chol)
+            else:
+                y = np.dot(x, precisions_chol) - np.dot(mu, precisions_chol)
+            log_prob[:, k] = np.sum(np.square(y), axis=1)
+
+    elif covariance_type == 'diag':
+        precisions = precisions_chol ** 2
+        if issparse(x):
+            log_prob = (np.sum((means ** 2 * precisions), 1) -
+                        2. * (x * (means * precisions).T) +
+                        x.multiply(x).dot(precisions.T))
+        else:
+            log_prob = (np.sum((means ** 2 * precisions), 1) -
+                        2. * np.dot(x, (means * precisions).T) +
+                        np.dot(x ** 2, precisions.T))
+
+    elif covariance_type == 'spherical':
+        precisions = precisions_chol ** 2
+        if issparse(x):
+            log_prob = (np.sum(means ** 2, 1) * precisions -
+                        2 * (x * (means.T * precisions)) +
+                        np.outer(row_norms(x, squared=True), precisions))
+        else:
+            log_prob = (np.sum(means ** 2, 1) * precisions -
+                        2 * np.dot(x, means.T * precisions) +
+                        np.outer(row_norms(x, squared=True), precisions))
+    else:   # pragma: no cover
         raise ValueError()
     return -.5 * (n_features * np.log(2 * np.pi) + log_prob) + log_det
 
@@ -335,14 +394,14 @@ def _compute_log_det_cholesky(matrix_chol, covariance_type, n_features):
             matrix_chol.reshape(
                 n_components, -1)[:, ::n_features + 1]), 1))
 
-    # elif covariance_type == 'tied':
-    #     log_det_chol = (np.sum(np.log(np.diag(matrix_chol))))
-    #
-    # elif covariance_type == 'diag':
-    #     log_det_chol = (np.sum(np.log(matrix_chol), axis=1))
-    #
-    # else:
-    #     log_det_chol = n_features * (np.log(matrix_chol))
+    elif covariance_type == 'tied':
+        log_det_chol = (np.sum(np.log(np.diag(matrix_chol))))
+
+    elif covariance_type == 'diag':
+        log_det_chol = (np.sum(np.log(matrix_chol), axis=1))
+
+    else:
+        log_det_chol = n_features * (np.log(matrix_chol))
 
     return log_det_chol
 
@@ -372,9 +431,9 @@ class GaussianMixture:
         Must be one of::
 
             'full' (each component has its own general covariance matrix),
-            # 'tied' (all components share the same general covariance matrix),
-            # 'diag' (each component has its own diagonal covariance matrix),
-            # 'spherical' (each component has its own single variance).
+            'tied' (all components share the same general covariance matrix),
+            'diag' (each component has its own diagonal covariance matrix),
+            'spherical' (each component has its own single variance).
     tol : float, defaults to 1e-3.
         The convergence threshold. EM iterations will stop when the
         lower bound average gain is below this threshold.
@@ -402,9 +461,9 @@ class GaussianMixture:
         If it None, precisions are initialized using the 'init_params' method.
         The shape depends on 'covariance_type'::
 
-            # (n_components,)                        if 'spherical',
-            # (n_features, n_features)               if 'tied',
-            # (n_components, n_features)             if 'diag',
+            (n_components,)                        if 'spherical',
+            (n_features, n_features)               if 'tied',
+            (n_components, n_features)             if 'diag',
             (n_components, n_features, n_features) if 'full'
     random_state : int, RandomState or None, optional (default=None)
         If int, random_state is the seed used by the random number generator;
@@ -426,9 +485,9 @@ class GaussianMixture:
         The covariance of each mixture component.
         The shape depends on `covariance_type`::
 
-            # (n_components,)                        if 'spherical',
-            # (n_features, n_features)               if 'tied',
-            # (n_components, n_features)             if 'diag',
+            (n_components,)                        if 'spherical',
+            (n_features, n_features)               if 'tied',
+            (n_components, n_features)             if 'diag',
             (n_components, n_features, n_features) if 'full'
     precisions_cholesky_ : array-like
         The cholesky decomposition of the precision matrices of each mixture
@@ -439,14 +498,14 @@ class GaussianMixture:
         it more efficient to compute the log-likelihood of new samples at test
         time. The shape depends on `covariance_type`::
 
-            # (n_components,)                        if 'spherical',
-            # (n_features, n_features)               if 'tied',
-            # (n_components, n_features)             if 'diag',
+            (n_components,)                        if 'spherical',
+            (n_features, n_features)               if 'tied',
+            (n_components, n_features)             if 'diag',
             (n_components, n_features, n_features) if 'full'
     converged_ : bool
-        True when convergence was reached in fit(), False otherwise.
+        True if convergence is reached, False otherwise.
     n_iter : int
-        Number of EM iterations used in fit().
+        Number of EM iterations done.
     lower_bound_ : float
         Log-likelihood of the predicted distribution with the given data.
 
@@ -554,7 +613,7 @@ class GaussianMixture:
         self.lower_bound_ = -np.infty
         if self._verbose:
             print("GaussianMixture EM algorithm start")
-        for n_iter in range(1, self.max_iter + 1):
+        for self.n_iter in range(1, self.max_iter + 1):
             prev_lower_bound = self.lower_bound_
 
             log_prob_norm, resp = self._e_step(dataset)
@@ -567,11 +626,11 @@ class GaussianMixture:
             diff = abs(self.lower_bound_ - prev_lower_bound)
 
             if self._verbose:
-                print("Iteration %s - Convergence crit. = %s" % (n_iter, diff))
+                iter_msg_template = "Iteration %s - Convergence crit. = %s"
+                print(iter_msg_template % (self.n_iter, diff))
 
             if diff < self.tol:
                 self.converged_ = True
-                self.n_iter = n_iter
                 break
 
         if not self.converged_:
