@@ -3,7 +3,7 @@ from pycompss.api.api import compss_wait_on
 from pycompss.api.parameter import INOUT
 from pycompss.api.task import task
 from scipy.sparse import csr_matrix
-from sklearn.metrics import pairwise_distances
+from sklearn.metrics import pairwise_distances, pairwise_distances_argmin
 
 
 class KMeans:
@@ -167,16 +167,32 @@ def _init_centers(n_features, sparse, n_clusters, random_state):
 def _partial_sum(subset, centers, set_labels, sparse):
     partials = np.zeros((centers.shape[0], 2), dtype=object)
     dist_f = _vec_matrix_euclid if not sparse else pairwise_distances
+    from scipy.spatial import distance_matrix
 
-    for idx, sample in enumerate(subset.samples):
-        dist = dist_f(sample, centers)
-        min_center = np.argmin(dist)
+    argmin = pairwise_distances(subset.samples, centers).argmin(axis=1)
+    #argmin = distance_matrix(subset.samples, centers).argmin(axis=1)
 
-        if set_labels:
-            subset.set_label(idx, min_center)
+    if set_labels:
+        subset.labels = argmin
 
-        partials[min_center][0] += sample
-        partials[min_center][1] += 1
+    for center_idx, _ in enumerate(centers):
+        indices = np.argwhere(argmin == center_idx)
+        partials[center_idx][0] = np.sum(subset.samples[indices], axis=0)
+        partials[center_idx][1] = indices.shape[0]
+
+    # for idx, sample in enumerate(subset.samples):
+    #     r_sample = np.reshape(sample, (1, sample.shape[0]))
+    #     argmin = pairwise_distances_argmin(r_sample, centers)
+    #     min_center = argmin[0]
+    #
+    #     # dist = dist_f(sample, centers)
+    #     # min_center = np.argmin(dist)
+    #
+    #     if set_labels:
+    #         subset.set_label(idx, min_center)
+    #
+    #     partials[min_center][0] += sample
+    #     partials[min_center][1] += 1
 
     return partials
 
@@ -203,7 +219,6 @@ def _predict(subset, centers, sparse):
 
 def _vec_matrix_euclid(vector, matrix):
     return np.linalg.norm(vector - matrix, axis=1)
-
 
 def _vec_euclid(vec1, vec2):
     return np.linalg.norm(vec1 - vec2)
