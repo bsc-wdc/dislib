@@ -9,11 +9,11 @@ Subpackages
     dislib.classification.csvm
     dislib.classification.rf
     dislib.cluster.kmeans
-    dislib.cluster.knn
+    dislib.neighbors
     dislib.cluster.dbscan
     dislib.recommendation.als
     dislib.data
-    dislib.fft
+    dislib.other
 
 .. automodule:: dislib
     :members:

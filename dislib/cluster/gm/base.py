@@ -507,7 +507,8 @@ class GaussianMixture:
     n_iter : int
         Number of EM iterations done.
     lower_bound_ : float
-        Log-likelihood of the predicted distribution with the given data.
+        Lower bound value on the log-likelihood of the training data with
+        respect to the model.
 
     Examples
     --------
@@ -547,61 +548,15 @@ class GaussianMixture:
     def fit(self, dataset):
         """Estimate model parameters with the EM algorithm.
 
-        The method fits the model ``n_init`` times and sets the parameters with
-        which the model has the largest likelihood or lower bound. Within each
-        trial, the method iterates between E-step and M-step for ``max_iter``
+        The method iterates between E-step and M-step for ``max_iter``
         times until the change of likelihood or lower bound is less than
         ``tol``, otherwise, a ``ConvergenceWarning`` is raised.
-        If ``warm_start`` is ``True``, then ``n_init`` is ignored and a single
-        initialization is performed upon the first call. Upon consecutive
-        calls, training starts where it left off.
 
         Parameters
         ----------
         dataset : dislib.data.Dataset
             Data points.
         """
-        self._fit(dataset)
-        # Always do a final e-step to guarantee that the labels returned by
-        # fit_predict(X) are always consistent with fit(X).predict(X)
-        # for any value of max_iter and tol (and any random_state).
-        self._e_step(dataset)
-
-    def fit_predict(self, dataset):
-        """Estimate model parameters using X and predict the labels for X.
-
-        The method fits the model n_init times and sets the parameters with
-        which the model has the largest likelihood or lower bound. Within each
-        trial, the method iterates between E-step and M-step for `max_iter`
-        times until the change of likelihood or lower bound is less than
-        `tol`, otherwise, a `ConvergenceWarning` is raised. After fitting, it
-        predicts the most probable label for the input data points.
-
-        Parameters
-        ----------
-        dataset : dislib.data.Dataset
-            Data points.
-        """
-        self._fit(dataset)
-        _, resp = self._e_step(dataset)
-        _assign_predictions(dataset, resp)
-
-    def predict(self, dataset):
-        """Predict the labels for the data samples in x using trained model.
-
-        Parameters
-        ----------
-        dataset : dislib.data.Dataset
-            Data points.
-
-        """
-        validation.check_is_fitted(self,
-                                   ['weights_', 'means_',
-                                    'precisions_cholesky_'])
-        _, resp = self._e_step(dataset)
-        _assign_predictions(dataset, resp)
-
-    def _fit(self, dataset):
         self._check_initial_parameters()
 
         self.converged_ = False
@@ -639,6 +594,37 @@ class GaussianMixture:
                           'or increase max_iter, tol '
                           'or check for degenerate data.',
                           ConvergenceWarning)
+
+    def fit_predict(self, dataset):
+        """Estimate model parameters and predict labels of the same dataset.
+
+        The method iterates between E-step and M-step for `max_iter`
+        times until the change of likelihood or lower bound is less than
+        `tol`, otherwise, a `ConvergenceWarning` is raised. After fitting, it
+        predicts the most probable label for the input dataset.
+
+        Parameters
+        ----------
+        dataset : dislib.data.Dataset
+            Data points.
+        """
+        self.fit(dataset)
+        self.predict(dataset)
+
+    def predict(self, dataset):
+        """Predict labels for the given dataset using trained model.
+
+        Parameters
+        ----------
+        dataset : dislib.data.Dataset
+            Data points.
+
+        """
+        validation.check_is_fitted(self,
+                                   ['weights_', 'means_',
+                                    'precisions_cholesky_'])
+        _, resp = self._e_step(dataset)
+        _assign_predictions(dataset, resp)
 
     def _e_step(self, dataset):
         """E step.

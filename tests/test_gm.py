@@ -1,6 +1,7 @@
 import unittest
 import sys
 import io
+import warnings
 
 import numpy as np
 from numpy.random.mtrand import RandomState
@@ -327,6 +328,48 @@ class GaussianMixtureTest(unittest.TestCase):
             dataset = load_data(x, subset_size=75)
             gm = GaussianMixture(max_iter=1)
             gm.fit(dataset)
+
+    def test_fit_predict_vs_fit_and_predict(self):
+        """Tests GaussianMixture fit_predict() eq. fit() and predict() for both
+        converged and not converged runs (and a fixed random_state)."""
+        x0 = np.random.normal(size=(1000, 2))
+        x1 = np.random.normal(size=(2000, 2))
+        x0 = np.dot(x0, [[1.2, 1], [0, 0.5]]) + [0, 3]
+        x1 = np.dot(x1, [[0.4, 0], [1, 2.5]]) + [1, 0]
+        x = np.concatenate((x0, x1))
+        dataset = load_data(x, subset_size=1500)
+
+        # We check the cases with and without convergence
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", ConvergenceWarning)
+            for max_iter, converges in ((5, False), (100, True)):
+                gm1 = GaussianMixture(n_components=2, max_iter=max_iter,
+                                      random_state=0)
+                gm1.fit(dataset)
+                gm1.predict(dataset)
+                labels1 = dataset.labels
+
+                gm2 = GaussianMixture(n_components=2, max_iter=max_iter,
+                                      random_state=0)
+                gm2.fit_predict(dataset)
+                labels2 = dataset.labels
+
+                self.assertTrue(np.all(labels1 == labels2))
+                self.assertEqual(gm1.n_iter, gm2.n_iter)
+                self.assertEqual(converges, gm1.converged_)
+                self.assertEqual(gm1.converged_, gm2.converged_)
+                self.assertEqual(gm1.lower_bound_, gm2.lower_bound_)
+
+                gm1.weights_ = compss_wait_on(gm1.weights_)
+                gm1.means_ = compss_wait_on(gm1.means_)
+                gm1.covariances_ = compss_wait_on(gm1.covariances_)
+                gm2.weights_ = compss_wait_on(gm2.weights_)
+                gm2.means_ = compss_wait_on(gm2.means_)
+                gm2.covariances_ = compss_wait_on(gm2.covariances_)
+
+                self.assertTrue(np.all(gm1.weights_ == gm2.weights_))
+                self.assertTrue(np.all(gm1.means_ == gm2.means_))
+                self.assertTrue(np.all(gm1.covariances_ == gm2.covariances_))
 
 
 def main():
