@@ -158,11 +158,43 @@ class GaussianMixtureTest(unittest.TestCase):
             gm.fit(dataset)
 
     def test_check_init_params(self):
-        """Tests GaussianMixture covariance_type validation"""
+        """Tests GaussianMixture init_params validation"""
         x = np.array([[0, 0], [0, 1], [1, 0]])
         dataset = load_data(x, subset_size=10)
         with self.assertRaises(ValueError):
             gm = GaussianMixture(init_params='')
+            gm.fit(dataset)
+
+    def test_check_initial_parameters(self):
+        """Tests GaussianMixture initial parameters validation"""
+        x = np.array([[0, 0], [0, 1], [1, 0]])
+        dataset = load_data(x, subset_size=10)
+        with self.assertRaises(ValueError):
+            gm = GaussianMixture(weights_init=[1, 2])
+            gm.fit(dataset)
+        with self.assertRaises(ValueError):
+            gm = GaussianMixture(means_init=[1, 2])
+            gm.fit(dataset)
+        with self.assertRaises(ValueError):
+            gm = GaussianMixture(precisions_init=[1, 2],
+                                 covariance_type='full')
+            gm.fit(dataset)
+        with self.assertRaises(ValueError):
+            gm = GaussianMixture(precisions_init=[1, 2],
+                                 covariance_type='tied')
+            gm.fit(dataset)
+        with self.assertRaises(ValueError):
+            gm = GaussianMixture(precisions_init=[1, 2],
+                                 covariance_type='diag')
+            gm.fit(dataset)
+        with self.assertRaises(ValueError):
+            gm = GaussianMixture(precisions_init=[1, 2],
+                                 covariance_type='spherical')
+            gm.fit(dataset)
+        with self.assertRaises(ValueError):
+            gm = GaussianMixture(means_init=[[1, 2, 3]],
+                                 precisions_init=[[1, 2], [3, 4]],
+                                 covariance_type='tied')
             gm.fit(dataset)
 
     def test_sparse(self):
@@ -188,7 +220,7 @@ class GaussianMixtureTest(unittest.TestCase):
         x = np.random.rand(50, 3)
         dataset = load_data(x, subset_size=10)
         gm = GaussianMixture(init_params='random', n_components=4,
-                             random_state=170)
+                             arity=2, random_state=170)
         gm.fit(dataset)
         self.assertGreater(gm.n_iter, 5)
 
@@ -323,6 +355,7 @@ class GaussianMixtureTest(unittest.TestCase):
         self.assertTrue(len(captured_output) > 0)
 
     def test_not_converged_warning(self):
+        """ Tests GaussianMixture warns when not converged """
         with self.assertWarns(ConvergenceWarning):
             x, _ = load_iris(return_X_y=True)
             dataset = load_data(x, subset_size=75)
@@ -370,6 +403,89 @@ class GaussianMixtureTest(unittest.TestCase):
                 self.assertTrue(np.all(gm1.weights_ == gm2.weights_))
                 self.assertTrue(np.all(gm1.means_ == gm2.means_))
                 self.assertTrue(np.all(gm1.covariances_ == gm2.covariances_))
+
+    def test_means_init_and_weights_init(self):
+        """ Tests GaussianMixture means_init and weights_init parameters """
+        x, _ = load_iris(return_X_y=True)
+        dataset = load_data(x, subset_size=75)
+        weights_init = [1/3, 1/3, 1/3]
+        means_init = np.array([[5, 3, 2, 0],
+                               [6, 3, 4, 1],
+                               [7, 3, 6, 2]])
+        gm = GaussianMixture(random_state=0, n_components=3,
+                             weights_init=weights_init, means_init=means_init)
+        gm.fit(dataset)
+        self.assertTrue(gm.converged_)
+
+    def test_precisions_init_full(self):
+        x, _ = load_iris(return_X_y=True)
+        dataset = load_data(x, subset_size=75)
+        weights_init = [1/3, 1/3, 1/3]
+        means_init = [[5, 3, 2, 0],
+                      [6, 3, 4, 1],
+                      [7, 3, 6, 2]]
+        np.random.seed(0)
+        rand_matrices = [np.random.rand(4, 4) for _ in range(3)]
+        precisions_init = [np.matmul(r, r.T) for r in rand_matrices]
+
+        gm = GaussianMixture(covariance_type='full', random_state=0,
+                             n_components=3, weights_init=weights_init,
+                             means_init=means_init,
+                             precisions_init=precisions_init)
+        gm.fit(dataset)
+        self.assertTrue(gm.converged_)
+
+    def test_precisions_init_tied(self):
+        x, _ = load_iris(return_X_y=True)
+        dataset = load_data(x, subset_size=75)
+        weights_init = [1/3, 1/3, 1/3]
+        means_init = [[5, 3, 2, 0],
+                      [6, 3, 4, 1],
+                      [7, 3, 6, 2]]
+        np.random.seed(0)
+        rand_matrix = np.random.rand(4, 4)
+        precisions_init = np.matmul(rand_matrix, rand_matrix.T)
+
+        gm = GaussianMixture(covariance_type='tied', random_state=0,
+                             n_components=3, weights_init=weights_init,
+                             means_init=means_init,
+                             precisions_init=precisions_init)
+        gm.fit(dataset)
+        self.assertTrue(gm.converged_)
+
+    def test_precisions_init_diag(self):
+        x, _ = load_iris(return_X_y=True)
+        dataset = load_data(x, subset_size=75)
+        weights_init = np.array([1/3, 1/3, 1/3])
+        means_init = np.array([[5, 3, 2, 0],
+                               [6, 3, 4, 1],
+                               [7, 3, 6, 2]])
+        np.random.seed(0)
+        precisions_init = np.random.rand(3, 4)*2
+
+        gm = GaussianMixture(covariance_type='diag', random_state=0,
+                             n_components=3, weights_init=weights_init,
+                             means_init=means_init,
+                             precisions_init=precisions_init)
+        gm.fit(dataset)
+        self.assertTrue(gm.converged_)
+
+    def test_precisions_init_spherical(self):
+        x, _ = load_iris(return_X_y=True)
+        dataset = load_data(x, subset_size=75)
+        weights_init = [1/3, 1/3, 1/3]
+        means_init = np.array([[5, 3, 2, 0],
+                               [6, 3, 4, 1],
+                               [7, 3, 6, 2]])
+        np.random.seed(0)
+        precisions_init = np.random.rand(3)*2
+
+        gm = GaussianMixture(covariance_type='spherical', random_state=0,
+                             n_components=3, weights_init=weights_init,
+                             means_init=means_init,
+                             precisions_init=precisions_init)
+        gm.fit(dataset)
+        self.assertTrue(gm.converged_)
 
 
 def main():

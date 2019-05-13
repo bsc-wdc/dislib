@@ -26,8 +26,7 @@ class ALS(object):
     lambda_ : float, optional (default=0.065)
         Regularization parameters value.
     check_convergence : boolean, optional (default=True)
-        Whether to test for convergence for convergence at the end of each
-        iteration.
+        Whether to test for convergence at the end of each iteration.
     random_state : int, orNone, optional (default=None)
         The seed of the pseudo random number generator used to initialize the
         items matrix I.

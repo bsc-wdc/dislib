@@ -66,6 +66,11 @@ def _estimate_covariances(dataset, resp, nk, means, reg_covar, covar_type,
         The input data.
     resp : array-like, shape (n_samples, n_components)
         The responsibilities for each data sample in X.
+    nk : array-like, shape (n_components,)
+        The numbers of data samples (weighted by responsibility) in the
+        current components.
+    means : array-like, shape (n_components, n_features)
+        The centers of the current components.
     reg_covar : float
         The regularization added to the diagonal of the covariance matrices.
     covar_type : {'full', 'tied', 'diag', 'spherical'}
@@ -239,9 +244,15 @@ def _compute_precision_cholesky(covariances, covariance_type):
 
 
 @task(returns=1)
-def _merge_log_prob_norm(*partials):
+def _sum_log_prob_norm(*partials):
     total, count = map(sum, zip(*partials))
     return total, count
+
+
+@task(returns=1)
+def _finalize_sum_log_prob_norm(*partials):
+    total, count = map(sum, zip(*partials))
+    return total / count
 
 
 @task(returns=2)
@@ -256,6 +267,8 @@ def _estimate_responsibilities(subset, weights, means, precisions_cholesky,
     Parameters
     ----------
     subset : dislib.datat.Subset
+    weights : array-like, shape (n_components,)
+        The weights of the current components.
     means : array-like, shape (n_components, n_features)
         The centers of the current components.
     precisions_cholesky : array-like
@@ -420,7 +433,7 @@ class GaussianMixture:
     """Gaussian mixture model.
 
     Estimates the parameters of a Gaussian mixture model probability function
-    that fits the data. Allows clustering and density estimation.
+    that fits the data. Allows clustering.
 
     Parameters
     ----------
@@ -434,9 +447,14 @@ class GaussianMixture:
             'tied' (all components share the same general covariance matrix),
             'diag' (each component has its own diagonal covariance matrix),
             'spherical' (each component has its own single variance).
+    check_convergence : boolean, optional (default=True)
+        Whether to test for convergence at the end of each iteration. Setting
+        it to False removes control dependencies, allowing fitting this model
+        in parallel with other tasks.
     tol : float, defaults to 1e-3.
-        The convergence threshold. EM iterations will stop when the
-        lower bound average gain is below this threshold.
+        The convergence threshold. If the absolute change of the lower bound
+        respect to the previous iteration is below this threshold, the
+        iterations will stop. Ignored if `check_convergence` is False.
     reg_covar : float, defaults to 1e-6.
         Non-negative regularization added to the diagonal of covariance.
         Allows to assure that the covariance matrices are all positive.
@@ -444,21 +462,23 @@ class GaussianMixture:
         The number of EM iterations to perform.
     init_params : {'kmeans', 'random'}, defaults to 'kmeans'.
         The method used to initialize the weights, the means and the
-        precisions.
+        precisions. This method defines the responsibilities and a maximization
+        step gives the model parameters. This is not used if `weights_init`,
+        `means_init` and `precisions_init` are all provided.
         Must be one of::
 
-            'kmeans' : responsibilities are initialized using kmeans.
+            'kmeans' : responsibilities are initialized using kmeans,
             'random' : responsibilities are initialized randomly.
     weights_init : array-like, shape (n_components, ), optional
         The user-provided initial weights, defaults to None.
-        If it None, weights are initialized using the `init_params` method.
+        If None, weights are initialized using the `init_params` method.
     means_init : array-like, shape (n_components, n_features), optional
-        The user-provided initial means, defaults to None,
-        If it None, means are initialized using the `init_params` method.
+        The user-provided initial means, defaults to None.
+        If None, means are initialized using the `init_params` method.
     precisions_init : array-like, optional.
         The user-provided initial precisions (inverse of the covariance
         matrices), defaults to None.
-        If it None, precisions are initialized using the 'init_params' method.
+        If None, precisions are initialized using the `init_params` method.
         The shape depends on 'covariance_type'::
 
             (n_components,)                        if 'spherical',
@@ -478,7 +498,7 @@ class GaussianMixture:
     Attributes
     ----------
     weights_ : array-like, shape (n_components,)
-        The weights of each mixture components.
+        The weight of each mixture component.
     means_ : array-like, shape (n_components, n_features)
         The mean of each mixture component.
     covariances_ : array-like
@@ -503,7 +523,8 @@ class GaussianMixture:
             (n_components, n_features)             if 'diag',
             (n_components, n_features, n_features) if 'full'
     converged_ : bool
-        True if convergence is reached, False otherwise.
+        True if `check_convergence` is True and convergence is reached, False
+        otherwise.
     n_iter : int
         Number of EM iterations done.
     lower_bound_ : float
@@ -527,12 +548,15 @@ class GaussianMixture:
     >>> print(compss_wait_on(gm.means_))
     """
 
-    def __init__(self, n_components=1, covariance_type='full', tol=1e-3,
-                 reg_covar=1e-6, max_iter=100, init_params='kmeans',
-                 weights_init=None, means_init=None, precisions_init=None,
-                 arity=50, verbose=False, random_state=None):
+    def __init__(self, n_components=1, covariance_type='full',
+                 check_convergence=True, tol=1e-3, reg_covar=1e-6,
+                 max_iter=100, init_params='kmeans', weights_init=None,
+                 means_init=None, precisions_init=None, arity=50,
+                 verbose=False, random_state=None):
 
         self.n_components = n_components
+        self._check_convergence = check_convergence
+        self.covariance_type = covariance_type
         self.tol = tol
         self.reg_covar = reg_covar
         self.max_iter = max_iter
@@ -540,7 +564,6 @@ class GaussianMixture:
         self._arity = arity
         self._verbose = verbose
         self.random_state = random_state
-        self.covariance_type = covariance_type
         self.weights_init = weights_init
         self.means_init = means_init
         self.precisions_init = precisions_init
@@ -548,14 +571,20 @@ class GaussianMixture:
     def fit(self, dataset):
         """Estimate model parameters with the EM algorithm.
 
-        The method iterates between E-step and M-step for ``max_iter``
-        times until the change of likelihood or lower bound is less than
-        ``tol``, otherwise, a ``ConvergenceWarning`` is raised.
+        Iterates between E-steps and M-steps until convergence or until
+        `max_iter` iterations are reached. It estimates the model parameters
+        `weights_`, `means_` and `covariances_`.
 
         Parameters
         ----------
         dataset : dislib.data.Dataset
             Data points.
+
+        Warns
+        -----
+        ConvergenceWarning
+            If `tol` is not None and `max_iter` iterations are reached without
+            convergence.
         """
         self._check_initial_parameters()
 
@@ -571,24 +600,24 @@ class GaussianMixture:
         for self.n_iter in range(1, self.max_iter + 1):
             prev_lower_bound = self.lower_bound_
 
-            log_prob_norm, resp = self._e_step(dataset)
+            self.lower_bound_, resp = self._e_step(dataset)
             self._m_step(dataset, resp)
             for resp_subset in resp:
                 compss_delete_object(resp_subset)
-            log_prob_total, log_prob_count = compss_wait_on(log_prob_norm)
-            self.lower_bound_ = log_prob_total / log_prob_count
 
-            diff = abs(self.lower_bound_ - prev_lower_bound)
+            if self._check_convergence:
+                self.lower_bound_ = compss_wait_on(self.lower_bound_)
+                diff = abs(self.lower_bound_ - prev_lower_bound)
 
-            if self._verbose:
-                iter_msg_template = "Iteration %s - Convergence crit. = %s"
-                print(iter_msg_template % (self.n_iter, diff))
+                if self._verbose:
+                    iter_msg_template = "Iteration %s - Convergence crit. = %s"
+                    print(iter_msg_template % (self.n_iter, diff))
 
-            if diff < self.tol:
-                self.converged_ = True
-                break
+                if diff < self.tol:
+                    self.converged_ = True
+                    break
 
-        if not self.converged_:
+        if self._check_convergence and not self.converged_:
             warnings.warn('The algorithm did not converge. '
                           'Try different init parameters, '
                           'or increase max_iter, tol '
@@ -598,15 +627,19 @@ class GaussianMixture:
     def fit_predict(self, dataset):
         """Estimate model parameters and predict labels of the same dataset.
 
-        The method iterates between E-step and M-step for `max_iter`
-        times until the change of likelihood or lower bound is less than
-        `tol`, otherwise, a `ConvergenceWarning` is raised. After fitting, it
-        predicts the most probable label for the input dataset.
+        Fits the model and, after fitting, uses the model to predict labels for
+        the same training dataset.
 
         Parameters
         ----------
         dataset : dislib.data.Dataset
             Data points.
+
+        Warns
+        -----
+        ConvergenceWarning
+            If `tol` is not None and `max_iter` iterations are reached without
+            convergence.
         """
         self.fit(dataset)
         self.predict(dataset)
@@ -640,8 +673,8 @@ class GaussianMixture:
             dataset.
 
         responsibility : dislib.data.Dataset
-            Posterior probabilities (or responsibilities) of
-            the point of each sample in X.
+            Posterior probabilities (or responsibilities) of each sample in the
+            dataset.
         """
         log_prob_norm = []
         resp = Dataset(self.n_components)
@@ -675,11 +708,11 @@ class GaussianMixture:
                                           self.covariance_type)
 
     def _reduce_log_prob_norm(self, partials):
-        while len(partials) > 1:
+        while len(partials) > self._arity:
             partials_subset = partials[:self._arity]
             partials = partials[self._arity:]
-            partials.append(_merge_log_prob_norm(*partials_subset))
-        return partials[0]
+            partials.append(_sum_log_prob_norm(*partials_subset))
+        return _finalize_sum_log_prob_norm(*partials)
 
     def _m_step(self, dataset, resp):
         """M step.
@@ -718,7 +751,8 @@ class GaussianMixture:
         weights : array-like, shape (n_components,)
             The weights of the current components.
         nk : array-like, shape (n_components,)
-            The numbers of data samples in the current components.
+            The numbers of data samples (weighted by responsibility) in the
+            current components.
         means : array-like, shape (n_components, n_features)
             The centers of the current components.
         """
@@ -757,6 +791,70 @@ class GaussianMixture:
                              "['spherical', 'tied', 'diag', 'full']"
                              % self.covariance_type)
 
+        self._prepare_init_parameters()
+        n = self.n_components
+        if self.weights_init is not None:
+            shape = self.weights_init.shape
+            if shape != (n,):
+                raise ValueError("n_components=%d, " % n +
+                                 "weights_init.shape=%s, " % str(shape) +
+                                 "weights_init.shape should be "
+                                 "(n_components,)")
+        if self.means_init is not None:
+            shape = self.means_init.shape
+            if len(shape) != 2 or shape[0] != n:
+                raise ValueError("n_components=%d, " % n +
+                                 "means_init.shape=%s, " % str(shape) +
+                                 "means_init.shape should be "
+                                 "(n_components, n_features)")
+        if self.precisions_init is not None:
+            shape = self.precisions_init.shape
+            cov_type = self.covariance_type
+            if cov_type == 'spherical':
+                if shape != (n,):
+                    raise ValueError("n_components=%d, " % n +
+                                     "precisions_init.shape=%s, " % str(shape)
+                                     +
+                                     "precisions_init.shape should be "
+                                     "(n_components,) for "
+                                     "covariance_type='spherical'")
+            elif cov_type == 'tied':
+                if len(shape) != 2 or shape[0] != shape[1]:
+                    raise ValueError("precisions_init.shape=%s, " % str(shape)
+                                     +
+                                     "precisions_init.shape should be "
+                                     "(n_features, n_features) for "
+                                     "covariance_type='tied'")
+            elif cov_type == 'diag':
+                if len(shape) != 2 or shape[0] != n:
+                    raise ValueError("n_components=%d, " % n +
+                                     "precisions_init.shape=%s, " % str(shape)
+                                     +
+                                     "precisions_init.shape should be "
+                                     "(n_components, n_features) for "
+                                     "covariance_type='diag'")
+            elif cov_type == 'full':
+                if len(shape) != 3 or shape[0] != n or shape[1] != shape[2]:
+                    raise ValueError("n_components=%d, " % n +
+                                     "precisions_init.shape=%s, " % str(shape)
+                                     +
+                                     "precisions_init.shape should be "
+                                     "(n_components, n_features, n_features) "
+                                     "for covariance_type='full'")
+        if self.means_init is not None and self.precisions_init is not None:
+            if self.covariance_type in ('tied', 'diag', 'full'):
+                if self.means_init.shape[1] != self.precisions_init.shape[1]:
+                    raise ValueError("n_features mismatch in the dimensions "
+                                     "of 'means_init' and 'precisions_init'")
+
+    def _prepare_init_parameters(self):
+        if isinstance(self.weights_init, (list, tuple)):
+            self.weights_init = np.array(self.weights_init)
+        if isinstance(self.means_init, (list, tuple)):
+            self.means_init = np.array(self.means_init)
+        if isinstance(self.precisions_init, (list, tuple)):
+            self.precisions_init = np.array(self.precisions_init)
+
     def _initialize_parameters(self, dataset, random_state):
         """Initialization of the Gaussian mixture parameters.
 
@@ -767,54 +865,64 @@ class GaussianMixture:
         random_state : RandomState
             A random number generator instance.
         """
-        n_components = self.n_components
-        resp = Dataset(n_components)
-        if self.init_params == 'kmeans':
-            if self._verbose:
-                print("KMeans initialization start")
-            seed = random_state.randint(0, int(1e8))
-            kmeans = KMeans(n_clusters=n_components, random_state=seed,
-                            verbose=self._verbose)
-            kmeans.fit_predict(dataset)
-            self.kmeans = kmeans
-            for labeled_subset in dataset:
-                resp.append(_resp_subset(labeled_subset, n_components))
-        elif self.init_params == 'random':
-            chunks = len(dataset)
-            seeds = random_state.randint(np.iinfo(np.int32).max, size=chunks)
-            for i in range(chunks):
-                subset = dataset[i]
-                resp.append(_random_resp_subset(subset, n_components,
-                                                seeds[i]))
-        else:
-            raise ValueError("Unimplemented initialization method '%s'"
-                             % self.init_params)
+        if self.weights_init is not None:
+            self.weights_ = self.weights_init / np.sum(self.weights_init)
+        if self.means_init is not None:
+            self.means_ = self.means_init
+        if self.precisions_init is not None:
+            if self.covariance_type == 'full':
+                self.precisions_cholesky_ = np.array(
+                    [linalg.cholesky(prec_init, lower=True)
+                     for prec_init in self.precisions_init])
+            elif self.covariance_type == 'tied':
+                self.precisions_cholesky_ = linalg.cholesky(
+                    self.precisions_init, lower=True)
+            else:
+                self.precisions_cholesky_ = self.precisions_init
+        initialize_params = (self.weights_init is None or
+                             self.means_init is None or
+                             self.precisions_init is None)
+        if initialize_params:
+            n_components = self.n_components
+            resp = Dataset(n_components)
+            if self.init_params == 'kmeans':
+                if self._verbose:
+                    print("KMeans initialization start")
+                seed = random_state.randint(0, int(1e8))
+                kmeans = KMeans(n_clusters=n_components, random_state=seed,
+                                verbose=self._verbose)
+                kmeans.fit_predict(dataset)
+                self.kmeans = kmeans
+                for labeled_subset in dataset:
+                    resp.append(_resp_subset(labeled_subset, n_components))
+            elif self.init_params == 'random':
+                chunks = len(dataset)
+                seeds = random_state.randint(np.iinfo(np.int32).max,
+                                             size=chunks)
+                for i in range(chunks):
+                    subset = dataset[i]
+                    resp.append(_random_resp_subset(subset, n_components,
+                                                    seeds[i]))
+            else:
+                raise ValueError("Unimplemented initialization method '%s'"
+                                 % self.init_params)
 
-        weights, nk, means = self._estimate_parameters(dataset, resp)
+            weights, nk, means = self._estimate_parameters(dataset, resp)
+            if self.means_init is None:
+                self.means_ = means
+            if self.weights_init is None:
+                self.weights_ = weights
 
-        self.weights_ = (weights if self.weights_init is None else
-                         self.weights_init)
-        self.means_ = means if self.means_init is None else self.means_init
+            if self.precisions_init is None:
+                cov, p_c = _estimate_covariances(dataset, resp, nk,
+                                                 self.means_, self.reg_covar,
+                                                 self.covariance_type,
+                                                 self._arity)
+                self.covariances_ = cov
+                self.precisions_cholesky_ = p_c
 
-        if self.precisions_init is None:
-            cov, p_c = _estimate_covariances(dataset, resp, nk, means,
-                                             self.reg_covar,
-                                             self.covariance_type,
-                                             self._arity)
-            self.covariances_ = cov
-            self.precisions_cholesky_ = p_c
-        elif self.covariance_type == 'full':
-            self.precisions_cholesky_ = np.array(
-                [linalg.cholesky(prec_init, lower=True)
-                 for prec_init in self.precisions_init])
-        elif self.covariance_type == 'tied':
-            self.precisions_cholesky_ = linalg.cholesky(self.precisions_init,
-                                                        lower=True)
-        else:
-            self.precisions_cholesky_ = self.precisions_init
-
-        for resp_subset in resp:
-            compss_delete_object(resp_subset)
+            for resp_subset in resp:
+                compss_delete_object(resp_subset)
 
 
 @task(returns=1)
