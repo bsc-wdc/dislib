@@ -1,8 +1,9 @@
 import setuptools
 
+
 setuptools.setup(
     name="dislib",
-    version="0.2.0",
+    version=open('VERSION').read().strip(),
     author="Barcelona Supercomputing Center",
     author_email="javier.alvarez@bsc.es",
     description="The distributed computing library on top of PyCOMPSs",
