@@ -4,6 +4,7 @@ from pycompss.api.parameter import INOUT
 from pycompss.api.task import task
 from scipy.sparse import csr_matrix
 from sklearn.metrics import pairwise_distances
+from sklearn.metrics.pairwise import paired_distances
 
 
 class KMeans:
@@ -123,7 +124,7 @@ class KMeans:
         if old_centers is None:
             return False
 
-        diff = np.trace(pairwise_distances(self.centers, old_centers))
+        diff = np.sum(paired_distances(self.centers, old_centers))
 
         if self._verbose:
             print("Iteration %s - Convergence crit. = %s" % (iteration, diff))
