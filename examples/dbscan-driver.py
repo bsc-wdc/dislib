@@ -3,7 +3,7 @@ import os
 import time
 
 import numpy as np
-from pycompss.api.api import barrier
+from pycompss.api.api import compss_barrier
 
 from dislib.cluster import DBSCAN
 from dislib.data import (load_libsvm_file, load_libsvm_files, load_txt_file,
@@ -75,7 +75,7 @@ def main():
                                  n_features=args.features, label_col=label_col)
 
     if args.detailed_times:
-        barrier()
+        compss_barrier()
         read_time = time.time() - s_time
         s_time = time.time()
 
@@ -90,7 +90,7 @@ def main():
                     dimensions=dims, arrange_data=args.arrange)
     dbscan.fit(data)
 
-    barrier()
+    compss_barrier()
     fit_time = time.time() - s_time
 
     out = [dbscan._eps, dbscan._min_samples, dbscan._max_samples,
