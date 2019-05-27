@@ -4,7 +4,7 @@ import numpy as np
 from pycompss.api.task import task
 from scipy.sparse import lil_matrix
 from scipy.sparse.csgraph import connected_components
-from sklearn.metrics import pairwise_distances
+from sklearn.neighbors import NearestNeighbors
 
 
 class Region(object):
@@ -46,9 +46,8 @@ class Region(object):
 
         for idx in range(0, n_samples, max_samples):
             end_idx = idx + max_samples
-            neighs, cps = _compute_neighbours(self.epsilon, min_samples,
-                                              self._sparse, idx, end_idx,
-                                              *subsets)
+            neighs, cps = _compute_neighbours(self.epsilon, min_samples, idx,
+                                              end_idx, *subsets)
             neigh_list.append(neighs)
             cp_list.append(cps)
 
@@ -122,23 +121,17 @@ def _slice_array(arr, start, finish):
 
 
 @task(returns=2)
-def _compute_neighbours(epsilon, min_samples, sparse, begin_idx, end_idx,
-                        *subsets):
-    neighbour_list = []
-    core_points = []
+def _compute_neighbours(epsilon, min_samples, begin_idx, end_idx, *subsets):
     samples = _concatenate_subsets(*subsets).samples
-    dist_f = _vec_matrix_euclid if not sparse else pairwise_distances
+    nn = NearestNeighbors(radius=epsilon)
+    nn.fit(samples)
+    dists, neighs = nn.radius_neighbors(samples[begin_idx:end_idx],
+                                        return_distance=True)
 
-    for sample in samples[begin_idx:end_idx]:
-        dist = dist_f(sample, samples).flatten()
-        neighbours = dist < epsilon
-        neigh_indices = np.where(neighbours)[0]
-        sorting = np.argsort(dist[neigh_indices])
-        neigh_indices = neigh_indices[sorting]
-        neighbour_list.append(neigh_indices)
-        core_points.append(neigh_indices.size >= min_samples)
-
-    return neighbour_list, core_points
+    sorted_neighbors = [neighbors[np.argsort(distances)]
+                        for distances, neighbors in zip(dists, neighs)]
+    core_points = [len(neighbors) >= min_samples for neighbors in neighs]
+    return sorted_neighbors, core_points
 
 
 def _concatenate_subsets(*subsets):
