@@ -143,10 +143,6 @@ def _concatenate_subsets(*subsets):
     return subset
 
 
-def _vec_matrix_euclid(vector, matrix):
-    return np.linalg.norm(vector - matrix, axis=1)
-
-
 @task(returns=1)
 def _lists_to_array(*cp_list):
     return np.concatenate(cp_list)
