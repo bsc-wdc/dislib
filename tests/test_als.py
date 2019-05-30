@@ -1,15 +1,14 @@
 import unittest
-from math import ceil
 
 import numpy as np
 import pandas as pd
 from scipy.sparse import csr_matrix
 
-from dislib.data import load_data
+import dislib as ds
 from dislib.recommendation import ALS
 
 
-def load_movielens(train_ratio=0.9, num_subsets=4):
+def load_movielens(train_ratio=0.9):
     file = 'tests/files/sample_movielens_ratings.csv'
 
     cols = ['user_id', 'movie_id', 'rating', 'timestamp']
@@ -28,13 +27,17 @@ def load_movielens(train_ratio=0.9, num_subsets=4):
 
     train = csr_matrix(
         (train_df.rating, (train_df.user_id, train_df.movie_id)),
-        shape=(n_u, n_m)).transpose().tocsr()
+        shape=(n_u, n_m))
     test = csr_matrix(
         (test_df.rating, (test_df.user_id, test_df.movie_id)))
 
-    dataset = load_data(train, int(ceil(train.shape[0] / num_subsets)))
+    x_size, y_size = train.shape[0] // 4, train.shape[1] // 4
+    train_arr = ds.array(train, block_size=(x_size, y_size))
 
-    return dataset, test
+    x_size, y_size = test.shape[0] // 4, test.shape[1] // 4
+    test_arr = ds.array(test, block_size=(x_size, y_size))
+
+    return train_arr, test_arr
 
 
 class ALSTest(unittest.TestCase):
@@ -63,21 +66,21 @@ class ALSTest(unittest.TestCase):
     def test_fit(self):
         train, test = load_movielens()
 
-        als = ALS(tol=0.01, random_state=666, n_f=100,
-                  verbose=False)
+        als = ALS(tol=0.01, random_state=666, n_f=100, verbose=True,
+                  check_convergence=True)
 
         als.fit(train, test)
         self.assertTrue(als.converged)
 
         als.fit(train)
+
         self.assertTrue(als.converged)
 
     def test_predict(self):
         data = np.array([[0, 0, 5], [3, 0, 5], [3, 1, 2]])
-        ratings = csr_matrix(data).transpose().tocsr()
-        train = load_data(x=ratings, subset_size=1)
-        als = ALS(tol=0.01, random_state=666, n_f=100,
-                  verbose=False)
+        ratings = csr_matrix(data)
+        train = ds.array(x=ratings, block_size=(1, 1))
+        als = ALS(tol=0.01, random_state=666, n_f=5, verbose=True)
         als.fit(train)
         predictions = als.predict_user(user_id=0)
 
