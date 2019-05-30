@@ -7,7 +7,7 @@ tests_dir = "/gpfs/projects/bsc19/PERFORMANCE/dislib/tests"
 
 
 def main():
-    cmd = "enqueue_compss --qos=debug --exec_time=30 " \
+    cmd = "enqueue_compss --exec_time=60 " \
           "--pythonpath=/gpfs/projects/bsc19/PERFORMANCE/dislib/scripts" \
           ":/gpfs/projects/bsc19/PERFORMANCE/dislib/tests --lang=python " \
           "--worker_in_master_cpus=0 --max_tasks_per_node=48 --num_nodes=9 " \

@@ -3,7 +3,7 @@ import performance
 from pycompss.api.api import compss_barrier
 from pycompss.api.task import task
 
-from dislib.cluster import KMeans
+from dislib.cluster import GaussianMixture
 from dislib.data import Dataset, Subset
 
 
@@ -12,13 +12,14 @@ def main():
     n_chunks = 384
     chunk_size = int(np.ceil(n_samples / n_chunks))
     n_features = 100
-    n_clusters = 500
+    n_clusters = 50
 
     x = gen_random((n_samples, n_features), chunk_size)
     compss_barrier()
 
-    km = KMeans(n_clusters=n_clusters, max_iter=5, tol=0, arity=50)
-    performance.measure("KMeans", "1M", km, x)
+    gmm = GaussianMixture(n_components=n_clusters, max_iter=5, tol=0,
+                          init_params="random")
+    performance.measure("GMM", "1M", gmm, x)
 
 
 def gen_random(shape, subset_size):
