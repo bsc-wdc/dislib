@@ -2,11 +2,12 @@ from math import sqrt
 
 import numpy as np
 from pycompss.api.api import compss_wait_on
+from pycompss.api.parameter import COLLECTION_IN, Depth, Type
 from pycompss.api.task import task
 from scipy import sparse
 from sklearn.metrics import mean_squared_error
 
-from dislib.data import load_data
+from dislib.data.array import Array
 
 
 class ALS(object):
@@ -83,7 +84,7 @@ class ALS(object):
         self.users = None
         self.items = None
 
-    def _update(self, r, x):
+    def _update(self, r, x, axis):
         """ Returns updated matrix M given U (if x=U), or matrix U given M
         otherwise
 
@@ -96,12 +97,14 @@ class ALS(object):
             User or Item feature matrix
         """
         res = []
-        for subset in r:
-            chunk_res = _update_chunk(subset, x, self._n_f, self._lambda)
+        for darray in r.iterator(axis=axis):
+            chunk_res = _update_chunk(darray._blocks, x, self._n_f,
+                                      self._lambda, axis=axis)
             res.append(chunk_res)
 
         while len(res) > 1:
             q = []
+
             while len(res) > 0:
                 # we pop the future objects to merge
                 to_merge = res[:self._arity]
@@ -119,10 +122,12 @@ class ALS(object):
     def _has_converged(self, last_rmse, rmse):
         return abs(last_rmse - rmse) < self._tol
 
-    def _compute_train_rmse(self, d_u, U, I):
-        rmses = [_get_rmse(sb, U, I) for sb in d_u._subsets]
-        rmses = compss_wait_on(rmses)
-        return np.mean(rmses)
+    def _compute_rmse(self, dataset, U, I):
+        rmses = [_get_rmse(sb._blocks, U, I) for sb in
+                 dataset.iterator(axis=0)]
+        rmses = np.array(compss_wait_on(rmses))
+        # remove NaN errors that come from empty chunks
+        return np.mean(rmses[~np.isnan(rmses)])
 
     def fit(self, dataset, test=None):
         """ Fits a model using training data. Training data is also used to
@@ -131,61 +136,76 @@ class ALS(object):
         Parameters
         ----------
         dataset : Dataset
-            Dataset where each sample represents the ratings of a given item.
+            darray where each row represents the ratings of a given item.
         test : csr_matrix
             Sparse matrix used to check convergence with users as rows and
             items as columns. If not passed, uses training data to check
             convergence.
         """
 
-        d_i = dataset
-        d_u = d_i.transpose()
-
-        n_m = d_u.n_features
+        # d_i = dataset
+        # d_u = d_i.transpose()
+        #
+        n_u = dataset.shape[0]
+        n_i = dataset.shape[1]
 
         if self._verbose:
-            print("Item chunks: %s" % len(d_i))
-            print("User chunks: %s" % len(d_u))
+            print("Item blocks: %s" % n_i)
+            print("User blocks: %s" % n_u)
 
         if self._seed:
             np.random.seed(self._seed)
 
-        if test is not None:
-            test = load_data(x=test, subset_size=test.shape[0])
-
         self.converged = False
         users = None
-        items = np.random.rand(n_m, self._n_f)
+        items = np.random.rand(n_i, self._n_f)
 
         # Assign average rating as first feature
-        average_ratings = d_i._apply(lambda row: np.mean(row.data),
-                                     sparse=False, return_dataset=True)
-        average_ratings = compss_wait_on(average_ratings)
+        average_ratings = dataset.mean(axis='columns').collect()
 
-        items[:, 0] = average_ratings.samples.reshape(-1)
+        items[:, 0] = average_ratings
+        # items[:, 0] = average_ratings.flatten()
 
         rmse, last_rmse = np.inf, np.NaN
         i = 0
         while not self._has_finished(i):
             last_rmse = rmse
 
-            users = self._update(r=d_u, x=items)
-            items = self._update(r=d_i, x=users)
+            users = self._update(r=dataset, x=items, axis=0)
+            # print("users matrix:\n%s\n" % users)
+            items = self._update(r=dataset, x=users, axis=1)
+            # print("items matrix:\n%s\n" % items)
 
             if self._check_convergence:
-                if test is not None:
-                    rmse = compss_wait_on(_get_rmse(test, users, items))
-                    self.converged = self._has_converged(last_rmse, rmse)
-                    if self._verbose:
-                        print("Test RMSE: %.3f  [%s]" % (
-                            rmse, abs(last_rmse - rmse)))
+                # if test is not None:
+                #     rmse = compss_wait_on(
+                #         _get_rmse(test._blocks, users, items))
+                #     self.converged = self._has_converged(last_rmse, rmse)
+                #     if self._verbose:
+                #         print("Test RMSE: %.3f  [%s]" % (
+                #             rmse, abs(last_rmse - rmse)))
+                #
+                # else:
+                #     rmse = self._compute_train_rmse(dataset, users, items)
+                #     self.converged = self._has_converged(last_rmse, rmse)
+                #     if self._verbose:
+                #         print("Train RMSE: %.3f  [%s]" % (
+                #             rmse, abs(last_rmse - rmse)))
 
-                else:
-                    rmse = self._compute_train_rmse(d_u, users, items)
-                    self.converged = self._has_converged(last_rmse, rmse)
-                    if self._verbose:
-                        print("Train RMSE: %.3f  [%s]" % (
-                            rmse, abs(last_rmse - rmse)))
+                _test = dataset if test is None else test
+                rmse = compss_wait_on(self._compute_rmse(_test, users, items))
+                self.converged = self._has_converged(last_rmse, rmse)
+                if self._verbose:
+                    print("%s RMSE: %.3f  [%s]" % (
+                        "Train" if test is None else "test",
+                        rmse, abs(last_rmse - rmse)))
+
+                    # else:
+                    #     rmse = self._compute_train_rmse(dataset, users, items)
+                    #     self.converged = self._has_converged(last_rmse, rmse)
+                    #     if self._verbose:
+                    #         print("Train RMSE: %.3f  [%s]" % (
+                    #             rmse, abs(last_rmse - rmse)))
             i += 1
 
         self.users = compss_wait_on(users)
@@ -220,9 +240,12 @@ def _merge(*chunks):
     return res
 
 
-@task(returns=np.array)
-def _update_chunk(subset, x, n_f, lambda_):
-    r_chunk = subset.samples
+@task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
+def _update_chunk(blocks, x, n_f, lambda_, axis):
+    r_chunk = Array._merge_blocks(blocks)
+    if axis == 1:
+        r_chunk = r_chunk.transpose()
+
     n = r_chunk.shape[0]
     y = np.zeros((n, n_f), dtype=np.float32)
     n_c = np.array(
@@ -236,17 +259,21 @@ def _update_chunk(subset, x, n_f, lambda_):
         a_i = x_xt + lambda_ * n_c[element] * np.eye(n_f)
         v_i = x[indices].T.dot(r_chunk[element, indices].toarray().T)
 
-        y[element] = sparse.linalg.cg(a_i, v_i)[0].reshape(-1)
+        # TODO: decide if atol should be changed when default is changed
+        y[element] = sparse.linalg.cg(a_i, v_i, atol='legacy')[0].reshape(-1)
 
     return y
 
 
-@task(returns=float)
-def _get_rmse(test, users, items):
-    x_idxs, y_idxs, recs = sparse.find(test.samples)
+@task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=1)
+def _get_rmse(blocks, users, items):
+    test = Array._merge_blocks(blocks)
+    x_idxs, y_idxs, recs = sparse.find(test)
     indices = zip(x_idxs, y_idxs)
 
-    preds = [users[x].dot(items[y].T) for x, y in indices]
-    rmse = sqrt(mean_squared_error(recs, preds))
+    rmse = np.NaN
+    if len(recs) > 0:
+        preds = [users[x].dot(items[y].T) for x, y in indices]
+        rmse = sqrt(mean_squared_error(recs, preds))
 
     return rmse
