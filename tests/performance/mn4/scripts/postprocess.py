@@ -18,6 +18,7 @@ def main():
                     else:
                         wd = "scratch"
                 elif "==== STARTING ====" in line:
+                    time = -1
                     test_name = str(line.split(" ")[-1]).rstrip()
                 elif "==== OUTPUT ====" in line:
                     time = float(line.split(" ")[-1])
