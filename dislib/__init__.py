@@ -1,5 +1,7 @@
 import os
 
+from dislib.data.array import array
+
 name = "dislib"
 version_file = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                             '../VERSION')
@@ -20,3 +22,5 @@ else:
         print("Could not get installed dislib version. "
               "Probably it was not installed with setup.py.\n%s" % e)
         __version__ = 'unknown'
+
+__all__ = ['array']
