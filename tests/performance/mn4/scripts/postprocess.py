@@ -16,9 +16,14 @@ def main():
                     test_name = str(line.split(" ")[-1]).rstrip()
                 elif "==== OUTPUT ====" in line:
                     time = float(line.split(" ")[-1])
+                elif "Worker WD:" in line:
+                    if "gpfs" in str(line.split(" ")[-1]):
+                        wd = "gpfs"
+                    else:
+                        wd = "scratch"
 
             with open(out, "a") as fout:
-                fout.write(test_name + " " + str(time) + "\n")
+                fout.write(test_name + " " + wd + " " + str(time) + "\n")
 
 
 if __name__ == "__main__":

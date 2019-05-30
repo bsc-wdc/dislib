@@ -8,7 +8,7 @@ from dislib.data import Dataset, Subset
 
 
 def main():
-    n_samples = 100_000
+    n_samples = 100000
     n_chunks = 384
     chunk_size = int(np.ceil(n_samples / n_chunks))
     n_features = 100
