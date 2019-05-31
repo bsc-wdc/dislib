@@ -174,6 +174,36 @@ class Array(object):
                 "Axis must be [0|'columns'] or [1|'rows'], got %s" % str(axis))
         return Array(out_blocks, block_size=block_size, sparse=self._sparse)
 
+    def transpose(self, mode='auto'):
+
+        if mode == 'all':
+            n, m = self._blocks_shape[0], self._blocks_shape[1]
+            out_blocks = self._get_out_blocks(n, m)
+            _tranpose(self._blocks, out_blocks)
+        elif mode == 'rows':
+            out_blocks = []
+            for r in self.iterator(axis=0):
+                _blocks = self._get_out_blocks(*r._blocks_shape)
+                _tranpose(r._blocks, _blocks)
+                out_blocks.append(_blocks[0])
+        elif mode == 'columns':
+            out_blocks = [[] for _ in range(self._blocks_shape[0])]
+            for i, c in enumerate(self.iterator(axis=1)):
+                _blocks = self._get_out_blocks(*c._blocks_shape)
+                _tranpose(c._blocks, _blocks)
+                for i2 in range(len(_blocks)):
+                    out_blocks[i2].append(_blocks[i2][0])
+        else:
+            raise Exception(
+                "Unknown tranpose mode'%s'. Options are: [all|rows|columns]" % mode)
+
+        blocks_t = list(map(list, zip(*out_blocks)))
+
+        # notice block_size is transposed
+        bn, bm = self._block_size[1], self._block_size[0]
+
+        return Array(blocks_t, block_size=(bm, bn), sparse=self._sparse)
+
     def collect(self):
         blocks = compss_wait_on(self._blocks)
 
@@ -229,6 +259,14 @@ def _mean(blocks, out_blocks, axis, count_zero):
         _sparse_mean()
     else:
         _dense_mean()
+
+
+@task(blocks={Type: COLLECTION_IN, Depth: 2},
+      out_blocks={Type: COLLECTION_INOUT, Depth: 2})
+def _tranpose(blocks, out_blocks):
+    for i in range(len(blocks)):
+        for j in range(len(blocks[i])):
+            out_blocks[i][j] = blocks[i][j].transpose()
 
 # def transpose(self, n_subsets=None):
 #     """ Transposes the Dataset.

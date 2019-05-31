@@ -143,9 +143,6 @@ class ALS(object):
             convergence.
         """
 
-        # d_i = dataset
-        # d_u = d_i.transpose()
-        #
         n_u = dataset.shape[0]
         n_i = dataset.shape[1]
 

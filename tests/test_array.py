@@ -384,34 +384,30 @@ class ArrayTest(unittest.TestCase):
         x_mean = x.sum(axis=1) / (x != 0).toarray().sum(axis=1).reshape(-1, 1)
         self.assertTrue(equal(data_mean, x_mean))
 
+    def test_transpose(self):
+        """ Tests array transpose."""
 
-# def test_transpose_dense(self):
-#             """ Tests Dataset.transpose() in dense format."""
-#
-#             data = np.random.randint(0, 10, size=(12, 8))
-#             darray = load_data(data, block_size=(3, 4))
-#
-#             # Transpose with same n_subsets
-#             data_t = data.transpose()
-#             darray_t = darray.transpose()
-#
-#             self.assertTrue(np.allclose(darray_t.collect(), data_t))
-#
-#         def test_transpose_sparse(self):
-#             """ Tests Dataset.transpose() in dense format."""
-#
-#             data = csr_matrix(
-#                 np.random.randint(0, 10, size=(12, 8)))
-#             darray = load_data(data, block_size=(3, 4))
-#
-#             # Transpose with same n_subsets
-#             data_t = data.transpose()
-#             darray_t = darray.transpose()
-#
-#             self.assertTrue((darray_t.collect() != data_t).nnz == 0)
+        x_size, y_size = 4, 6
+        bx_size, by_size = 2, 3
+
+        x = np.random.randint(10, size=(x_size, y_size))
+        darray = ds.array(x=x, block_size=(bx_size, by_size))
+
+        darray_t = darray.transpose(mode='all')
+        self.assertTrue(equal(darray_t.collect(), x.transpose()))
+        # ensure that original data was not modified
+        self.assertTrue(equal(darray.collect(), x))
+
+        darray_t = darray.transpose(mode='rows')
+        self.assertTrue(equal(darray_t.collect(), x.transpose()))
+
+        darray_t = darray.transpose(mode='columns')
+        self.assertTrue(equal(darray_t.collect(), x.transpose()))
+
+        self.assertRaises(Exception, darray.transpose, 'invalid')
 
 
-#     def test_min_max_features(self):
+# def test_min_max_features(self):
 #         """ Tests that min_features and max_features correctly return min
 #         and max values in a toy dataset.
 #         """
