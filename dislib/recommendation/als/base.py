@@ -98,8 +98,8 @@ class ALS(object):
         """
         res = []
         for darray in r.iterator(axis=axis):
-            chunk_res = _update_chunk(darray._blocks, x, self._n_f,
-                                      self._lambda, axis=axis)
+            params = (self._n_f, self._lambda, axis)
+            chunk_res = _update_chunk(darray._blocks, x, params)
             res.append(chunk_res)
 
         while len(res) > 1:
@@ -238,7 +238,9 @@ def _merge(*chunks):
 
 
 @task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
-def _update_chunk(blocks, x, n_f, lambda_, axis):
+def _update_chunk(blocks, x, params):
+    n_f, lambda_, axis = params
+    print("Params: %s" % list(params))
     r_chunk = Array._merge_blocks(blocks)
     if axis == 1:
         r_chunk = r_chunk.transpose()

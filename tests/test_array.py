@@ -5,8 +5,10 @@ from math import ceil
 import numpy as np
 from scipy import sparse as sp
 from scipy.sparse import issparse
+from sklearn.datasets import load_svmlight_file
 
 import dislib as ds
+from dislib.data.array import Array
 
 
 def equal(arr1, arr2):
@@ -19,85 +21,116 @@ def equal(arr1, arr2):
     else:
         equal = not (arr1 != arr2).any()
 
+    if not equal:
+        print("\nArr1: \n%s" % arr1)
+        print("Arr2: \n%s" % arr2)
+
     return equal
+
+
+def equivalent_types(arr1, arr2):
+    equivalent = type(arr1) == type(arr2) or (
+    type(arr1) == np.ndarray and type(arr2) == np.matrix) or (
+           type(arr1) == np.matrix and type(arr2) == np.ndarray)
+
+    if not equivalent:
+        print("Type(arr1): %s" % type(arr1))
+        print("Type(arr2): %s" % type(arr2))
+
+    return equivalent
+
+
+def _validate_arrays(self, darray, x, block_shape):
+    n, m = x.shape
+    bn, bm = block_shape
+
+    self.assertTrue(equal(darray.collect(), x))
+    self.assertTrue(equivalent_types(darray.collect(), x))
+    self.assertEqual(type(darray), Array)
+    self.assertEqual(darray.shape, x.shape)
+    self.assertEqual(type(darray.collect()[0, 0]), type(x[0, 0]))
+    self.assertEqual(darray._blocks_shape, (ceil(n / bn), ceil(m / bm)))
 
 
 class DataLoadingTest(unittest.TestCase):
     def test_array_constructor(self):
         """ Tests load_data
         """
-        x = np.random.randint(0, 10, size=(6, 10))
-        darray = ds.array(x=x, block_size=(4, 3)).collect()
+        n, m = 6, 10
+        bn, bm = 4, 3
+        x = np.random.randint(0, 10, size=(n, m))
+        darray = ds.array(x=x, block_size=(bn, bm))
 
-        self.assertTrue(equal(darray, x))
-        self.assertEqual(type(darray), type(x))
-        self.assertEqual(type(darray[0, 0]), type(x[0, 0]))
+        _validate_arrays(self, darray, x, (bn, bm))
 
         x = sp.csr_matrix(x)
-        darray = ds.array(x=x, block_size=(4, 3)).collect()
+        darray = ds.array(x=x, block_size=(bn, bm))
 
-        self.assertTrue(equal(darray, x))
-        self.assertEqual(type(darray[0, 0]), type(x[0, 0]))
-        self.assertEqual(type(darray), type(x))
+        _validate_arrays(self, darray, x, (bn, bm))
+
+        # def test_load_data_without_labels(self):
+
+    #         """ Tests load_data with an unlabeled sparse and dense dataset.
+    #         """
+    #         x = np.random.random((100, 2))
+    #         dataset = load_data(x=x, subset_size=10)
+    #
+    #         self.assertTrue(np.array_equal(dataset.samples, x))
+    #         self.assertEqual(len(dataset), 10)
+    #         self.assertFalse(dataset.sparse)
+    #
+    #         x = csr_matrix(x)
+    #         dataset = load_data(x=x, subset_size=10)
+    #
+    #         self.assertTrue(np.array_equal(dataset.samples.toarray(),
+    # x.toarray()))
+    #         self.assertEqual(len(dataset), 10)
+    #         self.assertTrue(dataset.sparse)
+    #
+    #     def test_load_libsvm_file_sparse(self):
+    #         """ Tests loading a LibSVM file in sparse mode.
+    #         """
+    #         file_ = "tests/files/libsvm/2"
+    #
+    #         data = load_libsvm_file(file_, 10, 780)
+    #         data.collect()
+    #         x, y = load_svmlight_file(file_, n_features=780)
+    #
+    #         read_x = np.empty((0, x.shape[1]))
+    #         read_y = np.empty(0)
+    #
+    #         for subset in data:
+    #             read_x = np.concatenate((read_x, subset.samples.toarray()))
+    #             read_y = np.concatenate((read_y, subset.labels))
+    #
+    #         self.assertTrue((read_x == x.toarray()).all())
+    #         self.assertTrue((read_y == y).all())
+    #         self.assertEqual(len(data), 6)
+    #
+    def test_load_libsvm_file(self):
+        """ Tests loading a LibSVM file in dense mode.
+        """
+        file_ = "tests/files/libsvm/1"
+
+        x, y = load_svmlight_file(file_, n_features=780)
+
+        bn, bm = 25, 100
+
+        # Load SVM and store in sparse
+        arr_x, arr_y = ds.load_svmlight_file(file_, (25, 100), n_features=780,
+                                             store_sparse=True)
+
+        _validate_arrays(self, arr_x, x, (bn, bm))
+        _validate_arrays(self, arr_y, y.reshape(-1, 1), (bn, 1))
+
+        # Load SVM and store in dense
+        arr_x, arr_y = ds.load_svmlight_file(file_, (25, 100), n_features=780,
+                                             store_sparse=False)
+
+        _validate_arrays(self, arr_x, x.toarray(), (bn, bm))
+        _validate_arrays(self, arr_y, y.reshape(-1, 1), (bn, 1))
 
 
-# def test_load_data_without_labels(self):
-#         """ Tests load_data with an unlabeled sparse and dense dataset.
-#         """
-#         x = np.random.random((100, 2))
-#         dataset = load_data(x=x, subset_size=10)
-#
-#         self.assertTrue(np.array_equal(dataset.samples, x))
-#         self.assertEqual(len(dataset), 10)
-#         self.assertFalse(dataset.sparse)
-#
-#         x = csr_matrix(x)
-#         dataset = load_data(x=x, subset_size=10)
-#
-#         self.assertTrue(np.array_equal(dataset.samples.toarray(),
-# x.toarray()))
-#         self.assertEqual(len(dataset), 10)
-#         self.assertTrue(dataset.sparse)
-#
-#     def test_load_libsvm_file_sparse(self):
-#         """ Tests loading a LibSVM file in sparse mode.
-#         """
-#         file_ = "tests/files/libsvm/2"
-#
-#         data = load_libsvm_file(file_, 10, 780)
-#         data.collect()
-#         x, y = load_svmlight_file(file_, n_features=780)
-#
-#         read_x = np.empty((0, x.shape[1]))
-#         read_y = np.empty(0)
-#
-#         for subset in data:
-#             read_x = np.concatenate((read_x, subset.samples.toarray()))
-#             read_y = np.concatenate((read_y, subset.labels))
-#
-#         self.assertTrue((read_x == x.toarray()).all())
-#         self.assertTrue((read_y == y).all())
-#         self.assertEqual(len(data), 6)
-#
-#     def test_load_libsvm_file_dense(self):
-#         """ Tests loading a LibSVM file in dense mode.
-#         """
-#         file_ = "tests/files/libsvm/1"
-#
-#         data = load_libsvm_file(file_, 20, 780, False)
-#         data.collect()
-#         x, y = load_svmlight_file(file_, n_features=780)
-#
-#         read_x = np.empty((0, x.shape[1]))
-#         read_y = np.empty(0)
-#
-#         for subset in data:
-#             read_x = np.concatenate((read_x, subset.samples))
-#             read_y = np.concatenate((read_y, subset.labels))
-#
-#         self.assertTrue((read_x == x.toarray()).all())
-#         self.assertTrue((read_y == y).all())
-#         self.assertEqual(len(data), 4)
 #
 #     def test_load_libsvm_files_sparse(self):
 #         """ Tests loading multiple LibSVM files in sparse mode.
@@ -293,23 +326,23 @@ class ArrayTest(unittest.TestCase):
         """ Tests sizes consistency. """
 
         x_size, y_size = 40, 25
-        bx_size, by_size = 9, 11
+        bn, bm = 9, 11
         x = np.random.randint(10, size=(x_size, y_size))
-        darray = ds.array(x=x, block_size=(bx_size, by_size))
+        darray = ds.array(x=x, block_size=(bn, bm))
 
         self.assertEqual(darray.shape, (x_size, y_size))
 
         self.assertEqual(darray._blocks_shape,
-                         (ceil(x_size / bx_size), ceil(y_size / by_size)))
-        self.assertEqual(darray._block_size, (bx_size, by_size))
+                         (ceil(x_size / bn), ceil(y_size / bm)))
+        self.assertEqual(darray._block_size, (bn, bm))
 
         x = sp.csr_matrix(x)
-        darray = ds.array(x=x, block_size=(bx_size, by_size))
+        darray = ds.array(x=x, block_size=(bn, bm))
 
         self.assertEqual(darray.shape, (x_size, y_size))
         self.assertEqual(darray._blocks_shape,
-                         (ceil(x_size / bx_size), ceil(y_size / by_size)))
-        self.assertEqual(darray._block_size, (bx_size, by_size))
+                         (ceil(x_size / bn), ceil(y_size / bm)))
+        self.assertEqual(darray._block_size, (bn, bm))
 
     def test_iterate_rows(self):
         """ Testing the row iterator of the ds.array
@@ -354,55 +387,65 @@ class ArrayTest(unittest.TestCase):
             self.assertTrue(equal(c_data, c_x))
 
     def test_mean(self):
-        y_size = 2
+        bn, bm = 2, 2
 
         # Dense
-        x = np.random.randint(10, size=(10, 10))
-        data = ds.array(x=x, block_size=(2, y_size))
+        # =====
 
-        self.assertTrue(equal(data.mean(axis=0).collect(), x.mean(axis=0)))
-        self.assertTrue(
-            equal(data.mean(axis=1).collect().flatten(), x.mean(axis=1)))
+        x = np.random.randint(10, size=(10, 10))
+        data = ds.array(x=x, block_size=(bn, bm))
+
+        _validate_arrays(self, data.mean(axis=0),
+                         x.mean(axis=0).reshape(1, -1),
+                         (bn, bm))
+
+        _validate_arrays(self, data.mean(axis=1),
+                         x.mean(axis=1).reshape(-1, 1), (bn, bm))
 
         # Sparse
+        # ======
         x = sp.csr_matrix(x)
-        data = ds.array(x=x, block_size=(2, y_size))
+        data = ds.array(x=x, block_size=(bn, bm))
 
         # Compute the mean counting empty positions as 0
-        data_mean = data.mean(axis=0, count_zero=True).collect()
-        self.assertTrue(equal(data_mean, x.mean(axis=0)))
+        _validate_arrays(self, data.mean(axis=0, count_zero=True),
+                         x.mean(axis=0), (bn, bm))
 
-        data_mean = data.mean(axis=1, count_zero=True).collect()
-        self.assertTrue(equal(data_mean, x.mean(axis=1)))
+        _validate_arrays(self, data.mean(axis=1, count_zero=True),
+                         x.mean(axis=1), (bn, bm))
 
         # Compute the mean without considering empty positions
-        data_mean = data.mean(axis=0, count_zero=False).collect()
         x_mean = x.sum(axis=0) / (x != 0).toarray().sum(axis=0)
-        self.assertTrue(equal(data_mean, x_mean))
+        _validate_arrays(self, data.mean(axis=0, count_zero=False),
+                         x_mean, (bn, bm))
 
-        data_mean = data.mean(axis=1, count_zero=False).collect()
         x_mean = x.sum(axis=1) / (x != 0).toarray().sum(axis=1).reshape(-1, 1)
-        self.assertTrue(equal(data_mean, x_mean))
+        _validate_arrays(self, data.mean(axis=1, count_zero=False),
+                         x_mean, (bn, bm))
 
     def test_transpose(self):
         """ Tests array transpose."""
 
         x_size, y_size = 4, 6
-        bx_size, by_size = 2, 3
+        bn, bm = 2, 3
 
         x = np.random.randint(10, size=(x_size, y_size))
-        darray = ds.array(x=x, block_size=(bx_size, by_size))
+        darray = ds.array(x=x, block_size=(bn, bm))
 
         darray_t = darray.transpose(mode='all')
-        self.assertTrue(equal(darray_t.collect(), x.transpose()))
+        _validate_arrays(self, darray_t, x.transpose(), (bm, bn))
         # ensure that original data was not modified
-        self.assertTrue(equal(darray.collect(), x))
+        _validate_arrays(self, darray, x, (bn, bm))
 
         darray_t = darray.transpose(mode='rows')
-        self.assertTrue(equal(darray_t.collect(), x.transpose()))
+        _validate_arrays(self, darray_t, x.transpose(), (bm, bn))
+        # ensure that original data was not modified
+        _validate_arrays(self, darray, x, (bn, bm))
 
         darray_t = darray.transpose(mode='columns')
-        self.assertTrue(equal(darray_t.collect(), x.transpose()))
+        _validate_arrays(self, darray_t, x.transpose(), (bm, bn))
+        # ensure that original data was not modified
+        _validate_arrays(self, darray, x, (bn, bm))
 
         self.assertRaises(Exception, darray.transpose, 'invalid')
 

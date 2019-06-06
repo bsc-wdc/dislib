@@ -1,3 +1,5 @@
+from math import ceil
+
 import numpy as np
 from pycompss.api.api import compss_wait_on
 from pycompss.api.parameter import COLLECTION_IN, Depth, Type
@@ -38,6 +40,188 @@ def array(x, block_size):
     return darray
 
 
+# def load_libsvm_files(path, n_features, store_sparse=True):
+#     """ Loads a set of LibSVM files into a Dataset.
+#
+#         Parameters
+#        ----------
+#        path : string
+#            Path to a directory containing LibSVM files.
+#        n_features : int
+#            Number of features.
+#        store_sparse : boolean, optional (default = True).
+#            Whether to use scipy.sparse data structures to store data. If False,
+#            numpy.array is used instead.
+#
+#        Returns
+#        -------
+#        dataset : Dataset
+#            A distributed representation of the data divided in a Subset for
+#            each file in path.
+#        """
+#
+#     return _load_files(path, fmt="libsvm", store_sparse=store_sparse,
+#                        n_features=n_features)
+#
+# def _load_files(path, fmt, n_features, delimiter=None, label_col=None,
+#                 store_sparse=False):
+#     assert os.path.isdir(path), "Path is not a directory."
+#
+#     files = os.listdir(path)
+#     subsets = Dataset(n_features, store_sparse)
+#
+#     for file_ in files:
+#         full_path = os.path.join(path, file_)
+#         subset = _read_file(full_path, fmt, n_features, delimiter, label_col,
+#                             store_sparse)
+#         subsets.append(subset)
+#
+#     return subsets
+
+def load_svmlight_file(path, block_size, n_features, store_sparse):
+    """ Loads a LibSVM file into a Dataset.
+
+     Parameters
+    ----------
+    path : string
+        File path.
+    block_size : (int, int)
+        Block size for the output darray.
+    n_features : int
+        Number of features.
+    store_sparse : boolean
+        Whether to use scipy.sparse data structures to store data. If False,
+        numpy.array is used instead.
+
+    Returns
+    -------
+    x, y : (darray, darray)
+        A distributed representation (darray) of the X and y.
+    """
+    n, m = block_size
+    lines = []
+    x_blocks, y_blocks = [], []
+
+    with open(path, "r") as f:
+        for line in f:
+            lines.append(line.encode())
+
+            if len(lines) == n:
+                # line 0 -> X, line 1 -> y
+                out_blocks = Array._get_out_blocks(1, ceil(n_features / m))
+                out_blocks.append([object()])
+                # out_blocks.append([])
+                _read_libsvm(lines, out_blocks, col_size=m,
+                             n_features=n_features, store_sparse=store_sparse)
+                # we append only the list forming the row (out_blocks depth=2)
+                x_blocks.append(out_blocks[0])
+                y_blocks.append(out_blocks[1])
+                lines = []
+
+    if lines:
+        out_blocks = Array._get_out_blocks(1, ceil(n_features / m))
+        out_blocks.append([object()])
+        _read_libsvm(lines, out_blocks, col_size=m,
+                     n_features=n_features, store_sparse=store_sparse)
+        # we append only the list forming the row (out_blocks depth=2)
+        x_blocks.append(out_blocks[0])
+        y_blocks.append(out_blocks[1])
+
+    x = Array(x_blocks, block_size=block_size, sparse=store_sparse)
+
+    # TODO: think if it's worth partitioning the y's
+    # y has only a single line but it's treated as a 'column'
+    y = Array(y_blocks, block_size=(n, 1), sparse=False)
+
+    return x, y
+
+
+@task(out_blocks={Type: COLLECTION_INOUT, Depth: 2})
+def _read_libsvm(lines, out_blocks, col_size, n_features, store_sparse):
+    from tempfile import SpooledTemporaryFile
+    from sklearn.datasets import load_svmlight_file
+    # Creating a tmp file to use load_svmlight_file method should be more
+    # efficient than parsing the lines manually
+    tmp_file = SpooledTemporaryFile(mode="wb+", max_size=2e8)
+    tmp_file.writelines(lines)
+    tmp_file.seek(0)
+    print("Created tmp files")
+    import sys
+    sys.stdout.flush()
+    x, y = load_svmlight_file(tmp_file, n_features)
+    print("Loaded svm light")
+    if not store_sparse:
+        x = x.toarray()
+
+    # import ipdb
+    # ipdb.set_trace()
+    # tried also converting to csc/ndarray first for faster splitting but it's
+    # not worth. Position 0 contains the X
+    for i in range(ceil(n_features / col_size)):
+        out_blocks[0][i] = x[:, i * col_size:(i + 1) * col_size]
+        # out_blocks[0][i] = [x[:, i * col_size:(i + 1) * col_size] for i in
+        #              range(ceil(n_features/ col_size))]
+
+    # Position 1 contains the y block
+    out_blocks[1][0] = y.reshape(-1, 1)
+
+    print("X length: %s" % len(out_blocks[0]))
+    print("y length: %s" % len(out_blocks[1]))
+    print("X: %s" % out_blocks[0])
+    print("y: %s" % out_blocks[1])
+    sys.stdout.flush()
+
+
+# @task(file=FILE_IN, returns=1)
+# def _read_file_libsvm(file, fmt, n_features, delimiter, label_col,
+#                       store_sparse):
+#     from sklearn.datasets import load_svmlight_file
+#
+#     x, y = load_svmlight_file(file, n_features)
+#
+#     if not store_sparse:
+#         x = x.toarray()
+#
+#     subset = Subset(x, y)
+#
+#     return subset
+#
+#
+# def _split_to_cols_1(x, col_size):
+#     # tried also converting to csc/ndarray first for faster splitting but it's
+#     # not worth
+#     return [x[:, i * col_size:(i + 1) * col_size] for i in
+#             range(ceil(x.shape[1] / col_size))]
+#
+#
+# def _split_to_cols_2(x, col_size):
+#     x = x.tocsc()
+#     return [x[:, i * col_size:(i + 1) * col_size] for i in
+#             range(ceil(x.shape[1] / col_size))]
+#
+#
+# def _split_to_cols_3(x, col_size):
+#     x = x.toarray()
+#     return [sp.csr_matrix(x[:, i * col_size:(i + 1) * col_size]) for i in
+#             range(ceil(x.shape[1] / col_size))]
+#
+#
+# def p1(x, col_size):
+#     xd = x.toarray()
+#     return [xd[:, i * col_size:(i + 1) * col_size] for i in
+#             range(ceil(x.shape[1] / col_size))]
+#
+#
+# def p2(x, col_size):
+#     return [x[:, i * col_size:(i + 1) * col_size] for i in
+#             range(ceil(x.shape[1] / col_size))]
+#
+# def p3(x, col_size):
+#     xd = x.toarray()
+#     return [sp.csr_matrix(xd[:, i * col_size:(i + 1) * col_size]) for i in
+#             range(ceil(x.shape[1] / col_size))]
+
+
 class Array(object):
     # """ A dataset containing samples and, optionally, labels that can be
     # stored in a distributed manner.
@@ -66,14 +250,14 @@ class Array(object):
     # """
 
     # TODO: after implementing more constructors decide a better way to avoid
-    # having to synchornize bot_right block size to compute shape
-    def __init__(self, blocks, block_size, sparse):
+    # having to synchronize bot_right block size to compute shape
+    def __init__(self, blocks, block_size, sparse, shape=None):
         self._validate_blocks(blocks)
 
         self._blocks = blocks
         self._block_size = block_size
         self._blocks_shape = (len(blocks), len(blocks[0]))
-        self._shape = None
+        self._shape = shape
         # self._sizes = list()
         # self._max_features = None
         # self._min_features = None
@@ -94,8 +278,12 @@ class Array(object):
 
     @staticmethod
     def _merge_blocks(blocks):
+        sparse = None
         b0 = blocks[0][0]
-        if sp.issparse(b0):
+        if sparse is None:
+            sparse = issparse(b0)
+
+        if sparse:
             ret = sp.bmat(blocks, format=b0.getformat(), dtype=b0.dtype)
         else:
             ret = np.block(blocks)
@@ -122,8 +310,6 @@ class Array(object):
         if self._shape is None:
             # last blocks may be of different size so we get bot right corner
             # to add the correct number of elements to the total
-            # TODO try avoid this with 2 params like: top_left_shape &
-            # bot_right_shape
             bot_right_shape = compss_wait_on(_get_shape(self._blocks[-1][-1]))
 
             blocks_x, blocks_y = self._blocks_shape
@@ -195,19 +381,19 @@ class Array(object):
                     out_blocks[i2].append(_blocks[i2][0])
         else:
             raise Exception(
-                "Unknown tranpose mode'%s'. Options are: [all|rows|columns]" % mode)
+                "Unknown transpose mode '%s'. Options are: [all|rows|columns]"
+                % mode)
 
         blocks_t = list(map(list, zip(*out_blocks)))
 
-        # notice block_size is transposed
-        bn, bm = self._block_size[1], self._block_size[0]
+        bn, bm = self._block_size[0], self._block_size[1]
 
+        # notice block_size is transposed
         return Array(blocks_t, block_size=(bm, bn), sparse=self._sparse)
 
     def collect(self):
-        blocks = compss_wait_on(self._blocks)
-
-        return self._merge_blocks(blocks)
+        self._blocks = compss_wait_on(self._blocks)
+        return self._merge_blocks(self._blocks)
 
 
 @task(returns=1)
@@ -218,48 +404,52 @@ def _get_shape(block):
 @task(blocks={Type: COLLECTION_IN, Depth: 2},
       out_blocks={Type: COLLECTION_INOUT, Depth: 2})
 def _mean(blocks, out_blocks, axis, count_zero):
-    def _sparse_mean():
-        if axis == 1:  # row
-            for i, r in enumerate(blocks):
-                rows = Array._merge_blocks([r])
-                if count_zero:
-                    out_blocks[i][0] = rows.mean(axis=axis).reshape(
-                        rows.shape[0], 1)
-                else:
-                    out_blocks[i][0] = (
-                        rows.sum(axis=1) / (rows != 0).toarray().sum(
-                            axis=1).reshape(-1, 1))
 
-        else:  # cols
-            for j in range(len(blocks[0])):
-                c = np.block([[blocks[i][j]] for i in range(len(blocks))])
-                cols = Array._merge_blocks(c)
-                if count_zero:
-                    out_blocks[0][j] = cols.mean(axis=axis)
-                else:
-                    out_blocks[0][j] = cols.sum(axis=0) / (
-                        cols != 0).toarray().sum(axis=0)
-
-        return out_blocks
-
-    def _dense_mean():
-        if axis == 1:  # row
-            for i, r in enumerate(blocks):
-                rows = Array._merge_blocks([r])
-                out_blocks[i][0] = rows.mean(axis=axis).reshape(len(rows), 1)
-        else:  # cols
-            for j in range(len(blocks[0])):
-                c = np.block([[blocks[i][j]] for i in range(len(blocks))])
-                cols = Array._merge_blocks(c)
-                out_blocks[0][j] = cols.mean(axis=axis)
-        return out_blocks
 
     # Depending on whether the data is sparse call appropriate nested function
     if issparse(blocks[0][0]):
-        _sparse_mean()
+        out_blocks = _sparse_mean(blocks, out_blocks, axis, count_zero)
     else:
-        _dense_mean()
+        out_blocks =_dense_mean(blocks, out_blocks, axis)
 
+
+def _sparse_mean(blocks, out_blocks, axis, count_zero):
+    if axis == 1:  # row
+        for i, r in enumerate(blocks):
+            rows = Array._merge_blocks([r])
+            if count_zero:
+                out_blocks[i][0] = rows.mean(axis=axis)
+            else:
+                out_blocks[i][0] = (rows.sum(axis=1) /
+                                    (rows != 0).toarray().sum(
+                                        axis=1).reshape(-1, 1))
+
+    else:  # cols
+        for j in range(len(blocks[0])):
+            c = np.block([[blocks[i][j]] for i in range(len(blocks))])
+            cols = Array._merge_blocks(c)
+            if count_zero:
+                out_blocks[0][j] = cols.mean(axis=axis)
+            else:
+                out_blocks[0][j] = cols.sum(axis=0) / (
+                    cols != 0).toarray().sum(axis=0)
+
+    return out_blocks
+
+
+def _dense_mean(blocks, out_blocks, axis):
+    if axis == 1:  # row
+        for i, r in enumerate(blocks):
+            rows = Array._merge_blocks([r])
+            out_blocks[i][0] = rows.mean(axis=axis)
+            out_blocks[i][0].shape = (len(rows), 1)
+    else:  # cols
+        for j in range(len(blocks[0])):
+            c = np.block([[blocks[i][j]] for i in range(len(blocks))])
+            cols = Array._merge_blocks(c)
+            out_blocks[0][j] = cols.mean(axis=axis)
+            out_blocks[0][j].shape = (1, len(cols[0]))
+    return out_blocks
 
 @task(blocks={Type: COLLECTION_IN, Depth: 2},
       out_blocks={Type: COLLECTION_INOUT, Depth: 2})
