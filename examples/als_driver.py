@@ -7,7 +7,7 @@ from scipy.sparse import csr_matrix
 
 import dislib as ds
 from dislib.recommendation import ALS
-
+from math import ceil
 
 def load_movielens(data_path, train_ratio=0.9):
     cols = ['user_id', 'movie_id', 'rating', 'timestamp']
@@ -33,10 +33,10 @@ def load_movielens(data_path, train_ratio=0.9):
     test = csr_matrix(
         (te_df.rating, (te_df.user_id, te_df.movie_id)))
 
-    x_size, y_size = train.shape[0] // 4, train.shape[1] // 4
+    x_size, y_size = ceil(train.shape[0] / 2), ceil(train.shape[1] / 3)
     train_arr = ds.array(train, block_size=(x_size, y_size))
 
-    x_size, y_size = test.shape[0] // 4, test.shape[1] // 4
+    x_size, y_size = ceil(test.shape[0] / 2), ceil(test.shape[1] / 3)
     test_arr = ds.array(test, block_size=(x_size, y_size))
 
     return train_arr, test_arr
@@ -57,8 +57,12 @@ if __name__ == '__main__':
 
     train, test = load_movielens(data_path=data_path)
 
+    print("Train shape: %s" % list(train._blocks_shape))
+    import ipdb
+    ipdb.set_trace()
+
     exec_start = time()
-    als = ALS(tol=0.0001, n_f=n_f, verbose=True)
+    als = ALS(tol=0.0001, n_f=n_f, max_iter=2, verbose=True)
 
     # Fit using training data to check convergence
     # als.fit(train)
