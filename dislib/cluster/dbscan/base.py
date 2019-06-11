@@ -159,7 +159,7 @@ class DBSCAN():
 
         for subset_idx, region_id in enumerate(np.ndindex(grid.shape)):
             region = grid[region_id]
-            region.update_labels(n_dims, self._components)
+            region.update_labels(self._components)
             final_labels.append(region.labels)
 
             if not self._arrange_data:
@@ -228,6 +228,12 @@ def _merge_dicts(*dicts):
 
 @task(returns=1)
 def _get_connected_components(equiv):
+
+    # Add inverse equivalences
+    for node, neighs in equiv.items():
+        for neigh in neighs:
+            equiv[neigh].add(node)
+
     visited = set()
     connected = []
 
