@@ -266,6 +266,98 @@ class DBSCANTest(unittest.TestCase):
 
         self.assertTrue(np.array_equal(dense.labels, sparse.labels))
 
+    def test_small_cluster_1(self):
+        """ Tests that DBSCAN can find clusters with less than min_samples. """
+        x = np.array([[0, 0], [0, 1], [1, 0], [3, 0], [5.1, 0], [6, 0], [6, 1],
+                      [10, 10]])
+        ds = load_data(x=x, subset_size=5)
+
+        # n_regions=1
+        dbscan1 = DBSCAN(n_regions=1, eps=2.5, min_samples=4)
+        dbscan1.fit(ds)
+        self.assertEqual(dbscan1.n_clusters, 2)
+
+    def test_small_cluster_2(self):
+        """ Tests that DBSCAN can find clusters with less than min_samples. """
+        x = np.array([[0, 0], [0, 1], [1, 0], [3, 0], [5.1, 0], [6, 0], [6, 1],
+                      [10, 10]])
+        ds = load_data(x=x, subset_size=5)
+
+        # n_regions=10
+        dbscan2 = DBSCAN(n_regions=10, eps=2.5, min_samples=4)
+        dbscan2.fit(ds)
+        self.assertEqual(dbscan2.n_clusters, 2)
+
+    def test_cluster_between_regions_1(self):
+        """ Tests that DBSCAN can find clusters between regions. """
+        x = np.array([[0, 0], [3.9, 0], [4.1, 0], [4.1, 0.89], [4.1, 0.88],
+                      [5.9, 0], [5.9, 0.89], [5.9, 0.88], [6.1, 0], [10, 10],
+                      [4.6, 0], [5.4, 0]])
+        ds = load_data(x=x, subset_size=5)
+
+        dbscan = DBSCAN(n_regions=10, eps=0.9, min_samples=4)
+        dbscan.fit(ds)
+        self.assertEqual(dbscan.n_clusters, 1)
+
+    def test_cluster_between_regions_2(self):
+        """ Tests that DBSCAN can find clusters between regions. """
+        x = np.array([[0, 0], [0.6, 0], [0.9, 0], [1.1, 0.2], [0.9, 0.6],
+                      [1.1, 0.8], [1.4, 0.8], [2, 2]])
+        ds = load_data(x=x, subset_size=5)
+
+        dbscan = DBSCAN(n_regions=2, eps=0.5, min_samples=3)
+        dbscan.fit(ds)
+        self.assertEqual(dbscan.n_clusters, 1)
+
+    def test_cluster_between_regions_3(self):
+        """ Tests that DBSCAN can find clusters between regions. """
+        x = np.array([[0, 0], [0.6, 0], [0.6, 0.01], [0.9, 0], [1.1, 0.2],
+                      [1.4, 0.2], [1.4, 0.21], [0.9, 0.6], [0.6, 0.6],
+                      [0.6, 0.61], [1.1, 0.8], [1.4, 0.8], [1.4, 0.81],
+                      [2, 2]])
+        ds = load_data(x=x, subset_size=5)
+
+        dbscan = DBSCAN(n_regions=2, eps=0.5, min_samples=3)
+        dbscan.fit(ds)
+        self.assertEqual(dbscan.n_clusters, 1)
+
+    def test_random_clusters_1(self):
+        """ Tests DBSCAN on random data with multiple clusters. """
+        # 1 dimension
+        np.random.seed(1)
+        x = np.random.uniform(0, 10, size=(1000, 1))
+        ds = load_data(x=x, subset_size=300)
+        dbscan = DBSCAN(n_regions=100, eps=0.1, min_samples=20)
+        dbscan.fit(ds)
+
+        self.assertEqual(dbscan.n_clusters, 18)
+        self.assertEqual(np.count_nonzero(ds.labels == -1), 72)
+
+    def test_random_clusters_2(self):
+        """ Tests DBSCAN on random data with multiple clusters. """
+        # 2 dimensions
+        np.random.seed(2)
+        x = np.random.uniform(0, 10, size=(1000, 2))
+        ds = load_data(x=x, subset_size=300)
+        dbscan = DBSCAN(n_regions=10, max_samples=10, eps=0.5, min_samples=10)
+        dbscan.fit(ds)
+
+        self.assertEqual(dbscan.n_clusters, 27)
+        self.assertEqual(np.count_nonzero(ds.labels == -1), 206)
+
+    def test_random_clusters_3(self):
+        """ Tests DBSCAN on random data with multiple clusters. """
+        # 3 dimensions
+        np.random.seed(3)
+        x = np.random.uniform(0, 10, size=(1000, 3))
+        ds = load_data(x=x, subset_size=300)
+        dbscan = DBSCAN(n_regions=10, dimensions=[0, 1],
+                        eps=0.9, min_samples=4)
+        dbscan.fit(ds)
+
+        self.assertEqual(dbscan.n_clusters, 50)
+        self.assertEqual(np.count_nonzero(ds.labels == -1), 266)
+
 
 def main():
     unittest.main()
