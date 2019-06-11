@@ -59,6 +59,15 @@ Classes
 :class:`preprocessing.StandardScaler <dislib.preprocessing.classes.StandardScaler>` -
 Scale data to zero mean and unit variance.
 
+dislib.decomposition: Matrix Decomposition
+------------------------------------------
+
+Classes
+.......
+
+:class:`decomposition.PCA <dislib.decomposition.pca.base.PCA>` - Principal
+component analysis (PCA).
+
 dislib.cluster: Clustering
 --------------------------
 
