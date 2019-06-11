@@ -13,6 +13,7 @@ Subpackages
     dislib.cluster.dbscan
     dislib.recommendation.als
     dislib.data
+    dislib.decomposition.pca
     dislib.other
 
 .. automodule:: dislib
