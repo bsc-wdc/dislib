@@ -1,4 +1,6 @@
+import bisect
 from collections import defaultdict
+from itertools import chain
 
 import numpy as np
 from pycompss.api.task import task
@@ -12,126 +14,179 @@ class Region(object):
     def __init__(self, region_id, subset, n_samples, epsilon, sparse):
         self.id = region_id
         self.epsilon = epsilon
-        self._neighbours = []
         self.subset = subset
         self.n_samples = n_samples
+        self.labels_region = None
         self.labels = None
-        self._neighbour_labels = []
-        self._neighbour_ids = []
+        self.cp_labels = None
+        self._neigh_regions = []
+        self._neigh_regions_ids = []
+        self._in_cp_neighs = []
+        self._out_cp_neighs = []
+        self._non_cp_neighs = []
         self._sparse = sparse
 
     def add_neighbour(self, region):
-        self._neighbours.append(region)
+        self._neigh_regions.append(region)
 
     def partial_dbscan(self, min_samples, max_samples):
-        subsets = [self.subset]
-        n_samples = self.n_samples
+        if self.n_samples == 0:
+            self.cp_labels = np.empty(0, dtype=int)
+            return
+
+        neigh_subsets = []
+        total_n_samples = self.n_samples
 
         # get samples from all neighbouring regions
-        for region in self._neighbours:
-            subsets.append(region.subset)
-            n_samples += region.n_samples
-
-        if n_samples == 0:
-            self.labels = np.empty(0)
-            return
+        for region in self._neigh_regions:
+            neigh_subsets.append(region.subset)
+            total_n_samples += region.n_samples
 
         # if max_samples is not defined, process all samples in a single task
         if max_samples is None:
-            max_samples = n_samples
+            max_samples = self.n_samples
 
         # compute the neighbours of each sample using multiple tasks
-        neigh_list = []
         cp_list = []
 
-        for idx in range(0, n_samples, max_samples):
+        for idx in range(0, self.n_samples, max_samples):
             end_idx = idx + max_samples
-            neighs, cps = _compute_neighbours(self.epsilon, min_samples, idx,
-                                              end_idx, *subsets)
-            neigh_list.append(neighs)
+            result = _compute_neighbours(self.epsilon, min_samples, idx,
+                                         end_idx, self.subset, *neigh_subsets)
+            cps, in_cp_neighs, out_cp_neighs, non_cp_neighs = result
             cp_list.append(cps)
+            self._in_cp_neighs.append(in_cp_neighs)
+            self._out_cp_neighs.append(out_cp_neighs)
+            self._non_cp_neighs.append(non_cp_neighs)
 
-        c_points = _lists_to_array(*cp_list)
+        cp_mask = _lists_to_array(*cp_list)
 
-        # compute the label of each sample based on their neighbours
-        labels = _compute_labels(min_samples, n_samples, c_points, *neigh_list)
-        self.labels = _slice_array(labels, 0, self.n_samples)
-
-        # send labels to each neighbouring region
-        start = self.n_samples
-        finish = start
-
-        for region in self._neighbours:
-            finish += region.n_samples
-            neigh_labels = _slice_array(labels, start, finish)
-            region.add_labels(neigh_labels, self.id)
-            start = finish
-
-    def add_labels(self, labels, region_id):
-        self._neighbour_labels.append(labels)
-        self._neighbour_ids.append(region_id)
+        # perform a local DBSCAN clustering on the core points
+        self.cp_labels = _compute_cp_labels(cp_mask, *self._in_cp_neighs)
 
     def get_equivalences(self):
-        return _compute_equivalences(self.id, self.labels, self._neighbour_ids,
-                                     *self._neighbour_labels)
+        if self.n_samples == 0:
+            self.labels_region = np.empty(0)
+            self.labels = np.empty(0)
+            return {}
+        # get samples from all neighbouring regions
+        regions_ids = [self.id]
+        cp_labels_list = [self.cp_labels]
+        for region in self._neigh_regions:
+            regions_ids.append(region.id)
+            cp_labels_list.append(region.cp_labels)
+        result = _compute_equivalences(self.n_samples, regions_ids,
+                                       *chain(cp_labels_list,
+                                              self._out_cp_neighs,
+                                              self._non_cp_neighs))
+        self.labels_region, self.labels, equiv = result
 
-    def update_labels(self, n_dims, components):
-        self.labels = _update_labels(self.id, n_dims, self.labels, components)
+        return equiv
+
+    def update_labels(self, components):
+        self.labels = _update_labels(self.labels_region, self.labels,
+                                     components)
 
 
 @task(returns=1)
-def _update_labels(region_id, n_dims, labels, components):
-    new_labels = np.full(labels.shape[0], -1, dtype=int)
-
+def _update_labels(labels_region, labels, components):
+    components_map = {}
     for label, component in enumerate(components):
         for key in component:
-            if key[:n_dims] == region_id:
-                indices = np.argwhere(labels == key[n_dims])
-                new_labels[indices] = label
+            components_map[key] = label
 
-    return new_labels
+    for i, (r, lbl) in enumerate(zip(labels_region, labels)):
+        labels[i] = components_map.get(tuple(r) + (lbl,), lbl)
+
+    return labels
 
 
-@task(returns=1)
-def _compute_equivalences(region_id, labels, neigh_ids, *labels_list):
+@task(returns=3)
+def _compute_equivalences(n_samples, region_ids, *starred_args):
+    n_regions = len(region_ids)
+    cp_labels_list = starred_args[:n_regions]
+    n_chunks = len(starred_args[n_regions:])//2
+    out_cp_neighs = iter(chain(*starred_args[n_regions:n_regions + n_chunks]))
+    non_cp_neighs = iter(chain(*starred_args[n_regions + n_chunks:]))
+
+    region_id = region_ids[0]
+    region_cp_labels = cp_labels_list[0]
+
+    labels = region_cp_labels.copy()
+    label_regions = np.empty((n_samples, len(region_id)), dtype=int)
+    label_regions[:] = region_id
+
     equiv = defaultdict(set)
+    for idx in range(n_samples):
+        if region_cp_labels[idx] != -1:  # if core point
+            # Add equivalences to neighbouring clusters of other regions
+            out_neighbours = next(out_cp_neighs)
+            key = region_id + (region_cp_labels[idx],)
+            if key not in equiv:
+                equiv[key] = set()
+            for n in out_neighbours:
+                if n[0] > 0 and cp_labels_list[n[0]][n[1]] != -1:
+                    n_region_id = region_ids[n[0]]
+                    n_label = cp_labels_list[n[0]][n[1]]
+                    equiv[key].add(n_region_id + (n_label,))
+        else:
+            # Assign the label of the closest core point neighbour (if exists)
+            neighbours = next(non_cp_neighs)
+            for n in neighbours:
+                if cp_labels_list[n[0]][n[1]] != -1:  # if core point
+                    n_region_id = region_ids[n[0]]
+                    n_label = cp_labels_list[n[0]][n[1]]
+                    label_regions[idx] = n_region_id
+                    labels[idx] = n_label
+                    break
+    return label_regions, labels, equiv
 
-    for label_idx, label in enumerate(labels):
-        if label < 0:
-            continue
 
-        key = region_id + (label,)
-
-        if key not in equiv:
-            equiv[key] = set()
-
-        for neigh_id, neigh_labels in zip(neigh_ids, labels_list):
-            neigh_label = neigh_labels[label_idx]
-
-            if neigh_label >= 0:
-                neigh_key = neigh_id + (neigh_label,)
-                equiv[key].add(neigh_key)
-
-    return equiv
-
-
-@task(returns=1)
-def _slice_array(arr, start, finish):
-    return arr[start:finish]
-
-
-@task(returns=2)
-def _compute_neighbours(epsilon, min_samples, begin_idx, end_idx, *subsets):
-    samples = _concatenate_subsets(*subsets).samples
+@task(returns=4)
+def _compute_neighbours(epsilon, min_samples, begin_idx, end_idx, subset,
+                        *neigh_subsets):
+    samples = subset.samples
+    all_len = [samples.shape[0]] + [s.samples.shape[0] for s in neigh_subsets]
+    cum_len = np.cumsum(all_len)
+    all_samples = _concatenate_subsets(subset, *neigh_subsets).samples
     nn = NearestNeighbors(radius=epsilon)
-    nn.fit(samples)
+    nn.fit(all_samples)
     dists, neighs = nn.radius_neighbors(samples[begin_idx:end_idx],
                                         return_distance=True)
-
-    sorted_neighbors = [neighbors[np.argsort(distances)]
-                        for distances, neighbors in zip(dists, neighs)]
     core_points = [len(neighbors) >= min_samples for neighbors in neighs]
-    return sorted_neighbors, core_points
+
+    inner_core_neighbors = []
+    outer_core_neighbors = []
+    noncore_neighbors = []
+    for i, (distances, neighbors) in enumerate(zip(dists, neighs)):
+        idx = begin_idx + i
+        if core_points[i]:
+            neighbors_in = []
+            neighbors_out = []
+            for n in neighbors:
+                if n != idx:
+                    reg = bisect.bisect(cum_len, n)
+                    if reg == 0:
+                        if idx < n:
+                            neighbors_in.append(n)
+                    else:
+                        reg_idx = n - cum_len[reg - 1]
+                        if idx <= reg_idx:
+                            neighbors_out.append((reg, reg_idx))
+            inner_core_neighbors.append(np.array(neighbors_in, dtype=int))
+            outer_core_neighbors.append(neighbors_out)
+        else:
+            neighbors = neighbors[np.argsort(distances)]
+            neighbors_tups = []
+            for n in neighbors:
+                if n != idx:
+                    reg = bisect.bisect(cum_len, n)
+                    reg_idx = n if reg == 0 else n - cum_len[reg-1]
+                    neighbors_tups.append((reg, reg_idx))
+            noncore_neighbors.append(neighbors_tups)
+
+    return core_points, inner_core_neighbors, outer_core_neighbors,\
+        noncore_neighbors
 
 
 def _concatenate_subsets(*subsets):
@@ -149,32 +204,21 @@ def _lists_to_array(*cp_list):
 
 
 @task(returns=1)
-def _compute_labels(min_samples, n_samples, core_points, *neighbour_lists):
-    adj_matrix = lil_matrix((n_samples, n_samples))
-    row_idx = 0
+def _compute_cp_labels(core_points, *in_cp_neighs):
+    core_ids = np.cumsum(core_points) - 1
+    n_core_pts = np.count_nonzero(core_points)
+    adj_matrix = lil_matrix((n_core_pts, n_core_pts))
 
-    # Build adjacency matrix such that non-core points have a single
-    # core point as neighbour. In this manner, non-core points will have
-    # weak connections to all neighbours except one of the core points.
-    for neighbour_list in neighbour_lists:
-        for neighbours in neighbour_list:
-            if core_points[row_idx]:
-                adj_matrix.rows[row_idx] = neighbours
-                adj_matrix.data[row_idx] = [1] * len(neighbours)
-            elif len(neighbours) > 0:
-                for neighbour in neighbours:
-                    if core_points[neighbour]:
-                        adj_matrix.rows[row_idx].append(neighbour)
-                        adj_matrix.data[row_idx].append(1)
-                        break
+    # Build adjacency matrix of core points
+    in_cp_neighs_iter = chain(*in_cp_neighs)
+    core_idx = 0
+    for idx, neighbours in zip(core_points.nonzero()[0], in_cp_neighs_iter):
+        neighbours = core_ids[neighbours[core_points[neighbours]]]
+        adj_matrix.rows[core_idx] = neighbours
+        adj_matrix.data[core_idx] = [1] * len(neighbours)
+        core_idx += 1
 
-            row_idx += 1
-
-    # ignores weak connections from core points to non-core points
-    components, labels = connected_components(adj_matrix, connection="strong")
-
-    for label in range(components):
-        if labels[labels == label].size < min_samples:
-            labels[labels == label] = -1
-
+    n_clusters, core_labels = connected_components(adj_matrix, directed=False)
+    labels = np.full(core_points.shape, -1)
+    labels[core_points] = core_labels
     return labels
