@@ -8,7 +8,7 @@ from dislib.data import Dataset, Subset
 
 
 def main():
-    n_samples = 1000000
+    n_samples = 3000000
     n_chunks = 384
     chunk_size = int(np.ceil(n_samples / n_chunks))
     n_features = 100
@@ -18,7 +18,7 @@ def main():
     compss_barrier()
 
     km = KMeans(n_clusters=n_clusters, max_iter=5, tol=0, arity=50)
-    performance.measure("KMeans", "1M", km, x)
+    performance.measure("KMeans", "3M", km, x)
 
 
 def gen_random(shape, subset_size):

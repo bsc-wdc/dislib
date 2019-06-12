@@ -3,9 +3,12 @@ import sys
 
 
 def main():
-    out = "/gpfs/projects/bsc19/PERFORMANCE/dislib/results/" + sys.argv[1]
-    log_dir = os.path.join("/gpfs/projects/bsc19/PERFORMANCE/dislib/logs",
-                           sys.argv[1])
+    res_path = "/gpfs/projects/bsc19/PERFORMANCE/dislib/results"
+    log_path = "/gpfs/projects/bsc19/PERFORMANCE/dislib/logs"
+
+    os.makedirs(res_path, exist_ok=True)
+    out = os.path.join(res_path, sys.argv[1])
+    log_dir = os.path.join(log_path, sys.argv[1])
 
     for f in os.listdir(log_dir):
         if f.endswith(".out"):

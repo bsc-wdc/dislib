@@ -16,7 +16,7 @@ def main():
 
     out = datetime.datetime.now().strftime("%Y-%m-%d_%H:%M")
     logdir = os.path.join("/gpfs/projects/bsc19/PERFORMANCE/dislib/logs/", out)
-    os.mkdir(logdir)
+    os.makedirs(logdir, exist_ok=True)
     cmd.append("--master_working_dir=" + logdir)
 
     gpfs_cmd = cmd + [
