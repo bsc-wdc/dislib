@@ -140,16 +140,16 @@ def load_svmlight_file(path, block_size, n_features, store_sparse):
 def _read_libsvm(lines, out_blocks, col_size, n_features, store_sparse):
     from tempfile import SpooledTemporaryFile
     from sklearn.datasets import load_svmlight_file
+
     # Creating a tmp file to use load_svmlight_file method should be more
     # efficient than parsing the lines manually
     tmp_file = SpooledTemporaryFile(mode="wb+", max_size=2e8)
+
     tmp_file.writelines(lines)
+
     tmp_file.seek(0)
-    print("Created tmp files")
-    import sys
-    sys.stdout.flush()
+
     x, y = load_svmlight_file(tmp_file, n_features)
-    print("Loaded svm light")
     if not store_sparse:
         x = x.toarray()
 
@@ -167,9 +167,6 @@ def _read_libsvm(lines, out_blocks, col_size, n_features, store_sparse):
 
     print("X length: %s" % len(out_blocks[0]))
     print("y length: %s" % len(out_blocks[1]))
-    print("X: %s" % out_blocks[0])
-    print("y: %s" % out_blocks[1])
-    sys.stdout.flush()
 
 
 # @task(file=FILE_IN, returns=1)
@@ -404,52 +401,82 @@ def _get_shape(block):
 @task(blocks={Type: COLLECTION_IN, Depth: 2},
       out_blocks={Type: COLLECTION_INOUT, Depth: 2})
 def _mean(blocks, out_blocks, axis, count_zero):
-
-
     # Depending on whether the data is sparse call appropriate nested function
     if issparse(blocks[0][0]):
-        out_blocks = _sparse_mean(blocks, out_blocks, axis, count_zero)
+        # out_blocks = _sparse_mean(blocks, out_blocks, axis, count_zero)
+        if axis == 1:  # row
+            for i, r in enumerate(blocks):
+                rows = Array._merge_blocks([r])
+                if count_zero:
+                    out_blocks[i][0] = rows.mean(axis=axis)
+                else:
+                    out_blocks[i][0] = (rows.sum(axis=1) /
+                                        (rows != 0).toarray().sum(
+                                            axis=1).reshape(-1, 1))
+
+        else:  # cols
+            for j in range(len(blocks[0])):
+                c = np.block([[blocks[i][j]] for i in range(len(blocks))])
+                cols = Array._merge_blocks(c)
+                if count_zero:
+                    out_blocks[0][j] = cols.mean(axis=axis)
+                else:
+                    # TODO gives problems with empty blocks
+                    out_blocks[0][j] = cols.sum(axis=0) / (
+                        cols != 0).toarray().sum(axis=0)
     else:
-        out_blocks =_dense_mean(blocks, out_blocks, axis)
-
-
-def _sparse_mean(blocks, out_blocks, axis, count_zero):
-    if axis == 1:  # row
-        for i, r in enumerate(blocks):
-            rows = Array._merge_blocks([r])
-            if count_zero:
+        # out_blocks = _dense_mean(blocks, out_blocks, axis)
+        if axis == 1:  # row
+            for i, r in enumerate(blocks):
+                rows = Array._merge_blocks([r])
                 out_blocks[i][0] = rows.mean(axis=axis)
-            else:
-                out_blocks[i][0] = (rows.sum(axis=1) /
-                                    (rows != 0).toarray().sum(
-                                        axis=1).reshape(-1, 1))
-
-    else:  # cols
-        for j in range(len(blocks[0])):
-            c = np.block([[blocks[i][j]] for i in range(len(blocks))])
-            cols = Array._merge_blocks(c)
-            if count_zero:
+                out_blocks[i][0].shape = (len(rows), 1)
+        else:  # cols
+            for j in range(len(blocks[0])):
+                c = np.block([[blocks[i][j]] for i in range(len(blocks))])
+                cols = Array._merge_blocks(c)
                 out_blocks[0][j] = cols.mean(axis=axis)
-            else:
-                out_blocks[0][j] = cols.sum(axis=0) / (
-                    cols != 0).toarray().sum(axis=0)
-
-    return out_blocks
+                out_blocks[0][j].shape = (1, len(cols[0]))
 
 
-def _dense_mean(blocks, out_blocks, axis):
-    if axis == 1:  # row
-        for i, r in enumerate(blocks):
-            rows = Array._merge_blocks([r])
-            out_blocks[i][0] = rows.mean(axis=axis)
-            out_blocks[i][0].shape = (len(rows), 1)
-    else:  # cols
-        for j in range(len(blocks[0])):
-            c = np.block([[blocks[i][j]] for i in range(len(blocks))])
-            cols = Array._merge_blocks(c)
-            out_blocks[0][j] = cols.mean(axis=axis)
-            out_blocks[0][j].shape = (1, len(cols[0]))
-    return out_blocks
+# def _sparse_mean(blocks, out_blocks, axis, count_zero):
+#     if axis == 1:  # row
+#         for i, r in enumerate(blocks):
+#             rows = Array._merge_blocks([r])
+#             if count_zero:
+#                 out_blocks[i][0] = rows.mean(axis=axis)
+#             else:
+#                 out_blocks[i][0] = (rows.sum(axis=1) /
+#                                     (rows != 0).toarray().sum(
+#                                         axis=1).reshape(-1, 1))
+#
+#     else:  # cols
+#         for j in range(len(blocks[0])):
+#             c = np.block([[blocks[i][j]] for i in range(len(blocks))])
+#             cols = Array._merge_blocks(c)
+#             if count_zero:
+#                 out_blocks[0][j] = cols.mean(axis=axis)
+#             else:
+#                 out_blocks[0][j] = cols.sum(axis=0) / (
+#                     cols != 0).toarray().sum(axis=0)
+#
+#     return out_blocks
+#
+#
+# def _dense_mean(blocks, out_blocks, axis):
+#     if axis == 1:  # row
+#         for i, r in enumerate(blocks):
+#             rows = Array._merge_blocks([r])
+#             out_blocks[i][0] = rows.mean(axis=axis)
+#             out_blocks[i][0].shape = (len(rows), 1)
+#     else:  # cols
+#         for j in range(len(blocks[0])):
+#             c = np.block([[blocks[i][j]] for i in range(len(blocks))])
+#             cols = Array._merge_blocks(c)
+#             out_blocks[0][j] = cols.mean(axis=axis)
+#             out_blocks[0][j].shape = (1, len(cols[0]))
+#     return out_blocks
+
 
 @task(blocks={Type: COLLECTION_IN, Depth: 2},
       out_blocks={Type: COLLECTION_INOUT, Depth: 2})
