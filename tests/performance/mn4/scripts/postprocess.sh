@@ -7,4 +7,5 @@
 
 
 python /gpfs/projects/bsc19/PERFORMANCE/dislib/scripts/postprocess.py $1
+python /gpfs/projects/bsc19/PERFORMANCE/dislib/scripts/plot.py $1
 
