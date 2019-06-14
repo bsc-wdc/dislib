@@ -161,7 +161,6 @@ class ALS(object):
         average_ratings = dataset.mean(axis='columns').collect()
 
         items[:, 0] = average_ratings
-        # items[:, 0] = average_ratings.flatten()
 
         rmse, last_rmse = np.inf, np.NaN
         i = 0
@@ -169,40 +168,18 @@ class ALS(object):
             last_rmse = rmse
 
             users = self._update(r=dataset, x=items, axis=0)
-            # print("users matrix:\n%s\n" % users)
             items = self._update(r=dataset, x=users, axis=1)
-            # print("items matrix:\n%s\n" % items)
 
             if self._check_convergence:
-                # if test is not None:
-                #     rmse = compss_wait_on(
-                #         _get_rmse(test._blocks, users, items))
-                #     self.converged = self._has_converged(last_rmse, rmse)
-                #     if self._verbose:
-                #         print("Test RMSE: %.3f  [%s]" % (
-                #             rmse, abs(last_rmse - rmse)))
-                #
-                # else:
-                #     rmse = self._compute_train_rmse(dataset, users, items)
-                #     self.converged = self._has_converged(last_rmse, rmse)
-                #     if self._verbose:
-                #         print("Train RMSE: %.3f  [%s]" % (
-                #             rmse, abs(last_rmse - rmse)))
 
                 _test = dataset if test is None else test
                 rmse = compss_wait_on(self._compute_rmse(_test, users, items))
                 self.converged = self._has_converged(last_rmse, rmse)
                 if self._verbose:
-                    print("%s RMSE: %.3f  [%s]" % (
-                        "Train" if test is None else "test",
-                        rmse, abs(last_rmse - rmse)))
+                    test_set = "Train" if test is None else "Test"
+                    print("%s RMSE: %.3f  [%s]" % (test_set, rmse,
+                                                   abs(last_rmse - rmse)))
 
-                    # else:
-                    #     rmse = self._compute_train_rmse(dataset, users, items)
-                    #     self.converged = self._has_converged(last_rmse, rmse)
-                    #     if self._verbose:
-                    #         print("Train RMSE: %.3f  [%s]" % (
-                    #             rmse, abs(last_rmse - rmse)))
             i += 1
 
         self.users = compss_wait_on(users)
@@ -240,7 +217,6 @@ def _merge(*chunks):
 @task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
 def _update_chunk(blocks, x, params):
     n_f, lambda_, axis = params
-    print("Params: %s" % list(params))
     r_chunk = Array._merge_blocks(blocks)
     if axis == 1:
         r_chunk = r_chunk.transpose()
