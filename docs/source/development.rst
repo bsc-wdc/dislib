@@ -35,7 +35,7 @@ Follow these steps when drafting a new release:
       docker login -u DOCKERHUB_USER -p DOCKERHUB_PASSWORD
       docker push bscwdc/dislib:VERSION
 
-6. Update the version number in `dislib_cmp.py <https://github.com/bsc-wdc/dislib/blob/master/bin/dislib_cmd.py>`_ where it says:
+6. Update the version number in `dislib_cmd.py <https://github.com/bsc-wdc/dislib/blob/master/bin/dislib_cmd.py>`_ where it says:
 
    .. code:: python
 
