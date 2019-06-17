@@ -418,6 +418,7 @@ class GaussianMixtureTest(unittest.TestCase):
         self.assertTrue(gm.converged_)
 
     def test_precisions_init_full(self):
+        """ Tests GaussianMixture with precisions_init='full' """
         x, _ = load_iris(return_X_y=True)
         dataset = load_data(x, subset_size=75)
         weights_init = [1/3, 1/3, 1/3]
@@ -436,6 +437,7 @@ class GaussianMixtureTest(unittest.TestCase):
         self.assertTrue(gm.converged_)
 
     def test_precisions_init_tied(self):
+        """ Tests GaussianMixture with precisions_init='tied' """
         x, _ = load_iris(return_X_y=True)
         dataset = load_data(x, subset_size=75)
         weights_init = [1/3, 1/3, 1/3]
@@ -454,6 +456,7 @@ class GaussianMixtureTest(unittest.TestCase):
         self.assertTrue(gm.converged_)
 
     def test_precisions_init_diag(self):
+        """ Tests GaussianMixture with precisions_init='diag' """
         x, _ = load_iris(return_X_y=True)
         dataset = load_data(x, subset_size=75)
         weights_init = np.array([1/3, 1/3, 1/3])
@@ -471,6 +474,7 @@ class GaussianMixtureTest(unittest.TestCase):
         self.assertTrue(gm.converged_)
 
     def test_precisions_init_spherical(self):
+        """ Tests GaussianMixture with precisions_init='spherical' """
         x, _ = load_iris(return_X_y=True)
         dataset = load_data(x, subset_size=75)
         weights_init = [1/3, 1/3, 1/3]

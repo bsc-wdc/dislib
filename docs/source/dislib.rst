@@ -12,8 +12,9 @@ Subpackages
     dislib.neighbors
     dislib.cluster.dbscan
     dislib.recommendation.als
-    dislib.data
     dislib.decomposition.pca
+    dislib.regression.linear
+    dislib.data
     dislib.other
 
 .. automodule:: dislib
