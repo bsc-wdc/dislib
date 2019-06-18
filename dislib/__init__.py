@@ -1,6 +1,6 @@
 import os
 
-from dislib.data.array import array, load_svmlight_file
+from dislib.data.array import array, load_svmlight_file, random_array
 
 name = "dislib"
 version_file = os.path.join(os.path.dirname(os.path.abspath(__file__)),
@@ -23,4 +23,4 @@ else:
               "Probably it was not installed with setup.py.\n%s" % e)
         __version__ = 'unknown'
 
-__all__ = ['array', 'load_svmlight_file']
+__all__ = ['random_array', 'array', 'load_svmlight_file']

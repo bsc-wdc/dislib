@@ -1,3 +1,4 @@
+import numbers
 from math import ceil
 
 import numpy as np
@@ -38,6 +39,61 @@ def array(x, blocks_shape):
                    sparse=sparse)
 
     return darray
+
+
+def random_array(shape, block_size, random_state=None):
+    """
+    Returns a distributed array of random floats in the open interval [0.0,
+    1.0). Values are from the “continuous uniform” distribution over the
+    stated interval.
+
+    Parameters
+    ----------
+    shape : tuple of two ints
+        Shape of the output ds-array.
+    block_size : tuple of two ints
+        Size of the ds-array blocks.
+    random_state : int or RandomState, optional (default=None)
+        Seed or numpy.random.RandomState instance to generate the random
+        numbers.
+
+    Returns
+    -------
+    dsarray : ds-array
+        Distributed array of random floats.
+    """
+    if shape[0] < block_size[0] or shape[1] < block_size[1]:
+        raise AttributeError("Block size is greater than the array")
+
+    r_state = random_state
+
+    if isinstance(r_state, (numbers.Integral, np.integer)):
+        r_state = np.random.RandomState(r_state)
+
+    seed = None
+    blocks_shape = (int(np.ceil(shape[0] / block_size[0])),
+                    int(np.ceil(shape[1] / block_size[1])))
+
+    blocks = list()
+
+    for row_idx in range(blocks_shape[0]):
+        blocks.append(list())
+
+        for col_idx in range(blocks_shape[1]):
+            b_size0, b_size1 = block_size
+
+            if row_idx == blocks_shape[0] - 1:
+                b_size0 = shape[0] - (blocks_shape[0] - 1) * block_size[0]
+
+            if col_idx == blocks_shape[1] - 1:
+                b_size1 = shape[1] - (blocks_shape[1] - 1) * block_size[1]
+
+            if r_state is not None:
+                seed = r_state.randint(np.iinfo(np.int32).max)
+
+            blocks[-1].append(_random_block((b_size0, b_size1), seed))
+
+    return Array(blocks, block_size, shape, False)
 
 
 def load_svmlight_file(path, blocks_shape, n_features, store_sparse):
@@ -196,8 +252,8 @@ class Array(object):
     @staticmethod
     def _validate_blocks(blocks):
         if len(blocks) == 0 or len(blocks[0]) == 0:
-            raise AttributeError('Blocks must a list of lists, with at least'
-                                 ' an empty numpy/scipy matrix.')
+            raise AttributeError('Blocks must be a list of lists, with at '
+                                 'least an empty numpy/scipy matrix.')
         row_length = len(blocks[0])
         for i in range(1, len(blocks)):
             if len(blocks[i]) != row_length:
@@ -347,8 +403,6 @@ class Array(object):
         r_start, r_stop = rows.start, rows.stop
         c_start, c_stop = cols.start, cols.stop
 
-
-
         if r_start is None:
             r_start = 0
         if c_start is None:
@@ -358,7 +412,6 @@ class Array(object):
             r_stop = self.shape[0]
         if c_stop is None or c_stop > self.shape[1]:
             c_stop = self.shape[1]
-
 
         if r_start < 0 or r_stop < 0 or c_start < 0 or c_stop < 0:
             raise NotImplementedError("Negative indexes not supported, contact"
@@ -452,18 +505,20 @@ class Array(object):
         if mode == 'all':
             n, m = self._number_of_blocks[0], self._number_of_blocks[1]
             out_blocks = self._get_out_blocks(n, m)
-            _tranpose(self._blocks, out_blocks)
+            _transpose(self._blocks, out_blocks)
         elif mode == 'rows':
             out_blocks = []
             for r in self._iterator(axis=0):
                 _blocks = self._get_out_blocks(*r._number_of_blocks)
                 _tranpose(r._blocks, _blocks)
+
                 out_blocks.append(_blocks[0])
         elif mode == 'columns':
             out_blocks = [[] for _ in range(self._number_of_blocks[0])]
             for i, c in enumerate(self._iterator(axis=1)):
                 _blocks = self._get_out_blocks(*c._number_of_blocks)
                 _tranpose(c._blocks, _blocks)
+
                 for i2 in range(len(_blocks)):
                     out_blocks[i2].append(_blocks[i2][0])
         else:
@@ -482,6 +537,7 @@ class Array(object):
 
     def collect(self):
         self._blocks = compss_wait_on(self._blocks)
+
         res = self._merge_blocks(self._blocks)
         if not self._sparse:
             res = np.squeeze(res)
@@ -504,9 +560,17 @@ def _filter_block(block, boundaries):
     return res
 
 
+@task(returns=np.array)
+def _random_block(shape, seed):
+    if seed is not None:
+        np.random.seed(seed)
+
+    return np.random.random(shape)
+
+
 @task(blocks={Type: COLLECTION_IN, Depth: 2},
       out_blocks={Type: COLLECTION_INOUT, Depth: 2})
-def _tranpose(blocks, out_blocks):
+def _transpose(blocks, out_blocks):
     for i in range(len(blocks)):
         for j in range(len(blocks[i])):
             out_blocks[i][j] = blocks[i][j].transpose()
