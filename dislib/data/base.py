@@ -42,7 +42,7 @@ def load_data(x, subset_size, y=None):
 def load_libsvm_file(path, subset_size, n_features, store_sparse=True):
     """ Loads a LibSVM file into a Dataset.
 
-     Parameters
+    Parameters
     ----------
     path : string
         File path.

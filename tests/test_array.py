@@ -1,8 +1,8 @@
 # import os
 import unittest
-from math import ceil
 
 import numpy as np
+from math import ceil
 from scipy import sparse as sp
 from scipy.sparse import issparse
 from sklearn.datasets import load_svmlight_file
@@ -29,9 +29,9 @@ def equal(arr1, arr2):
 
 
 def equivalent_types(arr1, arr2):
-    equivalent = type(arr1) == type(arr2) or (
-        type(arr1) == np.ndarray and type(arr2) == np.matrix) or (
-                     type(arr1) == np.matrix and type(arr2) == np.ndarray)
+    equivalent = type(arr1) == type(arr2) \
+                 or (type(arr1) == np.ndarray and type(arr2) == np.matrix) \
+                 or (type(arr1) == np.matrix and type(arr2) == np.ndarray)
 
     if not equivalent:
         print("Type(arr1): %s" % type(arr1))
@@ -435,7 +435,8 @@ class ArrayTest(unittest.TestCase):
     #     _validate_arrays(self, data.mean(axis=0, count_zero=False),
     #                      x_mean, (bn, bm))
     #
-    #     x_mean = x.sum(axis=1) / (x != 0).toarray().sum(axis=1).reshape(-1, 1)
+    #     x_mean = x.sum(axis=1) / (x != 0).toarray().sum(axis=1).reshape(
+    #     -1, 1)
     #     _validate_arrays(self, data.mean(axis=1, count_zero=False),
     #                      x_mean, (bn, bm))
 
@@ -464,6 +465,28 @@ class ArrayTest(unittest.TestCase):
         _validate_arrays(self, darray, x, (bn, bm))
 
         self.assertRaises(Exception, darray.transpose, 'invalid')
+
+    def test_random(self):
+        """ Tests random array """
+        arr1 = ds.random_array((93, 177), (43, 31), random_state=88)
+
+        self.assertEqual(arr1.shape, arr1.collect().shape)
+        self.assertEqual(arr1._blocks_shape, (3, 6))
+        self.assertEqual(arr1._block_size, (43, 31))
+        self.assertEqual(arr1._blocks[2][0].shape, (7, 31))
+        self.assertEqual(arr1._blocks[2][5].shape, (7, 22))
+        self.assertEqual(arr1._blocks[0][5].shape, (43, 22))
+        self.assertEqual(arr1._blocks[0][0].shape, (43, 31))
+
+        arr2 = ds.random_array((93, 177), (43, 31), random_state=88)
+        arr3 = ds.random_array((93, 177), (43, 31), random_state=666)
+
+        arr4 = ds.random_array((193, 77), (21, 51))
+        arr5 = ds.random_array((193, 77), (21, 51))
+
+        self.assertTrue(np.array_equal(arr1.collect(), arr2.collect()))
+        self.assertFalse(np.array_equal(arr1.collect(), arr3.collect()))
+        self.assertFalse(np.array_equal(arr4.collect(), arr5.collect()))
 
 
 # def test_min_max_features(self):
