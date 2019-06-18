@@ -1,5 +1,6 @@
 import argparse
 import os
+from math import ceil
 from time import time
 
 import pandas as pd
@@ -7,7 +8,7 @@ from scipy.sparse import csr_matrix
 
 import dislib as ds
 from dislib.recommendation import ALS
-from math import ceil
+
 
 def load_movielens(data_path, train_ratio=0.9):
     cols = ['user_id', 'movie_id', 'rating', 'timestamp']
@@ -56,10 +57,6 @@ if __name__ == '__main__':
     n_f = args.num_factors
 
     train, test = load_movielens(data_path=data_path)
-
-    print("Train shape: %s" % list(train._blocks_shape))
-    import ipdb
-    ipdb.set_trace()
 
     exec_start = time()
     als = ALS(tol=0.0001, n_f=n_f, max_iter=2, verbose=True)

@@ -136,7 +136,7 @@ class ALS(object):
         Parameters
         ----------
         dataset : Dataset
-            darray where each row represents the ratings of a given item.
+            darray where each row is the collection of ratings given by a user
         test : csr_matrix
             Sparse matrix used to check convergence with users as rows and
             items as columns. If not passed, uses training data to check
@@ -158,7 +158,8 @@ class ALS(object):
         items = np.random.rand(n_i, self._n_f)
 
         # Assign average rating as first feature
-        average_ratings = dataset.mean(axis='columns').collect()
+        # average_ratings = dataset.mean(axis='columns').collect()
+        average_ratings = _mean(dataset)
 
         items[:, 0] = average_ratings
 
@@ -206,6 +207,24 @@ class ALS(object):
             return np.full([self.items.shape[1]], np.nan)
 
         return self.users[user_id].dot(self.items.T)
+
+
+def _mean(dataset):
+    averages = []
+    for col in dataset.iterator('columns'):
+        averages.append(_col_mean(col._blocks))
+
+    averages = compss_wait_on(averages)
+
+    return np.bmat(averages)
+
+
+@task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
+def _col_mean(blocks):
+    cols = Array._merge_blocks(blocks)
+    averages = cols.sum(axis=0) / (cols != 0).toarray().sum(axis=0)
+
+    return averages
 
 
 @task(returns=np.array)
