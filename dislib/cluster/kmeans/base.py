@@ -1,10 +1,14 @@
+import numbers
+
 import numpy as np
 from pycompss.api.api import compss_wait_on
-from pycompss.api.parameter import INOUT
+from pycompss.api.parameter import COLLECTION_IN, Depth, Type
 from pycompss.api.task import task
 from scipy.sparse import csr_matrix
 from sklearn.metrics import pairwise_distances
 from sklearn.metrics.pairwise import paired_distances
+
+from dislib.data.array import Array
 
 
 class KMeans:
@@ -39,15 +43,15 @@ class KMeans:
     --------
     >>> from dislib.cluster import KMeans
     >>> import numpy as np
+    >>> import dislib as ds
     >>> x = np.array([[1, 2], [1, 4], [1, 0], [4, 2], [4, 4], [4, 0]])
-    >>> from dislib.data import load_data
-    >>> train_data = load_data(x=x, subset_size=2)
+    >>> x_train = ds.array(x, (2, 2))
     >>> kmeans = KMeans(n_clusters=2, random_state=0)
-    >>> kmeans.fit_predict(train_data)
-    >>> print(train_data.labels)
-    >>> test_data = load_data(x=np.array([[0, 0], [4, 4]]), subset_size=2)
-    >>> kmeans.predict(test_data)
-    >>> print(test_data.labels)
+    >>> labels = kmeans.fit_predict(x_train)
+    >>> print(labels)
+    >>> x_test = ds.array(np.array([[0, 0], [4, 4]]), (2, 2))
+    >>> labels = kmeans.predict(x_test)
+    >>> print(labels)
     >>> print(kmeans.centers)
     """
 
@@ -62,43 +66,22 @@ class KMeans:
         self.n_iter = 0
         self._verbose = verbose
 
-    def fit(self, dataset):
+    def fit(self, x, y=None):
         """ Compute K-means clustering.
 
         Parameters
         ----------
-        dataset : Dataset
+        x : ds-array
             Samples to cluster.
+        y : ignored
+            Not used, present here for API consistency by convention.
+
+        Returns
+        -------
+        self
         """
-        self._do_fit(dataset, False)
-
-    def fit_predict(self, dataset):
-        """ Performs clustering on data, and sets the cluster labels of the
-        input Dataset.
-
-        Parameters
-        ----------
-        dataset : Dataset
-            Samples to cluster.
-        """
-
-        self._do_fit(dataset, True)
-
-    def predict(self, dataset):
-        """ Predict the closest cluster each sample in dataset belongs to.
-        Cluster labels are stored in dataset.
-
-        Parameters
-        ----------
-        dataset : Dataset
-            New data to predict.
-        """
-        for subset in dataset:
-            _predict(subset, self.centers)
-
-    def _do_fit(self, dataset, set_labels):
-        n_features = dataset.n_features
-        sparse = dataset.sparse
+        n_features = x.shape[1]
+        sparse = x._sparse
 
         centers = _init_centers(n_features, sparse, self._n_clusters,
                                 self._random_state)
@@ -111,14 +94,57 @@ class KMeans:
             old_centers = self.centers.copy()
             partials = []
 
-            for subset in dataset:
-                partial = _partial_sum(subset, old_centers, set_labels)
+            for r_block in x.iterator(axis=0):
+                partial = _partial_sum(r_block._blocks, old_centers)
                 partials.append(partial)
 
             self._recompute_centers(partials)
             iteration += 1
 
         self.n_iter = iteration
+
+        return self
+
+    def fit_predict(self, x, y=None):
+        """ Compute cluster centers and predict cluster index for each sample.
+
+        Parameters
+        ----------
+        x : ds-array
+            Samples to cluster.
+        y : ignored
+            Not used, present here for API consistency by convention.
+
+        Returns
+        -------
+        labels : ds-array, shape=(n_samples, 1)
+            Index of the cluster each sample belongs to.
+        """
+
+        self.fit(x)
+        return self.predict(x)
+
+    def predict(self, x):
+        """ Predict the closest cluster each sample in dataset belongs to.
+
+        Parameters
+        ----------
+        x : ds-array
+            New data to predict.
+
+        Returns
+        -------
+        labels : ds-array, shape=(n_samples, 1)
+            Index of the cluster each sample belongs to.
+        """
+        blocks = [list()]
+
+        for r_block in x.iterator(axis=0):
+            blocks[0].append(_predict(r_block._blocks, self.centers))
+
+        return Array(blocks=blocks, blocks_shape=(x._blocks_shape[0], 1),
+                     shape=(x.shape[0], 1),
+                     sparse=x._sparse)
 
     def _converged(self, old_centers, iteration):
         if old_centers is None:
@@ -145,14 +171,13 @@ class KMeans:
 
 
 @task(returns=np.array)
-def _get_label(subset):
-    return subset.labels
-
-
-@task(returns=np.array)
 def _init_centers(n_features, sparse, n_clusters, random_state):
-    np.random.seed(random_state)
-    centers = np.random.random((n_clusters, n_features))
+    r_state = random_state
+
+    if isinstance(r_state, (numbers.Integral, np.integer)):
+        r_state = np.random.RandomState(r_state)
+
+    centers = r_state.random_sample((n_clusters, n_features))
 
     if sparse:
         centers = csr_matrix(centers)
@@ -160,17 +185,16 @@ def _init_centers(n_features, sparse, n_clusters, random_state):
     return centers
 
 
-@task(subset=INOUT, returns=np.array)
-def _partial_sum(subset, centers, set_labels):
+@task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
+def _partial_sum(blocks, centers):
     partials = np.zeros((centers.shape[0], 2), dtype=object)
-    close_centers = pairwise_distances(subset.samples, centers).argmin(axis=1)
+    arr = Array._merge_blocks(blocks)
 
-    if set_labels:
-        subset.labels = close_centers
+    close_centers = pairwise_distances(arr, centers).argmin(axis=1)
 
     for center_idx, _ in enumerate(centers):
         indices = np.argwhere(close_centers == center_idx).flatten()
-        partials[center_idx][0] = np.sum(subset.samples[indices], axis=0)
+        partials[center_idx][0] = np.sum(arr[indices], axis=0)
         partials[center_idx][1] = indices.shape[0]
 
     return partials
@@ -186,10 +210,7 @@ def _merge(*data):
     return accum
 
 
-@task(subset=INOUT)
-def _predict(subset, centers):
-    subset.labels = pairwise_distances(subset.samples, centers).argmin(axis=1)
-
-
-def _vec_euclid(vec1, vec2):
-    return np.linalg.norm(vec1 - vec2)
+@task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
+def _predict(blocks, centers):
+    arr = Array._merge_blocks(blocks)
+    return pairwise_distances(arr, centers).argmin(axis=1)
