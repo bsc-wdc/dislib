@@ -140,25 +140,34 @@ class Array(object):
     #
     # Parameters
     # ----------
-    # n_features : int
-    #     Number of features of the samples.
+    # blocks : list
+    #     List of lists of numpy / scipy arrays
+    # block_size : tuple / list of tuples
+    #     A single tuple indicates that all blocks are regular
+    #     (except bottom ones, and right ones).
+    #     If a list of 3 tuples is paased, the sizes correspond to top-left
+    #     block, regular blocks, and bot-right block.
+    # shape : int
+    #     Total number of elements in the array.
     # sparse : boolean, optional (default=False)
     #     Whether this dataset uses sparse data structures.
     #
     # Attributes
     # ----------
-    # n_features : int
-    #     Number of features of the samples.
-    # _samples : ndarray
-    #     Samples of the dataset.
-    # _labels : ndarray
-    #     Labels of the samples.
-    # sparse: boolean
+    # _blocks : list
+    #     List of lists of numpy / scipy arrays
+    # _block_size : tuple / list of tuples
+    #     A single tuple indicates that all blocks are regular
+    #     (except bottom ones, and right ones).
+    #     If a list of 3 tuples is paased, the sizes correspond to top-left
+    #     block, regular blocks, and bot-right block.
+    # _blocks_shape : tuple(int, int)
+    #     Total number of (horizontal, vertical) blocks.
+    # shape : int
+    #     Total number of elements in the array.
+    # _sparse: boolean
     #     True if this dataset uses sparse data structures.
     # """
-
-    # TODO: after implementing more constructors decide a better way to avoid
-    # having to synchronize bot_right block size to compute shape
     def __init__(self, blocks, block_size, shape, sparse):
         self._validate_blocks(blocks)
 
@@ -199,33 +208,21 @@ class Array(object):
         as parameter of type COLLECTION_INOUT """
         return [[object() for _ in range(y)] for _ in range(x)]
 
-    # def __getitem__(self, item):
-    #     return self._subsets.__getitem__(item)
-    #
-    # def __len__(self):
-    #     return len(self._subsets)
-    #
-    # def __iter__(self):
-    #     for j in range(len(self._blocks)):
-    #         yield _collect_blocks(self._blocks[j], axis=1)
-
     def _get_row_shape(self, row_idx):
         if row_idx < self._blocks_shape[0] - 1:
             return self._block_size[0], self.shape[1]
 
         # this is the last chunk of rows, number of rows might be smaller
-        n_rows = self.shape[0] - \
-                 (self._blocks_shape[0] - 1) * self._block_size[0]
-        return n_rows, self.shape[1]
+        n_r = self.shape[0] - (self._blocks_shape[0] - 1) * self._block_size[0]
+        return n_r, self.shape[1]
 
     def _get_col_shape(self, col_idx):
         if col_idx < self._blocks_shape[1] - 1:
             return self.shape[0], self._block_size[1]
 
         # this is the last chunk of cols, number of cols might be smaller
-        n_cols = self.shape[1] - \
-                 (self._blocks_shape[1] - 1) * self._block_size[1]
-        return self.shape[0], n_cols
+        n_c = self.shape[1] - (self._blocks_shape[1] - 1) * self._block_size[1]
+        return self.shape[0], n_c
 
     def _iterator(self, axis=0):
         # iterate through rows
@@ -292,70 +289,10 @@ class Array(object):
             res = np.squeeze(res)
         return res
 
+
 @task(blocks={Type: COLLECTION_IN, Depth: 2},
       out_blocks={Type: COLLECTION_INOUT, Depth: 2})
 def _tranpose(blocks, out_blocks):
     for i in range(len(blocks)):
         for j in range(len(blocks[i])):
             out_blocks[i][j] = blocks[i][j].transpose()
-
-#
-#
-# def min_features(self):
-#     """ Returns the minimum value of each feature in the dataset. This
-#     method might compute the minimum and perform a synchronization.
-#
-#     Returns
-#     -------
-#     min_features : array, shape = [n_features,]
-#         Array representing the minimum value that each feature takes in
-#         the dataset.
-#     """
-#     if self._min_features is None:
-#         self._compute_min_max()
-#
-#     return self._min_features
-#
-# def max_features(self):
-#     """ Returns the maximum value of each feature in the dataset. This
-#     method might compute the maximum and perform a synchronization.
-#
-#     Returns
-#     -------
-#     max_features : array, shape = [n_features,]
-#         Array representing the maximum value that each feature takes in
-#         the dataset.
-#     """
-#     if self._max_features is None:
-#         self._compute_min_max()
-#
-#     return self._max_features
-#
-#
-# def _reset_attributes(self):
-#     self._max_features = None
-#     self._min_features = None
-#     self._samples = None
-#     self._labels = None
-#
-# def _compute_min_max(self):
-#     minmax = []
-#
-#     for subset in self._subsets:
-#         minmax.append(_get_min_max(subset))
-#
-#     minmax = compss_wait_on(minmax)
-#     self._min_features = np.nanmin(minmax, axis=0)[0]
-#     self._max_features = np.nanmax(minmax, axis=0)[1]
-
-#
-# @task(returns=np.array)
-# def _get_min_max(subset):
-#     mn = np.min(subset.samples, axis=0)
-#     mx = np.max(subset.samples, axis=0)
-#
-#     if issparse(subset.samples):
-#         mn = mn.toarray()[0]
-#         mx = mx.toarray()[0]
-#
-#     return np.array([mn, mx])
