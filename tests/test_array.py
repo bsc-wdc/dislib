@@ -394,6 +394,17 @@ class ArrayTest(unittest.TestCase):
             c_x = x[:, i * bm:(i + 1) * bm]
             self.assertTrue(equal(c_data, c_x))
 
+    def test_get_item(self):
+        """ Tests get item of the ds.array
+        """
+        bn, bm = 2, 2
+        # Dense
+        x = np.zeros((10, 10))
+        x[1][1] = 666
+        data = ds.array(x=x, block_size=(bn, bm))
+
+        element = data[1,1]
+
     # def test_mean(self):
     #     bn, bm = 2, 2
     #
