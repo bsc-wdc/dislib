@@ -195,6 +195,8 @@ class Array(object):
 
     @staticmethod
     def _get_out_blocks(x, y):
+        """ Helper function that builds empty lists of lists to be filled
+        as parameter of type COLLECTION_INOUT """
         return [[object() for _ in range(y)] for _ in range(x)]
 
     # def __getitem__(self, item):
@@ -225,11 +227,7 @@ class Array(object):
                  (self._blocks_shape[1] - 1) * self._block_size[1]
         return self.shape[0], n_cols
 
-    @property
-    def shape(self):
-        return self._shape
-
-    def iterator(self, axis=0):
+    def _iterator(self, axis=0):
         # iterate through rows
         if axis == 0 or axis == 'rows':
             for i, row in enumerate(self._blocks):
@@ -250,6 +248,10 @@ class Array(object):
             raise Exception(
                 "Axis must be [0|'rows'] or [1|'columns']. Got: %s" % axis)
 
+    @property
+    def shape(self):
+        return self._shape
+
     def transpose(self, mode='auto'):
 
         if mode == 'all':
@@ -258,13 +260,13 @@ class Array(object):
             _tranpose(self._blocks, out_blocks)
         elif mode == 'rows':
             out_blocks = []
-            for r in self.iterator(axis=0):
+            for r in self._iterator(axis=0):
                 _blocks = self._get_out_blocks(*r._blocks_shape)
                 _tranpose(r._blocks, _blocks)
                 out_blocks.append(_blocks[0])
         elif mode == 'columns':
             out_blocks = [[] for _ in range(self._blocks_shape[0])]
-            for i, c in enumerate(self.iterator(axis=1)):
+            for i, c in enumerate(self._iterator(axis=1)):
                 _blocks = self._get_out_blocks(*c._blocks_shape)
                 _tranpose(c._blocks, _blocks)
                 for i2 in range(len(_blocks)):
@@ -285,8 +287,10 @@ class Array(object):
 
     def collect(self):
         self._blocks = compss_wait_on(self._blocks)
-        return self._merge_blocks(self._blocks)
-
+        res = self._merge_blocks(self._blocks)
+        if not self._sparse:
+            res = np.squeeze(res)
+        return res
 
 @task(blocks={Type: COLLECTION_IN, Depth: 2},
       out_blocks={Type: COLLECTION_INOUT, Depth: 2})
