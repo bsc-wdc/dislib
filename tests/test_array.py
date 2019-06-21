@@ -30,8 +30,8 @@ def equal(arr1, arr2):
 
 def equivalent_types(arr1, arr2):
     equivalent = type(arr1) == type(arr2) or (
-    type(arr1) == np.ndarray and type(arr2) == np.matrix) or (
-           type(arr1) == np.matrix and type(arr2) == np.ndarray)
+        type(arr1) == np.ndarray and type(arr2) == np.matrix) or (
+                     type(arr1) == np.matrix and type(arr2) == np.ndarray)
 
     if not equivalent:
         print("Type(arr1): %s" % type(arr1))
@@ -41,14 +41,22 @@ def equivalent_types(arr1, arr2):
 
 
 def _validate_arrays(self, darray, x, block_shape):
-    n, m = x.shape
+    # Different size and type comparison if arrays have 1 or 2 dimensions
+    if len(x.shape) == 1:
+        n, m = len(x), 1
+        self.assertEqual(type(darray.collect()[0]), type(x[0]))
+        self.assertEqual(darray.shape[0], x.shape[0])
+    else:
+        n, m = x.shape
+        self.assertEqual(type(darray.collect()[0, 0]), type(x[0, 0]))
+        self.assertEqual(darray.shape, x.shape)
+
     bn, bm = block_shape
 
     self.assertTrue(equal(darray.collect(), x))
     self.assertTrue(equivalent_types(darray.collect(), x))
     self.assertEqual(type(darray), Array)
-    self.assertEqual(darray.shape, x.shape)
-    self.assertEqual(type(darray.collect()[0, 0]), type(x[0, 0]))
+
     self.assertEqual(darray._blocks_shape, (ceil(n / bn), ceil(m / bm)))
 
 
@@ -121,14 +129,14 @@ class DataLoadingTest(unittest.TestCase):
                                              store_sparse=True)
 
         _validate_arrays(self, arr_x, x, (bn, bm))
-        _validate_arrays(self, arr_y, y.reshape(-1, 1), (bn, 1))
+        _validate_arrays(self, arr_y, y, (bn, 1))
 
         # Load SVM and store in dense
         arr_x, arr_y = ds.load_svmlight_file(file_, (25, 100), n_features=780,
                                              store_sparse=False)
 
         _validate_arrays(self, arr_x, x.toarray(), (bn, bm))
-        _validate_arrays(self, arr_y, y.reshape(-1, 1), (bn, 1))
+        _validate_arrays(self, arr_y, y, (bn, 1))
 
 
 #
@@ -345,13 +353,13 @@ class ArrayTest(unittest.TestCase):
         self.assertEqual(darray._block_size, (bn, bm))
 
     def test_iterate_rows(self):
-        """ Testing the row iterator of the ds.array
+        """ Testing the row _iterator of the ds.array
         """
         x_size = 2
         # Dense
         x = np.random.randint(10, size=(10, 10))
         data = ds.array(x=x, block_size=(x_size, 2))
-        for i, r in enumerate(data.iterator(axis='rows')):
+        for i, r in enumerate(data._iterator(axis='rows')):
             r_data = r.collect()
             r_x = x[i * x_size:(i + 1) * x_size]
             self.assertTrue(equal(r_data, r_x))
@@ -359,7 +367,7 @@ class ArrayTest(unittest.TestCase):
         # Sparse
         x = sp.csr_matrix(x)
         data = ds.array(x=x, block_size=(x_size, 2))
-        for i, r in enumerate(data.iterator(axis='rows')):
+        for i, r in enumerate(data._iterator(axis='rows')):
             r_data = r.collect()
             r_x = x[i * x_size:(i + 1) * x_size]
             self.assertTrue(equal(r_data, r_x))
@@ -367,23 +375,23 @@ class ArrayTest(unittest.TestCase):
     def test_iterate_cols(self):
         """ Tests iterating through the rows of the ds.array
         """
-        y_size = 2
+        bn, bm = 2, 2
         # Dense
         x = np.random.randint(10, size=(10, 10))
-        data = ds.array(x=x, block_size=(2, y_size))
+        data = ds.array(x=x, block_size=(bn, bm))
 
-        for i, c in enumerate(data.iterator(axis='columns')):
+        for i, c in enumerate(data._iterator(axis='columns')):
             c_data = c.collect()
-            c_x = x[:, i * y_size:(i + 1) * y_size]
+            c_x = x[:, i * bm:(i + 1) * bm]
             self.assertTrue(equal(c_data, c_x))
 
         # Sparse
         x = sp.csr_matrix(x)
-        data = ds.array(x=x, block_size=(2, y_size))
+        data = ds.array(x=x, block_size=(bn, bm))
 
-        for i, c in enumerate(data.iterator(axis='columns')):
+        for i, c in enumerate(data._iterator(axis='columns')):
             c_data = c.collect()
-            c_x = x[:, i * y_size:(i + 1) * y_size]
+            c_x = x[:, i * bm:(i + 1) * bm]
             self.assertTrue(equal(c_data, c_x))
 
     # def test_mean(self):

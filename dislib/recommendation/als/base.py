@@ -97,7 +97,7 @@ class ALS(object):
             User or Item feature matrix
         """
         res = []
-        for darray in r.iterator(axis=axis):
+        for darray in r._iterator(axis=axis):
             params = (self._n_f, self._lambda, axis)
             chunk_res = _update_chunk(darray._blocks, x, params)
             res.append(chunk_res)
@@ -124,7 +124,7 @@ class ALS(object):
 
     def _compute_rmse(self, dataset, U, I):
         rmses = [_get_rmse(sb._blocks, U, I) for sb in
-                 dataset.iterator(axis=0)]
+                 dataset._iterator(axis=0)]
         rmses = np.array(compss_wait_on(rmses))
         # remove NaN errors that come from empty chunks
         return np.mean(rmses[~np.isnan(rmses)])
@@ -211,7 +211,7 @@ class ALS(object):
 
 def _mean(dataset):
     averages = []
-    for col in dataset.iterator('columns'):
+    for col in dataset._iterator('columns'):
         averages.append(_col_mean(col._blocks))
 
     averages = compss_wait_on(averages)
