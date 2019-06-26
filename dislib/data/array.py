@@ -2,15 +2,14 @@ from math import ceil
 
 import numpy as np
 from pycompss.api.api import compss_wait_on
-from pycompss.api.parameter import COLLECTION_IN, Depth, Type
-from pycompss.api.parameter import COLLECTION_INOUT
+from pycompss.api.parameter import COLLECTION_INOUT, COLLECTION_IN
+from pycompss.api.parameter import Depth, Type
 from pycompss.api.task import task
 from scipy import sparse as sp
 from scipy.sparse import issparse
 
 
-def array(x, block_size):
-    # TODO: documentation ain't true
+def array(x, blocks_shape):
     """
     Loads data into a Distributed Array.
 
@@ -18,7 +17,7 @@ def array(x, block_size):
     ----------
     x : ndarray, shape=[n_samples, n_features]
         Array of samples.
-    block_size : (int, int)
+    blocks_shape : (int, int)
         Block sizes in number of samples.
 
     Returns
@@ -26,7 +25,7 @@ def array(x, block_size):
     darray : Array
         A distributed representation of the data divided in blocks.
     """
-    x_size, y_size = block_size
+    x_size, y_size = blocks_shape
 
     blocks = []
     for i in range(0, x.shape[0], x_size):
@@ -35,20 +34,20 @@ def array(x, block_size):
         blocks.append(row)
 
     sparse = issparse(x)
-    darray = Array(blocks=blocks, block_size=block_size, shape=x.shape,
+    darray = Array(blocks=blocks, blocks_shape=blocks_shape, shape=x.shape,
                    sparse=sparse)
 
     return darray
 
 
-def load_svmlight_file(path, block_size, n_features, store_sparse):
-    """ Loads a LibSVM file into a Dataset.
+def load_svmlight_file(path, blocks_shape, n_features, store_sparse):
+    """ Loads a LibSVM file into a Distributed Array.
 
      Parameters
     ----------
     path : string
         File path.
-    block_size : (int, int)
+    blocks_shape : (int, int)
         Block size for the output darray.
     n_features : int
         Number of features.
@@ -61,7 +60,7 @@ def load_svmlight_file(path, block_size, n_features, store_sparse):
     x, y : (darray, darray)
         A distributed representation (darray) of the X and y.
     """
-    n, m = block_size
+    n, m = blocks_shape
     lines = []
     x_blocks, y_blocks = [], []
 
@@ -92,11 +91,11 @@ def load_svmlight_file(path, block_size, n_features, store_sparse):
         x_blocks.append(out_blocks[0])
         y_blocks.append(out_blocks[1])
 
-    x = Array(x_blocks, block_size=block_size, shape=(n_rows, n_features),
+    x = Array(x_blocks, blocks_shape=blocks_shape, shape=(n_rows, n_features),
               sparse=store_sparse)
 
     # y has only a single line but it's treated as a 'column'
-    y = Array(y_blocks, block_size=(n, 1), shape=(n_rows, 1), sparse=False)
+    y = Array(y_blocks, blocks_shape=(n, 1), shape=(n_rows, 1), sparse=False)
 
     return x, y
 
@@ -126,12 +125,9 @@ def _read_libsvm(lines, out_blocks, col_size, n_features, store_sparse):
     # Position 1 contains the y block
     out_blocks[1][0] = y.reshape(-1, 1)
 
-    print("X length: %s" % len(out_blocks[0]))
-    print("y length: %s" % len(out_blocks[1]))
-
 
 class Array(object):
-    # """ A dataset containing samples and, optionally, labels that can be
+    """ A dataset containing samples and, optionally, labels that can be
     # stored in a distributed manner.
     #
     # Dataset works as a list of Subset instances, which can be future objects
@@ -142,7 +138,7 @@ class Array(object):
     # ----------
     # blocks : list
     #     List of lists of numpy / scipy arrays
-    # block_size : tuple / list of tuples
+    # blocks_shape : tuple / list of tuples
     #     A single tuple indicates that all blocks are regular
     #     (except bottom ones, and right ones).
     #     If a list of 3 tuples is paased, the sizes correspond to top-left
@@ -156,24 +152,44 @@ class Array(object):
     # ----------
     # _blocks : list
     #     List of lists of numpy / scipy arrays
-    # _block_size : tuple / list of tuples
+    # _blocks_shape : tuple / list of tuples
     #     A single tuple indicates that all blocks are regular
     #     (except bottom ones, and right ones).
     #     If a list of 3 tuples is paased, the sizes correspond to top-left
     #     block, regular blocks, and bot-right block.
-    # _blocks_shape : tuple(int, int)
+    # _number_of_blocks : tuple(int, int)
     #     Total number of (horizontal, vertical) blocks.
     # shape : int
     #     Total number of elements in the array.
     # _sparse: boolean
     #     True if this dataset uses sparse data structures.
     # """
-    def __init__(self, blocks, block_size, shape, sparse):
+
+    INVALID_BLOCK_SHAPE_ERROR = "Blocks shape must be: a tuple, with the " \
+                                "shape of regular block; or a list with the" \
+                                " shape of top-left block and regular blocks."
+
+    def __init__(self, blocks, blocks_shape, shape, sparse):
         self._validate_blocks(blocks)
 
         self._blocks = blocks
-        self._block_size = block_size
-        self._blocks_shape = (len(blocks), len(blocks[0]))
+
+        if isinstance(blocks_shape, list):
+            # check that top-left is not larger than regular blocks
+            if len(blocks_shape) != 2:
+                raise Exception(self.INVALID_BLOCK_SHAPE_ERROR)
+            (bi0, bj0), (bn, bm) = blocks_shape
+            if bi0 > bn or bj0 > bm:
+                raise Exception("Top-left block can not be larger than regular"
+                                "blocks.")
+            self._top_left_shape = (bi0, bj0)
+            self._blocks_shape = (bn, bm)
+        elif isinstance(blocks_shape, tuple):
+            self._top_left_shape = None
+            self._blocks_shape = blocks_shape
+        else:
+            raise Exception(self.INVALID_BLOCK_SHAPE_ERROR)
+        self._number_of_blocks = (len(blocks), len(blocks[0]))
         self._shape = shape
         self._sparse = sparse
 
@@ -208,20 +224,39 @@ class Array(object):
         as parameter of type COLLECTION_INOUT """
         return [[object() for _ in range(y)] for _ in range(x)]
 
+    def _has_regular_blocks(self):
+        return self._top_left_shape is None
+
     def _get_row_shape(self, row_idx):
-        if row_idx < self._blocks_shape[0] - 1:
-            return self._block_size[0], self.shape[1]
+        if row_idx == 0 and not self._has_regular_blocks():
+            return self._top_left_shape[0], self.shape[1]
+
+        if row_idx < self._number_of_blocks[0] - 1:
+            return self._blocks_shape[0], self.shape[1]
 
         # this is the last chunk of rows, number of rows might be smaller
-        n_r = self.shape[0] - (self._blocks_shape[0] - 1) * self._block_size[0]
+        if self._has_regular_blocks():
+            n_r = self.shape[0] - (self._number_of_blocks[0] - 1) * \
+                                  self._blocks_shape[0]
+        else:  # is first block is irregular, n_r is computed differently
+            n_r = self.shape[0] - self._top_left_shape[0] - \
+                  (self._number_of_blocks[0] - 2) * self._blocks_shape[0]
         return n_r, self.shape[1]
 
     def _get_col_shape(self, col_idx):
-        if col_idx < self._blocks_shape[1] - 1:
-            return self.shape[0], self._block_size[1]
+        if col_idx == 0 and not self._has_regular_blocks():
+            return self.shape[0], self._top_left_shape[1]
+
+        if col_idx < self._number_of_blocks[1] - 1:
+            return self.shape[0], self._blocks_shape[1]
 
         # this is the last chunk of cols, number of cols might be smaller
-        n_c = self.shape[1] - (self._blocks_shape[1] - 1) * self._block_size[1]
+        if self._has_regular_blocks():
+            n_c = self.shape[1] - (self._number_of_blocks[1] - 1) * \
+                                  self._blocks_shape[1]
+        else:  # is first block is irregular, n_r is computed differently
+            n_c = self.shape[1] - self._top_left_shape[1] - \
+                  (self._number_of_blocks[1] - 2) * self._blocks_shape[1]
         return self.shape[0], n_c
 
     def _iterator(self, axis=0):
@@ -229,42 +264,205 @@ class Array(object):
         if axis == 0 or axis == 'rows':
             for i, row in enumerate(self._blocks):
                 row_shape = self._get_row_shape(i)
-                yield Array(blocks=[row], block_size=self._block_size,
+                yield Array(blocks=[row], blocks_shape=self._blocks_shape,
                             shape=row_shape, sparse=self._sparse)
 
         # iterate through columns
         elif axis == 1 or axis == 'columns':
-            for j in range(self._blocks_shape[1]):
+            for j in range(self._number_of_blocks[1]):
                 col_shape = self._get_col_shape(j)
                 col_blocks = [[self._blocks[i][j]] for i in
-                              range(self._blocks_shape[0])]
-                yield Array(blocks=col_blocks, block_size=self._block_size,
+                              range(self._number_of_blocks[0])]
+                yield Array(blocks=col_blocks, blocks_shape=self._blocks_shape,
                             shape=col_shape, sparse=self._sparse)
 
         else:
             raise Exception(
                 "Axis must be [0|'rows'] or [1|'columns']. Got: %s" % axis)
 
+    def _get_containing_block(self, i, j):
+        """ Returns the indices of the block containing coordinate (i, j) """
+        if not self._has_regular_blocks():
+            bi0, bj0 = self._top_left_shape
+        else:
+            bi0, bj0 = (0, 0)
+
+        bn, bm = self._blocks_shape
+        block_i = (i + bi0) // bn
+        block_j = (j + bj0) // bm
+
+        # if blocks are out of bounds, assume the element belongs to last block
+        if block_i >= self._number_of_blocks[0]:
+            block_i = self._number_of_blocks[0] - 1
+
+        if block_j >= self._number_of_blocks[1]:
+            block_j = self._number_of_blocks[1] - 1
+
+        return block_i, block_j
+
+    def _get_coordinates_in_block(self, block_i, block_j, i, j):
+        local_i, local_j = i, j
+
+        if block_i > 0:
+            if self._has_regular_blocks():
+                local_i = i - (block_i * self._blocks_shape[0])
+            else:
+                local_i = i - self._top_left_shape[0] - \
+                          (block_i - 1) * self._blocks_shape[0]
+
+        if block_j > 0:
+            if self._has_regular_blocks():
+                local_j = j - (block_j * self._blocks_shape[1])
+            else:
+                local_j = j - self._top_left_shape[1] - \
+                          (block_j - 1) * self._blocks_shape[1]
+
+        return local_i, local_j
+
+    def _get_single_element(self, i, j):
+        # we are returning a single element
+        if i > self.shape[0] or j > self.shape[0]:
+            raise IndexError("Shape is %s" % self.shape)
+
+        bi, bj = self._get_containing_block(i, j)
+        local_i, local_j = self._get_coordinates_in_block(bi, bj, i, j)
+        block = self._blocks[bi][bj]
+
+        element = _get_item(local_i, local_j, block)
+
+        return Array(blocks=[[element]], blocks_shape=(1, 1), shape=(1, 1),
+                     sparse=False)
+
+    def _get_slice(self, rows, cols):
+
+        if (rows.step is not None and rows.step > 1) or \
+                (cols.step is not None and cols.step > 1):
+            raise NotImplementedError("Variable steps not supported, contact"
+                                      " the dislib team or open an issue "
+                                      "in github.")
+
+        # rows and cols are read-only
+        # import ipdb
+        # ipdb.set_trace()
+        r_start, r_stop = rows.start, rows.stop
+        c_start, c_stop = cols.start, cols.stop
+
+
+
+        if r_start is None:
+            r_start = 0
+        if c_start is None:
+            c_start = 0
+
+        if r_stop is None or r_stop > self.shape[0]:
+            r_stop = self.shape[0]
+        if c_stop is None or c_stop > self.shape[1]:
+            c_stop = self.shape[1]
+
+
+        if r_start < 0 or r_stop < 0 or c_start < 0 or c_stop < 0:
+            raise NotImplementedError("Negative indexes not supported, contact"
+                                      " the dislib team or open an issue "
+                                      "in github.")
+
+        # get the coordinates of top-left and bot-right corners
+        i_0, j_0 = self._get_containing_block(r_start, c_start)
+        i_n, j_n = self._get_containing_block(r_stop, c_stop)
+
+        # Number of blocks to be returned
+        n_blocks = i_n - i_0 + 1
+        m_blocks = j_n - j_0 + 1
+
+        out_blocks = self._get_out_blocks(n_blocks, m_blocks)
+
+        # import ipdb
+        # ipdb.set_trace()
+        i_indices = range(i_0, i_n + 1)
+        j_indices = range(j_0, j_n + 1)
+        for out_i, i in enumerate(i_indices):
+            for out_j, j in enumerate(j_indices):
+
+                top, left, bot, right = None, None, None, None
+                if out_i == 0:
+                    top, _ = self._get_coordinates_in_block(i_0, j_0,
+                                                            r_start,
+                                                            c_start)
+                if out_i == len(i_indices) - 1:
+                    bot, _ = self._get_coordinates_in_block(i_n, j_n,
+                                                            r_stop,
+                                                            c_stop)
+                if out_j == 0:
+                    _, left = self._get_coordinates_in_block(i_0, j_0,
+                                                             r_start,
+                                                             c_start)
+                if out_j == len(j_indices) - 1:
+                    _, right = self._get_coordinates_in_block(i_n, j_n,
+                                                              r_stop,
+                                                              c_stop)
+
+                boundaries = (top, left, bot, right)
+                try:
+                    fb = _filter_block(block=self._blocks[i][j],
+                                       boundaries=boundaries)
+                except:
+                    import ipdb
+                    ipdb.set_trace()
+                out_blocks[out_i][out_j] = fb
+                print(fb)
+
+        # import ipdb
+        # ipdb.set_trace()
+
+        # Shape of the top left block
+        top, left = self._get_coordinates_in_block(0, 0, r_start,
+                                                   c_start)
+        bi0, bj0 = self._blocks_shape[0] - top, self._blocks_shape[1] - left
+
+        # Regular blocks shape is the same
+        bn, bm = self._blocks_shape
+
+        # List of blocks shapes for initializer
+        out_blocks_shapes = [(bi0, bj0), (bn, bm)]
+
+        out_shape = r_stop - r_start, c_stop - c_start
+
+        res = Array(blocks=out_blocks, blocks_shape=out_blocks_shapes,
+                    shape=out_shape, sparse=self._sparse)
+        return res
+
+    def __getitem__(self, arg):
+        rows, cols = arg  # unpack, assumes that we always pass in 2-arguments
+        # for single indices, they will be integers, for slices, they'll be
+        # slice objects here's a dummy implementation as a placeholder
+
+        # TODO: parse/interpret the rows/cols parameters,
+        if isinstance(rows, slice) or isinstance(cols, slice):
+            return self._get_slice(rows, cols)
+
+        else:
+            i, j = rows, cols
+
+            return self._get_single_element(i, j)
+
     @property
     def shape(self):
         return self._shape
 
     def transpose(self, mode='auto'):
-
         if mode == 'all':
-            n, m = self._blocks_shape[0], self._blocks_shape[1]
+            n, m = self._number_of_blocks[0], self._number_of_blocks[1]
             out_blocks = self._get_out_blocks(n, m)
             _tranpose(self._blocks, out_blocks)
         elif mode == 'rows':
             out_blocks = []
             for r in self._iterator(axis=0):
-                _blocks = self._get_out_blocks(*r._blocks_shape)
+                _blocks = self._get_out_blocks(*r._number_of_blocks)
                 _tranpose(r._blocks, _blocks)
                 out_blocks.append(_blocks[0])
         elif mode == 'columns':
-            out_blocks = [[] for _ in range(self._blocks_shape[0])]
+            out_blocks = [[] for _ in range(self._number_of_blocks[0])]
             for i, c in enumerate(self._iterator(axis=1)):
-                _blocks = self._get_out_blocks(*c._blocks_shape)
+                _blocks = self._get_out_blocks(*c._number_of_blocks)
                 _tranpose(c._blocks, _blocks)
                 for i2 in range(len(_blocks)):
                     out_blocks[i2].append(_blocks[i2][0])
@@ -275,11 +473,11 @@ class Array(object):
 
         blocks_t = list(map(list, zip(*out_blocks)))
 
-        bn, bm = self._block_size[0], self._block_size[1]
+        bn, bm = self._blocks_shape[0], self._blocks_shape[1]
 
         new_shape = self.shape[1], self.shape[0]
-        # notice block_size is transposed
-        return Array(blocks_t, block_size=(bm, bn), shape=new_shape,
+        # notice blocks_shape is transposed
+        return Array(blocks_t, blocks_shape=(bm, bn), shape=new_shape,
                      sparse=self._sparse)
 
     def collect(self):
@@ -288,6 +486,22 @@ class Array(object):
         if not self._sparse:
             res = np.squeeze(res)
         return res
+
+
+@task(returns=1)
+def _get_item(i, j, block):
+    return block[i][j]
+
+
+# @task(out_blocks={Type: COLLECTION_INOUT, Depth: 2})
+def _filter_block(block, boundaries):
+    i_0, j_0, i_n, j_n = boundaries
+    # if len(out_blocks) == 1 and len(out_blocks[0]) == 1:
+    #     # we have a single block, filter it directly
+    #     out_blocks[0][0] = out_blocks[0][0][i_0:i_n, j_0:j_n]
+    res = block[i_0:i_n, j_0:j_n]
+
+    return res
 
 
 @task(blocks={Type: COLLECTION_IN, Depth: 2},
