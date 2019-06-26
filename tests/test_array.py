@@ -57,7 +57,7 @@ def _validate_arrays(self, darray, x, block_shape):
     self.assertTrue(equivalent_types(darray.collect(), x))
     self.assertEqual(type(darray), Array)
 
-    self.assertEqual(darray._blocks_shape, (ceil(n / bn), ceil(m / bm)))
+    self.assertEqual(darray._number_of_blocks, (ceil(n / bn), ceil(m / bm)))
 
 
 class DataLoadingTest(unittest.TestCase):
@@ -67,54 +67,15 @@ class DataLoadingTest(unittest.TestCase):
         n, m = 6, 10
         bn, bm = 4, 3
         x = np.random.randint(0, 10, size=(n, m))
-        darray = ds.array(x=x, block_size=(bn, bm))
+        darray = ds.array(x=x, blocks_shape=(bn, bm))
 
         _validate_arrays(self, darray, x, (bn, bm))
 
         x = sp.csr_matrix(x)
-        darray = ds.array(x=x, block_size=(bn, bm))
+        darray = ds.array(x=x, blocks_shape=(bn, bm))
 
         _validate_arrays(self, darray, x, (bn, bm))
 
-        # def test_load_data_without_labels(self):
-
-    #         """ Tests load_data with an unlabeled sparse and dense dataset.
-    #         """
-    #         x = np.random.random((100, 2))
-    #         dataset = load_data(x=x, subset_size=10)
-    #
-    #         self.assertTrue(np.array_equal(dataset.samples, x))
-    #         self.assertEqual(len(dataset), 10)
-    #         self.assertFalse(dataset.sparse)
-    #
-    #         x = csr_matrix(x)
-    #         dataset = load_data(x=x, subset_size=10)
-    #
-    #         self.assertTrue(np.array_equal(dataset.samples.toarray(),
-    # x.toarray()))
-    #         self.assertEqual(len(dataset), 10)
-    #         self.assertTrue(dataset.sparse)
-    #
-    #     def test_load_libsvm_file_sparse(self):
-    #         """ Tests loading a LibSVM file in sparse mode.
-    #         """
-    #         file_ = "tests/files/libsvm/2"
-    #
-    #         data = load_libsvm_file(file_, 10, 780)
-    #         data.collect()
-    #         x, y = load_svmlight_file(file_, n_features=780)
-    #
-    #         read_x = np.empty((0, x.shape[1]))
-    #         read_y = np.empty(0)
-    #
-    #         for subset in data:
-    #             read_x = np.concatenate((read_x, subset.samples.toarray()))
-    #             read_y = np.concatenate((read_y, subset.labels))
-    #
-    #         self.assertTrue((read_x == x.toarray()).all())
-    #         self.assertTrue((read_y == y).all())
-    #         self.assertEqual(len(data), 6)
-    #
     def test_load_libsvm_file(self):
         """ Tests loading a LibSVM file in dense mode.
         """
@@ -322,35 +283,27 @@ class DataLoadingTest(unittest.TestCase):
 
 
 class ArrayTest(unittest.TestCase):
-    #     def test_get_item(self):
-    #         """ Tests Dataset item getter. """
-    #         arr = np.array((range(10), range(10, 20)))
-    #         dataset = load_data(arr, subset_size=2)
-    #         samples = dataset[0].samples
-    #
-    #         self.assertTrue((samples[0] == arr[0]).all())
-    #
     def test_sizes(self):
         """ Tests sizes consistency. """
 
         x_size, y_size = 40, 25
         bn, bm = 9, 11
         x = np.random.randint(10, size=(x_size, y_size))
-        darray = ds.array(x=x, block_size=(bn, bm))
+        darray = ds.array(x=x, blocks_shape=(bn, bm))
 
         self.assertEqual(darray.shape, (x_size, y_size))
 
-        self.assertEqual(darray._blocks_shape,
+        self.assertEqual(darray._number_of_blocks,
                          (ceil(x_size / bn), ceil(y_size / bm)))
-        self.assertEqual(darray._block_size, (bn, bm))
+        self.assertEqual(darray._blocks_shape, (bn, bm))
 
         x = sp.csr_matrix(x)
-        darray = ds.array(x=x, block_size=(bn, bm))
+        darray = ds.array(x=x, blocks_shape=(bn, bm))
 
         self.assertEqual(darray.shape, (x_size, y_size))
-        self.assertEqual(darray._blocks_shape,
+        self.assertEqual(darray._number_of_blocks,
                          (ceil(x_size / bn), ceil(y_size / bm)))
-        self.assertEqual(darray._block_size, (bn, bm))
+        self.assertEqual(darray._blocks_shape, (bn, bm))
 
     def test_iterate_rows(self):
         """ Testing the row _iterator of the ds.array
@@ -358,7 +311,7 @@ class ArrayTest(unittest.TestCase):
         x_size = 2
         # Dense
         x = np.random.randint(10, size=(10, 10))
-        data = ds.array(x=x, block_size=(x_size, 2))
+        data = ds.array(x=x, blocks_shape=(x_size, 2))
         for i, r in enumerate(data._iterator(axis='rows')):
             r_data = r.collect()
             r_x = x[i * x_size:(i + 1) * x_size]
@@ -366,7 +319,7 @@ class ArrayTest(unittest.TestCase):
 
         # Sparse
         x = sp.csr_matrix(x)
-        data = ds.array(x=x, block_size=(x_size, 2))
+        data = ds.array(x=x, blocks_shape=(x_size, 2))
         for i, r in enumerate(data._iterator(axis='rows')):
             r_data = r.collect()
             r_x = x[i * x_size:(i + 1) * x_size]
@@ -378,7 +331,7 @@ class ArrayTest(unittest.TestCase):
         bn, bm = 2, 2
         # Dense
         x = np.random.randint(10, size=(10, 10))
-        data = ds.array(x=x, block_size=(bn, bm))
+        data = ds.array(x=x, blocks_shape=(bn, bm))
 
         for i, c in enumerate(data._iterator(axis='columns')):
             c_data = c.collect()
@@ -387,7 +340,7 @@ class ArrayTest(unittest.TestCase):
 
         # Sparse
         x = sp.csr_matrix(x)
-        data = ds.array(x=x, block_size=(bn, bm))
+        data = ds.array(x=x, blocks_shape=(bn, bm))
 
         for i, c in enumerate(data._iterator(axis='columns')):
             c_data = c.collect()
@@ -398,14 +351,56 @@ class ArrayTest(unittest.TestCase):
         """ Tests get item of the ds.array
         """
         bn, bm = 2, 2
-        # Dense
-        x = np.zeros((10, 10))
-        x[1][1] = 666
-        data = ds.array(x=x, block_size=(bn, bm))
+        x = np.random.randint(10, size=(10, 10))
+        data = ds.array(x=x, blocks_shape=(bn, bm))
 
-        element = data[1,1]
+        for i in range(x.shape[0]):
+            for j in range(x.shape[1]):
+                element = data[i, j].collect()
+                self.assertEqual(element, x[i, j])
 
-    # def test_mean(self):
+    def test_get_slice_simple(self):
+        """ Tests get a simple slice of the ds.array
+        """
+        bn, bm = 5, 5
+        x = np.random.randint(100, size=(30, 30))
+        print(x)
+        data = ds.array(x=x, blocks_shape=(bn, bm))
+
+        slice_indices = [(7, 22, 7, 22),  # many row-column
+                         (6, 8, 6, 8),  # single block row-column
+                         (6, 8, None, None),  # single-block rows, all columns
+                         (None, None, 6, 8),  # all rows, single-block columns
+                         (15, 16, 15, 16),  # single element
+                         # (-10, -5, -10, -5),  # out-of-bounds (not implemented)
+                         # (-10, 5, -10, 5),  # out-of-bounds (not implemented)
+                         (21, 40, 21, 40)]  # out-of-bounds (correct)
+
+        # bn, bm = 3, 3
+        # x = np.random.randint(100, size=(10, 10))
+        # print(x)
+        # data = ds.array(x=x, blocks_shape=(bn, bm))
+        #
+        # slice_indices = [(4, 5, 4, 5),  # single element
+        #                  (2, 7, 2, 7),  # many row-column
+        #                  (3, 5, 3, 5),  # single block row-column
+        #                  (3, 5, None, None),  # single-block rows, all columns
+        #                  (None, None, 3, 5),  # all rows, single-block columns
+        #                  (5, 20, 5, 20)] # out-of-bounds (correct)
+
+        for top, bot, left, right in slice_indices:
+            print("Indices: %s" % [top, bot, left, right])
+            got = data[top:bot, left:right].collect()
+            expected = x[top:bot, left:right]
+
+            print("Expected: %s\nGot: %s" % (expected, got))
+
+            try:
+                self.assertTrue(equal(got, expected))
+            except:
+                import ipdb
+                ipdb.set_trace()
+# def test_mean(self):
     #     bn, bm = 2, 2
     #
     #     # Dense
@@ -414,7 +409,7 @@ class ArrayTest(unittest.TestCase):
     #     x = np.random.randint(10, size=(10, 10))
     #     # to test mean in empty blocks
     #     x[0:bn+1, 0:bm+1] = 0
-    #     data = ds.array(x=x, block_size=(bn, bm))
+    #     data = ds.array(x=x, blocks_shape=(bn, bm))
     #
     #     _validate_arrays(self, data.mean(axis=0),
     #                      x.mean(axis=0).reshape(1, -1),
@@ -426,7 +421,7 @@ class ArrayTest(unittest.TestCase):
     #     # Sparse
     #     # ======
     #     x = sp.csr_matrix(x)
-    #     data = ds.array(x=x, block_size=(bn, bm))
+    #     data = ds.array(x=x, blocks_shape=(bn, bm))
     #
     #     # Compute the mean counting empty positions as 0
     #     _validate_arrays(self, data.mean(axis=0, count_zero=True),
@@ -451,7 +446,7 @@ class ArrayTest(unittest.TestCase):
         bn, bm = 2, 3
 
         x = np.random.randint(10, size=(x_size, y_size))
-        darray = ds.array(x=x, block_size=(bn, bm))
+        darray = ds.array(x=x, blocks_shape=(bn, bm))
 
         darray_t = darray.transpose(mode='all')
         _validate_arrays(self, darray_t, x.transpose(), (bm, bn))
