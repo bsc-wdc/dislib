@@ -51,9 +51,9 @@ The following plot shows fit time of some dislib models on the
 
 Labels on the horizontal axis represent algorithm-dataset, where:
 
-- ALS = Alternating Least Squares
+- ALS = AlternatingLeastSquares
 - CSVM = CascadeSVM
-- GMM = Gaussian mixture
+- GMM = GaussianMixture
 - RF = RandomForestClassifier
 
 and:
@@ -68,11 +68,6 @@ and:
 - 1M and 3M = 1 and 3 million random samples.
 - mnist = The `mnist <https://www.csie.ntu.edu
   .tw/~cjlin/libsvmtools/datasets/multiclass.html#mnist>`_ dataset.
-
-
-.. [1] Michalik, Daniel, Lindegren, Lennart, and Hobbs, David, “The
-  Tycho-Gaia astrometric solution - How to get 2.5 million parallaxes with less
-  than one year of Gaia data,” A&A, vol. 574, p. A115, 2015.
 
 
 Source code
@@ -98,3 +93,7 @@ Indices and tables
 * :ref:`modindex`
 * :ref:`search`
 
+
+.. [1] Michalik, Daniel, Lindegren, Lennart, and Hobbs, David, “The
+  Tycho-Gaia astrometric solution - How to get 2.5 million parallaxes with less
+  than one year of Gaia data,” A&A, vol. 574, p. A115, 2015.

@@ -1,13 +1,16 @@
-import sys
 import os
+import sys
+
 import matplotlib
-matplotlib.use("pdf")
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+matplotlib.use("pdf")
+
 
 def main():
+    import matplotlib.pyplot as plt
+
     plot_path = "/gpfs/projects/bsc19/PERFORMANCE/dislib/plots"
     res_path = "/gpfs/projects/bsc19/PERFORMANCE/dislib/results"
 

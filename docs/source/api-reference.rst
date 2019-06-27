@@ -107,6 +107,15 @@ Classes
 - Distributed alternating least squares for collaborative filtering.
 
 
+dislib.regression: Regression
+-----------------------------
+
+Classes
+.......
+
+:class:`regression.LinearRegression <dislib.regression.linear.base.LinearRegression>`
+- Simple linear regression using ordinary least squares.
+
 
 dislib.neighbors: Neighbor queries
 ----------------------------------

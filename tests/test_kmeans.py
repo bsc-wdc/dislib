@@ -79,7 +79,7 @@ class KMeansTest(unittest.TestCase):
                             [-4.524023204953875, 0.06235042593214654],
                             [2.332994701667008, 0.37681003933082696]])
 
-        self.assertTrue(np.allclose(centers == kmeans.centers))
+        self.assertTrue((centers == kmeans.centers).all())
         self.assertEqual(labels.size, 610)
 
     def test_sparse(self):
