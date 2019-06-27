@@ -471,8 +471,8 @@ class ArrayTest(unittest.TestCase):
         arr1 = ds.random_array((93, 177), (43, 31), random_state=88)
 
         self.assertEqual(arr1.shape, arr1.collect().shape)
-        self.assertEqual(arr1._blocks_shape, (3, 6))
-        self.assertEqual(arr1._block_size, (43, 31))
+        self.assertEqual(arr1._number_of_blocks, (3, 6))
+        self.assertEqual(arr1._blocks_shape, (43, 31))
         self.assertEqual(arr1._blocks[2][0].shape, (7, 31))
         self.assertEqual(arr1._blocks[2][5].shape, (7, 22))
         self.assertEqual(arr1._blocks[0][5].shape, (43, 22))
