@@ -44,7 +44,7 @@ def array(x, blocks_shape):
 def random_array(shape, block_size, random_state=None):
     """
     Returns a distributed array of random floats in the open interval [0.0,
-    1.0). Values are from the “continuous uniform” distribution over the
+    1.0). Values are from the "continuous uniform" distribution over the
     stated interval.
 
     Parameters
@@ -241,7 +241,7 @@ class Array(object):
             self._top_left_shape = (bi0, bj0)
             self._blocks_shape = (bn, bm)
         elif isinstance(blocks_shape, tuple):
-            self._top_left_shape = None
+            self._top_left_shape = blocks_shape
             self._blocks_shape = blocks_shape
         else:
             raise Exception(self.INVALID_BLOCK_SHAPE_ERROR)
@@ -252,8 +252,8 @@ class Array(object):
     @staticmethod
     def _validate_blocks(blocks):
         if len(blocks) == 0 or len(blocks[0]) == 0:
-            raise AttributeError('Blocks must be a list of lists, with at '
-                                 'least an empty numpy/scipy matrix.')
+            raise AttributeError('Blocks must a list of lists, with at least'
+                                 ' an empty numpy/scipy matrix.')
         row_length = len(blocks[0])
         for i in range(1, len(blocks)):
             if len(blocks[i]) != row_length:
@@ -280,39 +280,51 @@ class Array(object):
         as parameter of type COLLECTION_INOUT """
         return [[object() for _ in range(y)] for _ in range(x)]
 
-    def _has_regular_blocks(self):
-        return self._top_left_shape is None
+    def __str__(self):
+        if self._top_left_shape is not None:
+            bs = [self._top_left_shape, self._blocks_shape]
+        else:
+            bs = self._blocks_shape
+        return "ds-array(blocks=(...), blocks_shape=%r, shape=%r, sparse=%r)" \
+               % (bs, self.shape, self._sparse)
+
+    def __repr__(self):
+        if self._top_left_shape is not None:
+            bs = [self._top_left_shape, self._blocks_shape]
+        else:
+            bs = self._blocks_shape
+        return "ds-array(blocks=%r, blocks_shape=%r, shape=%r, sparse=%r)" % \
+               (self._blocks, bs, self.shape, self._sparse)
 
     def _get_row_shape(self, row_idx):
-        if row_idx == 0 and not self._has_regular_blocks():
+        if row_idx == 0:
             return self._top_left_shape[0], self.shape[1]
 
         if row_idx < self._number_of_blocks[0] - 1:
             return self._blocks_shape[0], self.shape[1]
 
         # this is the last chunk of rows, number of rows might be smaller
-        if self._has_regular_blocks():
-            n_r = self.shape[0] - (self._number_of_blocks[0] - 1) * \
-                                  self._blocks_shape[0]
-        else:  # is first block is irregular, n_r is computed differently
-            n_r = self.shape[0] - self._top_left_shape[0] - \
-                  (self._number_of_blocks[0] - 2) * self._blocks_shape[0]
+        reg_blocks = self._number_of_blocks[0] - 2
+        if reg_blocks < 0:
+            reg_blocks = 0
+
+        n_r = self.shape[0] - self._top_left_shape[0] - \
+              reg_blocks * self._blocks_shape[0]
         return n_r, self.shape[1]
 
     def _get_col_shape(self, col_idx):
-        if col_idx == 0 and not self._has_regular_blocks():
+        if col_idx == 0:
             return self.shape[0], self._top_left_shape[1]
 
         if col_idx < self._number_of_blocks[1] - 1:
             return self.shape[0], self._blocks_shape[1]
 
         # this is the last chunk of cols, number of cols might be smaller
-        if self._has_regular_blocks():
-            n_c = self.shape[1] - (self._number_of_blocks[1] - 1) * \
-                                  self._blocks_shape[1]
-        else:  # is first block is irregular, n_r is computed differently
-            n_c = self.shape[1] - self._top_left_shape[1] - \
-                  (self._number_of_blocks[1] - 2) * self._blocks_shape[1]
+        reg_blocks = self._number_of_blocks[1] - 2
+        if reg_blocks < 0:
+            reg_blocks = 0
+        n_c = self.shape[1] - self._top_left_shape[1] - \
+              reg_blocks * self._blocks_shape[1]
         return self.shape[0], n_c
 
     def _iterator(self, axis=0):
@@ -338,14 +350,15 @@ class Array(object):
 
     def _get_containing_block(self, i, j):
         """ Returns the indices of the block containing coordinate (i, j) """
-        if not self._has_regular_blocks():
-            bi0, bj0 = self._top_left_shape
-        else:
-            bi0, bj0 = (0, 0)
-
+        bi0, bj0 = self._top_left_shape
         bn, bm = self._blocks_shape
-        block_i = (i + bi0) // bn
-        block_j = (j + bj0) // bm
+
+        # If first block is irregular, we need to add an offset to compute the
+        # containing block indices
+        offset_i, offset_j = bi0 % bn, bj0 % bm
+
+        block_i = (i + offset_i) // bn
+        block_j = (j + offset_j) // bm
 
         # if blocks are out of bounds, assume the element belongs to last block
         if block_i >= self._number_of_blocks[0]:
@@ -360,18 +373,14 @@ class Array(object):
         local_i, local_j = i, j
 
         if block_i > 0:
-            if self._has_regular_blocks():
-                local_i = i - (block_i * self._blocks_shape[0])
-            else:
-                local_i = i - self._top_left_shape[0] - \
-                          (block_i - 1) * self._blocks_shape[0]
+            reg_blocks = (block_i - 1) if (block_i - 1) >= 0 else 0
+            local_i = i - self._top_left_shape[0] - \
+                      reg_blocks * self._blocks_shape[0]
 
         if block_j > 0:
-            if self._has_regular_blocks():
-                local_j = j - (block_j * self._blocks_shape[1])
-            else:
-                local_j = j - self._top_left_shape[1] - \
-                          (block_j - 1) * self._blocks_shape[1]
+            reg_blocks = (block_j - 1) if (block_j - 1) >= 0 else 0
+            local_j = j - self._top_left_shape[1] - \
+                      reg_blocks * self._blocks_shape[1]
 
         return local_i, local_j
 
@@ -510,14 +519,16 @@ class Array(object):
             out_blocks = []
             for r in self._iterator(axis=0):
                 _blocks = self._get_out_blocks(*r._number_of_blocks)
-                _tranpose(r._blocks, _blocks)
+
+                _transpose(r._blocks, _blocks)
 
                 out_blocks.append(_blocks[0])
         elif mode == 'columns':
             out_blocks = [[] for _ in range(self._number_of_blocks[0])]
             for i, c in enumerate(self._iterator(axis=1)):
                 _blocks = self._get_out_blocks(*c._number_of_blocks)
-                _tranpose(c._blocks, _blocks)
+
+                _transpose(c._blocks, _blocks)
 
                 for i2 in range(len(_blocks)):
                     out_blocks[i2].append(_blocks[i2][0])
@@ -537,7 +548,6 @@ class Array(object):
 
     def collect(self):
         self._blocks = compss_wait_on(self._blocks)
-
         res = self._merge_blocks(self._blocks)
         if not self._sparse:
             res = np.squeeze(res)
@@ -549,23 +559,21 @@ def _get_item(i, j, block):
     return block[i][j]
 
 
-# @task(out_blocks={Type: COLLECTION_INOUT, Depth: 2})
-def _filter_block(block, boundaries):
-    i_0, j_0, i_n, j_n = boundaries
-    # if len(out_blocks) == 1 and len(out_blocks[0]) == 1:
-    #     # we have a single block, filter it directly
-    #     out_blocks[0][0] = out_blocks[0][0][i_0:i_n, j_0:j_n]
-    res = block[i_0:i_n, j_0:j_n]
-
-    return res
-
-
 @task(returns=np.array)
 def _random_block(shape, seed):
     if seed is not None:
         np.random.seed(seed)
 
     return np.random.random(shape)
+
+
+@task(returns=1)
+def _filter_block(block, boundaries):
+    i_0, j_0, i_n, j_n = boundaries
+
+    res = block[i_0:i_n, j_0:j_n]
+
+    return res
 
 
 @task(blocks={Type: COLLECTION_IN, Depth: 2},
