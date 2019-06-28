@@ -9,32 +9,49 @@ from dislib.utils import as_grid, shuffle, resample
 
 class UtilsTest(unittest.TestCase):
     def test_shuffle(self):
-        """ Tests that the content of the subsets of a dataset changes after
-        running shuffle, and that the sizes of the original and shuffled
-        datasets are equal.
+        """ Tests shuffle for a given dataset and random_state. Tests that the
+        shuffled dataset contains the same instances as the original dataset,
+        that the position has changed for some instance, that the shuffled
+        dataset is balanced, and that a K-fold partition of the shuffled
+        dataset is balanced.
         """
-        s1 = Subset(samples=np.array([[1, 2], [4, 5], [2, 2], [6, 6]]),
-                    labels=np.array([0, 1, 1, 1]))
-        s2 = Subset(samples=np.array([[7, 8], [9, 8], [0, 4]]),
+        s1 = Subset(samples=np.array([[1, 1], [0, 0]]),
+                    labels=np.array([0, 1]))
+        s2 = Subset(samples=np.array([[4, 4], [3, 3], [2, 2]]),
                     labels=np.array([0, 1, 1]))
-        s3 = Subset(samples=np.array([[3, 9], [0, 7], [6, 1], [0, 8]]),
+        s3 = Subset(samples=np.array([[8, 8], [7, 7], [6, 6], [5, 5]]),
                     labels=np.array([0, 1, 1, 1]))
+        s4 = Subset(samples=np.array([[9, 9], [9, 8], [9, 7], [9, 6], [9, 5]]),
+                    labels=np.array([0, 0, 1, 1, 0]))
 
         dataset = Dataset(2)
-        dataset.extend([s1, s2, s3])
-        dataset._sizes = [2, 3, 4]
+        dataset.extend([s1, s2, s3, s4])
 
-        shuffled = shuffle(dataset)
+        shuffled = shuffle(dataset, random_state=0)
         shuffled.collect()
 
-        total_size = 0
+        sizes_shuffled = shuffled.subsets_sizes()
 
-        for i, subset in enumerate(shuffled):
-            equal = np.array_equal(shuffled[i].samples, dataset[i].samples)
-            total_size += subset.samples.shape[0]
-            self.assertFalse(equal)
-
-        self.assertEqual(total_size, 9)
+        # Assert that at least one of the first 2 samples has changed
+        self.assertFalse(np.array_equal([[1, 1], [0, 0]],
+                                        shuffled[0].samples[0:2]))
+        # Assert that the shuffled dataset has the same n_samples
+        self.assertEqual(sum(sizes_shuffled), 14)
+        # Assert that all the original instances are in the shuffled dataset
+        shuffled_instances = set()
+        for subset in shuffled:
+            instances = [(tuple(sample), label) for sample, label in
+                         zip(subset.samples, subset.labels)]
+            shuffled_instances.update(instances)
+        for subset in dataset:
+            instances = [(tuple(sample), label) for sample, label in
+                         zip(subset.samples, subset.labels)]
+            self.assertTrue(shuffled_instances.issuperset(instances))
+        # Assert that the shuffled dataset is balanced
+        for size in sizes_shuffled:
+            self.assertTrue(size == 3 or size == 4)
+        # Assert that a 2-Fold dataset partition is balanced
+        self.assertEqual(sum(sizes_shuffled[0:2]), sum(sizes_shuffled[2:4]))
 
     def test_as_grid(self):
         """ Tests the as_grid method with toy data."""
@@ -220,8 +237,8 @@ class UtilsTest(unittest.TestCase):
 
         sparse = load_libsvm_file(file_, 10, 780)
         dense = load_libsvm_file(file_, 10, 780, store_sparse=False)
-        shuf_d = shuffle(dense, random_state)
-        shuf_sp = shuffle(sparse, random_state)
+        shuf_d = shuffle(dense, random_state=random_state)
+        shuf_sp = shuffle(sparse, random_state=random_state)
         shuf_sp.collect()
         shuf_d.collect()
 
