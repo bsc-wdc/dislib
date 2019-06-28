@@ -38,6 +38,38 @@ Contents
 * :doc:`Development <development>`
 * :doc:`FAQ <faq>`
 
+Performance
+-----------
+
+The following plot shows fit time of some dislib models on the
+`MareNostrum 4 <https://www.bsc.es/marenostrum/marenostrum>`_ supercomputer
+(using 8 worker nodes):
+
+.. image:: ./performance.png
+    :align: center
+    :width: 500px
+
+Labels on the horizontal axis represent algorithm-dataset, where:
+
+- ALS = AlternatingLeastSquares
+- CSVM = CascadeSVM
+- GMM = GaussianMixture
+- RF = RandomForestClassifier
+
+and:
+
+- Netflix = The Netflix Prize `dataset <https://www.kaggle
+  .com/netflix-inc/netflix-prize-data>`_.
+- ijcnn1 = The `ijcnn1 <https://www.csie.ntu.edu
+  .tw/~cjlin/libsvmtools/datasets/binary.html#ijcnn1>`_ dataset.
+- KDD99 = The `KDDCUP 1999 <http://kdd.ics.uci.edu/databases
+  /kddcup99/kddcup99.html>`_ dataset.
+- gaia = The Tycho-Gaia Astrometric Solution dataset [1]_.
+- 1M and 3M = 1 and 3 million random samples.
+- mnist = The `mnist <https://www.csie.ntu.edu
+  .tw/~cjlin/libsvmtools/datasets/multiclass.html#mnist>`_ dataset.
+
+
 Source code
 -----------
 
@@ -61,3 +93,7 @@ Indices and tables
 * :ref:`modindex`
 * :ref:`search`
 
+
+.. [1] Michalik, Daniel, Lindegren, Lennart, and Hobbs, David, “The
+  Tycho-Gaia astrometric solution - How to get 2.5 million parallaxes with less
+  than one year of Gaia data,” A&A, vol. 574, p. A115, 2015.
