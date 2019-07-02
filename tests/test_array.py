@@ -1,8 +1,8 @@
 # import os
 import unittest
+from math import ceil
 
 import numpy as np
-from math import ceil
 from scipy import sparse as sp
 from scipy.sparse import issparse
 from sklearn.datasets import load_svmlight_file
@@ -57,7 +57,7 @@ def _validate_arrays(self, darray, x, block_shape):
     self.assertTrue(equivalent_types(darray.collect(), x))
     self.assertEqual(type(darray), Array)
 
-    self.assertEqual(darray._number_of_blocks, (ceil(n / bn), ceil(m / bm)))
+    self.assertEqual(darray._n_blocks, (ceil(n / bn), ceil(m / bm)))
 
 
 class DataLoadingTest(unittest.TestCase):
@@ -293,7 +293,7 @@ class ArrayTest(unittest.TestCase):
 
         self.assertEqual(darray.shape, (x_size, y_size))
 
-        self.assertEqual(darray._number_of_blocks,
+        self.assertEqual(darray._n_blocks,
                          (ceil(x_size / bn), ceil(y_size / bm)))
         self.assertEqual(darray._blocks_shape, (bn, bm))
 
@@ -301,7 +301,7 @@ class ArrayTest(unittest.TestCase):
         darray = ds.array(x=x, blocks_shape=(bn, bm))
 
         self.assertEqual(darray.shape, (x_size, y_size))
-        self.assertEqual(darray._number_of_blocks,
+        self.assertEqual(darray._n_blocks,
                          (ceil(x_size / bn), ceil(y_size / bm)))
         self.assertEqual(darray._blocks_shape, (bn, bm))
 
@@ -359,12 +359,19 @@ class ArrayTest(unittest.TestCase):
                 element = data[i, j].collect()
                 self.assertEqual(element, x[i, j])
 
-    def test_get_slice_simple(self):
-        """ Tests get a simple slice of the ds.array
+        # Try indexing with irregular array
+        x = x[1:, 1:]
+        data = data[1:, 1:]
+        for i in range(x.shape[0]):
+            for j in range(x.shape[1]):
+                element = data[i, j].collect()
+                self.assertEqual(element, x[i, j])
+
+    def test_get_slice_dense(self):
+        """ Tests get a dense slice of the ds.array
         """
         bn, bm = 5, 5
         x = np.random.randint(100, size=(30, 30))
-        print(x)
         data = ds.array(x=x, blocks_shape=(bn, bm))
 
         slice_indices = [(7, 22, 7, 22),  # many row-column
@@ -376,69 +383,53 @@ class ArrayTest(unittest.TestCase):
                          # (-10, 5, -10, 5),  # out-of-bounds (not implemented)
                          (21, 40, 21, 40)]  # out-of-bounds (correct)
 
-        # bn, bm = 3, 3
-        # x = np.random.randint(100, size=(10, 10))
-        # print(x)
-        # data = ds.array(x=x, blocks_shape=(bn, bm))
-        #
-        # slice_indices = [(4, 5, 4, 5),  # single element
-        #                  (2, 7, 2, 7),  # many row-column
-        #                  (3, 5, 3, 5),  # single block row-column
-        #                  (3, 5, None, None),  # single-block rows, all columns
-        #                  (None, None, 3, 5),  # all rows, single-block columns
-        #                  (5, 20, 5, 20)] # out-of-bounds (correct)
-
         for top, bot, left, right in slice_indices:
-            print("Indices: %s" % [top, bot, left, right])
             got = data[top:bot, left:right].collect()
             expected = x[top:bot, left:right]
 
-            print("Expected: %s\nGot: %s" % (expected, got))
+            self.assertTrue(equal(got, expected))
 
-            try:
-                self.assertTrue(equal(got, expected))
-            except:
-                import ipdb
-                ipdb.set_trace()
-# def test_mean(self):
-    #     bn, bm = 2, 2
-    #
-    #     # Dense
-    #     # =====
-    #
-    #     x = np.random.randint(10, size=(10, 10))
-    #     # to test mean in empty blocks
-    #     x[0:bn+1, 0:bm+1] = 0
-    #     data = ds.array(x=x, blocks_shape=(bn, bm))
-    #
-    #     _validate_arrays(self, data.mean(axis=0),
-    #                      x.mean(axis=0).reshape(1, -1),
-    #                      (bn, bm))
-    #
-    #     _validate_arrays(self, data.mean(axis=1),
-    #                      x.mean(axis=1).reshape(-1, 1), (bn, bm))
-    #
-    #     # Sparse
-    #     # ======
-    #     x = sp.csr_matrix(x)
-    #     data = ds.array(x=x, blocks_shape=(bn, bm))
-    #
-    #     # Compute the mean counting empty positions as 0
-    #     _validate_arrays(self, data.mean(axis=0, count_zero=True),
-    #                      x.mean(axis=0), (bn, bm))
-    #
-    #     _validate_arrays(self, data.mean(axis=1, count_zero=True),
-    #                      x.mean(axis=1), (bn, bm))
-    #
-    #     # Compute the mean without considering empty positions
-    #     x_mean = x.sum(axis=0) / (x != 0).toarray().sum(axis=0)
-    #     _validate_arrays(self, data.mean(axis=0, count_zero=False),
-    #                      x_mean, (bn, bm))
-    #
-    #     x_mean = x.sum(axis=1) / (x != 0).toarray().sum(axis=1).reshape(
-    #     -1, 1)
-    #     _validate_arrays(self, data.mean(axis=1, count_zero=False),
-    #                      x_mean, (bn, bm))
+        # Try slicing with irregular array
+        x = x[1:, 1:]
+        data = data[1:, 1:]
+
+        for top, bot, left, right in slice_indices:
+            got = data[top:bot, left:right].collect()
+            expected = x[top:bot, left:right]
+
+            self.assertTrue(equal(got, expected))
+
+    def test_get_slice_sparse(self):
+        """ Tests get a sparse slice of the ds.array
+        """
+        bn, bm = 5, 5
+        x = np.random.randint(100, size=(30, 30))
+        x = sp.csr_matrix(x)
+        data = ds.array(x=x, blocks_shape=(bn, bm))
+
+        slice_indices = [(7, 22, 7, 22),  # many row-column
+                         (6, 8, 6, 8),  # single block row-column
+                         (6, 8, None, None),  # single-block rows, all columns
+                         (None, None, 6, 8),  # all rows, single-block columns
+                         (15, 16, 15, 16),  # single element
+                         # (-10, -5, -10, -5),  # out-of-bounds (not implemented)
+                         # (-10, 5, -10, 5),  # out-of-bounds (not implemented)
+                         (21, 40, 21, 40)]  # out-of-bounds (correct)
+
+        for top, bot, left, right in slice_indices:
+            got = data[top:bot, left:right].collect()
+            expected = x[top:bot, left:right]
+
+            self.assertTrue(equal(got, expected))
+
+        # Try slicing with irregular array
+        x = x[1:, 1:]
+        data = data[1:, 1:]
+
+        for top, bot, left, right in slice_indices:
+            got = data[top:bot, left:right].collect()
+            expected = x[top:bot, left:right]
+            self.assertTrue(equal(got, expected))
 
     def test_transpose(self):
         """ Tests array transpose."""
@@ -471,7 +462,7 @@ class ArrayTest(unittest.TestCase):
         arr1 = ds.random_array((93, 177), (43, 31), random_state=88)
 
         self.assertEqual(arr1.shape, arr1.collect().shape)
-        self.assertEqual(arr1._number_of_blocks, (3, 6))
+        self.assertEqual(arr1._n_blocks, (3, 6))
         self.assertEqual(arr1._blocks_shape, (43, 31))
         self.assertEqual(arr1._blocks[2][0].shape, (7, 31))
         self.assertEqual(arr1._blocks[2][5].shape, (7, 22))
@@ -487,45 +478,6 @@ class ArrayTest(unittest.TestCase):
         self.assertTrue(np.array_equal(arr1.collect(), arr2.collect()))
         self.assertFalse(np.array_equal(arr1.collect(), arr3.collect()))
         self.assertFalse(np.array_equal(arr4.collect(), arr5.collect()))
-
-
-# def test_min_max_features(self):
-#         """ Tests that min_features and max_features correctly return min
-#         and max values in a toy dataset.
-#         """
-#         s1 = Subset(samples=np.array([[1, 2], [4, 5], [2, 2], [6, 6]]),
-#                     labels=np.array([0, 1, 1, 1]))
-#         s2 = Subset(samples=np.array([[7, 8], [9, 8], [0, 4]]),
-#                     labels=np.array([0, 1, 1]))
-#         s3 = Subset(samples=np.array([[3, 9], [0, 7], [6, 1], [0, 8]]),
-#                     labels=np.array([0, 1, 1, 1]))
-#         dataset = Dataset(n_features=2)
-#         dataset.append(s1)
-#         dataset.append(s2)
-#         dataset.append(s3)
-#
-#         min_ = dataset.min_features()
-#         max_ = dataset.max_features()
-#
-#         self.assertTrue(np.array_equal(min_, np.array([0, 1])))
-#         self.assertTrue(np.array_equal(max_, np.array([9, 9])))
-#
-#     def test_min_max_features_sparse(self):
-#         """ Tests that min_features and max_features correctly return min
-#         and max values with sparse dataset. """
-#
-#         file_ = "tests/files/libsvm/1"
-#         sparse = load_libsvm_file(file_, 10, 780)
-#         dense = load_libsvm_file(file_, 10, 780, store_sparse=False)
-#
-#         max_sp = sparse.max_features()
-#         max_d = dense.max_features()
-#         min_sp = sparse.min_features()
-#         min_d = sparse.min_features()
-#
-#         self.assertTrue(np.array_equal(max_sp, max_d))
-#         self.assertTrue(np.array_equal(min_sp, min_d))
-#
 
 
 def main():
