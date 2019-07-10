@@ -78,7 +78,7 @@ class KMeans:
 
         Returns
         -------
-        self
+        self : object
         """
         n_features = x.shape[1]
         sparse = x._sparse
@@ -94,8 +94,8 @@ class KMeans:
             old_centers = self.centers.copy()
             partials = []
 
-            for r_block in x.iterator(axis=0):
-                partial = _partial_sum(r_block._blocks, old_centers)
+            for row in x._iterator(axis=0):
+                partial = _partial_sum(row._blocks, old_centers)
                 partials.append(partial)
 
             self._recompute_centers(partials)
@@ -137,14 +137,13 @@ class KMeans:
         labels : ds-array, shape=(n_samples, 1)
             Index of the cluster each sample belongs to.
         """
-        blocks = [list()]
+        blocks = []
 
-        for r_block in x.iterator(axis=0):
-            blocks[0].append(_predict(r_block._blocks, self.centers))
+        for row in x._iterator(axis=0):
+            blocks.append([_predict(row._blocks, self.centers)])
 
         return Array(blocks=blocks, blocks_shape=(x._blocks_shape[0], 1),
-                     shape=(x.shape[0], 1),
-                     sparse=x._sparse)
+                     shape=(x.shape[0], 1), sparse=False)
 
     def _converged(self, old_centers, iteration):
         if old_centers is None:
@@ -213,4 +212,4 @@ def _merge(*data):
 @task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
 def _predict(blocks, centers):
     arr = Array._merge_blocks(blocks)
-    return pairwise_distances(arr, centers).argmin(axis=1)
+    return pairwise_distances(arr, centers).argmin(axis=1).reshape(-1, 1)
