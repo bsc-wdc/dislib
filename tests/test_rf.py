@@ -1,6 +1,7 @@
 import unittest
 
 from pycompss.api.api import compss_wait_on
+from sklearn import datasets
 from sklearn.datasets import make_classification
 
 from dislib.classification import RandomForestClassifier
@@ -197,6 +198,20 @@ class RFTest(unittest.TestCase):
         rf.fit(train_ds)
         accuracy = rf.score(test_ds)
         self.assertGreater(accuracy, 0.7)
+
+    def test_iris(self):
+        """Tests RandomForestClassifier with a minimal example."""
+        x, y = datasets.load_iris(return_X_y=True)
+        ds_fit = load_data(x[::2], 30, y[::2])
+        ds_validate = load_data(x[1::2], 30, y[1::2])
+        rf = RandomForestClassifier(n_estimators=1, max_depth=1,
+                                    random_state=0)
+        rf.fit(ds_fit)
+        accuracy = rf.score(ds_validate)
+
+        # Accuracy should be <= 0.666... , often exactly equal.
+        self.assertLess(accuracy, 0.67)
+        self.assertGreater(accuracy, 0.34)
 
 
 def main():

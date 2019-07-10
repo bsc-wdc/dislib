@@ -221,17 +221,17 @@ class _Node:
         if isinstance(node_content, _SkTreeWrapper):
             if len(sample) > 0:
                 sk_tree_pred = node_content.sk_tree.predict_proba(sample)
-                pred = np.zeros((len(sample), n_classes), dtype=np.int64)
+                pred = np.zeros((len(sample), n_classes), dtype=np.float64)
                 pred[:, node_content.sk_tree.classes_] = sk_tree_pred
                 return pred
         if isinstance(node_content, _InnerNodeInfo):
-            pred = np.empty((len(sample), n_classes), dtype=np.int64)
+            pred = np.empty((len(sample), n_classes), dtype=np.float64)
             l_msk = sample[:, node_content.index] <= node_content.value
             pred[l_msk] = self.left.predict_proba(sample[l_msk], n_classes)
             pred[~l_msk] = self.right.predict_proba(sample[~l_msk], n_classes)
             return pred
         assert len(sample) == 0, 'Type not supported'
-        return np.empty((0, n_classes), dtype=np.int64)
+        return np.empty((0, n_classes), dtype=np.float64)
 
 
 class _InnerNodeInfo:
@@ -504,11 +504,13 @@ def _predict_branch_proba(subset, tree, nodes_info, subtree_index, subtree,
 @task(returns=list)
 def _merge_branches(n_classes, *predictions):
     samples_len = len(predictions[0][0])
-    if n_classes is not None:
+    if n_classes is not None:  # predict
         shape = (samples_len, n_classes)
-    else:
+        dtype = np.float64
+    else:  # predict_proba
         shape = (samples_len,)
-    merged_prediction = np.empty(shape, dtype=np.int64)
+        dtype = np.int64
+    merged_prediction = np.empty(shape, dtype=dtype)
     for selected, prediction in predictions:
         merged_prediction[selected] = prediction
     return merged_prediction

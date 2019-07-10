@@ -9,17 +9,18 @@ class LinearRegression:
     Simple linear regression using ordinary least squares.
 
     model: y1 = alpha + beta*x_i + epsilon_i
+
     goal: y = alpha + beta*x
 
     Parameters
     ----------
-    arity : int
+    arity : int, optional (default=50)
         Arity of the reductions.
 
     Attributes
     ----------
     coef_ : array, shape (n_features, )
-        Estimated coefficients (beta) for the linear model.
+        Estimated coefficient (beta) in the linear model.
     intercept_ : float
         Estimated independent term (alpha) in the linear model.
 
