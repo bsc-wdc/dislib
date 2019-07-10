@@ -2,10 +2,9 @@ import unittest
 
 import numpy as np
 
+import dislib as ds
 from dislib.classification import CascadeSVM
-from dislib.data import Dataset
-from dislib.data import Subset
-from dislib.data import load_libsvm_file, load_data
+from dislib.data import load_svmlight_file
 
 
 class CSVMTest(unittest.TestCase):
@@ -48,14 +47,14 @@ class CSVMTest(unittest.TestCase):
         seed = 666
         file_ = "tests/files/libsvm/2"
 
-        dataset = load_libsvm_file(file_, 10, 780)
+        x, y = load_svmlight_file(file_, (10, 300), 780, False)
 
         csvm = CascadeSVM(cascade_arity=3, max_iter=5,
                           tol=1e-4, kernel='linear', c=2, gamma=0.1,
                           check_convergence=True,
                           random_state=seed, verbose=False)
 
-        csvm.fit(dataset)
+        csvm.fit(x, y)
 
         self.assertTrue(csvm.converged)
 
@@ -64,7 +63,7 @@ class CSVMTest(unittest.TestCase):
                           check_convergence=False,
                           random_state=seed, verbose=False)
 
-        csvm.fit(dataset)
+        csvm.fit(x, y)
         self.assertFalse(csvm.converged)
         self.assertEqual(csvm.iterations, 1)
 
@@ -74,14 +73,14 @@ class CSVMTest(unittest.TestCase):
         seed = 666
         file_ = "tests/files/libsvm/2"
 
-        dataset = load_libsvm_file(file_, 10, 780)
+        x, y = load_svmlight_file(file_, (10, 300), 780, False)
 
         csvm = CascadeSVM(cascade_arity=3, max_iter=5,
                           tol=1e-4, kernel='linear', c=2,
                           check_convergence=True,
                           random_state=seed, verbose=False)
 
-        csvm.fit(dataset)
+        csvm.fit(x, y)
 
         self.assertTrue(csvm.converged)
 
@@ -90,34 +89,34 @@ class CSVMTest(unittest.TestCase):
                           check_convergence=False,
                           random_state=seed, verbose=False)
 
-        csvm.fit(dataset)
+        csvm.fit(x, y)
         self.assertFalse(csvm.converged)
         self.assertEqual(csvm.iterations, 1)
 
     def test_predict(self):
         seed = 666
 
-        dataset = Dataset(n_features=2)
         # negative points belong to class 1, positives to 0
         p1, p2, p3, p4 = [1, 2], [2, 1], [-1, -2], [-2, -1]
-        dataset.append(Subset(np.array([p1, p4]), np.array([0, 1])))
-        dataset.append(Subset(np.array([p3, p2]), np.array([1, 0])))
+
+        x = ds.array(np.array([p1, p4, p3, p2]), (2, 2))
+        y = ds.array(np.array([0, 1, 1, 0]).reshape(-1, 1), (2, 1))
 
         csvm = CascadeSVM(cascade_arity=3, max_iter=10,
                           tol=1e-4, kernel='linear', c=2, gamma=0.1,
                           check_convergence=False,
                           random_state=seed, verbose=False)
 
-        csvm.fit(dataset)
+        csvm.fit(x, y)
 
         # p5 should belong to class 0, p6 to class 1
         p5, p6 = np.array([1, 1]), np.array([-1, -1])
 
-        test_set = load_data(x=np.array([p1, p2, p3, p4, p5, p6]),
-                             subset_size=2)
-        csvm.predict(test_set)
+        x_test = ds.array(np.array([p1, p2, p3, p4, p5, p6]), (2, 2))
 
-        l1, l2, l3, l4, l5, l6 = test_set.labels
+        y_pred = csvm.predict(x_test)
+
+        l1, l2, l3, l4, l5, l6 = y_pred.collect()
 
         self.assertTrue(l1 == l2 == l5 == 0)
         self.assertTrue(l3 == l4 == l6 == 1)
@@ -125,57 +124,64 @@ class CSVMTest(unittest.TestCase):
     def test_score(self):
         seed = 666
 
-        dataset = Dataset(n_features=2)
         # negative points belong to class 1, positives to 0
         p1, p2, p3, p4 = [1, 2], [2, 1], [-1, -2], [-2, -1]
-        dataset.append(Subset(np.array([p1, p4]), np.array([0, 1])))
-        dataset.append(Subset(np.array([p3, p2]), np.array([1, 0])))
+
+        x = ds.array(np.array([p1, p4, p3, p2]), (2, 2))
+        y = ds.array(np.array([0, 1, 1, 0]).reshape(-1, 1), (2, 1))
 
         csvm = CascadeSVM(cascade_arity=3, max_iter=10,
                           tol=1e-4, kernel='rbf', c=2, gamma=0.1,
                           check_convergence=True,
                           random_state=seed, verbose=False)
 
-        csvm.fit(dataset)
+        csvm.fit(x, y)
 
         # points are separable, scoring the training dataset should have 100%
         # accuracy
-        test_set = load_data(x=np.array([p1, p2, p3, p4]), subset_size=2,
-                             y=np.array([0, 0, 1, 1]))
-        accuracy = csvm.score(test_set)
+        x_test = ds.array(np.array([p1, p2, p3, p4]), (2, 2))
+        y_test = ds.array(np.array([0, 0, 1, 1]).reshape(-1, 1), (2, 1))
+
+        accuracy = csvm.score(x_test, y_test).collect()
 
         self.assertEqual(accuracy, 1.0)
 
     def test_decision_func(self):
         seed = 666
 
-        dataset = Dataset(n_features=2)
         # negative points belong to class 1, positives to 0
         # all points are in the x-axis
         p1, p2, p3, p4 = [0, 2], [0, 1], [0, -2], [0, -1]
-        dataset.append(Subset(np.array([p1, p4]), np.array([0, 1])))
-        dataset.append(Subset(np.array([p3, p2]), np.array([1, 0])))
+
+        x = ds.array(np.array([p1, p4, p3, p2]), (2, 2))
+        y = ds.array(np.array([0, 1, 1, 0]).reshape(-1, 1), (2, 1))
 
         csvm = CascadeSVM(cascade_arity=3, max_iter=10,
                           tol=1e-4, kernel='rbf', c=2, gamma=0.1,
                           check_convergence=False,
                           random_state=seed, verbose=False)
 
-        csvm.fit(dataset)
+        csvm.fit(x, y)
 
         # p1 should be equidistant to p3, and p2 to p4
-        test_set = load_data(x=np.array([p1, p2, p3, p4]), subset_size=2)
-        csvm.decision_function(test_set)
-        d1, d2, d3, d4 = test_set.labels
+        x_test = ds.array(np.array([p1, p2, p3, p4]), (2, 2))
+
+        y_pred = csvm.decision_function(x_test)
+
+        d1, d2, d3, d4 = y_pred.collect()
 
         self.assertTrue(np.isclose(abs(d1) - abs(d3), 0))
         self.assertTrue(np.isclose(abs(d2) - abs(d4), 0))
 
         # p5 and p6 should be in the decision function (distance=0)
         p5, p6 = np.array([1, 0]), np.array([-1, 0])
-        test_set = load_data(x=np.array([p5, p6]), subset_size=1)
-        csvm.decision_function(test_set)
-        d5, d6 = test_set.labels
+
+        x_test = ds.array(np.array([p5, p6]), (1, 2))
+
+        y_pred = csvm.decision_function(x_test)
+
+        d5, d6 = y_pred.collect()
+
         self.assertTrue(np.isclose(d5, 0))
         self.assertTrue(np.isclose(d6, 0))
 
@@ -185,13 +191,14 @@ class CSVMTest(unittest.TestCase):
         seed = 666
         train = "tests/files/libsvm/3"
 
-        train_sp = load_libsvm_file(train, 10, 780)
-        train_d = load_libsvm_file(train, 10, 780, False)
+        x_sp, y_sp = load_svmlight_file(train, (10, 300), 780, True)
+        x_d, y_d = load_svmlight_file(train, (10, 300), 780, False)
 
         csvm_sp = CascadeSVM(random_state=seed)
-        csvm_sp.fit(train_sp)
+        csvm_sp.fit(x_sp, y_sp)
+
         csvm_d = CascadeSVM(random_state=seed)
-        csvm_d.fit(train_d)
+        csvm_d.fit(x_d, y_d)
 
         sv_d = csvm_d._clf.support_vectors_
         sv_sp = csvm_sp._clf.support_vectors_.toarray()
@@ -205,19 +212,19 @@ class CSVMTest(unittest.TestCase):
 
     def test_duplicates(self):
         """ Tests that C-SVM does not generate duplicate support vectors """
-        x = load_data(np.array([[0, 1],
-                                [1, 1],
-                                [0, 1],
-                                [1, 2],
-                                [0, 0],
-                                [2, 2],
-                                [2, 1],
-                                [1, 0]]),
-                      y=np.array([1, 0, 1, 0, 1, 0, 0, 1]),
-                      subset_size=2)
+        x = ds.array(np.array([[0, 1],
+                               [1, 1],
+                               [0, 1],
+                               [1, 2],
+                               [0, 0],
+                               [2, 2],
+                               [2, 1],
+                               [1, 0]]), (2, 2))
+
+        y = ds.array(np.array([1, 0, 1, 0, 1, 0, 0, 1]).reshape(-1, 1), (2, 1))
 
         csvm = CascadeSVM(c=1, random_state=1, max_iter=100, tol=0)
-        csvm.fit(x)
+        csvm.fit(x, y)
 
         csvm._collect_clf()
         self.assertEqual(csvm._clf.support_vectors_.shape[0], 6)
