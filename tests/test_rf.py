@@ -209,9 +209,8 @@ class RFTest(unittest.TestCase):
         rf.fit(ds_fit)
         accuracy = rf.score(ds_validate)
 
-        # Accuracy should be <= 0.666... , often exactly equal.
-        self.assertLess(accuracy, 0.67)
-        self.assertGreater(accuracy, 0.34)
+        # Accuracy should be <= 2/3 for any seed, often exactly equal.
+        self.assertAlmostEqual(accuracy, 2/3)
 
 
 def main():
