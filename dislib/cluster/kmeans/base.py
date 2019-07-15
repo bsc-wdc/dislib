@@ -1,5 +1,3 @@
-import numbers
-
 import numpy as np
 from pycompss.api.api import compss_wait_on
 from pycompss.api.parameter import COLLECTION_IN, Depth, Type
@@ -9,6 +7,7 @@ from sklearn.metrics import pairwise_distances
 from sklearn.metrics.pairwise import paired_distances
 
 from dislib.data.array import Array
+from sklearn.utils import check_random_state
 
 
 class KMeans:
@@ -60,7 +59,7 @@ class KMeans:
         self._n_clusters = n_clusters
         self._max_iter = max_iter
         self._tol = tol
-        self._random_state = random_state
+        self._random_state = check_random_state(random_state)
         self._arity = arity
         self.centers = None
         self.n_iter = 0
@@ -83,9 +82,8 @@ class KMeans:
         n_features = x.shape[1]
         sparse = x._sparse
 
-        centers = _init_centers(n_features, sparse, self._n_clusters,
-                                self._random_state)
-        self.centers = compss_wait_on(centers)
+        self.centers = _init_centers(n_features, sparse, self._n_clusters,
+                                     self._random_state)
 
         old_centers = None
         iteration = 0
@@ -169,21 +167,6 @@ class KMeans:
                 self.centers[idx] = sum_[0] / sum_[1]
 
 
-@task(returns=np.array)
-def _init_centers(n_features, sparse, n_clusters, random_state):
-    r_state = random_state
-
-    if isinstance(r_state, (numbers.Integral, np.integer)):
-        r_state = np.random.RandomState(r_state)
-
-    centers = r_state.random_sample((n_clusters, n_features))
-
-    if sparse:
-        centers = csr_matrix(centers)
-
-    return centers
-
-
 @task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
 def _partial_sum(blocks, centers):
     partials = np.zeros((centers.shape[0], 2), dtype=object)
@@ -213,3 +196,12 @@ def _merge(*data):
 def _predict(blocks, centers):
     arr = Array._merge_blocks(blocks)
     return pairwise_distances(arr, centers).argmin(axis=1).reshape(-1, 1)
+
+
+def _init_centers(n_features, sparse, n_clusters, random_state):
+    centers = random_state.random_sample((n_clusters, n_features))
+
+    if sparse:
+        centers = csr_matrix(centers)
+
+    return centers
