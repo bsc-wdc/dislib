@@ -1,4 +1,6 @@
+import itertools
 import numbers
+from collections import defaultdict
 from math import ceil
 
 import numpy as np
@@ -26,12 +28,12 @@ def array(x, blocks_shape):
     darray : Array
         A distributed representation of the data divided in blocks.
     """
-    x_size, y_size = blocks_shape
+    bn, bm = blocks_shape
 
     blocks = []
-    for i in range(0, x.shape[0], x_size):
-        row = [x[i: i + x_size, j: j + y_size] for j in
-               range(0, x.shape[1], y_size)]
+    for i in range(0, x.shape[0], bn):
+        row = [x[i: i + bn, j: j + bm] for j in
+               range(0, x.shape[1], bm)]
         blocks.append(row)
 
     sparse = issparse(x)
@@ -158,7 +160,6 @@ def load_svmlight_file(path, blocks_shape, n_features, store_sparse):
 
 @task(out_blocks={Type: COLLECTION_INOUT, Depth: 2})
 def _read_libsvm(lines, out_blocks, col_size, n_features, store_sparse):
-
     from tempfile import SpooledTemporaryFile
     from sklearn.datasets import load_svmlight_file
 
@@ -288,6 +289,15 @@ class Array(object):
         """
         return [[object() for _ in range(y)] for _ in range(x)]
 
+    @staticmethod
+    def _broadcast_shapes(x, y):
+        if len(x) != 1 or len(y) != 1:
+            raise IndexError("shape mismatch: indexing arrays could "
+                             "not be broadcast together with shapes %s %s" %
+                             (len(x), len(y)))
+
+        return zip(*itertools.product(*[x, y]))
+
     def __str__(self):
         if self._top_left_shape is not None:
             bs = [self._top_left_shape, self._blocks_shape]
@@ -410,6 +420,7 @@ class Array(object):
         local_i, local_j = self._coords_in_block(bi, bj, i, j)
         block = self._blocks[bi][bj]
 
+        # returns an list containing a single element
         element = _get_item(local_i, local_j, block)
 
         return Array(blocks=[[element]], blocks_shape=(1, 1), shape=(1, 1),
@@ -493,18 +504,150 @@ class Array(object):
                     shape=out_shape, sparse=self._sparse)
         return res
 
+    def _get_by_lst_rows(self, rows):
+        """
+         Returns a slice of the ds-array defined by the lists of indices in
+          rows.
+         """
+
+        # create dict where each key contains the adjusted row indices for that
+        # block of rows
+        adj_row_idxs = defaultdict(list)
+        for row_idx in rows:
+            containing_block = self._get_containing_block(row_idx, 0)[0]
+            adj_idx = self._coords_in_block(containing_block, 0, row_idx, 0)[0]
+            adj_row_idxs[containing_block].append(adj_idx)
+
+        row_blocks = []
+        for rowblock_idx, row in enumerate(self._iterator(axis='rows')):
+            # create an empty list for the filtered row (single depth)
+            rows_in_block = len(adj_row_idxs[rowblock_idx])
+            # only launch the task if we are selecting rows from that block
+            if rows_in_block > 0:
+                row_block = _filter_row(blocks=row._blocks,
+                                        rows=adj_row_idxs[rowblock_idx],
+                                        cols=None)
+                row_blocks.append((rows_in_block, [row_block]))
+
+        # now we need to merge the rowblocks until they have as much rows as
+        # self._blocks_shape[0] (i.e. number of rows per block)
+        n_rows = 0
+        to_merge = []
+        final_blocks = []
+        for rows_in_block, row in row_blocks:
+            to_merge.append(row)
+            n_rows += rows_in_block
+            # enough rows to merge into a row_block
+            if n_rows > self._blocks_shape[0]:
+                out_blocks = [object() for _ in range(self._n_blocks[1])]
+                new_rb = _merge_rows(to_merge, out_blocks, self._blocks_shape)
+                final_blocks.append(new_rb)
+
+        if n_rows > 0:
+            out_blocks = [object() for _ in range(self._n_blocks[1])]
+            _merge_rows(to_merge, out_blocks, self._blocks_shape)
+            final_blocks.append(out_blocks)
+
+
+        return Array(blocks=final_blocks, blocks_shape=self._blocks_shape,
+                     shape=(len(rows), self._shape[1]), sparse=self._sparse)
+
+    def _get_by_lst_cols(self, cols):
+        """
+         Returns a slice of the ds-array defined by the lists of indices in
+          cols.
+         """
+
+        # create dict where each key contains the adjusted row indices for that
+        # block of rows
+        adj_col_idxs = defaultdict(list)
+        for col_idx in cols:
+            containing_block = self._get_containing_block(0, col_idx)[1]
+            adj_idx = self._coords_in_block(0, containing_block, 0, col_idx)[1]
+            adj_col_idxs[containing_block].append(adj_idx)
+
+        col_blocks = []
+        for colblock_idx, col in enumerate(self._iterator(axis='columns')):
+            # create an empty list for the filtered row (single depth)
+            cols_in_block = len(adj_col_idxs[colblock_idx])
+            # only launch the task if we are selecting rows from that block
+            if cols_in_block > 0:
+                col_block = _filter_row(blocks=col._blocks,
+                                        rows=None,
+                                        cols=adj_col_idxs[colblock_idx])
+                col_blocks.append((cols_in_block, col_block))
+
+        # now we need to merge the rowblocks until they have as much rows as
+        # self._blocks_shape[0] (i.e. number of rows per block)
+        n_cols = 0
+        to_merge = []
+        final_blocks = []
+        for cols_in_block, col in col_blocks:
+            to_merge.append(col)
+            n_cols += cols_in_block
+            # enough cols to merge into a col_block
+            if n_cols > self._blocks_shape[0]:
+                out_blocks = [object() for _ in range(self._n_blocks[1])]
+                new_rb = _merge_cols(to_merge, out_blocks, self._blocks_shape)
+                final_blocks.append(new_rb)
+
+        if n_cols > 0:
+            out_blocks = [object() for _ in range(self._n_blocks[1])]
+            _merge_cols(to_merge, out_blocks, self._blocks_shape)
+            final_blocks.append(out_blocks)
+
+        # list are in col-order transpose them for the correct ordering
+        final_blocks = list(map(list, zip(*final_blocks)))
+
+        return Array(blocks=final_blocks, blocks_shape=self._blocks_shape,
+                     shape=(self._shape[0], len(cols)), sparse=self._sparse)
+
     def __getitem__(self, arg):
-        rows, cols = arg  # unpack, assumes that we always pass in 2-arguments
+
+        # return a single row
+        if isinstance(arg, int):
+            return self._get_by_lst_rows(rows=[arg])
+
+        # list of indices for rows
+        elif isinstance(arg, list) or isinstance(arg, np.ndarray):
+            return self._get_by_lst_rows(rows=arg)
+
+        # slicing only rows
+        elif isinstance(arg, slice):
+            # slice only rows
+            return self._get_slice(rows=arg, cols=slice(None, None))
+
+        # we have indices for both dimensions
+        if not isinstance(arg, tuple):
+            raise IndexError("Invalid indexing information: %s" % arg)
+
+        rows, cols = arg  # unpack 2-arguments
+
+        # returning a single element
+        if isinstance(rows, int) and isinstance(cols, int):
+            return self._get_single_element(i=rows, j=cols)
+
+        # all rows (slice : for rows) and list of indices for columns
+        elif isinstance(rows, slice) and (
+                    isinstance(cols, list) or isinstance(cols, np.ndarray)):
+            return self._get_by_lst_cols(cols=cols)
+
+        # slicing both dimensions
+        elif isinstance(rows, slice) and isinstance(cols, slice):
+            return self._get_slice(rows, cols)
+
+        raise IndexError("Invalid indexing information: %s" % arg)
+
+        # elif isinstance(rows, list) or isinstance(rows, np.ndarray) or \
+        #          isinstance(cols, list) or isinstance(cols, np.ndarray):
+        #     return self._get_by_lst_idx(rows, cols)
         # for single indices, they will be integers, for slices, they'll be
         # slice objects here's a dummy implementation as a placeholder
 
-        if isinstance(rows, slice) or isinstance(cols, slice):
-            return self._get_slice(rows, cols)
-
-        else:
-            i, j = rows, cols
-
-            return self._get_single_element(i, j)
+        # if type(rows) != type(cols):
+        #     raise Exception("Indexing method should be the same for both "
+        #                     "dimensions. (%s != %s)" % (type(rows), type(cols)))
+        # if isinstance(rows, slice) or isinstance(cols, slice):
 
     @property
     def shape(self):
@@ -578,7 +721,7 @@ def _get_item(i, j, block):
     """
     Returns a single item from the block. Coords must be in block space.
     """
-    return block[i][j]
+    return block[i, j]
 
 
 @task(returns=np.array)
@@ -587,6 +730,54 @@ def _random_block(shape, seed):
         np.random.seed(seed)
 
     return np.random.random(shape)
+
+
+@task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=1)
+def _filter_row(blocks, rows, cols):
+    """
+    Returns an array resulting of selecting rows:cols of the input   blocks
+    """
+    data = Array._merge_blocks(blocks)
+
+    if issparse(blocks[0][0]):
+        # sparse indexes element by element we need to do the cartesian
+        # product of indices to get all coords
+        rows, cols = zip(*itertools.product(*[rows, cols]))
+
+    if rows is None:
+        return data[:, cols]
+    elif cols is None:
+        return data[rows, :]
+
+    return data[rows, cols]
+
+
+@task(blocks={Type: COLLECTION_IN, Depth: 2},
+      out_blocks={Type: COLLECTION_INOUT, Depth: 1})
+def _merge_rows(blocks, out_blocks, blocks_shape):
+    """
+    Merges the blocks into a single list of blocks where each block has bn
+    as number of rows (the number of cols remains the same per block).
+    """
+    bn, bm = blocks_shape
+    data = Array._merge_blocks(blocks)
+
+    for j in range(0, ceil(data.shape[1] / bm)):
+        out_blocks[j] = data[:bn, j * bm: (j + 1) * bm]
+
+
+@task(blocks={Type: COLLECTION_IN, Depth: 1},
+      out_blocks={Type: COLLECTION_INOUT, Depth: 1})
+def _merge_cols(blocks, out_blocks, blocks_shape):
+    """
+    Merges the blocks into a single list of blocks where each block has bn
+    as number of rows (the number of cols remains the same per block).
+    """
+    bn, bm = blocks_shape
+    data = Array._merge_blocks(blocks)
+
+    for i in range(0, ceil(data.shape[0] / bn)):
+        out_blocks[i] = data[i * bn: (i + 1) * bn, :bm]
 
 
 @task(returns=1)

@@ -3,6 +3,7 @@ import unittest
 from math import ceil
 
 import numpy as np
+from pycompss.api.api import compss_wait_on
 from scipy import sparse as sp
 from scipy.sparse import issparse
 from sklearn.datasets import load_svmlight_file
@@ -431,10 +432,68 @@ class ArrayTest(unittest.TestCase):
             expected = x[top:bot, left:right]
             self.assertTrue(equal(got, expected))
 
+    def test_index_rows_dense(self):
+        """ Tests get a slice of rows from the ds.array using lists as index
+        """
+        bn, bm = 5, 5
+        x = np.random.randint(100, size=(10, 10))
+        # x = sp.csr_matrix(x)
+        data = ds.array(x=x, blocks_shape=(bn, bm))
+
+        # indices_lists = [([0, 5], [0, 5]),  # one from each block
+        #                  ([0, 1, 3, 4], [0, 1, 2, 4]),  # all from first
+        #                  ]
+        indices_lists = [([0, 5], [0, 5])]
+
+        for rows, cols in indices_lists:
+            got = data[rows].collect()
+
+            expected = x[rows]
+
+            self.assertTrue(equal(got, expected))
+
+        # Try slicing with irregular array
+        x = x[1:, 1:]
+        data = data[1:, 1:]
+
+        for rows, cols in indices_lists:
+            got = data[rows].collect()
+            expected = x[rows]
+
+            self.assertTrue(equal(got, expected))
+
+    def test_index_cols_dense(self):
+        """ Tests get a slice of cols from the ds.array using lists as index
+        """
+        bn, bm = 5, 5
+        x = np.random.randint(100, size=(10, 10))
+        # x = sp.csr_matrix(x)
+        data = ds.array(x=x, blocks_shape=(bn, bm))
+
+        indices_lists = [([0, 5], [0, 5]),  # one from each block
+                         ([0, 1, 3, 4], [0, 1, 2, 4]),  # all from first
+                         ]
+
+        for rows, cols in indices_lists:
+            got = data[:, cols].collect()
+            expected = x[:, cols]
+
+            self.assertTrue(equal(got, expected))
+
+        # Try slicing with irregular array
+        x = x[1:, 1:]
+        data = data[1:, 1:]
+
+        for rows, cols in indices_lists:
+            got = data[:, cols].collect()
+            expected = x[:, cols]
+
+            self.assertTrue(equal(got, expected))
+
     def test_transpose(self):
         """ Tests array transpose."""
 
-        x_size, y_size = 4, 6
+        x_size, y_size = 4, 68
         bn, bm = 2, 3
 
         x = np.random.randint(10, size=(x_size, y_size))
