@@ -1,7 +1,8 @@
 import numpy as np
-from pycompss.api.parameter import INOUT
-
+from pycompss.api.parameter import COLLECTION_IN, Depth, Type
 from pycompss.api.task import task
+
+from dislib.data.array import Array
 
 
 class LinearRegression:
@@ -27,54 +28,71 @@ class LinearRegression:
     Examples
     --------
     >>> import numpy as np
-    >>> train_x = np.array([1, 2, 3, 4, 5])[:, np.newaxis]
-    >>> train_y = np.array([2, 1, 1, 2, 4.5])
-    >>> from dislib.data import load_data
-    >>> train_dataset = load_data(x=train_x, y=train_y, subset_size=2)
+    >>> import dislib as ds
     >>> from dislib.regression import LinearRegression
+    >>> from pycompss.api.api import compss_wait_on
+    >>> x_data = np.array([1, 2, 3, 4, 5]).reshape(-1, 1)
+    >>> y_data = np.array([2, 1, 1, 2, 4.5]).reshape(-1, 1)
+    >>> bn, bm = 2, 2
+    >>>     x = ds.array(x=x_data, blocks_shape=(bn, bm))
+    >>> y = ds.array(x=y_data, blocks_shape=(bn, bm))
     >>> reg = LinearRegression()
-    >>> reg.fit(train_dataset)
+    >>> reg.fit(x, y)
     >>> # y = 0.6 * x + 0.3
     >>> reg.coef_
     0.6
     >>> reg.intercept_
     0.3
-    >>> test_x = np.array([3, 5])[:, np.newaxis]
-    >>> test_dataset = load_data(x=test_x, subset_size=2)
-    >>> reg.predict(test_dataset)
-    >>> test_dataset.labels
+    >>> x_test = np.array([3, 5]).reshape(-1, 1)
+    >>> test_data = ds.array(x=x_test, blocks_shape=(bn, bm))
+    >>> pred = reg.predict(test_data).collect()
+    >>> pred
     array([2.1, 3.3])
     """
 
     def __init__(self, arity=50):
         self._arity = arity
 
-    def fit(self, dataset):
+    def fit(self, x, y):
         """
         Fit the linear model.
 
         Parameters
         ----------
-        dataset : Dataset
-            Training dataset: x.shape (n_samples, 1), y.shape (n_samples, ).
+        x : darray
+            Samples to be used to fit the model
+        y : darray
+            Labels of the samples
+
         """
-        mean_x, mean_y = _variable_means(dataset, self._arity)
-        beta, alpha = _compute_regression(dataset, mean_x, mean_y, self._arity)
+        mean_x, mean_y = _variable_means(x, y, self._arity)
+        beta, alpha = _compute_regression(x, y, mean_x, mean_y, self._arity)
         self.coef_ = beta
         self.intercept_ = alpha
 
-    def predict(self, dataset):
+    def predict(self, x):
         """
         Predict using the linear model.
 
         Parameters
         ----------
-        dataset : Dataset
-            Dataset with samples: x.shape (n_samples, 1). Predicted values are
-            populated in the labels attribute.
+        x : darray
+            Samples to be predicted: x.shape (n_samples, 1).
+        Returns
+        -------
+        y : darray
+            Predicted values
         """
-        for subset in dataset:
-            _predict(subset, self.coef_, self.intercept_)
+
+        blocks = [list()]
+
+        for r_block in x._iterator(axis='rows'):
+            blocks[0].append(
+                _predict(r_block._blocks, self.coef_, self.intercept_))
+
+        return Array(blocks=blocks, blocks_shape=(x._blocks_shape[0], 1),
+                     shape=(x.shape[0], 1),
+                     sparse=x._sparse)
 
 
 def _reduce(func, partials, arity):
@@ -85,18 +103,24 @@ def _reduce(func, partials, arity):
     return partials[0]
 
 
-def _variable_means(dataset, arity):
-    partials = [_sum_and_count_samples(subset) for subset in dataset]
+def _variable_means(x, y, arity):
+    partials = []
+    x_it, y_it = x._iterator('rows'), y._iterator('rows')
+    for i in range(x._n_blocks[0]):
+        bx, by = next(x_it), next(y_it)
+        partials.append(_sum_and_count_samples(bx._blocks, by._blocks))
     total_sums_and_count = _reduce(_sum_params, partials, arity)
     mean_x, mean_y = _divide_sums_by_count(total_sums_and_count)
     return mean_x, mean_y
 
 
-@task(returns=1)
-def _sum_and_count_samples(subset):
-    partial_sum_x = np.sum(subset.samples[:, 0])
-    partial_sum_y = np.sum(subset.labels)
-    return partial_sum_x, partial_sum_y, subset.samples.shape[0]
+@task(x={Type: COLLECTION_IN, Depth: 2}, y={Type: COLLECTION_IN, Depth: 2},
+      returns=1)
+def _sum_and_count_samples(x, y):
+    x, y = Array._merge_blocks(x), Array._merge_blocks(y)
+    partial_sum_x = np.sum(x[:, 0])  # the 0 is because only 1D LR is supported
+    partial_sum_y = np.sum(y)
+    return partial_sum_x, partial_sum_y, len(x)
 
 
 @task(returns=1)
@@ -107,21 +131,29 @@ def _sum_params(*partials):
 @task(returns=2)
 def _divide_sums_by_count(sums_and_count):
     sum_x, sum_y, count = sums_and_count
-    return sum_x/count, sum_y/count
+    return sum_x / count, sum_y / count
 
 
-def _compute_regression(dataset, mean_x, mean_y, arity):
+def _compute_regression(x, y, mean_x, mean_y, arity):
     partials = []
-    for subset in dataset:
-        partials.append(_partial_variability_params(subset, mean_x, mean_y))
+    x_it, y_it = x._iterator('rows'), y._iterator('rows')
+
+    for i in range(x._n_blocks[0]):
+        bx, by = next(x_it), next(y_it)
+        partials.append(
+            _partial_variability_params(bx._blocks, by._blocks, mean_x,
+                                        mean_y))
     variability_params = _reduce(_sum_params, partials, arity)
     return _calculate_coefficients(mean_x, mean_y, variability_params)
 
 
-@task(returns=1)
-def _partial_variability_params(subset, mean_x, mean_y):
-    normalized_x = subset.samples[:, 0] - mean_x
-    normalized_y = subset.labels - mean_y
+@task(x={Type: COLLECTION_IN, Depth: 2}, y={Type: COLLECTION_IN, Depth: 2},
+      returns=1)
+def _partial_variability_params(x, y, mean_x, mean_y):
+    x, y = Array._merge_blocks(x), Array._merge_blocks(y)
+
+    normalized_x = x[:, 0] - mean_x  # the 0 is because only 1D LR is supported
+    normalized_y = y - mean_y
     normalized_xy_dot = np.dot(normalized_x, normalized_y)
     normalized_xx_dot = np.dot(normalized_x, normalized_x)
     return normalized_xy_dot, normalized_xx_dot
@@ -131,11 +163,13 @@ def _partial_variability_params(subset, mean_x, mean_y):
 def _calculate_coefficients(mean_x, mean_y, variability_params):
     dot_xy, dot_xx = variability_params
     beta = dot_xy / dot_xx
-    alpha = mean_y - beta*mean_x
+    alpha = mean_y - beta * mean_x
     return beta, alpha
 
 
-@task(subset=INOUT)
-def _predict(subset, coef, intercept):
-    subset.labels = coef*subset.samples[:, 0] + intercept
-    return subset
+@task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=1)
+def _predict(blocks, coef, intercept):
+    x = Array._merge_blocks(blocks)
+    y = coef * x[:, 0] + intercept  # the 0 is because only 1D LR is supported
+
+    return y
