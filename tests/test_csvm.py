@@ -9,7 +9,7 @@ from dislib.classification import CascadeSVM
 
 class CSVMTest(unittest.TestCase):
     def test_init_params(self):
-        # Test all parameters with rbf kernel
+        """ Test constructor parameters"""
         cascade_arity = 3
         max_iter = 1
         tol = 1e-4
@@ -24,18 +24,34 @@ class CSVMTest(unittest.TestCase):
                           tol=tol, kernel=kernel, c=c, gamma=gamma,
                           check_convergence=check_convergence,
                           random_state=seed, verbose=verbose)
-        self.assertEqual(csvm._arity, cascade_arity)
-        self.assertEqual(csvm._max_iter, max_iter)
-        self.assertEqual(csvm._tol, tol)
+        self.assertEqual(csvm.cascade_arity, cascade_arity)
+        self.assertEqual(csvm.max_iter, max_iter)
+        self.assertEqual(csvm.tol, tol)
+        self.assertEqual(csvm.kernel, kernel)
+        self.assertEqual(csvm.c, c)
+        self.assertEqual(csvm.gamma, gamma)
+        self.assertEqual(csvm.check_convergence, check_convergence)
+        self.assertEqual(csvm.random_state, seed)
+        self.assertEqual(csvm.verbose, verbose)
+
+    def test_fit_private_params(self):
+        kernel = 'rbf'
+        c = 2
+        gamma = 0.1
+        seed = 666
+        file_ = "tests/files/libsvm/2"
+
+        x, y = ds.load_svmlight_file(file_, (10, 300), 780, False)
+        csvm = CascadeSVM(kernel=kernel, c=c, gamma=gamma, random_state=seed)
+        csvm.fit(x, y)
+
         self.assertEqual(csvm._clf_params['kernel'], kernel)
         self.assertEqual(csvm._clf_params['C'], c)
         self.assertEqual(csvm._clf_params['gamma'], gamma)
-        self.assertEqual(csvm._check_convergence, check_convergence)
-        self.assertEqual(csvm._verbose, verbose)
 
-        # test correct linear kernel and c param (other's are not changed)
         kernel, c = 'linear', 0.3
-        csvm = CascadeSVM(kernel=kernel, c=c)
+        csvm = CascadeSVM(kernel=kernel, c=c, random_state=seed)
+        csvm.fit(x, y)
         self.assertEqual(csvm._clf_params['kernel'], kernel)
         self.assertEqual(csvm._clf_params['C'], c)
 

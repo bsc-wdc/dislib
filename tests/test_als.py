@@ -56,13 +56,13 @@ class ALSTest(unittest.TestCase):
                   tol=convergence_threshold,
                   max_iter=max_iter, verbose=verbose, arity=arity)
 
-        self.assertEqual(als._seed, seed)
-        self.assertEqual(als._n_f, n_f)
-        self.assertEqual(als._lambda, lambda_)
-        self.assertEqual(als._tol, convergence_threshold)
-        self.assertEqual(als._max_iter, max_iter)
-        self.assertEqual(als._verbose, verbose)
-        self.assertEqual(als._arity, arity)
+        self.assertEqual(als.random_state, seed)
+        self.assertEqual(als.n_f, n_f)
+        self.assertEqual(als.lambda_, lambda_)
+        self.assertEqual(als.tol, convergence_threshold)
+        self.assertEqual(als.max_iter, max_iter)
+        self.assertEqual(als.verbose, verbose)
+        self.assertEqual(als.arity, arity)
 
     def test_fit(self):
         train, test = load_movielens()

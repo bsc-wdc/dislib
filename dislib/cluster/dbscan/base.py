@@ -5,12 +5,14 @@ from pycompss.api.parameter import COLLECTION_IN, COLLECTION_INOUT, \
 from pycompss.api.task import task
 from scipy.sparse import issparse
 from scipy.sparse import vstack as vstack_sparse
+from sklearn.base import BaseEstimator
+from sklearn.utils import validation
 
 from dislib.cluster.dbscan.classes import Region
 from dislib.data.array import Array
 
 
-class DBSCAN:
+class DBSCAN(BaseEstimator):
     """ Perform DBSCAN clustering.
 
     This algorithm requires data to be arranged in a multidimensional grid.
@@ -64,14 +66,11 @@ class DBSCAN:
         assert n_regions >= 1, \
             "Number of regions must be greater or equal to 1."
 
-        self._eps = eps
-        self._min_samples = min_samples
-        self._n_regions = n_regions
-        self._dimensions_init = dimensions
-        self._dimensions = dimensions
-        self._max_samples = max_samples
-        self._components = None
-        self._labels = None
+        self.eps = eps
+        self.min_samples = min_samples
+        self.n_regions = n_regions
+        self.dimensions = dimensions
+        self.max_samples = max_samples
 
     def fit(self, x, y=None):
         """ Perform DBSCAN clustering on x.
@@ -91,18 +90,27 @@ class DBSCAN:
         -------
         self : DBSCAN
         """
+        assert self.n_regions >= 1, \
+            "Number of regions must be greater or equal to 1."
+
+        self._subset_sizes = []
+        self._sorting = []
+        self._components = None
+        self._labels = None
+
         n_features = x.shape[1]
         sparse = x._sparse
 
-        if self._dimensions_init is None:
+        self._dimensions = self.dimensions
+        if self.dimensions is None:
             self._dimensions = range(n_features)
 
         n_dims = len(self._dimensions)
 
-        arranged_data, indices, sizes = _arrange_samples(x, self._n_regions,
+        arranged_data, indices, sizes = _arrange_samples(x, self.n_regions,
                                                          self._dimensions)
 
-        grid = np.empty((self._n_regions,) * n_dims, dtype=object)
+        grid = np.empty((self.n_regions,) * n_dims, dtype=object)
 
         region_widths = self._compute_region_widths(x)[self._dimensions]
         sizes = compss_wait_on(sizes)
@@ -112,10 +120,10 @@ class DBSCAN:
             subset = arranged_data[subset_idx]
             subset_size = sizes[subset_idx]
             grid[region_id] = Region(region_id, subset, subset_size,
-                                     self._eps, sparse)
+                                     self.eps, sparse)
 
         # Set region neighbours
-        distances = np.ceil(self._eps / region_widths)
+        distances = np.ceil(self.eps / region_widths)
 
         for region_id in np.ndindex(grid.shape):
             self._add_neighbours(grid[region_id], grid, distances)
@@ -123,7 +131,7 @@ class DBSCAN:
         # Run dbscan on each region
         for region_id in np.ndindex(grid.shape):
             region = grid[region_id]
-            region.partial_dbscan(self._min_samples, self._max_samples)
+            region.partial_dbscan(self.min_samples, self.max_samples)
 
         # Compute label equivalences between different regions
         equiv_list = []
@@ -182,13 +190,14 @@ class DBSCAN:
 
     @property
     def n_clusters(self):
+        validation.check_is_fitted(self, '_components')
         self._components = compss_wait_on(self._components)
         return len(self._components)
 
     def _compute_region_widths(self, x):
         mn = x.min().collect()
         mx = x.max().collect()
-        return ((mx - mn) / self._n_regions).reshape(-1, )
+        return ((mx - mn) / self.n_regions).reshape(-1, )
 
 
 def _arrange_samples(x, n_regions, dimensions=None):

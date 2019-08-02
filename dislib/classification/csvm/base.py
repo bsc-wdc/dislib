@@ -7,14 +7,14 @@ from pycompss.api.parameter import COLLECTION_IN, Depth, Type
 from pycompss.api.task import task
 from scipy.sparse import hstack as hstack_sp
 from scipy.sparse import issparse
+from sklearn.base import BaseEstimator
 from sklearn.svm import SVC
-from sklearn.utils import check_random_state
 
 from dislib.data.array import Array
 from dislib.utils.base import _paired_partition
 
 
-class CascadeSVM(object):
+class CascadeSVM(BaseEstimator):
     """ Cascade Support Vector classification.
 
     Implements distributed support vector classification based on
@@ -91,40 +91,15 @@ class CascadeSVM(object):
                  kernel="rbf", c=1, gamma='auto', check_convergence=True,
                  random_state=None, verbose=False):
 
-        assert (gamma == "auto" or type(gamma) == float
-                or type(float(gamma)) == float), "Invalid gamma"
-        assert (kernel is None or kernel in self._name_to_kernel.keys()), \
-            "Incorrect kernel value [%s], available kernels are %s" % (
-                kernel, self._name_to_kernel.keys())
-        assert (c is None or type(c) == float or type(float(c)) == float), \
-            "Incorrect C type [%s], type : %s" % (c, type(c))
-        assert (type(tol) == float or type(float(tol)) == float), \
-            "Incorrect tol type [%s], type : %s" % (tol, type(tol))
-        assert cascade_arity > 1, "Cascade arity must be greater than 1"
-        assert max_iter > 0, "Max iterations must be greater than 0"
-        assert type(check_convergence) == bool, "Invalid value in " \
-                                                "check_convergence"
-
-        self._reset_model()
-
-        self._arity = cascade_arity
-        self._max_iter = max_iter
-        self._tol = tol
-        self._check_convergence = check_convergence
-        self._random_state = check_random_state(random_state)
-        self._verbose = verbose
-        self._gamma = gamma
-        self._hstack_f = None
-
-        if kernel == "rbf":
-            self._clf_params = {"kernel": kernel, "C": c, "gamma": gamma}
-        else:
-            self._clf_params = {"kernel": kernel, "C": c}
-
-        try:
-            self._kernel_f = getattr(self, CascadeSVM._name_to_kernel[kernel])
-        except AttributeError:
-            self._kernel_f = getattr(self, "_rbf_kernel")
+        self.cascade_arity = cascade_arity
+        self.max_iter = max_iter
+        self.tol = tol
+        self.kernel = kernel
+        self.c = c
+        self.gamma = gamma
+        self.check_convergence = check_convergence
+        self.random_state = random_state
+        self.verbose = verbose
 
     def fit(self, x, y):
         """ Fits a model using training data.
@@ -140,8 +115,10 @@ class CascadeSVM(object):
         -------
         self : CascadeSVM
         """
+        self._check_initial_parameters()
         self._reset_model()
         self._set_gamma(x.shape[1])
+        self._set_kernel()
         self._hstack_f = hstack_sp if x._sparse else np.hstack
 
         ids_list = [[_gen_ids(row._blocks)] for row in x._iterator(axis=0)]
@@ -149,7 +126,7 @@ class CascadeSVM(object):
         while not self._check_finished():
             self._do_iteration(x, y, ids_list)
 
-            if self._check_convergence:
+            if self.check_convergence:
                 self._check_convergence_and_update_w()
                 self._print_iteration()
 
@@ -232,6 +209,25 @@ class CascadeSVM(object):
 
         return _merge_scores(*partial_scores)
 
+    def _check_initial_parameters(self):
+        gamma = self.gamma
+        assert (gamma == "auto" or type(gamma) == float
+                or type(float(gamma)) == float), "Invalid gamma"
+        kernel = self.kernel
+        assert (kernel is None or kernel in self._name_to_kernel.keys()), \
+            "Incorrect kernel value [%s], available kernels are %s" % (
+                kernel, self._name_to_kernel.keys())
+        c = self.c
+        assert (c is None or type(c) == float or type(float(c)) == float), \
+            "Incorrect C type [%s], type : %s" % (c, type(c))
+        tol = self.tol
+        assert (type(tol) == float or type(float(tol)) == float), \
+            "Incorrect tol type [%s], type : %s" % (tol, type(tol))
+        assert self.cascade_arity > 1, "Cascade arity must be greater than 1"
+        assert self.max_iter > 0, "Max iterations must be greater than 0"
+        assert type(self.check_convergence) == bool, "Invalid value in " \
+                                                     "check_convergence"
+
     def _reset_model(self):
         self.iterations = 0
         self.converged = False
@@ -241,9 +237,23 @@ class CascadeSVM(object):
         self._sv_labels = None
 
     def _set_gamma(self, n_features):
-        if self._gamma == "auto":
+        if self.gamma == "auto":
             self._gamma = 1. / n_features
-            self._clf_params["gamma"] = self._gamma
+        else:
+            self._gamma = self.gamma
+
+    def _set_kernel(self):
+        kernel = self.kernel
+        c = self.c
+        if kernel == "rbf":
+            self._clf_params = {"kernel": kernel, "C": c, "gamma": self._gamma}
+        else:
+            self._clf_params = {"kernel": kernel, "C": c}
+
+        try:
+            self._kernel_f = getattr(self, CascadeSVM._name_to_kernel[kernel])
+        except AttributeError:
+            self._kernel_f = getattr(self, "_rbf_kernel")
 
     def _collect_clf(self):
         self._svs, self._sv_labels, self._clf = compss_wait_on(self._svs,
@@ -251,13 +261,13 @@ class CascadeSVM(object):
                                                                self._clf)
 
     def _print_iteration(self):
-        if self._verbose:
-            print("Iteration %s of %s." % (self.iterations, self._max_iter))
+        if self.verbose:
+            print("Iteration %s of %s." % (self.iterations, self.max_iter))
 
     def _do_iteration(self, x, y, ids_list):
         q = []
         pars = self._clf_params
-        arity = self._arity
+        arity = self.cascade_arity
 
         # first level
         for partition, id_bk in zip(_paired_partition(x, y), ids_list):
@@ -270,7 +280,7 @@ class CascadeSVM(object):
                 y_data.append([self._sv_labels])
                 ids.append([self._sv_ids])
 
-            _tmp = _train(x_data, y_data, ids, self._random_state, **pars)
+            _tmp = _train(x_data, y_data, ids, self.random_state, **pars)
             sv, sv_labels, sv_ids, self._clf = _tmp
             q.append((sv, sv_labels, sv_ids))
 
@@ -283,7 +293,7 @@ class CascadeSVM(object):
             y_data = [[tup[1]] for tup in data]
             ids = [[tup[2]] for tup in data]
 
-            _tmp = _train(x_data, y_data, ids, self._random_state, **pars)
+            _tmp = _train(x_data, y_data, ids, self.random_state, **pars)
             sv, sv_labels, sv_ids, self._clf = _tmp
             q.append((sv, sv_labels, sv_ids))
 
@@ -296,13 +306,13 @@ class CascadeSVM(object):
         y_data = [[tup[1]] for tup in q]
         ids = [[tup[2]] for tup in q]
 
-        _tmp = _train(x_data, y_data, ids, self._random_state, **pars)
+        _tmp = _train(x_data, y_data, ids, self.random_state, **pars)
         self._svs, self._sv_labels, self._sv_ids, self._clf = _tmp
 
         self.iterations += 1
 
     def _check_finished(self):
-        return self.iterations >= self._max_iter or self.converged
+        return self.iterations >= self.max_iter or self.converged
 
     def _lag_fast(self, vectors, labels, coef):
         set_sl = set(labels.ravel())
@@ -331,10 +341,10 @@ class CascadeSVM(object):
         if self._last_w:
             delta = np.abs((w - self._last_w) / self._last_w)
 
-            if delta < self._tol:
+            if delta < self.tol:
                 self.converged = True
 
-        if self._verbose:
+        if self.verbose:
             self._print_convergence(delta, w)
 
         self._last_w = w

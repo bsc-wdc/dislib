@@ -1,12 +1,14 @@
 import numpy as np
 from pycompss.api.parameter import Depth, Type, COLLECTION_IN
 from pycompss.api.task import task
+from sklearn.base import BaseEstimator
 from sklearn.neighbors import NearestNeighbors as SKNeighbors
+from sklearn.utils import validation
 
 from dislib.data.array import Array
 
 
-class NearestNeighbors:
+class NearestNeighbors(BaseEstimator):
     """ Unsupervised learner for implementing neighbor searches.
 
     Parameters
@@ -25,8 +27,7 @@ class NearestNeighbors:
     """
 
     def __init__(self, n_neighbors=5):
-        self._n_neighbors = n_neighbors
-        self._fit_data = None
+        self.n_neighbors = n_neighbors
 
     def fit(self, x):
         """ Fit the model using training data.
@@ -65,8 +66,10 @@ class NearestNeighbors:
         ind : ds-array, shape=(n_samples, n_neighbors)
             Indices of the nearest samples in the fitted data.
         """
+        validation.check_is_fitted(self, '_fit_data')
+
         if n_neighbors is None:
-            n_neighbors = self._n_neighbors
+            n_neighbors = self.n_neighbors
 
         distances = []
         indices = []
