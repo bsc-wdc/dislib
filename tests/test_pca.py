@@ -4,12 +4,11 @@ import numpy as np
 from pycompss.api.api import compss_wait_on
 from sklearn.datasets import make_blobs
 
-from dislib.data import load_data
+import dislib as ds
 from dislib.decomposition import PCA
 
 
 class PCATest(unittest.TestCase):
-
     def test_fit(self):
         """Tests PCA.fit()"""
         np.random.seed(8)
@@ -25,7 +24,8 @@ class PCATest(unittest.TestCase):
             mu = [i] * n_features
             data.append(np.random.multivariate_normal(mu, cov, size))
         data = np.vstack(data)
-        dataset = load_data(data, 75)
+        bn, bm = 25, 5
+        dataset = ds.array(x=data, blocks_shape=(bn, bm))
 
         pca = PCA()
         pca.fit(dataset)
@@ -49,12 +49,12 @@ class PCATest(unittest.TestCase):
 
     def test_fit_transform(self):
         """Tests PCA.fit_transform()"""
-        x, y = make_blobs(n_samples=10, n_features=4, random_state=0)
-        dataset = load_data(x, 75)
+        x, _ = make_blobs(n_samples=10, n_features=4, random_state=0)
+        bn, bm = 25, 5
+        dataset = ds.array(x=x, blocks_shape=(bn, bm))
 
         pca = PCA(n_components=3)
-        transformed_ds = pca.fit_transform(dataset)
-        transformed = transformed_ds.samples
+        transformed = pca.fit_transform(dataset).collect()
         expected = np.array([
             [-6.35473531, -2.7164493, -1.56658989],
             [7.929884, -1.58730182, -0.34880254],
@@ -68,6 +68,7 @@ class PCATest(unittest.TestCase):
             [7.35611329, -0.84896939, 0.42738466]
         ])
         self.assertEqual(transformed.shape, (10, 3))
+
         for i in range(transformed.shape[1]):
             features_equal = np.allclose(transformed[:, i], expected[:, i])
             features_opposite = np.allclose(transformed[:, i], -expected[:, i])
