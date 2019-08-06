@@ -114,18 +114,14 @@ class BaseSearchCV:
     def _format_results(candidate_params, scorers, n_splits, out):
         n_candidates = len(candidate_params)
 
-        (test_score_dicts,) = zip(*out)
+        (test_score_dicts, master_fit_time, master_score_time) = zip(*out)
 
-        # test_score_dicts and train_score dicts are lists of dictionaries and
-        # we make them into dict of lists
         test_scores = aggregate_score_dicts(test_score_dicts)
 
         results = {}
 
         def _store(key_name, array, splits=False, rank=False):
             """A small helper to store the scores/times to the cv_results_"""
-            # When iterated first by splits, then by parameters
-            # We want `array` to have `n_candidates` rows and `n_splits` cols.
             array = np.array(array, dtype=np.float64).reshape(n_candidates,
                                                               n_splits)
             if splits:
@@ -134,18 +130,17 @@ class BaseSearchCV:
                     results["split%d_%s"
                             % (split_i, key_name)] = array[:, split_i]
 
-            array_means = np.average(array, axis=1)
+            array_means = np.mean(array, axis=1)
             results['mean_%s' % key_name] = array_means
-            # Weighted std is not directly available in numpy
-            array_stds = np.sqrt(np.average((array -
-                                             array_means[:, np.newaxis]) ** 2,
-                                            axis=1))
+            array_stds = np.std(array, axis=1)
             results['std_%s' % key_name] = array_stds
 
             if rank:
                 results["rank_%s" % key_name] = np.asarray(
                     rankdata(-array_means, method='min'), dtype=np.int32)
 
+        _store('master_fit_time', master_fit_time)
+        _store('master_score_time', master_score_time)
         # Use one MaskedArray and mask all the places where the param is not
         # applicable for that candidate. Use defaultdict as each candidate may
         # not contain all the params
@@ -165,7 +160,6 @@ class BaseSearchCV:
         results['params'] = candidate_params
 
         for scorer_name in scorers.keys():
-            # Computed the mean and std for test scores
             _store('test_%s' % scorer_name, test_scores[scorer_name],
                    splits=True, rank=True)
 

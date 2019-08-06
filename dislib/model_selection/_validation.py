@@ -1,4 +1,6 @@
 import numbers
+import time
+
 import numpy as np
 
 
@@ -7,10 +9,14 @@ def fit_and_score(estimator, train_ds, validation_ds, scorer, parameters,
 
     if parameters is not None:
         estimator.set_params(**parameters)
-
+    t0_fit = time.time()
     estimator.fit(train_ds, **fit_params)
+    master_fit_time = time.time() - t0_fit
+    t0_score = time.time()
     test_scores = _score(estimator, validation_ds, scorer)
-    return [test_scores]
+    master_score_time = time.time() - t0_score
+
+    return [test_scores, master_fit_time, master_score_time]
 
 
 def _score(estimator, dataset, scorers):
@@ -33,15 +39,7 @@ def validate_score(score, name):
 
 
 def aggregate_score_dicts(scores):
-    """Aggregate the list of dict to dict of np ndarray
-    The aggregated output of _fit_and_score will be a list of dict
-    of form [{'prec': 0.1, 'acc':1.0}, {'prec': 0.1, 'acc':1.0}, ...]
-    Convert it to a dict of array {'prec': np.array([0.1 ...]), ...}
-    Parameters
-    ----------
-    scores : list of dict of string keys
-        List of dicts of the scores for all scorers. This is a flat list,
-        assumed originally to be of row major order.
+    """Aggregate the results of each scorer
     Example
     -------
     >>> scores = [{'a': 1, 'b':10}, {'a': 2, 'b':2}, {'a': 3, 'b':3},

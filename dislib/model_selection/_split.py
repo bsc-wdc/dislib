@@ -1,5 +1,4 @@
 import numbers
-from itertools import chain
 
 from pycompss.api.task import task
 
@@ -7,6 +6,33 @@ from dislib import utils
 from dislib.data import Dataset
 
 import numpy as np
+
+
+def infer_cv(cv=None):
+    """Input checker utility for building a cross-validator
+    Parameters
+    ----------
+    cv : int or splitter
+        Determines the cross-validation splitting strategy.
+        Possible inputs for cv are:
+        - None, to use the default KFold cross-validation splitter,
+        - integer, to specify the number of folds,
+        - custom CV splitter (must have the same interface as KFold).
+
+    Returns
+    -------
+    checked_cv : a CV splitter instance.
+        The return value is a CV splitter which generates the train/test
+        splits via the ``split(dataset)`` method.
+    """
+    if cv is None:
+        return KFold()
+    if isinstance(cv, numbers.Integral):
+        return KFold(cv)
+    if not hasattr(cv, 'split') or not hasattr(cv, 'get_n_splits'):
+        raise ValueError("Expected cv as an integer or splitter object."
+                         "Got %s." % cv)
+    return cv
 
 
 class KFold:
@@ -96,33 +122,6 @@ class KFold:
         return self.n_splits
 
 
-def infer_cv(cv=None):
-    """Input checker utility for building a cross-validator
-    Parameters
-    ----------
-    cv : int or splitter
-        Determines the cross-validation splitting strategy.
-        Possible inputs for cv are:
-        - None, to use the default KFold cross-validation splitter,
-        - integer, to specify the number of folds,
-        - custom CV splitter (must have the same interface as KFold).
-
-    Returns
-    -------
-    checked_cv : a CV splitter instance.
-        The return value is a CV splitter which generates the train/test
-        splits via the ``split(dataset)`` method.
-    """
-    if cv is None:
-        return KFold()
-    if isinstance(cv, numbers.Integral):
-        return KFold(cv)
-    if not hasattr(cv, 'split'):
-        raise ValueError("Expected cv as an integer or splitter object."
-                         "Got %s." % cv)
-    return cv
-
-
 def _split_on_kfolds(dataset, k):
     # Splits a dataset into k balanced folds, trying to avoid splitting subsets
     sizes = dataset.subsets_sizes()
@@ -136,8 +135,10 @@ def _split_on_kfolds(dataset, k):
     split_dataset = Dataset(dataset.n_features, dataset.sparse)
     fold_size = 0
     fold_idx = 0
-    dataset_sizes_iterator = zip(dataset, sizes)
-    for subset, size in dataset_sizes_iterator:
+    remaining = list(zip(dataset, sizes))
+    remaining.reverse()
+    while remaining:
+        subset, size = remaining.pop()
         fold_size = fold_size + size
         if fold_size == base_size and base_folds > 0:
             # Complete the fold with the subset
@@ -170,8 +171,7 @@ def _split_on_kfolds(dataset, k):
             subsets_per_fold[fold_idx] += 1
             fold_idx += 1
             fold_size = 0
-            dataset_sizes_iterator = chain((subset_1, size_remainder,),
-                                           dataset_sizes_iterator)
+            remaining.append((subset_1, size_remainder))
         else:
             # Add the subset and keep filling the fold
             split_dataset.append(subset, size)
