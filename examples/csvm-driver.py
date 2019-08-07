@@ -3,7 +3,7 @@ import csv
 import os
 import time
 
-from pycompss.api.api import barrier
+from pycompss.api.api import barrier, compss_wait_on
 
 import dislib as ds
 from dislib.classification import CascadeSVM
@@ -112,7 +112,7 @@ def main():
             y_test = x_test[:, x_test.shape[1] - 1: x_test.shape[1]]
             x_test = x_test[:, :x_test.shape[1] - 1]
 
-        out.append(csvm.score(x_test, y_test))
+        out.append(compss_wait_on(csvm.score(x_test, y_test)))
 
     if args.output_file:
         with open(args.output_file, "ab") as f:

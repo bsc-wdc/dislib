@@ -2,7 +2,7 @@ import argparse
 import time
 
 import numpy as np
-from pycompss.api.api import barrier
+from pycompss.api.api import barrier, compss_wait_on
 
 import dislib as ds
 from dislib.classification import RandomForestClassifier
@@ -92,7 +92,7 @@ def main():
             y_test = x_test[:, x_test.shape[1] - 1: x_test.shape[1]]
             x_test = x_test[:, :x_test.shape[1] - 1]
 
-        out.append(forest.score(x_test, y_test))
+        out.append(compss_wait_on(forest.score(x_test, y_test)))
 
     print(out)
 
