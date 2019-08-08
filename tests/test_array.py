@@ -3,7 +3,6 @@ import unittest
 from math import ceil
 
 import numpy as np
-from pycompss.api.api import compss_wait_on
 from scipy import sparse as sp
 from scipy.sparse import issparse
 from sklearn.datasets import load_svmlight_file
@@ -59,6 +58,10 @@ def _validate_arrays(self, darray, x, block_shape):
     self.assertEqual(type(darray), Array)
 
     self.assertEqual(darray._n_blocks, (ceil(n / bn), ceil(m / bm)))
+
+
+def _sum_and_mult(arr, a=0, axis=0, b=1):
+    return (np.sum(arr, axis=axis) + a) * b
 
 
 class DataLoadingTest(unittest.TestCase):
@@ -380,7 +383,8 @@ class ArrayTest(unittest.TestCase):
                          (6, 8, None, None),  # single-block rows, all columns
                          (None, None, 6, 8),  # all rows, single-block columns
                          (15, 16, 15, 16),  # single element
-                         # (-10, -5, -10, -5),  # out-of-bounds (not implemented)
+                         # (-10, -5, -10, -5),  # out-of-bounds (not
+                         # implemented)
                          # (-10, 5, -10, 5),  # out-of-bounds (not implemented)
                          (21, 40, 21, 40)]  # out-of-bounds (correct)
 
@@ -413,7 +417,8 @@ class ArrayTest(unittest.TestCase):
                          (6, 8, None, None),  # single-block rows, all columns
                          (None, None, 6, 8),  # all rows, single-block columns
                          (15, 16, 15, 16),  # single element
-                         # (-10, -5, -10, -5),  # out-of-bounds (not implemented)
+                         # (-10, -5, -10, -5),  # out-of-bounds (not
+                         # implemented)
                          # (-10, 5, -10, 5),  # out-of-bounds (not implemented)
                          (21, 40, 21, 40)]  # out-of-bounds (correct)
 
@@ -537,6 +542,61 @@ class ArrayTest(unittest.TestCase):
         self.assertTrue(np.array_equal(arr1.collect(), arr2.collect()))
         self.assertFalse(np.array_equal(arr1.collect(), arr3.collect()))
         self.assertFalse(np.array_equal(arr4.collect(), arr5.collect()))
+
+    def test_apply_axis(self):
+        """ Tests apply along axis"""
+        x = ds.array(np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]),
+                     blocks_shape=(2, 2))
+
+        x1 = ds.apply_along_axis(_sum_and_mult, 0, x)
+        self.assertTrue(x1.shape, (1, 3))
+        self.assertTrue(x1._blocks_shape, (1, 2))
+        self.assertTrue(np.array_equal(x1.collect(), np.array([12, 15, 18])))
+
+        x1 = ds.apply_along_axis(_sum_and_mult, 1, x)
+        self.assertTrue(x1.shape, (3, 1))
+        self.assertTrue(x1._blocks_shape, (2, 1))
+        self.assertTrue(np.array_equal(x1.collect(), np.array([6, 15, 24])))
+
+        x1 = ds.apply_along_axis(_sum_and_mult, 1, x, 2)
+        self.assertTrue(x1.shape, (3, 1))
+        self.assertTrue(x1._blocks_shape, (2, 1))
+        self.assertTrue(np.array_equal(x1.collect(), np.array([8, 17, 26])))
+
+        x1 = ds.apply_along_axis(_sum_and_mult, 1, x, b=2)
+        self.assertTrue(x1.shape, (3, 1))
+        self.assertTrue(x1._blocks_shape, (2, 1))
+        self.assertTrue(np.array_equal(x1.collect(), np.array([12, 30, 48])))
+
+        x1 = ds.apply_along_axis(_sum_and_mult, 1, x, 1, b=2)
+        self.assertTrue(x1.shape, (3, 1))
+        self.assertTrue(x1._blocks_shape, (2, 1))
+        self.assertTrue(np.array_equal(x1.collect(), np.array([14, 32, 50])))
+
+        x = ds.array(sp.csr_matrix([[1, 0, -1], [0, 5, 0], [7, 8, 0]]),
+                     blocks_shape=(2, 2))
+        x1 = ds.apply_along_axis(_sum_and_mult, 0, x, 1, b=2)
+        self.assertTrue(x1.shape, (1, 3))
+        self.assertTrue(x1._blocks_shape, (1, 2))
+        self.assertTrue(np.array_equal(x1.collect().toarray(),
+                                       np.array([18, 28, 0])))
+
+        x = ds.array(sp.csr_matrix([[1, 0, -1], [0, 5, 0], [7, 8, 0]]),
+                     blocks_shape=(2, 2))
+        x1 = ds.apply_along_axis(_sum_and_mult, 0, x, 1, b=2)
+        self.assertTrue(x1.shape, (1, 3))
+        self.assertTrue(x1._blocks_shape, (1, 2))
+        self.assertTrue((x1.collect() == np.array([18, 28, 0])).all())
+
+    def test_array_functions(self):
+        """ Tests various array functions """
+        x = ds.array(np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]),
+                     blocks_shape=(2, 2))
+
+        self.assertTrue((x.min().collect() == [1, 2, 3]).all())
+        self.assertTrue((x.max().collect() == [7, 8, 9]).all())
+        self.assertTrue((x.mean().collect() == [4, 5, 6]).all())
+        self.assertTrue((x.sum().collect() == [12, 15, 18]).all())
 
 
 def main():
