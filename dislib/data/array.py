@@ -65,7 +65,7 @@ def random_array(shape, block_size, random_state=None):
         Distributed array of random floats.
     """
     if shape[0] < block_size[0] or shape[1] < block_size[1]:
-        raise AttributeError("Block size is greater than the array")
+        raise ValueError("Block size is greater than the array")
 
     r_state = random_state
 
@@ -96,6 +96,73 @@ def random_array(shape, block_size, random_state=None):
             blocks[-1].append(_random_block((b_size0, b_size1), seed))
 
     return Array(blocks, block_size, shape, False)
+
+
+def apply_along_axis(func, axis, x, *args, **kwargs):
+    """ Apply a function to slices along the given axis.
+
+    Execute func(a, *args, **kwargs) where func operates on nd-arrays and a
+    is a slice of arr along axis. The size of the slices is determined
+    by the blocks shape of x.
+
+    func must meet the following conditions:
+
+        - Take an nd-array as argument
+        - Accept `axis` as a keyword argument
+        - Return an array-like structure
+
+    Parameters
+    ----------
+    func : function
+        This function should accept nd-arrays and an axis argument. It is
+        applied to slices of arr along the specified axis.
+    axis : integer
+        Axis along which arr is sliced. Can be 0 or 1.
+    x : ds-array
+        Input distributed array.
+    args : any
+        Additional arguments to func.
+    kwargs : any
+        Additional named arguments to func.
+
+    Returns
+    -------
+    out : ds-array
+        The output array. The shape of out is identical to the shape of arr,
+        except along the axis dimension. The output ds-array is dense
+        regardless of the type of the input array.
+
+    Examples
+    --------
+    >>> import dislib as ds
+    >>> import numpy as np
+    >>> x = ds.random_array((100, 100), block_size=(25, 25))
+    >>> mean = ds.apply_along_axis(np.mean, 0, x)
+    >>> print(mean.collect())
+    """
+    if axis != 0 and axis != 1:
+        raise ValueError("Axis must be 0 or 1.")
+
+    bshape = x._blocks_shape
+    shape = x.shape
+
+    out_blocks = list()
+
+    for block in x._iterator(axis=(not axis)):
+        out = _block_apply(func, axis, block._blocks, *args, **kwargs)
+        out_blocks.append(out)
+
+    if axis == 0:
+        blocks = [out_blocks]
+        out_bshape = (1, bshape[1])
+        out_shape = (1, shape[1])
+    else:
+        blocks = [[block] for block in out_blocks]
+        out_bshape = (bshape[0], 1)
+        out_shape = (shape[0], 1)
+
+    return Array(blocks, blocks_shape=out_bshape, shape=out_shape,
+                 sparse=x._sparse)
 
 
 def load_svmlight_file(path, blocks_shape, n_features, store_sparse):
@@ -548,7 +615,6 @@ class Array(object):
             _merge_rows(to_merge, out_blocks, self._blocks_shape)
             final_blocks.append(out_blocks)
 
-
         return Array(blocks=final_blocks, blocks_shape=self._blocks_shape,
                      shape=(len(rows), self._shape[1]), sparse=self._sparse)
 
@@ -629,14 +695,14 @@ class Array(object):
 
         # all rows (slice : for rows) and list of indices for columns
         elif isinstance(rows, slice) and (
-                    isinstance(cols, list) or isinstance(cols, np.ndarray)):
+                isinstance(cols, list) or isinstance(cols, np.ndarray)):
             return self._get_by_lst_cols(cols=cols)
 
         # slicing both dimensions
         elif isinstance(rows, slice) and isinstance(cols, slice):
             return self._get_slice(rows, cols)
 
-        raise IndexError("Invalid indexing information: %s" % arg)
+        raise IndexError("Invalid indexing information: %s" % str(arg))
 
         # elif isinstance(rows, list) or isinstance(rows, np.ndarray) or \
         #          isinstance(cols, list) or isinstance(cols, np.ndarray):
@@ -646,7 +712,8 @@ class Array(object):
 
         # if type(rows) != type(cols):
         #     raise Exception("Indexing method should be the same for both "
-        #                     "dimensions. (%s != %s)" % (type(rows), type(cols)))
+        #                     "dimensions. (%s != %s)" % (type(rows),
+        #                     type(cols)))
         # if isinstance(rows, slice) or isinstance(cols, slice):
 
     @property
@@ -670,7 +737,7 @@ class Array(object):
 
         Returns
         -------
-        darray : Array
+        darray : ds-array
             A transposed ds-array.
         """
         if mode == 'all':
@@ -707,6 +774,66 @@ class Array(object):
         # notice blocks_shape is transposed
         return Array(blocks_t, blocks_shape=(bm, bn), shape=new_shape,
                      sparse=self._sparse)
+
+    def min(self, axis=0):
+        """
+        Returns the minimum along the given axis.
+
+        Parameters
+        ----------
+        axis : int, optional (default=0)
+
+        Returns
+        -------
+        min : ds-array
+            Minimum along axis.
+        """
+        return apply_along_axis(np.min, axis, self)
+
+    def max(self, axis=0):
+        """
+        Returns the maximum along the given axis.
+
+        Parameters
+        ----------
+        axis : int, optional (default=0)
+
+        Returns
+        -------
+        max : ds-array
+            Maximum along axis.
+        """
+        return apply_along_axis(np.max, axis, self)
+
+    def sum(self, axis=0):
+        """
+        Returns the sum along the given axis.
+
+        Parameters
+        ----------
+        axis : int, optional (default=0)
+
+        Returns
+        -------
+        sum : ds-array
+            Sum along axis.
+        """
+        return apply_along_axis(np.sum, axis, self)
+
+    def mean(self, axis=0):
+        """
+        Returns the mean along the given axis.
+
+        Parameters
+        ----------
+        axis : int, optional (default=0)
+
+        Returns
+        -------
+        mean : ds-array
+            Mean along axis.
+        """
+        return apply_along_axis(np.mean, axis, self)
 
     def collect(self):
         self._blocks = compss_wait_on(self._blocks)
@@ -800,3 +927,17 @@ def _transpose(blocks, out_blocks):
     for i in range(len(blocks)):
         for j in range(len(blocks[i])):
             out_blocks[i][j] = blocks[i][j].transpose()
+
+
+@task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
+def _block_apply(func, axis, blocks, *args, **kwargs):
+    arr = Array._merge_blocks(blocks)
+    kwargs['axis'] = axis
+    out = func(arr, *args, **kwargs)
+
+    # We convert to array for consistency (otherwise the output of this
+    # task is of unknown type)
+    if axis == 0:
+        return np.array(out).reshape(1, -1)
+    else:
+        return np.array(out).reshape(-1, 1)
