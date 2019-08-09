@@ -40,13 +40,13 @@ class CascadeSVM(BaseEstimator):
 
         Default is 'auto', which uses 1 / (n_features).
     check_convergence : boolean, optional (default=True)
-        Whether to test for convergence. If False, the algorithm will run
-        for cascade_iterations. Checking for convergence adds a
-        synchronization point after each iteration.
+        Whether to test for convergence. If False, the algorithm will run for
+        max_iter iterations. Checking for convergence adds a synchronization
+        point after each iteration.
 
         If ``check_convergence=False'' synchronization does not happen until
-        a call to ``predict'', ``decision_function'' or ``score''. This can
-        be useful to fit multiple models in parallel.
+        a call to ``predict'' or ``decision_function''. This can be useful to
+        fit multiple models in parallel.
     random_state : int, RandomState instance or None, optional (default=None)
         The seed of the pseudo random number generator used when shuffling the
         data for probability estimates. If int, random_state is the seed used
