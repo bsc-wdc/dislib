@@ -7,13 +7,13 @@ from itertools import product
 from pycompss.api.api import compss_wait_on
 from scipy.stats import rankdata
 from sklearn import clone
-from sklearn.metrics import check_scoring
 from sklearn.model_selection import ParameterGrid
 import numpy as np
 from sklearn.utils.fixes import MaskedArray
 
 from ._split import infer_cv
-from ._validation import fit_and_score, aggregate_score_dicts, validate_score
+from ._validation import check_scorer, fit_and_score, validate_score, \
+    aggregate_score_dicts
 
 
 class BaseSearchCV(ABC):
@@ -30,7 +30,7 @@ class BaseSearchCV(ABC):
         """Abstract method to perform the search. The parameter
         `evaluate_candidates` is a function that evaluates a ParameterGrid at a
         time """
-        return
+        pass
 
     def fit(self, dataset, **fit_params):
         """Run fit with all sets of parameters.
@@ -171,12 +171,12 @@ class BaseSearchCV(ABC):
         estimator = self.estimator
         scoring = self.scoring
         refit = self.refit
-        if callable(scoring) or scoring is None:
-            scorers = {"score": check_scoring(estimator, scoring=scoring)}
+        if scoring is None or callable(scoring):
+            scorers = {"score": check_scorer(estimator, scoring)}
             refit_metric = 'score'
             self.multimetric_ = False
         elif isinstance(scoring, dict):
-            scorers = {key: check_scoring(estimator, scoring=scorer)
+            scorers = {key: check_scorer(estimator, scorer)
                        for key, scorer in scoring.items()}
             if refit is not False and (
                     not isinstance(refit, str) or

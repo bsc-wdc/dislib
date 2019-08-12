@@ -50,3 +50,19 @@ def aggregate_score_dicts(scores):
     """
     return {key: np.asarray([score[key] for score in scores])
             for key in scores[0]}
+
+
+def check_scorer(estimator, scorer):
+    if scorer is None:
+        if hasattr(estimator, 'score'):
+            def _passthrough_scorer(estimator, *args, **kwargs):
+                """Function that wraps estimator.score"""
+                return estimator.score(*args, **kwargs)
+            return _passthrough_scorer
+        else:
+            raise TypeError(
+                "If a scorer is None, the estimator passed should have a "
+                "'score' method. The estimator %r does not." % estimator)
+    elif callable(scorer):
+        return scorer
+    raise ValueError("Invalid scorer %r" % scorer)

@@ -1,14 +1,47 @@
 import unittest
 import numpy as np
 
-from sklearn import datasets
+from sklearn import clone, datasets
 
-from dislib.classification import RandomForestClassifier, CascadeSVM
+from dislib.classification import CascadeSVM, RandomForestClassifier
+from dislib.cluster import DBSCAN, KMeans, GaussianMixture
+from dislib.decomposition import PCA
+from dislib.neighbors import NearestNeighbors
+from dislib.recommendation import ALS
+from dislib.regression import LinearRegression
+
 from dislib.data import load_data
 from dislib.model_selection import GridSearchCV, KFold
 
 
 class GridSearchCVTest(unittest.TestCase):
+
+    def test_estimators_compatibility(self):
+        """Checks that dislib estimators are compatible with GridSearchCV.
+
+        GridSearchCV uses sklearn.clone(estimator), that requires estimators to
+        have methods get_params() and set_params() working properly. This is
+        what this test checks, and it can be easily achieved by making the
+        estimators inherit from sklearn BaseEstimator"""
+        estimators = (CascadeSVM, RandomForestClassifier,
+                      DBSCAN, KMeans, GaussianMixture,
+                      PCA, NearestNeighbors, ALS, LinearRegression)
+
+        for estimator_class in estimators:
+            self.assertIsInstance(estimator_class, type)
+            est = estimator_class()
+            # test __repr__
+            repr(est)
+            # test cloning
+            cloned = clone(est)
+            # test that set_params returns self
+            self.assertIs(cloned.set_params(), cloned)
+            # Checks if get_params(deep=False) is a subset of
+            # get_params(deep=True)
+            shallow_params = est.get_params(deep=False)
+            deep_params = est.get_params(deep=True)
+            self.assertTrue(all(item in deep_params.items()
+                                for item in shallow_params.items()))
 
     def test_fit(self):
         """Tests GridSearchCV fit()."""
