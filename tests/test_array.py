@@ -4,7 +4,7 @@ from math import ceil
 
 import numpy as np
 from scipy import sparse as sp
-from scipy.sparse import issparse
+from scipy.sparse import issparse, csr_matrix
 from sklearn.datasets import load_svmlight_file
 
 import dislib as ds
@@ -587,6 +587,19 @@ class ArrayTest(unittest.TestCase):
         self.assertTrue(x1.shape, (1, 3))
         self.assertTrue(x1._blocks_shape, (1, 2))
         self.assertTrue((x1.collect() == np.array([18, 28, 0])).all())
+
+    def test_apply_sparse(self):
+        """ Tests apply with sparse data """
+        x_d = ds.array(np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]),
+                       blocks_shape=(2, 2))
+
+        x_sp = ds.array(csr_matrix([[1, 2, 3], [4, 5, 6], [7, 8, 9]]),
+                        blocks_shape=(2, 2))
+
+        x1 = ds.apply_along_axis(_sum_and_mult, 0, x_d)
+        x2 = ds.apply_along_axis(_sum_and_mult, 0, x_sp)
+
+        self.assertTrue(np.array_equal(x1.collect(), x2.collect()))
 
     def test_array_functions(self):
         """ Tests various array functions """

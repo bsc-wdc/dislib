@@ -162,7 +162,7 @@ def apply_along_axis(func, axis, x, *args, **kwargs):
         out_shape = (shape[0], 1)
 
     return Array(blocks, blocks_shape=out_bshape, shape=out_shape,
-                 sparse=x._sparse)
+                 sparse=False)
 
 
 def load_svmlight_file(path, blocks_shape, n_features, store_sparse):
@@ -935,9 +935,12 @@ def _block_apply(func, axis, blocks, *args, **kwargs):
     kwargs['axis'] = axis
     out = func(arr, *args, **kwargs)
 
+    if issparse(out):
+        out = out.toarray()
+
     # We convert to array for consistency (otherwise the output of this
     # task is of unknown type)
     if axis == 0:
-        return np.array(out).reshape(1, -1)
+        return np.asarray(out).reshape(1, -1)
     else:
-        return np.array(out).reshape(-1, 1)
+        return np.asarray(out).reshape(-1, 1)

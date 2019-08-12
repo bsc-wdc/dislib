@@ -1,10 +1,13 @@
 import numpy as np
 from pycompss.api.api import compss_wait_on
-from pycompss.api.parameter import INOUT
+from pycompss.api.parameter import INOUT, COLLECTION_IN, COLLECTION_INOUT, \
+    Type, Depth
 from pycompss.api.task import task
+from scipy.sparse import issparse
+from scipy.sparse import vstack as vstack_sparse
 
 from dislib.cluster.dbscan.classes import Region
-from dislib.utils import as_grid
+from dislib.data.array import Array
 
 
 class DBSCAN():
@@ -59,10 +62,6 @@ class DBSCAN():
     >>> dbscan = DBSCAN(eps=3, min_samples=2)
     >>> dbscan.fit(train_data)
     >>> print(train_data.labels)
-
-    See also
-    --------
-    utils.as_grid()
     """
 
     def __init__(self, eps=0.5, min_samples=5, arrange_data=True, n_regions=1,
@@ -81,7 +80,7 @@ class DBSCAN():
         self._max_samples = max_samples
         self._components = None
 
-    def fit(self, dataset):
+    def fit(self, x, y=None):
         """ Perform DBSCAN clustering on data and sets dataset.labels.
 
         If arrange_data=True, data is initially rearranged in a
@@ -104,26 +103,24 @@ class DBSCAN():
 
         Parameters
         ----------
-        dataset : Dataset
+        x : ds-array
             Input data.
+        y : ignored
+            Not used, present here for API consistency by convention.
         """
-        n_features = dataset.n_features
-        sparse = dataset.sparse
+        n_features = x.shape[1]
+        sparse = x._sparse
 
         if self._dimensions_init is None:
             self._dimensions = range(n_features)
 
         n_dims = len(self._dimensions)
 
-        if self._arrange_data:
-            sorted_data, sorting_ind = as_grid(dataset, self._n_regions,
-                                               self._dimensions, True)
-        else:
-            self._n_regions = int(np.power(len(dataset), 1 / n_dims))
-            sorted_data = dataset
+        sorted_data, sorting = _arrange_samples(x, self._n_regions,
+                                                self._dimensions)
 
         grid = np.empty((self._n_regions,) * n_dims, dtype=object)
-        region_widths = self._compute_region_widths(dataset)[self._dimensions]
+        region_widths = self._compute_region_widths(x)[self._dimensions]
 
         # Create regions
         for subset_idx, region_id in enumerate(np.ndindex(grid.shape)):
@@ -166,7 +163,7 @@ class DBSCAN():
                 _set_labels(dataset[subset_idx], region.labels)
 
         if self._arrange_data:
-            self._sort_labels_back(dataset, final_labels, sorting_ind)
+            self._sort_labels_back(dataset, final_labels, sorting)
 
     def fit_predict(self, dataset):
         """ Perform DBSCAN clustering on dataset. This method does the same
@@ -210,10 +207,152 @@ class DBSCAN():
         self._components = compss_wait_on(self._components)
         return len(self._components)
 
-    def _compute_region_widths(self, dataset):
-        min_ = dataset.min_features()
-        max_ = dataset.max_features()
-        return (max_ - min_) / self._n_regions
+    def _compute_region_widths(self, x):
+        mn = x.min().collect()
+        mx = x.max().collect()
+        return (mx - mn) / self._n_regions
+
+
+def _arrange_samples(x, n_regions, dimensions=None):
+    """ Arranges samples in an n-dimensional grid. The feature space is
+    divided in ``n_regions`` equally sized regions on each dimension based on
+    the maximum and minimum values of each feature in x.
+
+    Parameters
+    ----------
+    x : ds-array
+        Input data.
+    n_regions : int
+        Number of regions per dimension in which to split the feature space.
+    dimensions : iterable, optional (default=None)
+        Integer indices of the dimensions to split. If None, all dimensions
+        are split.
+
+    Returns
+    -------
+    grid_data : list
+        A list of nd-arrays (futures) containing the samples on each region.
+        That is, grid_data[i][j] contains the samples in row block i of x
+        that lie in region j.
+    sorting : nd-array
+        sorting[i][j] contains the sample indices of the
+        samples from row block i that lie in region j. The indices
+        are relative to row block i.
+    """
+    n_features = x.shape[1]
+
+    if dimensions is None:
+        dimensions = range(n_features)
+
+    grid_shape = (n_regions,) * len(dimensions)
+
+    mn = x.min()
+    mx = x.max()
+
+    bins = _generate_bins(mn._blocks, mx._blocks, dimensions, n_regions)
+
+    total_regions = n_regions ** len(dimensions)
+
+    return _arrange_data(x, grid_shape, bins, dimensions, total_regions)
+
+
+def _arrange_data(x, g_shape, bins, dimensions, total_regions):
+    out_lol = list()
+    sort_lol = list()
+
+    for row in x._iterator(axis=0):
+        out_list = [object()] * total_regions
+        sort_list = [object()] * total_regions
+
+        # after calling arrange_block, out_list contains one nd-array per
+        # region with the corresponding samples, and sort_list contains
+        # the indices of the samples that go to each region
+        _arrange_block(row._blocks, bins, dimensions, g_shape, out_list,
+                       sort_list)
+
+        out_lol.append(out_list)
+        sort_lol.append(sort_list)
+
+    # the ith element of each element in lol contains the samples of
+    # the ith region.
+    out_arr = np.asarray(out_lol)
+    sorted_data = list()
+
+    for i in range(out_arr.shape[1]):
+        # we merge together the ith element of each element in out_arr and
+        # sort_arr to obtain a single nd-array per region
+        samples = _merge_samples(out_arr[:, i], x._sparse)
+        sorted_data.append(samples)
+
+    # sorted_data is a list of nd-arrays (one per region) containing the
+    # samples in each region.
+    return sorted_data, np.asarray(sort_lol)
+
+
+@task(mn={Type: COLLECTION_IN, Depth: 2},
+      mx={Type: COLLECTION_IN, Depth: 2},
+      returns=1)
+def _generate_bins(mn, mx, dimensions, n_regions):
+    bins = []
+    mn_arr = Array._merge_blocks(mn)[0]
+    mx_arr = Array._merge_blocks(mx)[0]
+
+    # create bins for the different regions in the grid in every dimension
+    for dim in dimensions:
+        bin_ = np.linspace(mn_arr[dim], mx_arr[dim], n_regions + 1)
+        bins.append(bin_)
+
+    return bins
+
+
+@task(blocks={Type: COLLECTION_IN, Depth: 2},
+      sorted_list={Type: COLLECTION_INOUT},
+      sorting={Type: COLLECTION_INOUT},
+      returns=1)
+def _arrange_block(blocks, bins, dimensions, shape, sorted_list, sorting):
+    x = Array._merge_blocks(blocks)
+    n_bins = shape[0]
+    region_indices = list()
+
+    # find the samples that belong to each region iterating over each dimension
+    for dim_bins, dim in zip(bins, dimensions):
+        col = x[:, dim]
+
+        if issparse(col):
+            col = col.toarray().flatten()
+
+        # digitize a dimension of all the samples into the corresponding bins
+        # region_idx represents the region index at dimension dim of each
+        # sample
+        region_idx = np.digitize(col, dim_bins) - 1
+        region_idx[region_idx >= n_bins] = n_bins - 1
+        region_indices.append(region_idx)
+
+    # idx_arr is an nd-array of shape (n_dimensions, n_samples), where each
+    # column represents the region indices of each sample (i.e., the region
+    # where the sample should go)
+    idx_arr = np.asarray(region_indices)
+
+    # apply np.ravel_multi_index to each column of idx_arr to get a 1-D index
+    # that represents each region in the output list
+    out_idx = np.apply_along_axis(np.ravel_multi_index, 0, idx_arr, dims=shape)
+
+    for i in range(len(sorted_list)):
+        # insert all the samples that belong to a region to the corresponding
+        # place in the output list.
+        sample_indices = np.where(out_idx == i)
+        sorted_list[i] = x[sample_indices]
+
+        # sorting contains which samples go to which region
+        sorting[i] = sample_indices
+
+
+@task(returns=1)
+def _merge_samples(samples_arr, sparse):
+    if sparse:
+        return vstack_sparse(samples_arr)
+    else:
+        return np.vstack(samples_arr)
 
 
 @task(returns=1)
@@ -228,7 +367,6 @@ def _merge_dicts(*dicts):
 
 @task(returns=1)
 def _get_connected_components(equiv):
-
     # Add inverse equivalences
     for node, neighs in equiv.items():
         for neigh in neighs:

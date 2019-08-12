@@ -1,15 +1,153 @@
 import unittest
 
 import numpy as np
-from scipy.sparse import csr_matrix
+from pycompss.api.api import compss_wait_on
+from scipy.sparse import csr_matrix, issparse
 from sklearn.datasets import make_blobs
 from sklearn.datasets import make_circles
 from sklearn.datasets import make_moons
 from sklearn.preprocessing import StandardScaler
 
+import dislib as ds
 from dislib.cluster import DBSCAN
-from dislib.data import load_data
-from dislib.utils import as_grid
+from dislib.cluster.dbscan.base import _arrange_samples
+from dislib.data import load_data, load_svmlight_file
+
+
+class ArrangeTest(unittest.TestCase):
+
+    def test_arrange(self):
+        """ Tests the arrange method with toy data."""
+        x = ds.array(np.array([[1, 1], [8, 8], [2, 5], [1, 7], [4, 4], [5, 9],
+                               [4, 0], [8, 1], [7, 4]]), blocks_shape=(3, 2))
+
+        arranged, _ = _arrange_samples(x, n_regions=3)
+        arranged = compss_wait_on(arranged)
+
+        self.assertEqual(len(arranged), 9)
+
+        true_samples = np.array(
+            [[1, 1],
+             [2, 5],
+             [1, 7],
+             [4, 0],
+             [4, 4],
+             [5, 9],
+             [8, 1],
+             [7, 4],
+             [8, 8]])
+
+        self.assertTrue(np.array_equal(np.vstack(arranged), true_samples))
+
+    def test_arrange_indices(self):
+        """ Tests that arrange returns correct indices with toy data.
+        """
+        x = ds.array(np.array([[1, 1], [8, 8], [2, 5], [1, 7], [4, 4], [5, 9],
+                               [4, 0], [8, 1], [7, 4]]), blocks_shape=(3, 2))
+
+        arranged, sorting = _arrange_samples(x, n_regions=3)
+
+        arranged = compss_wait_on(arranged)
+        arranged = np.vstack(arranged)
+        sorting = compss_wait_on(sorting)
+
+        indices = np.empty(x.shape[0], dtype=int)
+        oldidx = 0
+
+        # generate new indices based on sorting
+        for j in range(sorting.shape[1]):
+            for i in range(sorting.shape[0]):
+                if sorting[i][j][0].size > 0:
+                    newidx = sorting[i][j][0] + 3 * i
+                    indices[newidx] = oldidx
+                    oldidx += 1
+
+        indices = np.squeeze(indices)
+
+        self.assertTrue(np.array_equal(arranged[indices], x.collect()))
+
+    def test_arrange_dimensions(self):
+        """
+        Tests arrange method using a subset of the dimensions.
+        """
+        x = ds.array(np.array([[0, 1, 9], [8, 8, 2], [2, 5, 4], [1, 7, 6],
+                               [4, 4, 2], [5, 9, 0], [4, 0, 1], [9, 1, 7],
+                               [7, 4, 3]]), blocks_shape=(3, 2))
+
+        arranged, _ = _arrange_samples(x, n_regions=3, dimensions=[0])
+        arranged = compss_wait_on(arranged)
+
+        self.assertEqual(arranged[0].shape[0], 3)
+        self.assertEqual(arranged[1].shape[0], 3)
+        self.assertEqual(arranged[2].shape[0], 3)
+        self.assertEqual(len(arranged), 3)
+
+        arranged, _ = _arrange_samples(x, n_regions=3, dimensions=[0, 1])
+        arranged = compss_wait_on(arranged)
+
+        self.assertEqual(arranged[0].shape[0], 1)
+        self.assertEqual(arranged[1].shape[0], 1)
+        self.assertEqual(arranged[2].shape[0], 1)
+        self.assertEqual(arranged[4].shape[0], 1)
+        self.assertEqual(arranged[5].shape[0], 1)
+        self.assertEqual(len(arranged), 9)
+
+        arranged = _arrange_samples(x, n_regions=3, dimensions=[1, 2])
+        arranged = compss_wait_on(arranged)
+
+        self.assertEqual(arranged[0].shape[0], 1)
+        self.assertEqual(arranged[1].shape[0], 0)
+        self.assertEqual(arranged[2].shape[0], 2)
+        self.assertEqual(arranged[3].shape[0], 1)
+        self.assertEqual(arranged[4].shape[0], 2)
+        self.assertEqual(arranged[5].shape[0], 0)
+        self.assertEqual(arranged[6].shape[0], 2)
+        self.assertEqual(arranged[7].shape[0], 0)
+        self.assertEqual(arranged[8].shape[0], 1)
+        self.assertEqual(len(arranged), 9)
+
+    def test_as_grid_same_min_max(self):
+        """ Tests that as_grid works when one of the features only takes
+        one value """
+        x = ds.array(np.array([[1, 0], [8, 0], [2, 0],
+                               [2, 0], [3, 0], [5, 0]]), blocks_shape=(3, 2))
+
+        arranged, _ = _arrange_samples(x, n_regions=3)
+        arranged = compss_wait_on(arranged)
+
+        self.assertEqual(len(arranged), 9)
+        self.assertTrue(arranged[2].shape[0], 4)
+        self.assertTrue(arranged[5].shape[0], 1)
+        self.assertTrue(arranged[8].shape[0], 1)
+
+    def test_as_grid_sparse(self):
+        """ Tests that as_grid produces the same results with sparse and
+        dense data structures."""
+        file_ = "tests/files/libsvm/2"
+
+        sparse, _ = load_svmlight_file(file_, (10, 300), 780, True)
+        dense, _ = load_svmlight_file(file_, (10, 200), 780, False)
+
+        arranged_d, sort_d = _arrange_samples(dense, 3, [128, 184])
+        arranged_sp, sort_sp = _arrange_samples(sparse, 3, [128, 184])
+
+        arranged_sp = compss_wait_on(arranged_sp)
+        arranged_d = compss_wait_on(arranged_d)
+        sort_d = compss_wait_on(sort_d)
+        sort_sp = compss_wait_on(sort_sp)
+
+        self.assertEqual(len(arranged_sp), len(arranged_d))
+        self.assertFalse(issparse(arranged_d[0]))
+        self.assertTrue(issparse(arranged_sp[0]))
+
+        self.assertTrue(
+            np.array_equal(np.concatenate(np.concatenate(sort_sp).flatten()),
+                           np.concatenate(np.concatenate(sort_d).flatten())))
+
+        for index in range(len(arranged_sp)):
+            samples_sp = arranged_sp[index].toarray()
+            samples_d = arranged_d[index]
+            self.assertTrue(np.array_equal(samples_sp, samples_d))
 
 
 class DBSCANTest(unittest.TestCase):
@@ -233,7 +371,7 @@ class DBSCANTest(unittest.TestCase):
         x = np.dot(x, transformation)
         x = StandardScaler().fit_transform(x)
         dataset = load_data(x=x, y=y, subset_size=300)
-        grid_data = as_grid(dataset, n_regions=4)
+        grid_data = _as_grid(dataset, n_regions=4)
         dbscan = DBSCAN(arrange_data=False, eps=.15)
         dbscan.fit(grid_data)
         y_pred = grid_data.labels
