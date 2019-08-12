@@ -6,7 +6,6 @@ from sklearn import datasets
 from dislib.classification import RandomForestClassifier, CascadeSVM
 from dislib.data import load_data
 from dislib.model_selection import GridSearchCV, KFold
-from dislib.model_selection import BaseSearchCV
 
 
 class GridSearchCVTest(unittest.TestCase):
@@ -213,16 +212,4 @@ class GridSearchCVTest(unittest.TestCase):
         param_grid = {'n_estimators': (2, 4)}
         with self.assertRaises(ValueError):
             searcher = GridSearchCV(rf, param_grid, cv={})
-            searcher.fit(ds)
-
-    def test_invalid_searchcv_class(self):
-        """Tests extending BaseSearchCV without the required methods."""
-        x, y = datasets.load_iris(return_X_y=True)
-        ds = load_data(x, 30, y)
-        rf = RandomForestClassifier()
-
-        class InvalidSearchCV(BaseSearchCV):
-            pass
-        searcher = InvalidSearchCV(rf)
-        with self.assertRaises(NotImplementedError):
             searcher.fit(ds)

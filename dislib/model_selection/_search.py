@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from collections import defaultdict
 from collections.abc import Sequence
 from functools import partial
@@ -15,7 +16,7 @@ from ._split import infer_cv
 from ._validation import fit_and_score, aggregate_score_dicts, validate_score
 
 
-class BaseSearchCV:
+class BaseSearchCV(ABC):
     """Abstract base class for hyper parameter search with cross-validation."""
 
     def __init__(self, estimator, scoring=None, cv=None, refit=True):
@@ -24,11 +25,12 @@ class BaseSearchCV:
         self.cv = cv
         self.refit = refit
 
+    @abstractmethod
     def _run_search(self, evaluate_candidates):
         """Abstract method to perform the search. The parameter
         `evaluate_candidates` is a function that evaluates a ParameterGrid at a
         time """
-        raise NotImplementedError
+        return
 
     def fit(self, dataset, **fit_params):
         """Run fit with all sets of parameters.
