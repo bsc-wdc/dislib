@@ -3,12 +3,13 @@ from collections import Counter
 
 import numpy as np
 from pycompss.api.api import compss_wait_on
-from pycompss.api.parameter import INOUT
+from pycompss.api.parameter import INOUT, Type, COLLECTION_IN, Depth
 from pycompss.api.task import task
 from sklearn.utils import check_random_state
 
 from dislib.classification.rf.decision_tree import DecisionTreeClassifier
 from dislib.data import Dataset
+from dislib.data.array import Array
 from .data import RfDataset, transform_to_rf_dataset
 
 
@@ -77,28 +78,31 @@ class RandomForestClassifier:
         self.hard_vote = hard_vote
         self.random_state = check_random_state(random_state)
 
-    def fit(self, dataset):
+    def fit(self, x, y, rf_dataset=False):
         """Fits the RandomForestClassifier.
 
         Parameters
         ----------
-        dataset : dislib.data.Dataset
-            Note: In the implementation of this method, the dataset is
-            transformed to a dislib.classification.rf.data.RfDataset. To avoid
-            the cost of the transformation, RfDataset objects are additionally
-            accepted as argument.
+        x : ds-array, shape (n_samples, n_features)
+            The training input samples. Internally, its dtype will be converted
+            to ``dtype=np.float32``.
+        y : ds-array, shape (n_samples, 1)
+            The target values.
+        rf_dataset : RfDataset (default=False)
+            Dataset in the particular format used by RandomForestClassifier,
+            which can reduce the execution time by avoiding the conversion.
+            If this argument is provided, x and y are ignored.
 
         """
         self.classes = None
         self.trees = []
 
-        if not isinstance(dataset, (Dataset, RfDataset)):
-            raise TypeError('Invalid type for param dataset.')
-        if isinstance(dataset, Dataset):
-            dataset = transform_to_rf_dataset(dataset)
-
-        if isinstance(dataset.features_path, str):
-            dataset.validate_features_file()
+        if isinstance(rf_dataset, RfDataset):
+            dataset = rf_dataset
+            if isinstance(dataset.features_path, str):
+                dataset.validate_features_file()
+        else:
+            dataset = transform_to_rf_dataset(x, y)
 
         n_features = dataset.get_n_features()
         self.try_features = _resolve_try_features(self.try_features_init,
@@ -122,77 +126,102 @@ class RandomForestClassifier:
         for tree in self.trees:
             tree.fit(dataset)
 
-    def fit_predict(self, dataset):
-        """Fits the forest and predicts the classes for the same dataset.
+    def fit_predict(self, x, y):
+        """Fits the forest and predicts the classes for the same samples.
 
         Parameters
         ----------
-        dataset : dislib.data.Dataset
-            Dataset to fit the RandomForestClassifier. The label corresponding
-            to each sample is filled with the prediction given by the same
-            predictor.
+        x : ds-array, shape (n_samples, n_features)
+            The training input samples.
+        y : ds-array, shape (n_samples, 1)
+            The target values.
+
+        Returns
+        -------
+        y_pred : ds-array, shape(n_samples, 1)
+            Predicted class labels for x.
 
         """
-        self.fit(dataset)
-        self.predict(dataset)
+        self.fit(x, y)
+        return self.predict(x)
 
-    def predict_proba(self, dataset):
+    def predict_proba(self, x):
         """Predicts class probabilities using a fitted forest.
 
         The probabilities are obtained as an average of the probabilities of
         each decision tree.
 
+
         Parameters
         ----------
-        dataset : dislib.data.Dataset
-            Dataset with samples to predict. The label corresponding to each
-            sample is filled with an array of the predicted probabilities.
-            The class corresponding to each position in the array is given by
+        x : ds-array, shape (n_samples, n_features)
+            The input samples.
+
+        Returns
+        -------
+        probabilities : list of unsynchronized arrays
+            List with an array of the predicted probabilities for each rows
+            block. The shape of each array is (rows_block_size, n_classes).
+            The class corresponding to each column of the arrays is given by
             self.classes.
 
         """
         assert self.trees is not None, 'The random forest is not fitted.'
-        for subset in dataset:
+        probabilities = []
+        for x_row in x._iterator(axis=0):
             tree_predictions = []
             for tree in self.trees:
-                tree_predictions.append(tree.predict_proba(subset))
-            _join_predictions(subset, *tree_predictions)
+                tree_predictions.append(tree.predict_proba(x_row))
+            probabilities.append(_join_predictions(*tree_predictions))
+        return probabilities
 
-    def predict(self, dataset):
+    def predict(self, x):
         """Predicts classes using a fitted forest.
 
         Parameters
         ----------
-        dataset : dislib.data.Dataset
-            Dataset with samples to predict. The label corresponding to each
-            sample is filled with the prediction.
+        x : ds-array, shape (n_samples, n_features)
+            The input samples.
+
+        Returns
+        -------
+        y_pred : ds-array, shape(n_samples, 1)
+            Predicted class labels for x.
 
         """
         assert self.trees is not None, 'The random forest is not fitted.'
+        pred_blocks = []
         if self.hard_vote:
-            for subset in dataset:
+            for x_row in x._iterator(axis=0):
                 tree_predictions = []
                 for tree in self.trees:
-                    tree_predictions.append(tree.predict(subset))
-                _hard_vote(subset, self.classes, *tree_predictions)
+                    tree_predictions.append(tree.predict(x_row))
+                pred_blocks.append(_hard_vote(self.classes, *tree_predictions))
         else:
-            for subset in dataset:
+            for x_row in x._iterator(axis=0):
                 tree_predictions = []
                 for tree in self.trees:
-                    tree_predictions.append(tree.predict_proba(subset))
-                _soft_vote(subset, self.classes, *tree_predictions)
+                    tree_predictions.append(tree.predict_proba(x_row))
+                pred_blocks.append(_soft_vote(self.classes, *tree_predictions))
+        s = x._blocks_shape
+        pred_blocks_shape = (s[0], 1) if len(s) == 2 \
+            else ((s[0][0], 1), (s[1][0], 1), (s[2][0], 1))
+        y_pred = Array(blocks=[pred_blocks], blocks_shape=pred_blocks_shape,
+                       shape=(x.shape[0], 1), sparse=False)
+        return y_pred
 
-    def score(self, dataset):
+    def score(self, x, y):
         """Accuracy classification score.
 
-        Returns the mean accuracy on the given test dataset. This method
-        assumes dataset.labels are true labels.
+        Returns the mean accuracy on the given test dataset.
+
 
         Parameters
         ----------
-        dataset : Dataset
-            Dataset where dataset.labels are true labels for
-            dataset.samples.
+        x : ds-array, shape (n_samples, n_features)
+            The training input samples.
+        y : ds-array, shape (n_samples, 1)
+            The true labels.
 
         Returns
         -------
@@ -202,23 +231,39 @@ class RandomForestClassifier:
         """
         assert self.trees is not None, 'The random forest is not fitted.'
         partial_scores = []
+
+        def paired_blocks(x, y):
+            regular_shapes = len(x._blocks_shape) == 2
+            if regular_shapes:
+                top_num_rows = x._blocks_shape[0]
+                regular_num_rows = x._blocks_shape[0]
+            else:
+                top_num_rows = x._blocks_shape[0][0]
+                regular_num_rows = x._blocks_shape[1][0]
+            start_idx = 0
+            end_idx = top_num_rows
+            for x_row in x._iterator(axis=0):
+                y_row = y[start_idx:end_idx]
+                yield x_row, y_row
+                start_idx = end_idx
+                end_idx = min(end_idx + regular_num_rows, x.shape[0])
+
         if self.hard_vote:
-            for subset in dataset:
+            for x_row, y_row in paired_blocks(x, y):
                 tree_predictions = []
                 for tree in self.trees:
-                    tree_predictions.append(tree.predict(subset))
-                subset_score = _hard_vote_score(subset, self.classes,
+                    tree_predictions.append(tree.predict(x_row))
+                subset_score = _hard_vote_score(y_row._blocks, self.classes,
                                                 *tree_predictions)
                 partial_scores.append(subset_score)
         else:
-            for subset in dataset:
+            for x_row, y_row in paired_blocks(x, y):
                 tree_predictions = []
                 for tree in self.trees:
-                    tree_predictions.append(tree.predict_proba(subset))
-                subset_score = _soft_vote_score(subset, self.classes,
+                    tree_predictions.append(tree.predict_proba(x_row))
+                subset_score = _soft_vote_score(y_row._blocks, self.classes,
                                                 *tree_predictions)
                 partial_scores.append(subset_score)
-
         score = compss_wait_on(_merge_scores(*partial_scores))
 
         return score
@@ -236,48 +281,51 @@ def _resolve_try_features(try_features, n_features):
         return int(try_features)
 
 
-@task(subset=INOUT)
-def _join_predictions(subset, *predictions):
+@task(returns=1)
+def _join_predictions(*predictions):
     aggregate = predictions[0]
     for p in predictions[1:]:
         aggregate += p
-    subset.labels = aggregate / len(predictions)
-
-
-@task(subset=INOUT)
-def _soft_vote(subset, classes, *predictions):
-    aggregate = predictions[0]
-    for p in predictions[1:]:
-        aggregate += p
-    subset.labels = classes[np.argmax(aggregate, axis=1)]
-
-
-@task(subset=INOUT)
-def _hard_vote(subset, classes, *predictions):
-    mode = np.empty((len(predictions[0]),), dtype=int)
-    for sample_i, votes in enumerate(zip(*predictions)):
-        mode[sample_i] = Counter(votes).most_common(1)[0][0]
-    subset.labels = classes[mode]
+    labels = aggregate / len(predictions)
+    return labels
 
 
 @task(returns=1)
-def _soft_vote_score(subset, classes, *predictions):
+def _soft_vote(classes, *predictions):
+    aggregate = predictions[0]
+    for p in predictions[1:]:
+        aggregate += p
+    labels = classes[np.argmax(aggregate, axis=1)]
+    return labels
+
+
+@task(returns=1)
+def _hard_vote(classes, *predictions):
+    mode = np.empty((len(predictions[0]),), dtype=int)
+    for sample_i, votes in enumerate(zip(*predictions)):
+        mode[sample_i] = Counter(votes).most_common(1)[0][0]
+    labels = classes[mode]
+    return labels
+
+
+@task(y_blocks={Type: COLLECTION_IN, Depth: 2}, returns=1)
+def _soft_vote_score(y_blocks, classes, *predictions):
+    real_labels = Array._merge_blocks(y_blocks).flatten()
     aggregate = predictions[0]
     for p in predictions[1:]:
         aggregate += p
     predicted_labels = classes[np.argmax(aggregate, axis=1)]
-    real_labels = subset.labels
     correct = np.count_nonzero(predicted_labels == real_labels)
     return correct, len(real_labels)
 
 
-@task(returns=1)
-def _hard_vote_score(subset, classes, *predictions):
+@task(y_blocks={Type: COLLECTION_IN, Depth: 2}, returns=1)
+def _hard_vote_score(y_blocks, classes, *predictions):
+    real_labels = Array._merge_blocks(y_blocks).flatten()
     mode = np.empty((len(predictions[0]),), dtype=int)
     for sample_i, votes in enumerate(zip(*predictions)):
         mode[sample_i] = Counter(votes).most_common(1)[0][0]
     predicted_labels = classes[mode]
-    real_labels = subset.labels
     correct = np.count_nonzero(predicted_labels == real_labels)
     return correct, len(real_labels)
 

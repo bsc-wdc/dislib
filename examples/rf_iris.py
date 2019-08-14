@@ -2,8 +2,10 @@ from random import shuffle
 
 import numpy as np
 import pandas as pd
+from pycompss.api.api import compss_barrier
 from sklearn.datasets import load_iris
 
+from dislib import array
 from dislib.classification import RandomForestClassifier
 from dislib.data import load_data
 
@@ -21,21 +23,21 @@ def main():
     # Train the RF classifier
     print("- Training Random Forest classifier with %s samples of Iris "
           "dataset." % len(train_idx))
-    train_ds = load_data(x[train_idx], 10, y[train_idx])
+    x_train = array(x[train_idx], (10, 4))
+    y_train = array(y[train_idx][:, np.newaxis], (10, 1))
     forest = RandomForestClassifier(10)
-    forest.fit(train_ds)
+    forest.fit(x_train, y_train)
 
     # Test the trained RF classifier
     print("- Testing the classifier.", end='')
-    test_ds = load_data(x[test_idx], 10)
-    forest.predict(test_ds)
-    y_pred = test_ds.labels
+    x_test = array(x[test_idx], (10, 4))
+    y_real = array(y[test_idx][:, np.newaxis], (10, 1))
+    y_pred = forest.predict(x_test)
 
-    test_ds = load_data(x[test_idx], 10, y[test_idx])
-    score = forest.score(test_ds)
+    score = forest.score(x_test, y_real)
 
     # Put results in fancy dataframe and print the accuracy
-    df = pd.DataFrame(data=list(zip(y[test_idx], y_pred)),
+    df = pd.DataFrame(data=list(zip(y[test_idx], y_pred.collect())),
                       columns=['Label', 'Predicted'])
     print(" Predicted values: \n\n%s" % df)
     print("\n- Classifier accuracy: %s" % score)
