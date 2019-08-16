@@ -1,6 +1,6 @@
 import numpy as np
 from pycompss.api.api import compss_wait_on
-from pycompss.api.parameter import INOUT, COLLECTION_IN, COLLECTION_INOUT, \
+from pycompss.api.parameter import COLLECTION_IN, COLLECTION_INOUT, \
     Type, Depth
 from pycompss.api.task import task
 from scipy.sparse import issparse
@@ -14,7 +14,7 @@ class DBSCAN():
     """ Perform DBSCAN clustering.
 
     This algorithm requires data to be arranged in a multidimensional grid.
-    The default behavior is to re-arrange input data before running the
+    The fit method re-arranges input data before running the
     clustering algorithm. See ``fit()`` for more details.
 
     Parameters
@@ -25,19 +25,13 @@ class DBSCAN():
     min_samples : int, optional (default=5)
         The number of samples (or total weight) in a neighborhood for a point
         to be considered as a core point. This includes the point itself.
-    arrange_data: boolean, optional (default=True)
-        Whether to re-arrange input data before performing clustering. If
-        ``arrange_data=False``, ``n_regions`` and ``dimensions`` have no
-        effect.
     n_regions : int, optional (default=1)
         Number of regions per dimension in which to divide the feature space.
         The total number of regions generated is equal to ``n_regions`` ^
-        ``len(dimensions)``. If ``arrange_data=False``, ``n_regions`` is
-        ignored.
+        ``len(dimensions)``.
     dimensions : iterable, optional (default=None)
         Integer indices of the dimensions of the feature space that should be
-        divided. If None, all dimensions are divided. If ``arrange_data=False``
-        , ``dimensions`` is ignored.
+        divided. If None, all dimensions are divided.
     max_samples : int, optional (default=None)
         Setting max_samples to an integer results in the paralellization of
         the computation of distances inside each region of the grid. That
@@ -50,21 +44,22 @@ class DBSCAN():
     Attributes
     ----------
     n_clusters : int
-        Number of clusters found.
+        Number of clusters found. Accessing this member performs a
+        synchronization.
 
     Examples
     --------
     >>> from dislib.cluster import DBSCAN
+    >>> import dislib as ds
     >>> import numpy as np
-    >>> x = np.array([[1, 2], [2, 2], [2, 3], [8, 7], [8, 8], [25, 80]])
-    >>> from dislib.data import load_data
-    >>> train_data = load_data(x, subset_size=2)
+    >>> arr = np.array([[1, 2], [2, 2], [2, 3], [8, 7], [8, 8], [25, 80]])
+    >>> x = ds.array(arr, blocks_shape=(2, 2))
     >>> dbscan = DBSCAN(eps=3, min_samples=2)
-    >>> dbscan.fit(train_data)
-    >>> print(train_data.labels)
+    >>> y = dbscan.fit_predict(x)
+    >>> print(y.collect())
     """
 
-    def __init__(self, eps=0.5, min_samples=5, arrange_data=True, n_regions=1,
+    def __init__(self, eps=0.5, min_samples=5, n_regions=1,
                  dimensions=None, max_samples=None):
         assert n_regions >= 1, \
             "Number of regions must be greater or equal to 1."
@@ -74,32 +69,16 @@ class DBSCAN():
         self._n_regions = n_regions
         self._dimensions_init = dimensions
         self._dimensions = dimensions
-        self._arrange_data = arrange_data
-        self._subset_sizes = []
-        self._sorting = []
         self._max_samples = max_samples
         self._components = None
+        self._labels = None
 
     def fit(self, x, y=None):
-        """ Perform DBSCAN clustering on data and sets dataset.labels.
+        """ Perform DBSCAN clustering on x.
 
-        If arrange_data=True, data is initially rearranged in a
-        multidimensional grid with ``n_regions`` regions per dimension in
-        ``dimensions``. All regions in a specific dimension have the same
-        size.
-
-        For example, suppose that data contains N partitions of 2-dimensional
-        samples (``n_features=2``), where the first feature ranges from 1 to 5
-        and the second feature ranges from 0 to 1. Then, n_regions=10
-        re-arranges data into 10^2=100 new partitions, where each partition
-        contains the samples that lie in one region of the grid.
-        numpy.linspace() is employed to divide the feature space into
-        uniform regions.
-
-        If data is already arranged in a grid, then the number of partitions
-        in data must be equal to ``n_regions`` ^ ``len(dimensions)``. The
-        equivalence between partition and region index is computed using
-        numpy.ravel_multi_index().
+        Samples are initially rearranged in a multidimensional grid with
+        ``n_regions`` regions per dimension in ``dimensions``. All regions
+        in a specific dimension have the same size.
 
         Parameters
         ----------
@@ -107,6 +86,10 @@ class DBSCAN():
             Input data.
         y : ignored
             Not used, present here for API consistency by convention.
+
+        Returns
+        -------
+        self : object
         """
         n_features = x.shape[1]
         sparse = x._sparse
@@ -116,16 +99,18 @@ class DBSCAN():
 
         n_dims = len(self._dimensions)
 
-        sorted_data, sorting = _arrange_samples(x, self._n_regions,
-                                                self._dimensions)
+        arranged_data, indices, sizes = _arrange_samples(x, self._n_regions,
+                                                         self._dimensions)
 
         grid = np.empty((self._n_regions,) * n_dims, dtype=object)
+
         region_widths = self._compute_region_widths(x)[self._dimensions]
+        sizes = compss_wait_on(sizes)
 
         # Create regions
         for subset_idx, region_id in enumerate(np.ndindex(grid.shape)):
-            subset = sorted_data[subset_idx]
-            subset_size = sorted_data.subset_size(subset_idx)
+            subset = arranged_data[subset_idx]
+            subset_size = sizes[subset_idx]
             grid[region_id] = Region(region_id, subset, subset_size,
                                      self._eps, sparse)
 
@@ -159,26 +144,29 @@ class DBSCAN():
             region.update_labels(self._components)
             final_labels.append(region.labels)
 
-            if not self._arrange_data:
-                _set_labels(dataset[subset_idx], region.labels)
+        label_blocks = _rearrange_labels(final_labels, indices, x._n_blocks[0])
 
-        if self._arrange_data:
-            self._sort_labels_back(dataset, final_labels, sorting)
+        self._labels = Array(blocks=label_blocks,
+                             blocks_shape=(x._blocks_shape[0], 1),
+                             shape=(x._shape[0], 1), sparse=False)
+        return self
 
-    def fit_predict(self, dataset):
-        """ Perform DBSCAN clustering on dataset. This method does the same
-        as fit(), and is provided for API standardization purposes.
+    def fit_predict(self, x):
+        """ Perform DBSCAN clustering on dataset and return cluster labels
+        for x.
 
         Parameters
         ----------
-        dataset : Dataset
+        x : ds-array
             Input data.
 
-        See also
-        --------
-        fit
+        Returns
+        -------
+        y : ds-array, shape=(n_samples, 1)
+            Cluster labels.
         """
-        self.fit(dataset)
+        self.fit(x)
+        return self._labels
 
     @staticmethod
     def _add_neighbours(region, grid, distances):
@@ -191,17 +179,6 @@ class DBSCAN():
             if (d <= distances).all():
                 region.add_neighbour(grid[ind])
 
-    @staticmethod
-    def _sort_labels_back(dataset, final_labels, sorting_ind):
-        final_labels = _concatenate_labels(sorting_ind, *final_labels)
-        begin = 0
-        end = 0
-
-        for subset_idx, subset in enumerate(dataset):
-            end += dataset.subset_size(subset_idx)
-            _set_labels(subset, final_labels, begin, end)
-            begin = end
-
     @property
     def n_clusters(self):
         self._components = compss_wait_on(self._components)
@@ -210,7 +187,7 @@ class DBSCAN():
     def _compute_region_widths(self, x):
         mn = x.min().collect()
         mx = x.max().collect()
-        return (mx - mn) / self._n_regions
+        return ((mx - mn) / self._n_regions).reshape(-1, )
 
 
 def _arrange_samples(x, n_regions, dimensions=None):
@@ -234,10 +211,12 @@ def _arrange_samples(x, n_regions, dimensions=None):
         A list of nd-arrays (futures) containing the samples on each region.
         That is, grid_data[i][j] contains the samples in row block i of x
         that lie in region j.
-    sorting : nd-array
+    sorting : list of lists
         sorting[i][j] contains the sample indices of the
         samples from row block i that lie in region j. The indices
         are relative to row block i.
+    sizes : list
+        Sizes (futures) of the arrays in grid_data.
     """
     n_features = x.shape[1]
 
@@ -246,6 +225,7 @@ def _arrange_samples(x, n_regions, dimensions=None):
 
     grid_shape = (n_regions,) * len(dimensions)
 
+    # min() and max() calls have synchronization points
     mn = x.min()
     mx = x.max()
 
@@ -256,37 +236,64 @@ def _arrange_samples(x, n_regions, dimensions=None):
     return _arrange_data(x, grid_shape, bins, dimensions, total_regions)
 
 
-def _arrange_data(x, g_shape, bins, dimensions, total_regions):
-    out_lol = list()
-    sort_lol = list()
+def _arrange_data(x, g_shape, bins, dims, total_regions):
+    reg_lists = list()
+    ind_lists = list()
 
     for row in x._iterator(axis=0):
-        out_list = [object()] * total_regions
-        sort_list = [object()] * total_regions
+        reg_list = [object() for _ in range(total_regions)]
+        ind_list = [object() for _ in range(total_regions)]
 
-        # after calling arrange_block, out_list contains one nd-array per
-        # region with the corresponding samples, and sort_list contains
+        # after calling arrange_block, reg_list contains one nd-array per
+        # region with the corresponding samples, and ind_list contains
         # the indices of the samples that go to each region
-        _arrange_block(row._blocks, bins, dimensions, g_shape, out_list,
-                       sort_list)
+        _arrange_block(row._blocks, bins, dims, g_shape, reg_list, ind_list)
 
-        out_lol.append(out_list)
-        sort_lol.append(sort_list)
+        reg_lists.append(reg_list)
+        ind_lists.append(ind_list)
 
     # the ith element of each element in lol contains the samples of
     # the ith region.
-    out_arr = np.asarray(out_lol)
-    sorted_data = list()
+    reg_arr = np.asarray(reg_lists)
+    arranged_samples = list()
+    sizes = list()
 
-    for i in range(out_arr.shape[1]):
-        # we merge together the ith element of each element in out_arr and
-        # sort_arr to obtain a single nd-array per region
-        samples = _merge_samples(out_arr[:, i], x._sparse)
-        sorted_data.append(samples)
+    for i in range(reg_arr.shape[1]):
+        # we merge together the ith element of each element in reg_arr and
+        # sort_arr to obtain a single nd-array per region (convert to list
+        # again because collections do not support np.arrays)
+        samples, size = _merge_samples(reg_arr[:, i].tolist(), x._sparse)
+        arranged_samples.append(samples)
+        sizes.append(size)
 
-    # sorted_data is a list of nd-arrays (one per region) containing the
+    # arranged_samples is a list of nd-arrays (one per region) containing the
     # samples in each region.
-    return sorted_data, np.asarray(sort_lol)
+    return arranged_samples, ind_lists, sizes
+
+
+def _rearrange_labels(labels, indices, n_blocks):
+    """
+    This method rearranges computed labels back to their original position.
+    """
+    blocks_list = list()
+
+    for i, arr in enumerate(labels):
+        blocks = [object() for _ in range(n_blocks)]
+
+        # blocks_list[i][j] contains the labels of region i that belong to
+        # row block j in the original arrangement of the data
+        _rearrange_region(arr, np.asarray(indices)[:, i].tolist(), blocks)
+        blocks_list.append(blocks)
+
+    blocks_arr = np.asarray(blocks_list)
+    sorted_blocks = list()
+
+    # merge and sort the rearranged labels to build the final array of labels
+    for i in range(blocks_arr.shape[1]):
+        label_block = _merge_labels(blocks_arr[:, i].tolist(), indices[i])
+        sorted_blocks.append([label_block])
+
+    return sorted_blocks
 
 
 @task(mn={Type: COLLECTION_IN, Depth: 2},
@@ -306,10 +313,9 @@ def _generate_bins(mn, mx, dimensions, n_regions):
 
 
 @task(blocks={Type: COLLECTION_IN, Depth: 2},
-      sorted_list={Type: COLLECTION_INOUT},
-      sorting={Type: COLLECTION_INOUT},
-      returns=1)
-def _arrange_block(blocks, bins, dimensions, shape, sorted_list, sorting):
+      samples_list={Type: COLLECTION_INOUT},
+      indices={Type: COLLECTION_INOUT})
+def _arrange_block(blocks, bins, dimensions, shape, samples_list, indices):
     x = Array._merge_blocks(blocks)
     n_bins = shape[0]
     region_indices = list()
@@ -337,22 +343,51 @@ def _arrange_block(blocks, bins, dimensions, shape, sorted_list, sorting):
     # that represents each region in the output list
     out_idx = np.apply_along_axis(np.ravel_multi_index, 0, idx_arr, dims=shape)
 
-    for i in range(len(sorted_list)):
+    for i in range(len(samples_list)):
         # insert all the samples that belong to a region to the corresponding
         # place in the output list.
         sample_indices = np.where(out_idx == i)
-        sorted_list[i] = x[sample_indices]
+        samples_list[i] = x[sample_indices]
 
         # sorting contains which samples go to which region
-        sorting[i] = sample_indices
+        indices[i] = sample_indices
 
 
-@task(returns=1)
-def _merge_samples(samples_arr, sparse):
+@task(indices=COLLECTION_IN,
+      blocks=COLLECTION_INOUT)
+def _rearrange_region(labels, indices, blocks):
+    """
+    indices[i] contains the label/sample indices of row block i (in the
+    original data) that lie in this region. This method
+    redistributes the labels into a list representing the row blocks
+    in the original data
+    """
+    start, end = 0, 0
+
+    for i, ind in enumerate(indices):
+        end += ind[0].shape[0]
+        blocks[i] = labels[start:end].reshape(-1, 1)
+        start = end
+
+
+@task(samples_list={Type: COLLECTION_IN}, returns=2)
+def _merge_samples(samples_list, sparse):
     if sparse:
-        return vstack_sparse(samples_arr)
+        samples = vstack_sparse(samples_list)
     else:
-        return np.vstack(samples_arr)
+        samples = np.vstack(samples_list)
+
+    return samples, samples.shape[0]
+
+
+@task(labels_list=COLLECTION_IN, indices=COLLECTION_IN, returns=1)
+def _merge_labels(labels_list, indices):
+    labels = np.vstack(labels_list)
+
+    # idx contains the original position of each label in labels
+    idx = np.hstack(np.asarray(indices).flatten())
+
+    return np.take(labels, idx).reshape(-1, 1)
 
 
 @task(returns=1)
@@ -399,18 +434,3 @@ def _visit_neighbours(equiv, neighbours, visited, connected):
 
         if neighbour in equiv:
             to_visit.extend(equiv[neighbour])
-
-
-@task(returns=1)
-def _concatenate_labels(sorting, *labels):
-    final_labels = np.empty(0, dtype=int)
-
-    for label_arr in labels:
-        final_labels = np.concatenate((final_labels, label_arr))
-
-    return final_labels[sorting]
-
-
-@task(subset=INOUT)
-def _set_labels(subset, labels, begin=0, end=None):
-    subset.labels = labels[begin:end]

@@ -152,6 +152,8 @@ class CascadeSVM(object):
                 self._check_convergence_and_update_w()
                 self._print_iteration()
 
+        return self
+
     def predict(self, x):
         """ Perform classification on samples.
 
