@@ -162,7 +162,7 @@ class DBSCAN():
 
         Returns
         -------
-        y : ds-array, shape=(n_samples, 1)
+        y : ds-array, shape=(n_samples  , 1)
             Cluster labels.
         """
         self.fit(x)
@@ -365,7 +365,7 @@ def _rearrange_region(labels, indices, blocks):
     start, end = 0, 0
 
     for i, ind in enumerate(indices):
-        end += ind[0].shape[0]
+        end += len(ind[0])
         blocks[i] = labels[start:end].reshape(-1, 1)
         start = end
 
