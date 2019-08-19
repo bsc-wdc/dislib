@@ -277,11 +277,13 @@ class Array(object):
     # ----------
     # _blocks : list
     #     List of lists of numpy / scipy arrays
-    # _blocks_shape : tuple / list of tuples
-    #     A single tuple indicates that all blocks are regular
-    #     (except bottom ones, and right ones).
-    #     If a list of 3 tuples is paased, the sizes correspond to top-left
-    #     block, regular blocks, and bot-right block.
+    # _top_left_shape : tuple
+    #     A single tuple indicating the shape of the top-left block. This
+    #     can be different from _blocks_shape when slicing arrays.
+    # _blocks_shape : tuple
+    #     A single tuple indicating the size of regular blocks. Top-left and
+    #     and bot-right blocks might have different shapes (and thus, also the
+    #     whole first/last blocks of rows/cols).
     # _n_blocks : tuple(int, int)
     #     Total number of (horizontal, vertical) blocks.
     # shape : int
