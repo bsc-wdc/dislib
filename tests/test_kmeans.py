@@ -21,9 +21,8 @@ class KMeansTest(unittest.TestCase):
         km = KMeans(n_clusters=n_clusters, max_iter=max_iter, tol=tol,
                     arity=arity, random_state=seed)
 
-        expected = (n_clusters, max_iter, tol, seed, arity)
-        real = (km._n_clusters, km._max_iter, km._tol, km._random_state,
-                km._arity)
+        expected = (n_clusters, max_iter, tol, arity)
+        real = (km._n_clusters, km._max_iter, km._tol, km._arity)
         self.assertEqual(expected, real)
 
     def test_fit(self):
@@ -93,6 +92,8 @@ class KMeansTest(unittest.TestCase):
 
         y_sparse = kmeans.fit_predict(x_sp).collect()
         sparse_c = kmeans.centers.toarray()
+
+        kmeans = KMeans(random_state=170)
 
         y_dense = kmeans.fit_predict(x_ds).collect()
         dense_c = kmeans.centers
