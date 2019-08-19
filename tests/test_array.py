@@ -578,8 +578,7 @@ class ArrayTest(unittest.TestCase):
         x1 = ds.apply_along_axis(_sum_and_mult, 0, x, 1, b=2)
         self.assertTrue(x1.shape, (1, 3))
         self.assertTrue(x1._blocks_shape, (1, 2))
-        self.assertTrue(np.array_equal(x1.collect().toarray(),
-                                       np.array([18, 28, 0])))
+        self.assertTrue(np.array_equal(x1.collect(), np.array([18, 28, 0])))
 
         x = ds.array(sp.csr_matrix([[1, 0, -1], [0, 5, 0], [7, 8, 0]]),
                      blocks_shape=(2, 2))
