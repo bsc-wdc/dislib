@@ -232,7 +232,7 @@ class CascadeSVM(object):
                      sparse=False)
 
     @staticmethod
-    def _check_xy(self, x, y):
+    def _check_xy(x, y):
         # We force 'x' and 'y' to have the same number of row blocks. This
         # could be avoided by re-chunking 'y', or using slicing on 'y'
         # during the training process
