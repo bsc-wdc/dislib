@@ -1,12 +1,13 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.colors import ListedColormap
+from pycompss.api.api import compss_wait_on
 from sklearn.datasets import make_moons, make_circles, make_classification
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
+import dislib as ds
 from dislib.classification import CascadeSVM, RandomForestClassifier
-from dislib.data import load_data
 
 
 def main():
@@ -34,14 +35,16 @@ def main():
     plt.figure(figsize=(27, 9))
     i = 1
     # iterate over datasets
-    for ds_cnt, ds in enumerate(datasets):
+    for ds_cnt, dataset in enumerate(datasets):
         # preprocess dataset, split into training and test part
-        x, y = ds
+        x, y = dataset
         x = StandardScaler().fit_transform(x)
         x_train, x_test, y_train, y_test = \
             train_test_split(x, y, test_size=.4, random_state=42)
-        data = load_data(x=x_train, y=y_train, subset_size=20)
-        test_data = load_data(x=x_test, y=y_test, subset_size=20)
+        ds_x_train = ds.array(x_train, blocks_shape=(20, 2))
+        ds_y_train = ds.array(y_train.reshape(-1, 1), blocks_shape=(20, 2))
+        ds_x_test = ds.array(x_test, blocks_shape=(20, 2))
+        ds_y_test = ds.array(y_test.reshape(-1, 1), blocks_shape=(20, 2))
 
         x_min, x_max = x[:, 0].min() - .5, x[:, 0].max() + .5
         y_min, y_max = x[:, 1].min() - .5, x[:, 1].max() + .5
@@ -71,20 +74,18 @@ def main():
         for name, clf in zip(names, classifiers):
             ax = plt.subplot(len(datasets), len(classifiers) + 1, i)
 
-            clf.fit(data)
-            score = clf.score(test_data)
+            clf.fit(ds_x_train, ds_y_train)
+            score = compss_wait_on(clf.score(ds_x_test, ds_y_test))
 
             # Plot the decision boundary. For that, we will assign a color to
             # each point in the mesh [x_min, x_max]x[y_min, y_max].
             mesh = np.c_[xx.ravel(), yy.ravel()]
-            mesh_dataset = load_data(x=mesh, subset_size=mesh.shape[0])
+            mesh_data = ds.array(mesh, (mesh.shape[0], 2))
 
             if hasattr(clf, "decision_function"):
-                clf.decision_function(mesh_dataset)
-                Z = mesh_dataset.labels
+                Z = clf.decision_function(mesh_data).collect()
             else:
-                clf.predict_proba(mesh_dataset)
-                Z = mesh_dataset.labels[:, 1]
+                Z = clf.predict_proba(mesh_data).collect()[:, 1]
 
             # Put the result into a color plot
             Z = Z.reshape(xx.shape)

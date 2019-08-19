@@ -5,6 +5,7 @@ import numpy as np
 import dislib as ds
 from dislib.classification import CascadeSVM
 from dislib.data import load_svmlight_file
+from pycompss.api.api import compss_wait_on
 
 
 class CSVMTest(unittest.TestCase):
@@ -31,7 +32,6 @@ class CSVMTest(unittest.TestCase):
         self.assertEqual(csvm._clf_params['C'], c)
         self.assertEqual(csvm._clf_params['gamma'], gamma)
         self.assertEqual(csvm._check_convergence, check_convergence)
-        self.assertEqual(csvm._random_state, seed)
         self.assertEqual(csvm._verbose, verbose)
 
         # test correct linear kernel and c param (other's are not changed)
@@ -142,7 +142,7 @@ class CSVMTest(unittest.TestCase):
         x_test = ds.array(np.array([p1, p2, p3, p4]), (2, 2))
         y_test = ds.array(np.array([0, 0, 1, 1]).reshape(-1, 1), (2, 1))
 
-        accuracy = csvm.score(x_test, y_test).collect()
+        accuracy = compss_wait_on(csvm.score(x_test, y_test))
 
         self.assertEqual(accuracy, 1.0)
 

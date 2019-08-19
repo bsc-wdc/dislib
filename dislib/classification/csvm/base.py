@@ -8,8 +8,10 @@ from pycompss.api.task import task
 from scipy.sparse import hstack as hstack_sp
 from scipy.sparse import issparse
 from sklearn.svm import SVC
+from sklearn.utils import check_random_state
 
 from dislib.data.array import Array
+from dislib.utils.base import _paired_partition
 
 
 class CascadeSVM(object):
@@ -73,14 +75,15 @@ class CascadeSVM(object):
     >>> import numpy as np
     >>> x = np.array([[-1, -1], [-2, -1], [1, 1], [2, 1]])
     >>> y = np.array([1, 1, 2, 2])
-    >>> from dislib.data import load_data
-    >>> train_data = load_data(x=x, y=y, subset_size=4)
+    >>> import dislib as ds
+    >>> train_data = ds.array(x, blocks_shape=(4, 2))
+    >>> train_labels = ds.array(x, blocks_shape=(4, 2))
     >>> from dislib.classification import CascadeSVM
     >>> svm = CascadeSVM()
-    >>> svm.fit(train_data)
-    >>> test_data = load_data(x=np.array([[-0.8, -1]]), subset_size=1)
-    >>> svm.predict(test_data)
-    >>> print(test_data.labels)
+    >>> svm.fit(train_data, train_labels)
+    >>> test_data = ds.array(np.array([[-0.8, -1]]), blocks_shape=(1, 2))
+    >>> y_pred = svm.predict(test_data)
+    >>> print(y_pred)
     """
     _name_to_kernel = {"linear": "_linear_kernel", "rbf": "_rbf_kernel"}
 
@@ -108,7 +111,7 @@ class CascadeSVM(object):
         self._max_iter = max_iter
         self._tol = tol
         self._check_convergence = check_convergence
-        self._random_state = random_state
+        self._random_state = check_random_state(random_state)
         self._verbose = verbose
         self._gamma = gamma
         self._hstack_f = None
@@ -137,8 +140,6 @@ class CascadeSVM(object):
         -------
         self : object
         """
-
-        self._check_xy(x, y)
         self._reset_model()
         self._set_gamma(x.shape[1])
         self._hstack_f = hstack_sp if x._sparse else np.hstack
@@ -217,7 +218,7 @@ class CascadeSVM(object):
 
         Returns
         -------
-        score : ds-array, shape=(1, 1)
+        score : float (as future object)
             Mean accuracy of self.predict(x) wrt. y.
         """
         assert (self._clf is not None or self._svs is not None), \
@@ -225,34 +226,11 @@ class CascadeSVM(object):
 
         partial_scores = []
 
-        for x_row, y_row in zip(x._iterator(axis=0), y._iterator(axis=0)):
+        for x_row, y_row in _paired_partition(x, y):
             partial = _score(x_row._blocks, y_row._blocks, self._clf)
             partial_scores.append(partial)
 
-        score = [[_merge_scores(*partial_scores)]]
-        return Array(blocks=score, blocks_shape=(1, 1), shape=(1, 1),
-                     sparse=False)
-
-    @staticmethod
-    def _check_xy(x, y):
-        # We force 'x' and 'y' to have the same number of row blocks. This
-        # could be avoided by re-chunking 'y', or using slicing on 'y'
-        # during the training process
-        xshape = x._blocks_shape
-        yshape = y._blocks_shape
-
-        if len(xshape) != len(yshape) or \
-                (isinstance(xshape, tuple) and xshape[0] != yshape[0]) or \
-                (isinstance(xshape, list) and \
-                 (xshape[0][0] != yshape[0][0] or \
-                  xshape[-1][0] != yshape[-1][0])):
-            raise AttributeError(
-                "x and y must have the same number of blocks along the first "
-                "axis")
-
-        if x.shape[0] != y.shape[0]:
-            raise AttributeError("The number of labels does not match the "
-                                 "number of samples")
+        return _merge_scores(*partial_scores)
 
     def _reset_model(self):
         self.iterations = 0
@@ -282,10 +260,9 @@ class CascadeSVM(object):
         arity = self._arity
 
         # first level
-        for x_row, y_row, id_bk in zip(x._iterator(axis=0),
-                                       y._iterator(axis=0), ids_list):
-            x_data = x_row._blocks
-            y_data = y_row._blocks
+        for partition, id_bk in zip(_paired_partition(x, y), ids_list):
+            x_data = partition[0]._blocks
+            y_data = partition[1]._blocks
             ids = [id_bk]
 
             if self._svs is not None:

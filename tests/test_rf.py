@@ -29,7 +29,7 @@ class RFTest(unittest.TestCase):
         rf = RandomForestClassifier(random_state=0)
 
         rf.fit(x_train, y_train)
-        accuracy = rf.score(x_test, y_test)
+        accuracy = compss_wait_on(rf.score(x_test, y_test))
         self.assertGreater(accuracy, 0.7)
 
     def test_make_classification_predict_and_distr_depth(self):
@@ -176,7 +176,7 @@ class RFTest(unittest.TestCase):
                                     hard_vote=True)
 
         rf.fit(x_train, y_train)
-        accuracy = rf.score(x_test, y_test)
+        accuracy = compss_wait_on(rf.score(x_test, y_test))
         self.assertGreater(accuracy, 0.7)
 
 

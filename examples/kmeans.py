@@ -2,8 +2,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.datasets import make_blobs
 
+import dislib as ds
 from dislib.cluster import KMeans
-from dislib.data import load_data
 
 
 def main():
@@ -17,12 +17,11 @@ def main():
     random_state = 170
     x, y = make_blobs(n_samples=n_samples, random_state=random_state)
 
-    dataset = load_data(x, subset_size=300)
+    dataset = ds.array(x, blocks_shape=(300, 2))
 
     # Incorrect number of clusters
     kmeans = KMeans(n_clusters=2, random_state=random_state)
-    kmeans.fit_predict(dataset)
-    y_pred = dataset.labels
+    y_pred = kmeans.fit_predict(dataset).collect()
 
     plt.subplot(221)
     plt.scatter(x[:, 0], x[:, 1], c=y_pred)
@@ -34,11 +33,10 @@ def main():
     transformation = [[0.60834549, -0.63667341], [-0.40887718, 0.85253229]]
     x_aniso = np.dot(x, transformation)
 
-    dataset = load_data(x_aniso, subset_size=300)
+    dataset = ds.array(x_aniso, blocks_shape=(300, 2))
 
     kmeans = KMeans(n_clusters=3, random_state=random_state)
-    kmeans.fit_predict(dataset)
-    y_pred = dataset.labels
+    y_pred = kmeans.fit_predict(dataset).collect()
 
     plt.subplot(222)
     plt.scatter(x_aniso[:, 0], x_aniso[:, 1], c=y_pred)
@@ -51,11 +49,10 @@ def main():
                                     cluster_std=[1.0, 2.5, 0.5],
                                     random_state=random_state)
 
-    dataset = load_data(x_varied, subset_size=300)
+    dataset = ds.array(x_varied, blocks_shape=(300, 2))
 
     kmeans = KMeans(n_clusters=3, random_state=random_state)
-    kmeans.fit_predict(dataset)
-    y_pred = dataset.labels
+    y_pred = kmeans.fit_predict(dataset).collect()
 
     plt.subplot(223)
     plt.scatter(x_varied[:, 0], x_varied[:, 1], c=y_pred)
@@ -66,11 +63,10 @@ def main():
     # Unevenly sized blobs
     x_filtered = np.vstack((x[y == 0][:500], x[y == 1][:100], x[y == 2][:10]))
 
-    dataset = load_data(x_filtered, subset_size=300)
+    dataset = ds.array(x_filtered, blocks_shape=(300, 2))
 
     kmeans = KMeans(n_clusters=3, random_state=random_state)
-    kmeans.fit_predict(dataset)
-    y_pred = dataset.labels
+    y_pred = kmeans.fit_predict(dataset).collect()
 
     plt.subplot(224)
     plt.scatter(x_filtered[:, 0], x_filtered[:, 1], c=y_pred)

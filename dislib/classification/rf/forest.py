@@ -156,9 +156,9 @@ class RandomForestClassifier:
         s = x._blocks_shape
         blocks_shape = (s[0], n_classes) if len(s) == 2 \
             else tuple((s[i][0], n_classes) for i in range(3))
-        probabilities = Array(blocks=prob_blocks, blocks_shape=blocks_shape,
-                              shape=(x.shape[0], n_classes), sparse=False)
-        return probabilities
+
+        return Array(blocks=prob_blocks, blocks_shape=blocks_shape,
+                     shape=(x.shape[0], n_classes), sparse=False)
 
     def predict(self, x):
         """Predicts classes using a fitted forest.
@@ -210,7 +210,7 @@ class RandomForestClassifier:
 
         Returns
         -------
-        score : float
+        score : float (as future object)
             Fraction of correctly classified samples.
 
         """
@@ -232,9 +232,8 @@ class RandomForestClassifier:
                 subset_score = _soft_vote_score(y_row._blocks, self.classes,
                                                 *tree_predictions)
                 partial_scores.append(subset_score)
-        score = compss_wait_on(_merge_scores(*partial_scores))
 
-        return score
+        return _merge_scores(*partial_scores)
 
 
 @task(returns=1)
