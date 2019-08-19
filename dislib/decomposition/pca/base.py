@@ -1,6 +1,7 @@
 from copy import copy
 
 import numpy as np
+from pycompss.api.api import compss_wait_on
 from pycompss.api.parameter import COLLECTION_IN, Depth, Type, COLLECTION_INOUT
 from pycompss.api.task import task
 
@@ -53,19 +54,30 @@ class PCA:
     def __init__(self, n_components=None, arity=50):
         self.n_components = n_components
         self.arity = arity
+        self._components = None
+        self._variance = None
+
+    @property
+    def components_(self):
+        self._components = compss_wait_on(self._components)
+        return self._components
+
+    @property
+    def explained_variance_(self):
+        self._variance = compss_wait_on(self._variance)
+        return self._variance
 
     def fit(self, x):
         """ Fit the model with the dataset.
 
         Parameters
         ----------
-        x : darray, shape (n_samples, n_features)
+        x : ds-array, shape (n_samples, n_features)
             Training data.
 
         Returns
         -------
-        self: PCA
-            Returns the instance itself.
+        self : object
         """
 
         n_samples = x.shape[0]
@@ -86,8 +98,8 @@ class PCA:
         covariance_matrix = _estimate_covariance(scatter_matrix, n_samples)
         eig_val, eig_vec = _decompose(covariance_matrix, self.n_components)
 
-        self.components_ = eig_vec
-        self.explained_variance_ = eig_val
+        self._components = eig_vec
+        self._variance = eig_val
 
         return self
 
@@ -97,32 +109,30 @@ class PCA:
 
         Parameters
         ----------
-        x : darray, shape (n_samples, n_features)
-            Training dataset.
+        x : ds-array, shape (n_samples, n_features)
+            Training data.
 
         Returns
         -------
-        transformed_darray : darray, shape (n_samples, n_components)
+        transformed_darray : ds-array, shape (n_samples, n_components)
         """
-        # return self.fit(x).transform(x)
-        ft = self.fit(x)
-        return ft.transform(x)
+        return self.fit(x).transform(x)
 
     def transform(self, x):
         """
-        Apply dimensionality reduction to darray.
+        Apply dimensionality reduction to ds-array.
 
         The given dataset is projected on the first principal components
-        previously extracted from a training darray.
+        previously extracted from a training ds-array.
 
         Parameters
         ----------
-        x : darray, shape (n_samples, n_features)
-            New darray, with the same n_features as the training dataset.
+        x : ds-array, shape (n_samples, n_features)
+            New ds-array, with the same n_features as the training dataset.
 
         Returns
         -------
-        transformed_darray : darray, shape (n_samples, n_components)
+        transformed_darray : ds-array, shape (n_samples, n_components)
         """
         return _transform(x, self.mean_, self.components_)
 

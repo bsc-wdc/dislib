@@ -449,7 +449,7 @@ class DBSCANTest(unittest.TestCase):
         # 1 dimension
         np.random.seed(1)
         x = np.random.uniform(0, 10, size=(1000, 1))
-        ds_x = ds.array(x, blocks_shape=(5, 2))
+        ds_x = ds.array(x, blocks_shape=(300, 1))
         dbscan = DBSCAN(n_regions=100, eps=0.1, min_samples=20)
         y = dbscan.fit_predict(ds_x).collect()
 
@@ -461,7 +461,7 @@ class DBSCANTest(unittest.TestCase):
         # 2 dimensions
         np.random.seed(2)
         x = np.random.uniform(0, 10, size=(1000, 2))
-        ds_x = ds.array(x, blocks_shape=(5, 2))
+        ds_x = ds.array(x, blocks_shape=(300, 2))
         dbscan = DBSCAN(n_regions=10, max_samples=10, eps=0.5, min_samples=10)
         y = dbscan.fit_predict(ds_x).collect()
 
@@ -473,7 +473,7 @@ class DBSCANTest(unittest.TestCase):
         # 3 dimensions
         np.random.seed(3)
         x = np.random.uniform(0, 10, size=(1000, 3))
-        ds_x = ds.array(x, blocks_shape=(5, 2))
+        ds_x = ds.array(x, blocks_shape=(300, 3))
         dbscan = DBSCAN(n_regions=10, dimensions=[0, 1],
                         eps=0.9, min_samples=4)
         y = dbscan.fit_predict(ds_x).collect()

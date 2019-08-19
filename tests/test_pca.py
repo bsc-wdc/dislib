@@ -30,9 +30,6 @@ class PCATest(unittest.TestCase):
         pca = PCA()
         pca.fit(dataset)
 
-        pca.components_ = compss_wait_on(pca.components_)
-        pca.explained_variance_ = compss_wait_on(pca.explained_variance_)
-
         expected_eigvec = np.array([
             [0.46266375, 0.40183351, 0.50259945, 0.41394469, 0.44778976],
             [0.6548706, -0.63369901, 0.27008578, -0.15049713, -0.27198225],
