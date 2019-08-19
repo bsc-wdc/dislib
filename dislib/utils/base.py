@@ -165,3 +165,20 @@ def _choose_and_assign_parts(subset, part_sizes, parts, seed):
         end = start + size
         parts[i] = subset[indices[start:end]]
         start = end
+
+
+def _paired_partition(x, y):
+    regular_shapes = len(x._blocks_shape) == 2
+    if regular_shapes:
+        top_num_rows = x._blocks_shape[0]
+        regular_num_rows = x._blocks_shape[0]
+    else:
+        top_num_rows = x._blocks_shape[0][0]
+        regular_num_rows = x._blocks_shape[1][0]
+    start_idx = 0
+    end_idx = top_num_rows
+    for x_row in x._iterator(axis=0):
+        y_row = y[start_idx:end_idx]
+        yield x_row, y_row
+        start_idx = end_idx
+        end_idx = min(end_idx + regular_num_rows, x.shape[0])

@@ -191,7 +191,7 @@ def transform_to_rf_dataset(x: Array, y: Array) -> RfDataset:
 
     Returns
     -------
-    rf_dataset : dislib.classification.rf.data.RfDataset
+    rf_dataset : dislib.classification.rf._data.RfDataset
 
     """
     n_samples = x.shape[0]

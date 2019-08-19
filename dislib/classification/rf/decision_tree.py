@@ -85,7 +85,7 @@ class DecisionTreeClassifier:
 
         Parameters
         ----------
-        dataset : dislib.classification.rf.data.RfDataset
+        dataset : dislib.classification.rf._data.RfDataset
 
         """
 

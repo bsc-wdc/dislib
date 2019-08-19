@@ -73,7 +73,7 @@ class RFTest(unittest.TestCase):
 
         rf = RandomForestClassifier(random_state=0)
 
-        y_pred = rf.fit_predict(x_train, y_train).collect()
+        y_pred = rf.fit(x_train, y_train).predict(x_train).collect()
         y_train = y_train.collect()
         accuracy = np.count_nonzero(y_pred == y_train) / len(y_train)
         self.assertGreater(accuracy, 0.7)
@@ -122,8 +122,7 @@ class RFTest(unittest.TestCase):
         rf = RandomForestClassifier(random_state=0, sklearn_max=10)
 
         rf.fit(x_train, y_train)
-        probabilities = rf.predict_proba(x_test)
-        probabilities = np.concatenate(compss_wait_on(probabilities))
+        probabilities = rf.predict_proba(x_test).collect()
         rf.classes = compss_wait_on(rf.classes)
         y_pred = rf.classes[np.argmax(probabilities, axis=1)]
         accuracy = np.count_nonzero(y_pred == y_test) / len(y_test)

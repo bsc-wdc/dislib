@@ -9,7 +9,8 @@ from sklearn.utils import check_random_state
 
 from dislib.classification.rf.decision_tree import DecisionTreeClassifier
 from dislib.data.array import Array
-from .data import RfDataset, transform_to_rf_dataset
+from dislib.utils.base import _paired_partition
+from ._data import transform_to_rf_dataset
 
 
 class RandomForestClassifier:
@@ -77,7 +78,7 @@ class RandomForestClassifier:
         self.hard_vote = hard_vote
         self.random_state = check_random_state(random_state)
 
-    def fit(self, x, y, rf_dataset=False):
+    def fit(self, x, y):
         """Fits the RandomForestClassifier.
 
         Parameters
@@ -87,21 +88,16 @@ class RandomForestClassifier:
             to ``dtype=np.float32``.
         y : ds-array, shape (n_samples, 1)
             The target values.
-        rf_dataset : RfDataset (default=False)
-            Dataset in the particular format used by RandomForestClassifier,
-            which can reduce the execution time by avoiding the conversion.
-            If this argument is provided, x and y are ignored.
+
+        Returns
+        -------
+        self : object
 
         """
         self.classes = None
         self.trees = []
 
-        if isinstance(rf_dataset, RfDataset):
-            dataset = rf_dataset
-            if isinstance(dataset.features_path, str):
-                dataset.validate_features_file()
-        else:
-            dataset = transform_to_rf_dataset(x, y)
+        dataset = transform_to_rf_dataset(x, y)
 
         n_features = dataset.get_n_features()
         self.try_features = _resolve_try_features(self.try_features_init,
@@ -125,24 +121,7 @@ class RandomForestClassifier:
         for tree in self.trees:
             tree.fit(dataset)
 
-    def fit_predict(self, x, y):
-        """Fits the forest and predicts the classes for the same samples.
-
-        Parameters
-        ----------
-        x : ds-array, shape (n_samples, n_features)
-            The training input samples.
-        y : ds-array, shape (n_samples, 1)
-            The target values.
-
-        Returns
-        -------
-        y_pred : ds-array, shape(n_samples, 1)
-            Predicted class labels for x.
-
-        """
-        self.fit(x, y)
-        return self.predict(x)
+        return self
 
     def predict_proba(self, x):
         """Predicts class probabilities using a fitted forest.
@@ -166,12 +145,19 @@ class RandomForestClassifier:
 
         """
         assert self.trees is not None, 'The random forest is not fitted.'
-        probabilities = []
+        prob_blocks = []
         for x_row in x._iterator(axis=0):
             tree_predictions = []
             for tree in self.trees:
                 tree_predictions.append(tree.predict_proba(x_row))
-            probabilities.append(_join_predictions(*tree_predictions))
+            prob_blocks.append([_join_predictions(*tree_predictions)])
+        self.classes = compss_wait_on(self.classes)
+        n_classes = len(self.classes)
+        s = x._blocks_shape
+        blocks_shape = (s[0], n_classes) if len(s) == 2 \
+            else tuple((s[i][0], n_classes) for i in range(3))
+        probabilities = Array(blocks=prob_blocks, blocks_shape=blocks_shape,
+                              shape=(x.shape[0], n_classes), sparse=False)
         return probabilities
 
     def predict(self, x):
@@ -230,25 +216,8 @@ class RandomForestClassifier:
         """
         assert self.trees is not None, 'The random forest is not fitted.'
         partial_scores = []
-
-        def paired_blocks(x, y):
-            regular_shapes = len(x._blocks_shape) == 2
-            if regular_shapes:
-                top_num_rows = x._blocks_shape[0]
-                regular_num_rows = x._blocks_shape[0]
-            else:
-                top_num_rows = x._blocks_shape[0][0]
-                regular_num_rows = x._blocks_shape[1][0]
-            start_idx = 0
-            end_idx = top_num_rows
-            for x_row in x._iterator(axis=0):
-                y_row = y[start_idx:end_idx]
-                yield x_row, y_row
-                start_idx = end_idx
-                end_idx = min(end_idx + regular_num_rows, x.shape[0])
-
         if self.hard_vote:
-            for x_row, y_row in paired_blocks(x, y):
+            for x_row, y_row in _paired_partition(x, y):
                 tree_predictions = []
                 for tree in self.trees:
                     tree_predictions.append(tree.predict(x_row))
@@ -256,7 +225,7 @@ class RandomForestClassifier:
                                                 *tree_predictions)
                 partial_scores.append(subset_score)
         else:
-            for x_row, y_row in paired_blocks(x, y):
+            for x_row, y_row in _paired_partition(x, y):
                 tree_predictions = []
                 for tree in self.trees:
                     tree_predictions.append(tree.predict_proba(x_row))
