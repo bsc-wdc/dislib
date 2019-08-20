@@ -91,7 +91,7 @@ class RandomForestClassifier:
 
         Returns
         -------
-        self : object
+        self : RandomForestClassifier
 
         """
         self.classes = None

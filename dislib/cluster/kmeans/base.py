@@ -77,7 +77,7 @@ class KMeans:
 
         Returns
         -------
-        self : object
+        self : KMeans
         """
         n_features = x.shape[1]
         sparse = x._sparse

@@ -138,7 +138,7 @@ class CascadeSVM(object):
 
         Returns
         -------
-        self : object
+        self : CascadeSVM
         """
         self._reset_model()
         self._set_gamma(x.shape[1])

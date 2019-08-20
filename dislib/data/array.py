@@ -32,8 +32,7 @@ def array(x, blocks_shape):
 
     blocks = []
     for i in range(0, x.shape[0], bn):
-        row = [x[i: i + bn, j: j + bm] for j in
-               range(0, x.shape[1], bm)]
+        row = [x[i: i + bn, j: j + bm] for j in range(0, x.shape[1], bm)]
         blocks.append(row)
 
     sparse = issparse(x)
@@ -197,7 +196,7 @@ def load_svmlight_file(path, blocks_shape, n_features, store_sparse):
 
             if len(lines) == n:
                 # line 0 -> X, line 1 -> y
-                out_blocks = Array._get_out_blocks(1, ceil(n_features / m))
+                out_blocks = Array._get_out_blocks((1, ceil(n_features / m)))
                 out_blocks.append([object()])
                 # out_blocks.append([])
                 _read_libsvm(lines, out_blocks, col_size=m,
@@ -208,7 +207,7 @@ def load_svmlight_file(path, blocks_shape, n_features, store_sparse):
                 lines = []
 
     if lines:
-        out_blocks = Array._get_out_blocks(1, ceil(n_features / m))
+        out_blocks = Array._get_out_blocks((1, ceil(n_features / m)))
         out_blocks.append([object()])
         _read_libsvm(lines, out_blocks, col_size=m,
                      n_features=n_features, store_sparse=store_sparse)
@@ -351,12 +350,13 @@ class Array(object):
         return ret
 
     @staticmethod
-    def _get_out_blocks(x, y):
+    def _get_out_blocks(blocks_shape):
         """
         Helper function that builds empty lists of lists to be filled as
         parameter of type COLLECTION_INOUT
         """
-        return [[object() for _ in range(y)] for _ in range(x)]
+        return [[object() for _ in range(blocks_shape[1])]
+                for _ in range(blocks_shape[0])]
 
     @staticmethod
     def _broadcast_shapes(x, y):
@@ -533,7 +533,7 @@ class Array(object):
         n_blocks = i_n - i_0 + 1
         m_blocks = j_n - j_0 + 1
 
-        out_blocks = self._get_out_blocks(n_blocks, m_blocks)
+        out_blocks = self._get_out_blocks((n_blocks, m_blocks))
 
         i_indices = range(i_0, i_n + 1)
         j_indices = range(j_0, j_n + 1)
@@ -744,12 +744,12 @@ class Array(object):
         """
         if mode == 'all':
             n, m = self._n_blocks[0], self._n_blocks[1]
-            out_blocks = self._get_out_blocks(n, m)
+            out_blocks = self._get_out_blocks((n, m))
             _transpose(self._blocks, out_blocks)
         elif mode == 'rows':
             out_blocks = []
             for r in self._iterator(axis=0):
-                _blocks = self._get_out_blocks(*r._n_blocks)
+                _blocks = self._get_out_blocks(r._n_blocks)
 
                 _transpose(r._blocks, _blocks)
 
@@ -757,7 +757,7 @@ class Array(object):
         elif mode == 'columns':
             out_blocks = [[] for _ in range(self._n_blocks[0])]
             for i, c in enumerate(self._iterator(axis=1)):
-                _blocks = self._get_out_blocks(*c._n_blocks)
+                _blocks = self._get_out_blocks(c._n_blocks)
 
                 _transpose(c._blocks, _blocks)
 

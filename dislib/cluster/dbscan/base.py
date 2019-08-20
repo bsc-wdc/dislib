@@ -89,7 +89,7 @@ class DBSCAN():
 
         Returns
         -------
-        self : object
+        self : DBSCAN
         """
         n_features = x.shape[1]
         sparse = x._sparse
