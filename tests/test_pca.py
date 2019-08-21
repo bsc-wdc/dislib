@@ -1,7 +1,6 @@
 import unittest
 
 import numpy as np
-from pycompss.api.api import compss_wait_on
 from sklearn.datasets import make_blobs
 
 import dislib as ds

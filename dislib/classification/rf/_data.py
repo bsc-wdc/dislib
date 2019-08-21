@@ -196,13 +196,6 @@ def transform_to_rf_dataset(x: Array, y: Array) -> RfDataset:
     """
     n_samples = x.shape[0]
     n_features = x.shape[1]
-    regular_shapes = len(x._blocks_shape) == 2
-    if regular_shapes:
-        top_num_rows = x._blocks_shape[0]
-        regular_num_rows = x._blocks_shape[0]
-    else:
-        top_num_rows = x._blocks_shape[0][0]
-        regular_num_rows = x._blocks_shape[1][0]
 
     samples_file = tempfile.NamedTemporaryFile(mode='wb',
                                                prefix='tmp_rf_samples_',
@@ -215,10 +208,10 @@ def transform_to_rf_dataset(x: Array, y: Array) -> RfDataset:
     row_blocks_iterator = x._iterator(axis=0)
     top_row = next(row_blocks_iterator)
     _fill_samples_file(samples_path, top_row._blocks, start_idx)
-    start_idx += top_num_rows
+    start_idx += x._top_left_shape[0]
     for x_row in row_blocks_iterator:
         _fill_samples_file(samples_path, x_row._blocks, start_idx)
-        start_idx += regular_num_rows
+        start_idx += x._blocks_shape[0]
 
     labels_file = tempfile.NamedTemporaryFile(mode='w',
                                               prefix='tmp_rf_labels_',

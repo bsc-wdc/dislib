@@ -137,10 +137,9 @@ class RandomForestClassifier:
 
         Returns
         -------
-        probabilities : list of unsynchronized arrays
-            List with an array of the predicted probabilities for each rows
-            block. The shape of each array is (rows_block_size, n_classes).
-            The class corresponding to each column of the arrays is given by
+        probabilities : ds-array, shape (n_samples, n_classes)
+            Predicted probabilities for the samples to belong to each class.
+            The columns of the array correspond to the classes given at
             self.classes.
 
         """
@@ -153,12 +152,10 @@ class RandomForestClassifier:
             prob_blocks.append([_join_predictions(*tree_predictions)])
         self.classes = compss_wait_on(self.classes)
         n_classes = len(self.classes)
-        s = x._blocks_shape
-        blocks_shape = (s[0], n_classes) if len(s) == 2 \
-            else tuple((s[i][0], n_classes) for i in range(3))
-
-        return Array(blocks=prob_blocks, blocks_shape=blocks_shape,
-                     shape=(x.shape[0], n_classes), sparse=False)
+        probabilities = Array(blocks=prob_blocks,
+                              blocks_shape=(x._blocks_shape[0], n_classes),
+                              shape=(x.shape[0], n_classes), sparse=False)
+        return probabilities
 
     def predict(self, x):
         """Predicts classes using a fitted forest.
@@ -188,10 +185,8 @@ class RandomForestClassifier:
                 for tree in self.trees:
                     tree_predictions.append(tree.predict_proba(x_row))
                 pred_blocks.append(_soft_vote(self.classes, *tree_predictions))
-        s = x._blocks_shape
-        pred_blocks_shape = (s[0], 1) if len(s) == 2 \
-            else ((s[0][0], 1), (s[1][0], 1), (s[2][0], 1))
-        y_pred = Array(blocks=[pred_blocks], blocks_shape=pred_blocks_shape,
+        y_pred = Array(blocks=[pred_blocks],
+                       blocks_shape=(x._blocks_shape[0], 1),
                        shape=(x.shape[0], 1), sparse=False)
         return y_pred
 

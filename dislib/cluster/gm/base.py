@@ -3,7 +3,7 @@ import warnings
 import numpy as np
 from numpy.random.mtrand import RandomState
 from pycompss.api.api import compss_wait_on, compss_delete_object
-from pycompss.api.parameter import INOUT
+from pycompss.api.parameter import Type, COLLECTION_IN, Depth
 from scipy import linalg
 from scipy.sparse import issparse
 from sklearn.utils import validation
@@ -14,35 +14,37 @@ from sklearn.exceptions import ConvergenceWarning
 from pycompss.api.task import task
 
 from dislib.cluster import KMeans
-from dislib.data import Dataset, Subset
+from dislib.data.array import Array
 
 
-@task(returns=1)
-def _estimate_parameters_subset(subset, resp):
-    subsample = subset.samples
-    resp = resp.samples
-    nk_ss = resp.sum(axis=0)
-    if issparse(subsample):
-        means_ss = subsample.T.dot(resp).T
+@task(x={Type: COLLECTION_IN, Depth: 2},
+      resp={Type: COLLECTION_IN, Depth: 2},
+      returns=1)
+def _partial_estimate_parameters(x, resp):
+    x = Array._merge_blocks(x)
+    resp = Array._merge_blocks(resp)
+    partial_nk = resp.sum(axis=0)
+    if issparse(x):
+        partial_means = x.T.dot(resp).T
     else:
-        means_ss = np.matmul(resp.T, subsample)
+        partial_means = np.matmul(resp.T, x)
 
-    return subsample.shape[0], nk_ss, means_ss
+    return x.shape[0], partial_nk, partial_means
 
 
 def _reduce_estimate_parameters(partials, arity):
     while len(partials) > 1:
-        partials_subset = partials[:arity]
+        partials_chunk = partials[:arity]
         partials = partials[arity:]
-        partials.append(_merge_estimate_parameters(*partials_subset))
+        partials.append(_merge_estimate_parameters(*partials_chunk))
     return _finalize_parameters(partials[0])
 
 
 @task(returns=1)
-def _merge_estimate_parameters(*subsets_params):
-    n_samples = sum(params[0] for params in subsets_params)
-    nk = sum(params[1] for params in subsets_params)
-    means = sum(params[2] for params in subsets_params)
+def _merge_estimate_parameters(*partials_params):
+    n_samples = sum(params[0] for params in partials_params)
+    nk = sum(params[1] for params in partials_params)
+    means = sum(params[2] for params in partials_params)
     return n_samples, nk, means
 
 
@@ -56,16 +58,15 @@ def _finalize_parameters(params):
     return weights, nk, means
 
 
-def _estimate_covariances(dataset, resp, nk, means, reg_covar, covar_type,
-                          arity):
+def _estimate_covariances(x, resp, nk, means, reg_covar, covar_type, arity):
     """Estimate the covariances and compute the cholesky precisions.
 
     Parameters
     ----------
-    dataset : dislib.data.Dataset
+    x : ds-array, shape (n_samples, n_features)
         The input data.
-    resp : array-like, shape (n_samples, n_components)
-        The responsibilities for each data sample in X.
+    resp : ds-array, shape (n_samples, n_components)
+        The responsibilities for each data sample in x.
     nk : array-like, shape (n_components,)
         The numbers of data samples (weighted by responsibility) in the
         current components.
@@ -89,12 +90,13 @@ def _estimate_covariances(dataset, resp, nk, means, reg_covar, covar_type,
     partials = []
     partial_covar = {
         "full": _partial_covar_full,
-        "tied": lambda r, s, m: _partial_covar_tied(s),
+        "tied": lambda r, x, m: _partial_covar_tied(x),
         "diag": _partial_covar_diag,
-        "spherical": _partial_covar_diag  # uses same partial as diag
+        "spherical": _partial_covar_diag  # uses same partial_covar as diag
         }[covar_type]
-    for ss, resp_ss in zip(dataset, resp):
-        partials.append(partial_covar(resp_ss, ss, means))
+    for x_part, resp_part in zip(x._iterator(axis=0), resp._iterator(axis=0)):
+        partials.append(partial_covar(resp_part._blocks, x_part._blocks,
+                                      means))
     while len(partials) > 1:
         partials_chunk = partials[:arity]
         partials = partials[arity:]
@@ -108,43 +110,48 @@ def _estimate_covariances(dataset, resp, nk, means, reg_covar, covar_type,
     return finalize_covariances(covar_type, reg_covar, nk, means, partials[0])
 
 
-@task(returns=1)
-def _partial_covar_full(resp, subset, means):
-    subsample = subset.samples
-    resp = resp.samples
+@task(x={Type: COLLECTION_IN, Depth: 2},
+      resp={Type: COLLECTION_IN, Depth: 2},
+      returns=1)
+def _partial_covar_full(resp, x, means):
+    x = Array._merge_blocks(x)
+    resp = Array._merge_blocks(resp)
     n_components, n_features = means.shape
     covariances = np.empty((n_components, n_features, n_features))
     for k in range(n_components):
-        if issparse(subsample):
-            diff = (x - means[k] for x in subsample)
+        if issparse(x):
+            diff = (x - means[k] for x in x)
             partial_covs = (np.dot(r*d.T, d) for d, r in zip(diff, resp[:, k]))
             covariances[k] = sum(partial_covs)
         else:
-            diff = subsample - means[k]
+            diff = x - means[k]
             covariances[k] = np.dot(resp[:, k] * diff.T, diff)
     return covariances
 
 
-@task(returns=1)
-def _partial_covar_tied(subset):
-    subsample = subset.samples
-    if issparse(subsample):
-        avg_sample_2 = subsample.T.dot(subsample)
+@task(x={Type: COLLECTION_IN, Depth: 2},
+      returns=1)
+def _partial_covar_tied(x):
+    x = Array._merge_blocks(x)
+    if issparse(x):
+        avg_sample_2 = x.T.dot(x)
     else:
-        avg_sample_2 = np.dot(subsample.T, subsample)
+        avg_sample_2 = np.dot(x.T, x)
     return avg_sample_2
 
 
-@task(returns=1)
-def _partial_covar_diag(resp, subset, means):
-    subsample = subset.samples
-    resp = resp.samples
-    if issparse(subsample):
-        avg_resp_sample_2 = subsample.multiply(subsample).T.dot(resp).T
-        avg_sample_means = means * subsample.T.dot(resp).T
+@task(x={Type: COLLECTION_IN, Depth: 2},
+      resp={Type: COLLECTION_IN, Depth: 2},
+      returns=1)
+def _partial_covar_diag(resp, x, means):
+    x = Array._merge_blocks(x)
+    resp = Array._merge_blocks(resp)
+    if issparse(x):
+        avg_resp_sample_2 = x.multiply(x).T.dot(resp).T
+        avg_sample_means = means * x.T.dot(resp).T
     else:
-        avg_resp_sample_2 = np.dot(resp.T, subsample * subsample)
-        avg_sample_means = means * np.dot(resp.T, subsample)
+        avg_resp_sample_2 = np.dot(resp.T, x * x)
+        avg_sample_means = means * np.dot(resp.T, x)
     return avg_resp_sample_2 - 2 * avg_sample_means
 
 
@@ -255,18 +262,19 @@ def _finalize_sum_log_prob_norm(*partials):
     return total / count
 
 
-@task(returns=2)
-def _estimate_responsibilities(subset, weights, means, precisions_cholesky,
+@task(x={Type: COLLECTION_IN, Depth: 2}, returns=2)
+def _estimate_responsibilities(x, weights, means, precisions_cholesky,
                                covariance_type):
-    """Estimate log-likelihood and responsibilities for a subset.
+    """Estimate log-likelihood and responsibilities for the given data portion.
 
     Compute the sum of log-likelihoods, the count of samples, and the
-    responsibilities for each sample in the subset with respect to the
+    responsibilities for each sample in the data portion with respect to the
     current state of the model.
 
     Parameters
     ----------
-    subset : dislib.datat.Subset
+    x : collection of depth 2
+        Blocks of a horizontal portion of the data.
     weights : array-like, shape (n_components,)
         The weights of the current components.
     means : array-like, shape (n_components, n_features)
@@ -279,12 +287,13 @@ def _estimate_responsibilities(subset, weights, means, precisions_cholesky,
 
     Returns
     -------
-    log_prob_norm_subset : tuple
-        tuple(sum, count) for log p(subset)
+    log_prob_norm_x : tuple
+        tuple(sum, count) for log p(x)
 
-    responsibilities : dislib.data.Subset
+    responsibilities : array-like, shape (x.shape[0], n_features)
     """
-    weighted_log_prob = _estimate_weighted_log_prob(subset, weights, means,
+    x = Array._merge_blocks(x)
+    weighted_log_prob = _estimate_weighted_log_prob(x, weights, means,
                                                     precisions_cholesky,
                                                     covariance_type)
     log_prob_norm = logsumexp(weighted_log_prob, axis=1)
@@ -293,12 +302,12 @@ def _estimate_responsibilities(subset, weights, means, precisions_cholesky,
     with np.errstate(under='ignore'):
         # ignore underflow
         resp = np.exp(weighted_log_prob - log_prob_norm[:, np.newaxis])
-    return (log_prob_norm_sum, count), Subset(resp)
+    return (log_prob_norm_sum, count), resp
 
 
-def _estimate_weighted_log_prob(subset, weights, means, precisions_cholesky,
+def _estimate_weighted_log_prob(x_part, weights, means, precisions_cholesky,
                                 covariance_type):
-    return _estimate_log_gaussian_prob(subset.samples, means,
+    return _estimate_log_gaussian_prob(x_part, means,
                                        precisions_cholesky, covariance_type)\
            + _estimate_log_weights(weights)
 
@@ -419,14 +428,19 @@ def _compute_log_det_cholesky(matrix_chol, covariance_type, n_features):
     return log_det_chol
 
 
-def _assign_predictions(dataset, responsabilities):
-    for subset, resp in zip(dataset, responsabilities):
-        _assign_subset_predictions(subset, resp)
+def _resp_argmax(resp):
+    pred_blocks = []
+    for resp_row in resp._iterator(axis=0):
+        pred_blocks.append([_partial_resp_argmax(resp_row._blocks)])
+    pred = Array(blocks=pred_blocks, blocks_shape=(resp._blocks_shape[0], 1),
+                 shape=(resp.shape[0], 1), sparse=False)
+    return pred
 
 
-@task(subset=INOUT)
-def _assign_subset_predictions(subset, responsabilities):
-    subset.labels = responsabilities.samples.argmax(axis=1)
+@task(resp={Type: COLLECTION_IN, Depth: 2}, returns=1)
+def _partial_resp_argmax(resp):
+    resp = Array._merge_blocks(resp)
+    return resp.argmax(axis=1)[:, np.newaxis]
 
 
 class GaussianMixture:
@@ -535,16 +549,14 @@ class GaussianMixture:
     --------
     >>> from pycompss.api.api import compss_wait_on
     >>> from dislib.cluster import GaussianMixture
-    >>> from dislib.data import load_data
-    >>> import numpy as np
-    >>> x = np.array([[1, 2], [1, 4], [1, 0], [4, 2], [4, 4], [4, 0]])
-    >>> train_data = load_data(x=x, subset_size=2)
+    >>> import dislib as ds
+    >>> x = ds.array([[1, 2], [1, 4], [1, 0], [4, 2], [4, 4], [4, 0]], (3, 2))
     >>> gm = GaussianMixture(n_components=2, random_state=0)
-    >>> gm.fit_predict(train_data)
-    >>> print(train_data.labels)
-    >>> test_data = load_data(x=np.array([[0, 0], [4, 4]]), subset_size=2)
-    >>> gm.predict(test_data)
-    >>> print(test_data.labels)
+    >>> labels = gm.fit_predict(x).collect()
+    >>> print(labels)
+    >>> x_test = ds.array([[0, 0], [4, 4]], (2, 2))
+    >>> labels_test = gm.predict(x_test).collect()
+    >>> print(labels_test)
     >>> print(compss_wait_on(gm.means_))
     """
 
@@ -568,7 +580,7 @@ class GaussianMixture:
         self.means_init = means_init
         self.precisions_init = precisions_init
 
-    def fit(self, dataset):
+    def fit(self, x):
         """Estimate model parameters with the EM algorithm.
 
         Iterates between E-steps and M-steps until convergence or until
@@ -577,7 +589,7 @@ class GaussianMixture:
 
         Parameters
         ----------
-        dataset : dislib.data.Dataset
+        x : ds-array, shape=(n_samples, n_features)
             Data points.
 
         Warns
@@ -593,17 +605,17 @@ class GaussianMixture:
 
         random_state = validation.check_random_state(self.random_state)
 
-        self._initialize_parameters(dataset, random_state)
+        self._initialize_parameters(x, random_state)
         self.lower_bound_ = -np.infty
         if self._verbose:
             print("GaussianMixture EM algorithm start")
         for self.n_iter in range(1, self.max_iter + 1):
             prev_lower_bound = self.lower_bound_
 
-            self.lower_bound_, resp = self._e_step(dataset)
-            self._m_step(dataset, resp)
-            for resp_subset in resp:
-                compss_delete_object(resp_subset)
+            self.lower_bound_, resp = self._e_step(x)
+            self._m_step(x, resp)
+            for resp_block in resp._blocks:
+                compss_delete_object(resp_block)
 
             if self._check_convergence:
                 self.lower_bound_ = compss_wait_on(self.lower_bound_)
@@ -624,16 +636,21 @@ class GaussianMixture:
                           'or check for degenerate data.',
                           ConvergenceWarning)
 
-    def fit_predict(self, dataset):
-        """Estimate model parameters and predict labels of the same dataset.
+    def fit_predict(self, x):
+        """Estimate model parameters and predict clusters for the same data.
 
-        Fits the model and, after fitting, uses the model to predict labels for
-        the same training dataset.
+        Fits the model and, after fitting, uses the model to predict cluster
+        labels for the same training data.
 
         Parameters
         ----------
-        dataset : dislib.data.Dataset
+        x : ds-array, shape=(n_samples, n_features)
             Data points.
+
+        Returns
+        -------
+        y : ds-array, shape(n_samples, 1)
+            Cluster labels for x.
 
         Warns
         -----
@@ -641,69 +658,82 @@ class GaussianMixture:
             If `tol` is not None and `max_iter` iterations are reached without
             convergence.
         """
-        self.fit(dataset)
-        self.predict(dataset)
+        self.fit(x)
+        return self.predict(x)
 
-    def predict(self, dataset):
-        """Predict labels for the given dataset using trained model.
+    def predict(self, x):
+        """Predict cluster labels for the given data using the trained model.
 
         Parameters
         ----------
-        dataset : dislib.data.Dataset
+        x : ds-array, shape=(n_samples, n_features)
             Data points.
+
+        Returns
+        -------
+        y : ds-array, shape(n_samples, 1)
+            Cluster labels for x.
 
         """
         validation.check_is_fitted(self,
                                    ['weights_', 'means_',
                                     'precisions_cholesky_'])
-        _, resp = self._e_step(dataset)
-        _assign_predictions(dataset, resp)
+        _, resp = self._e_step(x)
+        return _resp_argmax(resp)
 
-    def _e_step(self, dataset):
+    def _e_step(self, x):
         """E step.
 
         Parameters
         ----------
-        dataset : dislib.data.Dataset
+        x : ds-array, shape=(n_samples, n_features)
+            Data points.
 
         Returns
         -------
         log_prob_norm : float
             Mean of the logarithms of the probabilities of each sample in the
-            dataset.
+            data.
 
-        responsibility : dislib.data.Dataset
+        responsibility : ds-array, shape (n_samples, n_components)
             Posterior probabilities (or responsibilities) of each sample in the
-            dataset.
+            data.
         """
-        log_prob_norm = []
-        resp = Dataset(self.n_components)
-        for s in dataset:
-            log_prob_norm_s, resp_s = self._estimate_prob_resp(s)
-            log_prob_norm.append(log_prob_norm_s)
-            resp.append(resp_s)
-        return self._reduce_log_prob_norm(log_prob_norm), resp
+        log_prob_norm_partials = []
+        resp_blocks = []
+        for x_part in x._iterator(axis=0):
+            log_prob_norm_part, resp_part = self._estimate_prob_resp(x_part)
+            log_prob_norm_partials.append(log_prob_norm_part)
+            resp_blocks.append([resp_part])
+        log_prob_norm = self._reduce_log_prob_norm(log_prob_norm_partials)
 
-    def _estimate_prob_resp(self, subset):
+        resp = Array(blocks=resp_blocks,
+                     blocks_shape=(x._blocks_shape[0], self.n_components),
+                     shape=(x.shape[0], self.n_components), sparse=False)
+        return log_prob_norm, resp
+
+    def _estimate_prob_resp(self, x_part):
         """Estimate log-likelihood and responsibilities for a subset.
 
         Compute the sum of log-likelihoods, the count of samples, and the
-        responsibilities for each sample in the subset with respect to the
-        current state of the model.
+        responsibilities for each sample in the data portion with respect to
+        the current state of the model.
 
         Parameters
         ----------
-        subset : dislib.data.Subset
+        x_part : ds-array, shape=(x_part_size, n_features)
+            Horizontal portion of the data.
 
         Returns
         -------
         log_prob_norm_subset : tuple
             tuple(sum, count) for log p(subset)
 
-        responsibilities : dislib.data.Subset
-            responsibilities for each sample and component
+        responsibilities : ds-array, shape (x.shape[0], n_components)
+            Responsibilities for each sample and component.
         """
-        return _estimate_responsibilities(subset, self.weights_, self.means_,
+        return _estimate_responsibilities(x_part._blocks, self.weights_,
+                                          self.means_,
                                           self.precisions_cholesky_,
                                           self.covariance_type)
 
@@ -714,37 +744,38 @@ class GaussianMixture:
             partials.append(_sum_log_prob_norm(*partials_subset))
         return _finalize_sum_log_prob_norm(*partials)
 
-    def _m_step(self, dataset, resp):
+    def _m_step(self, x, resp):
         """M step.
 
         Parameters
         ----------
-        dataset : dislib.data.Dataset
+        x : ds-array, shape=(n_samples, n_features)
+            Data points.
 
-        resp : dislib.data.Dataset
+        resp : ds-array, shape (n_samples, n_components)
             Posterior probabilities (or responsibilities) of the point of each
-            sample in the dataset.
+            sample in the data.
         """
-        weights, nk, means = self._estimate_parameters(dataset, resp)
+        weights, nk, means = self._estimate_parameters(x, resp)
         self.weights_ = weights
         self.means_ = means
 
-        cov, p_c = _estimate_covariances(dataset, resp, nk, means,
+        cov, p_c = _estimate_covariances(x, resp, nk, means,
                                          self.reg_covar, self.covariance_type,
                                          self._arity)
 
         self.covariances_ = cov
         self.precisions_cholesky_ = p_c
 
-    def _estimate_parameters(self, dataset, resp):
+    def _estimate_parameters(self, x, resp):
         """Estimate the Gaussian distribution weights and means.
 
         Parameters
         ----------
-        dataset : dislib.data.Dataset
-            The input data.
-        resp : array-like, shape (n_samples, n_components)
-            The responsibilities for each data sample in X.
+        x : ds-array, shape=(n_samples, n_features)
+            Data points.
+        resp : ds-array, shape (n_samples, n_components)
+            The responsibilities for each data sample in x.
 
         Returns
         -------
@@ -756,11 +787,13 @@ class GaussianMixture:
         means : array-like, shape (n_components, n_features)
             The centers of the current components.
         """
-        subsets_params = []
-        for ss, resp_ss in zip(dataset, resp):
-            ss_params = _estimate_parameters_subset(ss, resp_ss)
-            subsets_params.append(ss_params)
-        return _reduce_estimate_parameters(subsets_params, self._arity)
+        all_partial_params = []
+        for x_part, resp_part in zip(x._iterator(axis=0),
+                                     resp._iterator(axis=0)):
+            partial_params = _partial_estimate_parameters(x_part._blocks,
+                                                          resp_part._blocks)
+            all_partial_params.append(partial_params)
+        return _reduce_estimate_parameters(all_partial_params, self._arity)
 
     def _check_initial_parameters(self):
         """Check values of the basic parameters."""
@@ -855,12 +888,13 @@ class GaussianMixture:
         if isinstance(self.precisions_init, (list, tuple)):
             self.precisions_init = np.array(self.precisions_init)
 
-    def _initialize_parameters(self, dataset, random_state):
+    def _initialize_parameters(self, x, random_state):
         """Initialization of the Gaussian mixture parameters.
 
         Parameters
         ----------
-        dataset : dislib.data.Dataset
+        x : ds-array, shape=(n_samples, n_features)
+            Data points.
 
         random_state : RandomState
             A random number generator instance.
@@ -884,59 +918,62 @@ class GaussianMixture:
                              self.precisions_init is None)
         if initialize_params:
             n_components = self.n_components
-            resp = Dataset(n_components)
+            resp_blocks = []
             if self.init_params == 'kmeans':
                 if self._verbose:
                     print("KMeans initialization start")
                 seed = random_state.randint(0, int(1e8))
                 kmeans = KMeans(n_clusters=n_components, random_state=seed,
                                 verbose=self._verbose)
-                kmeans.fit_predict(dataset)
+                y = kmeans.fit_predict(x)
                 self.kmeans = kmeans
-                for labeled_subset in dataset:
-                    resp.append(_resp_subset(labeled_subset, n_components))
+                for y_part in y._iterator(axis=0):
+                    resp_blocks.append([_resp_subset(y_part._blocks,
+                                                     n_components)])
+
             elif self.init_params == 'random':
-                chunks = len(dataset)
+                chunks = x._n_blocks[0]
                 seeds = random_state.randint(np.iinfo(np.int32).max,
                                              size=chunks)
-                for i in range(chunks):
-                    subset = dataset[i]
-                    resp.append(_random_resp_subset(subset, n_components,
-                                                    seeds[i]))
+                for i, x_row in enumerate(x._iterator(axis=0)):
+                    resp_blocks.append([_random_resp_subset(x_row.shape[0],
+                                                            n_components,
+                                                            seeds[i])])
             else:
                 raise ValueError("Unimplemented initialization method '%s'"
                                  % self.init_params)
-
-            weights, nk, means = self._estimate_parameters(dataset, resp)
+            resp = Array(blocks=resp_blocks,
+                         blocks_shape=(x._blocks_shape[0], n_components),
+                         shape=(x.shape[0], n_components), sparse=False)
+            weights, nk, means = self._estimate_parameters(x, resp)
             if self.means_init is None:
                 self.means_ = means
             if self.weights_init is None:
                 self.weights_ = weights
 
             if self.precisions_init is None:
-                cov, p_c = _estimate_covariances(dataset, resp, nk,
+                cov, p_c = _estimate_covariances(x, resp, nk,
                                                  self.means_, self.reg_covar,
                                                  self.covariance_type,
                                                  self._arity)
                 self.covariances_ = cov
                 self.precisions_cholesky_ = p_c
 
-            for resp_subset in resp:
-                compss_delete_object(resp_subset)
+            for resp_block in resp._blocks:
+                compss_delete_object(resp_block)
 
 
-@task(returns=1)
-def _resp_subset(labeled_subset, n_components):
-    labels = labeled_subset.labels
+@task(labels={Type: COLLECTION_IN, Depth: 2}, returns=1)
+def _resp_subset(labels, n_components):
+    labels = Array._merge_blocks(labels).flatten()
     n_samples = len(labels)
     resp_chunk = np.zeros((n_samples, n_components))
-    resp_chunk[np.arange(n_samples), labels.astype(int)] = 1
-    return Subset(resp_chunk)
+    resp_chunk[np.arange(n_samples), labels.astype(int, copy=False)] = 1
+    return resp_chunk
 
 
 @task(returns=1)
-def _random_resp_subset(subset, n_components, seed):
-    n_samples = subset.samples.shape[0]
+def _random_resp_subset(n_samples, n_components, seed):
     resp_chunk = RandomState(seed).rand(n_samples, n_components)
     resp_chunk /= resp_chunk.sum(axis=1)[:, np.newaxis]
-    return Subset(resp_chunk)
+    return resp_chunk

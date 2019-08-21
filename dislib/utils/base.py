@@ -168,13 +168,12 @@ def _choose_and_assign_parts(subset, part_sizes, parts, seed):
 
 
 def _paired_partition(x, y):
-    regular_shapes = len(x._blocks_shape) == 2
-    if regular_shapes:
-        top_num_rows = x._blocks_shape[0]
-        regular_num_rows = x._blocks_shape[0]
-    else:
-        top_num_rows = x._blocks_shape[0][0]
-        regular_num_rows = x._blocks_shape[1][0]
+    # Generator of tuples (x_part, y_part) that partitions x and y horizontally
+    # with parts with corresponding samples. It follows the x array block
+    # row-wise partition, and slices y accordingly. It should work even if the
+    # blocks of x and y have a different number of rows.
+    top_num_rows = x._top_left_shape[0]
+    regular_num_rows = x._blocks_shape[0]
     start_idx = 0
     end_idx = top_num_rows
     for x_row in x._iterator(axis=0):
