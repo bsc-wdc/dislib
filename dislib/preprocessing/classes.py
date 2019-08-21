@@ -44,7 +44,8 @@ class StandardScaler(object):
         for row, m_row in zip(x._iterator(1), self.mean_._iterator(1)):
             var_blocks[0].append(_compute_var(row._blocks, m_row._blocks))
 
-        self.var_ = Array(var_blocks, top_left_shape=self.mean_._top_left_shape,
+        self.var_ = Array(var_blocks,
+                          top_left_shape=self.mean_._top_left_shape,
                           reg_shape=self.mean_._reg_shape,
                           shape=self.mean_.shape, sparse=False)
 
@@ -80,7 +81,7 @@ class StandardScaler(object):
         if self.mean_ is None or self.var_ is None:
             raise Exception("Model has not been initialized.")
 
-        n_blocks = x._reg_shape[1]
+        n_blocks = x._n_blocks[1]
         blocks = []
         m_blocks = self.mean_._blocks
         v_blocks = self.var_._blocks
@@ -107,15 +108,16 @@ def _compute_var(blocks, m_blocks):
 @task(blocks={Type: COLLECTION_IN, Depth: 2},
       m_blocks={Type: COLLECTION_IN, Depth: 2},
       v_blocks={Type: COLLECTION_IN, Depth: 2},
-      out_blocks={Type: COLLECTION_INOUT})
+      out_blocks=COLLECTION_INOUT)
 def _transform(blocks, m_blocks, v_blocks, out_blocks):
     x = Array._merge_blocks(blocks)
     mean = Array._merge_blocks(m_blocks)
     var = Array._merge_blocks(v_blocks)
     scaled_x = (x - mean) / np.sqrt(var)
 
-    bm = len(blocks)
     constructor_func = np.array if not issparse(x) else csr_matrix
+    start, end = 0, 0
 
-    for i, j in enumerate(range(0, x.shape[1], bm)):
-        out_blocks[i] = constructor_func(scaled_x[:, j: j + bm])
+    for i, block in enumerate(blocks[0]):
+        end += block.shape[1]
+        out_blocks[i] = constructor_func(scaled_x[:, start:end])

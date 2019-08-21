@@ -342,13 +342,13 @@ class Array(object):
         return ret
 
     @staticmethod
-    def _get_out_blocks(blocks_shape):
+    def _get_out_blocks(n_blocks):
         """
         Helper function that builds empty lists of lists to be filled as
         parameter of type COLLECTION_INOUT
         """
-        return [[object() for _ in range(blocks_shape[1])]
-                for _ in range(blocks_shape[0])]
+        return [[object() for _ in range(n_blocks[1])]
+                for _ in range(n_blocks[0])]
 
     @staticmethod
     def _broadcast_shapes(x, y):
@@ -691,7 +691,7 @@ class Array(object):
 
         # all rows (slice : for rows) and list of indices for columns
         elif isinstance(rows, slice) and (
-                    isinstance(cols, list) or isinstance(cols, np.ndarray)):
+                isinstance(cols, list) or isinstance(cols, np.ndarray)):
             return self._get_by_lst_cols(cols=cols)
 
         # slicing both dimensions

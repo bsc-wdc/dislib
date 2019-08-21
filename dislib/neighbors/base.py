@@ -18,8 +18,7 @@ class NearestNeighbors:
     --------
     >>> from dislib.neighbors import NearestNeighbors
     >>> import dislib as ds
-    >>> x = np.random.random((100, 5))
-    >>> data = ds.array(x, blocks_shape=(25, 5))
+    >>> data = ds.random_array((100, 5), blocks_shape=(25, 5))
     >>> knn = NearestNeighbors(n_neighbors=10)
     >>> knn.fit(data)
     >>> distances, indices = knn.kneighbors(data)
