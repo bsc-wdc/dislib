@@ -5,9 +5,9 @@ from pycompss.api.task import task
 from scipy.sparse import csr_matrix
 from sklearn.metrics import pairwise_distances
 from sklearn.metrics.pairwise import paired_distances
+from sklearn.utils import check_random_state
 
 from dislib.data.array import Array
-from sklearn.utils import check_random_state
 
 
 class KMeans:
@@ -140,8 +140,9 @@ class KMeans:
         for row in x._iterator(axis=0):
             blocks.append([_predict(row._blocks, self.centers)])
 
-        return Array(blocks=blocks, blocks_shape=(x._blocks_shape[0], 1),
-                     shape=(x.shape[0], 1), sparse=False)
+        return Array(blocks=blocks, top_left_shape=(x._top_left_shape[0], 1),
+                     reg_shape=(x._reg_shape[0], 1), shape=(x.shape[0], 1),
+                     sparse=False)
 
     def _converged(self, old_centers, iteration):
         if old_centers is None:

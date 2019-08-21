@@ -153,10 +153,10 @@ class RandomForestClassifier:
             prob_blocks.append([_join_predictions(*tree_predictions)])
         self.classes = compss_wait_on(self.classes)
         n_classes = len(self.classes)
-        s = x._blocks_shape
-        blocks_shape = (s[0], n_classes) if len(s) == 2 \
-            else tuple((s[i][0], n_classes) for i in range(3))
-        probabilities = Array(blocks=prob_blocks, blocks_shape=blocks_shape,
+
+        probabilities = Array(blocks=prob_blocks,
+                              top_left_shape=(x._top_left_shape[0], n_classes),
+                              reg_shape=(x._reg_shape[0], n_classes),
                               shape=(x.shape[0], n_classes), sparse=False)
         return probabilities
 
@@ -188,11 +188,12 @@ class RandomForestClassifier:
                 for tree in self.trees:
                     tree_predictions.append(tree.predict_proba(x_row))
                 pred_blocks.append(_soft_vote(self.classes, *tree_predictions))
-        s = x._blocks_shape
-        pred_blocks_shape = (s[0], 1) if len(s) == 2 \
-            else ((s[0][0], 1), (s[1][0], 1), (s[2][0], 1))
-        y_pred = Array(blocks=[pred_blocks], blocks_shape=pred_blocks_shape,
-                       shape=(x.shape[0], 1), sparse=False)
+        s = x._reg_shape
+
+        y_pred = Array(blocks=[pred_blocks],
+                       top_left_shape=(x._top_left_shape[0], 1),
+                       reg_shape=(x._reg_shape[0], 1), shape=(x.shape[0], 1),
+                       sparse=False)
         return y_pred
 
     def score(self, x, y):

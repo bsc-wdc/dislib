@@ -147,7 +147,8 @@ class DBSCAN():
         label_blocks = _rearrange_labels(final_labels, indices, x._n_blocks[0])
 
         self._labels = Array(blocks=label_blocks,
-                             blocks_shape=(x._blocks_shape[0], 1),
+                             top_left_shape=(x._top_left_shape[0], 1),
+                             reg_shape=(x._reg_shape[0], 1),
                              shape=(x._shape[0], 1), sparse=False)
         return self
 

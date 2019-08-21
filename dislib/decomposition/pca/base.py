@@ -239,10 +239,10 @@ def _transform(x, mean, components):
         out_blocks = [object() for _ in range(rows._n_blocks[1])]
         _subset_transform(rows._blocks, out_blocks, mean, components)
         new_blocks.append(out_blocks)
-    bn, bm = x._blocks_shape
 
-    return Array(blocks=new_blocks, shape=(x.shape[0], components.shape[1]),
-                 blocks_shape=(bn, bm), sparse=x._sparse)
+    return Array(blocks=new_blocks, top_left_shape=x._top_left_shape,
+                 reg_shape=x._reg_shape,
+                 shape=(x.shape[0], components.shape[1]), sparse=x._sparse)
 
 
 @task(blocks={Type: COLLECTION_IN, Depth: 2},

@@ -175,7 +175,8 @@ class CascadeSVM(object):
         for row in x._iterator(axis=0):
             y_list.append([_predict(row._blocks, self._clf)])
 
-        return Array(blocks=y_list, blocks_shape=(x._blocks_shape[0], 1),
+        return Array(blocks=y_list, top_left_shape=(x._top_left_shape[0], 1),
+                     reg_shape=(x._reg_shape[0], 1),
                      shape=(x.shape[0], 1), sparse=False)
 
     def decision_function(self, x):
@@ -199,9 +200,8 @@ class CascadeSVM(object):
         for row in x._iterator(axis=0):
             df.append([_decision_function(row._blocks, self._clf)])
 
-        bshape = x._blocks_shape
-
-        return Array(blocks=df, blocks_shape=(bshape[0], 1),
+        return Array(blocks=df, top_left_shape=(x._top_left_shape[0], 1),
+                     reg_shape=(x._reg_shape[0], 1),
                      shape=(x.shape[0], 1), sparse=False)
 
     def score(self, x, y):
@@ -230,22 +230,22 @@ class CascadeSVM(object):
             partial_scores.append(partial)
 
         score = [[_merge_scores(*partial_scores)]]
-        return Array(blocks=score, blocks_shape=(1, 1), shape=(1, 1),
-                     sparse=False)
+        return Array(blocks=score, top_left_shape=(1, 1), reg_shape=(1, 1),
+                     shape=(1, 1), sparse=False)
 
     @staticmethod
     def _check_xy(x, y):
         # We force 'x' and 'y' to have the same number of row blocks. This
         # could be avoided by re-chunking 'y', or using slicing on 'y'
         # during the training process
-        xshape = x._blocks_shape
-        yshape = y._blocks_shape
+        xshape = x._reg_shape
+        yshape = y._reg_shape
 
         if len(xshape) != len(yshape) or \
                 (isinstance(xshape, tuple) and xshape[0] != yshape[0]) or \
                 (isinstance(xshape, list) and \
-                 (xshape[0][0] != yshape[0][0] or \
-                  xshape[-1][0] != yshape[-1][0])):
+                         (xshape[0][0] != yshape[0][0] or \
+                                      xshape[-1][0] != yshape[-1][0])):
             raise AttributeError(
                 "x and y must have the same number of blocks along the first "
                 "axis")

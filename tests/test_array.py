@@ -299,7 +299,7 @@ class ArrayTest(unittest.TestCase):
 
         self.assertEqual(darray._n_blocks,
                          (ceil(x_size / bn), ceil(y_size / bm)))
-        self.assertEqual(darray._blocks_shape, (bn, bm))
+        self.assertEqual(darray._reg_shape, (bn, bm))
 
         x = sp.csr_matrix(x)
         darray = ds.array(x=x, blocks_shape=(bn, bm))
@@ -307,7 +307,7 @@ class ArrayTest(unittest.TestCase):
         self.assertEqual(darray.shape, (x_size, y_size))
         self.assertEqual(darray._n_blocks,
                          (ceil(x_size / bn), ceil(y_size / bm)))
-        self.assertEqual(darray._blocks_shape, (bn, bm))
+        self.assertEqual(darray._reg_shape, (bn, bm))
 
     def test_iterate_rows(self):
         """ Testing the row _iterator of the ds.array
@@ -527,7 +527,7 @@ class ArrayTest(unittest.TestCase):
 
         self.assertEqual(arr1.shape, arr1.collect().shape)
         self.assertEqual(arr1._n_blocks, (3, 6))
-        self.assertEqual(arr1._blocks_shape, (43, 31))
+        self.assertEqual(arr1._reg_shape, (43, 31))
         self.assertEqual(arr1._blocks[2][0].shape, (7, 31))
         self.assertEqual(arr1._blocks[2][5].shape, (7, 22))
         self.assertEqual(arr1._blocks[0][5].shape, (43, 22))
@@ -550,41 +550,41 @@ class ArrayTest(unittest.TestCase):
 
         x1 = ds.apply_along_axis(_sum_and_mult, 0, x)
         self.assertTrue(x1.shape, (1, 3))
-        self.assertTrue(x1._blocks_shape, (1, 2))
+        self.assertTrue(x1._reg_shape, (1, 2))
         self.assertTrue(np.array_equal(x1.collect(), np.array([12, 15, 18])))
 
         x1 = ds.apply_along_axis(_sum_and_mult, 1, x)
         self.assertTrue(x1.shape, (3, 1))
-        self.assertTrue(x1._blocks_shape, (2, 1))
+        self.assertTrue(x1._reg_shape, (2, 1))
         self.assertTrue(np.array_equal(x1.collect(), np.array([6, 15, 24])))
 
         x1 = ds.apply_along_axis(_sum_and_mult, 1, x, 2)
         self.assertTrue(x1.shape, (3, 1))
-        self.assertTrue(x1._blocks_shape, (2, 1))
+        self.assertTrue(x1._reg_shape, (2, 1))
         self.assertTrue(np.array_equal(x1.collect(), np.array([8, 17, 26])))
 
         x1 = ds.apply_along_axis(_sum_and_mult, 1, x, b=2)
         self.assertTrue(x1.shape, (3, 1))
-        self.assertTrue(x1._blocks_shape, (2, 1))
+        self.assertTrue(x1._reg_shape, (2, 1))
         self.assertTrue(np.array_equal(x1.collect(), np.array([12, 30, 48])))
 
         x1 = ds.apply_along_axis(_sum_and_mult, 1, x, 1, b=2)
         self.assertTrue(x1.shape, (3, 1))
-        self.assertTrue(x1._blocks_shape, (2, 1))
+        self.assertTrue(x1._reg_shape, (2, 1))
         self.assertTrue(np.array_equal(x1.collect(), np.array([14, 32, 50])))
 
         x = ds.array(sp.csr_matrix([[1, 0, -1], [0, 5, 0], [7, 8, 0]]),
                      blocks_shape=(2, 2))
         x1 = ds.apply_along_axis(_sum_and_mult, 0, x, 1, b=2)
         self.assertTrue(x1.shape, (1, 3))
-        self.assertTrue(x1._blocks_shape, (1, 2))
+        self.assertTrue(x1._reg_shape, (1, 2))
         self.assertTrue(np.array_equal(x1.collect(), np.array([18, 28, 0])))
 
         x = ds.array(sp.csr_matrix([[1, 0, -1], [0, 5, 0], [7, 8, 0]]),
                      blocks_shape=(2, 2))
         x1 = ds.apply_along_axis(_sum_and_mult, 0, x, 1, b=2)
         self.assertTrue(x1.shape, (1, 3))
-        self.assertTrue(x1._blocks_shape, (1, 2))
+        self.assertTrue(x1._reg_shape, (1, 2))
         self.assertTrue((x1.collect() == np.array([18, 28, 0])).all())
 
     def test_apply_sparse(self):

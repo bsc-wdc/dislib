@@ -168,13 +168,13 @@ def _choose_and_assign_parts(subset, part_sizes, parts, seed):
 
 
 def _paired_partition(x, y):
-    regular_shapes = len(x._blocks_shape) == 2
+    regular_shapes = len(x._reg_shape) == 2
     if regular_shapes:
-        top_num_rows = x._blocks_shape[0]
-        regular_num_rows = x._blocks_shape[0]
+        top_num_rows = x._reg_shape[0]
+        regular_num_rows = x._reg_shape[0]
     else:
-        top_num_rows = x._blocks_shape[0][0]
-        regular_num_rows = x._blocks_shape[1][0]
+        top_num_rows = x._reg_shape[0][0]
+        regular_num_rows = x._reg_shape[1][0]
     start_idx = 0
     end_idx = top_num_rows
     for x_row in x._iterator(axis=0):

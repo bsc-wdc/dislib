@@ -90,8 +90,8 @@ class LinearRegression:
             blocks[0].append(
                 _predict(r_block._blocks, self.coef_, self.intercept_))
 
-        return Array(blocks=blocks, blocks_shape=(x._blocks_shape[0], 1),
-                     shape=(x.shape[0], 1),
+        return Array(blocks=blocks, top_left_shape=(x._top_left_shape[0], 1),
+                     reg_shape=(x._reg_shape[0], 1), shape=(x.shape[0], 1),
                      sparse=x._sparse)
 
 

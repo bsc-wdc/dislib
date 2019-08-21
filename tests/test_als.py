@@ -32,10 +32,10 @@ def load_movielens(train_ratio=0.9):
         (test_df.rating, (test_df.user_id, test_df.movie_id)))
 
     x_size, y_size = train.shape[0] // 4, train.shape[1] // 4
-    train_arr = ds.array(train, block_size=(x_size, y_size))
+    train_arr = ds.array(train, blocks_shape=(x_size, y_size))
 
     x_size, y_size = test.shape[0] // 4, test.shape[1] // 4
-    test_arr = ds.array(test, block_size=(x_size, y_size))
+    test_arr = ds.array(test, blocks_shape=(x_size, y_size))
 
     return train_arr, test_arr
 
@@ -79,7 +79,7 @@ class ALSTest(unittest.TestCase):
     def test_predict(self):
         data = np.array([[0, 0, 5], [3, 0, 5], [3, 1, 2]])
         ratings = csr_matrix(data)
-        train = ds.array(x=ratings, block_size=(1, 1))
+        train = ds.array(x=ratings, blocks_shape=(1, 1))
         als = ALS(tol=0.01, random_state=666, n_f=5, verbose=True)
         als.fit(train)
         predictions = als.predict_user(user_id=0)
