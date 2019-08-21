@@ -1,5 +1,4 @@
 import itertools
-import numbers
 from collections import defaultdict
 from math import ceil
 
@@ -10,6 +9,7 @@ from pycompss.api.parameter import Depth, Type
 from pycompss.api.task import task
 from scipy import sparse as sp
 from scipy.sparse import issparse
+from sklearn.utils import check_random_state
 
 
 def array(x, blocks_shape):
@@ -42,7 +42,7 @@ def array(x, blocks_shape):
     return darray
 
 
-def random_array(shape, block_size, random_state=None):
+def random_array(shape, blocks_shape, random_state=None):
     """
     Returns a distributed array of random floats in the open interval [0.0,
     1.0). Values are from the "continuous uniform" distribution over the
@@ -52,7 +52,7 @@ def random_array(shape, block_size, random_state=None):
     ----------
     shape : tuple of two ints
         Shape of the output ds-array.
-    block_size : tuple of two ints
+    blocks_shape : tuple of two ints
         Size of the ds-array blocks.
     random_state : int or RandomState, optional (default=None)
         Seed or numpy.random.RandomState instance to generate the random
@@ -63,38 +63,32 @@ def random_array(shape, block_size, random_state=None):
     dsarray : ds-array
         Distributed array of random floats.
     """
-    if shape[0] < block_size[0] or shape[1] < block_size[1]:
+    if shape[0] < blocks_shape[0] or shape[1] < blocks_shape[1]:
         raise ValueError("Block size is greater than the array")
 
-    r_state = random_state
+    r_state = check_random_state(random_state)
 
-    if isinstance(r_state, (numbers.Integral, np.integer)):
-        r_state = np.random.RandomState(r_state)
-
-    seed = None
-    blocks_shape = (int(np.ceil(shape[0] / block_size[0])),
-                    int(np.ceil(shape[1] / block_size[1])))
+    n_blocks = (int(np.ceil(shape[0] / blocks_shape[0])),
+                int(np.ceil(shape[1] / blocks_shape[1])))
 
     blocks = list()
 
-    for row_idx in range(blocks_shape[0]):
+    for row_idx in range(n_blocks[0]):
         blocks.append(list())
 
-        for col_idx in range(blocks_shape[1]):
-            b_size0, b_size1 = block_size
+        for col_idx in range(n_blocks[1]):
+            b_size0, b_size1 = blocks_shape
 
-            if row_idx == blocks_shape[0] - 1:
-                b_size0 = shape[0] - (blocks_shape[0] - 1) * block_size[0]
+            if row_idx == n_blocks[0] - 1:
+                b_size0 = shape[0] - (n_blocks[0] - 1) * blocks_shape[0]
 
-            if col_idx == blocks_shape[1] - 1:
-                b_size1 = shape[1] - (blocks_shape[1] - 1) * block_size[1]
+            if col_idx == n_blocks[1] - 1:
+                b_size1 = shape[1] - (n_blocks[1] - 1) * blocks_shape[1]
 
-            if r_state is not None:
-                seed = r_state.randint(np.iinfo(np.int32).max)
-
+            seed = r_state.randint(np.iinfo(np.int32).max)
             blocks[-1].append(_random_block((b_size0, b_size1), seed))
 
-    return Array(blocks, block_size, shape, False)
+    return Array(blocks, blocks_shape, shape, False)
 
 
 def apply_along_axis(func, axis, x, *args, **kwargs):
@@ -855,9 +849,7 @@ def _get_item(i, j, block):
 
 @task(returns=np.array)
 def _random_block(shape, seed):
-    if seed is not None:
-        np.random.seed(seed)
-
+    np.random.seed(seed)
     return np.random.random(shape)
 
 

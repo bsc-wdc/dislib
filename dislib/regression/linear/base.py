@@ -34,7 +34,7 @@ class LinearRegression:
     >>> x_data = np.array([1, 2, 3, 4, 5]).reshape(-1, 1)
     >>> y_data = np.array([2, 1, 1, 2, 4.5]).reshape(-1, 1)
     >>> bn, bm = 2, 2
-    >>>     x = ds.array(x=x_data, blocks_shape=(bn, bm))
+    >>> x = ds.array(x=x_data, blocks_shape=(bn, bm))
     >>> y = ds.array(x=y_data, blocks_shape=(bn, bm))
     >>> reg = LinearRegression()
     >>> reg.fit(x, y)
@@ -59,9 +59,9 @@ class LinearRegression:
 
         Parameters
         ----------
-        x : darray
+        x : ds-array
             Samples to be used to fit the model
-        y : darray
+        y : ds-array
             Labels of the samples
 
         """
@@ -76,11 +76,11 @@ class LinearRegression:
 
         Parameters
         ----------
-        x : darray
+        x : ds-array
             Samples to be predicted: x.shape (n_samples, 1).
         Returns
         -------
-        y : darray
+        y : ds-array
             Predicted values
         """
 
