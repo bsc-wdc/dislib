@@ -1,8 +1,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import dislib as ds
 
 from dislib.cluster import GaussianMixture
-from dislib.data import load_data
 
 
 def main():
@@ -64,7 +64,7 @@ def main():
                 'corr': create_correlated_dataset()}
     real_labels = {k: v[1] for k, v in datasets.items()}
     for k, v in datasets.items():
-        datasets[k] = load_data(x=v[0], subset_size=200)
+        datasets[k] = ds.array(v[0], blocks_shape=(200, v[0].shape[1]))
 
     covariance_types = 'full', 'tied', 'diag', 'spherical'
 
@@ -74,17 +74,18 @@ def main():
         equal_ratio = equal_labels / len(real)
         return max(equal_ratio, 1 - equal_ratio)
 
-    accuracy = {}
     pred_labels = {}
     for cov_type in covariance_types:
-        accuracy[cov_type] = {}
         pred_labels[cov_type] = {}
         gm = GaussianMixture(n_components=2, covariance_type=cov_type,
                              random_state=0)
-        for ds in datasets.values():
-            gm.fit_predict(ds)
-        for k, ds in datasets.items():
-            pred = ds.labels
+        for k, x in datasets.items():
+            pred_labels[cov_type][k] = gm.fit_predict(x)
+    accuracy = {}
+    for cov_type in covariance_types:
+        accuracy[cov_type] = {}
+        for k, pred in pred_labels[cov_type].items():
+            pred = pred.collect()
             pred_labels[cov_type][k] = pred
             accuracy[cov_type][k] = compute_accuracy(real_labels[k], pred)
     # Copied code END
@@ -96,8 +97,8 @@ def main():
                         hspace=.01)
     plot_num = 1
 
-    for i_ds, (ds_name, ds) in enumerate(datasets.items()):
-        x = ds.samples
+    for i_ds, (ds_name, x) in enumerate(datasets.items()):
+        x = x.collect()
 
         plt.subplot(len(datasets), len(covariance_types) + 1, plot_num)
         if i_ds == 0:

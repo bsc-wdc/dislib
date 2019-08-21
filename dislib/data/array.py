@@ -8,7 +8,7 @@ from pycompss.api.parameter import COLLECTION_INOUT, COLLECTION_IN
 from pycompss.api.parameter import Depth, Type
 from pycompss.api.task import task
 from scipy import sparse as sp
-from scipy.sparse import issparse
+from scipy.sparse import issparse, csr_matrix
 from sklearn.utils import check_random_state
 
 
@@ -18,7 +18,7 @@ def array(x, blocks_shape):
 
     Parameters
     ----------
-    x : ndarray, shape=[n_samples, n_features]
+    x : spmatrix or array-like, shape=[n_samples, n_features]
         Array of samples.
     blocks_shape : (int, int)
         Block sizes in number of samples.
@@ -28,6 +28,13 @@ def array(x, blocks_shape):
     darray : Array
         A distributed representation of the data divided in blocks.
     """
+    sparse = issparse(x)
+
+    if sparse:
+        x = csr_matrix(x, copy=True)
+    else:
+        x = np.array(x, copy=True)
+
     bn, bm = blocks_shape
 
     blocks = []
@@ -35,7 +42,6 @@ def array(x, blocks_shape):
         row = [x[i: i + bn, j: j + bm] for j in range(0, x.shape[1], bm)]
         blocks.append(row)
 
-    sparse = issparse(x)
     darray = Array(blocks=blocks, blocks_shape=blocks_shape, shape=x.shape,
                    sparse=sparse)
 
