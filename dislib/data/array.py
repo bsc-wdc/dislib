@@ -1,5 +1,4 @@
 import itertools
-import numbers
 from collections import defaultdict
 from math import ceil
 
@@ -9,7 +8,8 @@ from pycompss.api.parameter import COLLECTION_INOUT, COLLECTION_IN
 from pycompss.api.parameter import Depth, Type
 from pycompss.api.task import task
 from scipy import sparse as sp
-from scipy.sparse import issparse
+from scipy.sparse import issparse, csr_matrix
+from sklearn.utils import check_random_state
 
 
 def array(x, blocks_shape):
@@ -18,7 +18,7 @@ def array(x, blocks_shape):
 
     Parameters
     ----------
-    x : ndarray, shape=[n_samples, n_features]
+    x : spmatrix or array-like, shape=[n_samples, n_features]
         Array of samples.
     blocks_shape : (int, int)
         Block sizes in number of samples.
@@ -28,17 +28,23 @@ def array(x, blocks_shape):
     dsarray : ds-array
         A distributed representation of the data divided in blocks.
     """
+    sparse = issparse(x)
+
+    if sparse:
+        x = csr_matrix(x, copy=True)
+    else:
+        x = np.array(x, copy=True)
+
     bn, bm = blocks_shape
 
     blocks = []
     for i in range(0, x.shape[0], bn):
-        row = [x[i: i + bn, j: j + bm] for j in
-               range(0, x.shape[1], bm)]
+        row = [x[i: i + bn, j: j + bm] for j in range(0, x.shape[1], bm)]
         blocks.append(row)
 
     sparse = issparse(x)
     arr = Array(blocks=blocks, top_left_shape=blocks_shape,
-                   reg_shape=blocks_shape, shape=x.shape, sparse=sparse)
+                reg_shape=blocks_shape, shape=x.shape, sparse=sparse)
 
     return arr
 
@@ -54,7 +60,7 @@ def random_array(shape, blocks_shape, random_state=None):
     shape : tuple of two ints
         Shape of the output ds-array.
     blocks_shape : tuple of two ints
-        Shape of the blocks for the output ds-array.
+        Size of the ds-array blocks.
     random_state : int or RandomState, optional (default=None)
         Seed or numpy.random.RandomState instance to generate the random
         numbers.
@@ -67,32 +73,26 @@ def random_array(shape, blocks_shape, random_state=None):
     if shape[0] < blocks_shape[0] or shape[1] < blocks_shape[1]:
         raise ValueError("Block size is greater than the array")
 
-    r_state = random_state
+    r_state = check_random_state(random_state)
 
-    if isinstance(r_state, (numbers.Integral, np.integer)):
-        r_state = np.random.RandomState(r_state)
-
-    seed = None
-    blocks_shape = (int(np.ceil(shape[0] / blocks_shape[0])),
-                    int(np.ceil(shape[1] / blocks_shape[1])))
+    n_blocks = (int(np.ceil(shape[0] / blocks_shape[0])),
+                int(np.ceil(shape[1] / blocks_shape[1])))
 
     blocks = list()
 
-    for row_idx in range(blocks_shape[0]):
+    for row_idx in range(n_blocks[0]):
         blocks.append(list())
 
-        for col_idx in range(blocks_shape[1]):
+        for col_idx in range(n_blocks[1]):
             b_size0, b_size1 = blocks_shape
 
-            if row_idx == blocks_shape[0] - 1:
-                b_size0 = shape[0] - (blocks_shape[0] - 1) * blocks_shape[0]
+            if row_idx == n_blocks[0] - 1:
+                b_size0 = shape[0] - (n_blocks[0] - 1) * blocks_shape[0]
 
-            if col_idx == blocks_shape[1] - 1:
-                b_size1 = shape[1] - (blocks_shape[1] - 1) * blocks_shape[1]
+            if col_idx == n_blocks[1] - 1:
+                b_size1 = shape[1] - (n_blocks[1] - 1) * blocks_shape[1]
 
-            if r_state is not None:
-                seed = r_state.randint(np.iinfo(np.int32).max)
-
+            seed = r_state.randint(np.iinfo(np.int32).max)
             blocks[-1].append(_random_block((b_size0, b_size1), seed))
 
     return Array(blocks, top_left_shape=blocks_shape, reg_shape=blocks_shape,
@@ -201,7 +201,7 @@ def load_svmlight_file(path, blocks_shape, n_features, store_sparse):
 
             if len(lines) == n:
                 # line 0 -> X, line 1 -> y
-                out_blocks = Array._get_out_blocks(1, ceil(n_features / m))
+                out_blocks = Array._get_out_blocks((1, ceil(n_features / m)))
                 out_blocks.append([object()])
                 # out_blocks.append([])
                 _read_libsvm(lines, out_blocks, col_size=m,
@@ -212,7 +212,7 @@ def load_svmlight_file(path, blocks_shape, n_features, store_sparse):
                 lines = []
 
     if lines:
-        out_blocks = Array._get_out_blocks(1, ceil(n_features / m))
+        out_blocks = Array._get_out_blocks((1, ceil(n_features / m)))
         out_blocks.append([object()])
         _read_libsvm(lines, out_blocks, col_size=m,
                      n_features=n_features, store_sparse=store_sparse)
@@ -342,12 +342,13 @@ class Array(object):
         return ret
 
     @staticmethod
-    def _get_out_blocks(x, y):
+    def _get_out_blocks(blocks_shape):
         """
         Helper function that builds empty lists of lists to be filled as
         parameter of type COLLECTION_INOUT
         """
-        return [[object() for _ in range(y)] for _ in range(x)]
+        return [[object() for _ in range(blocks_shape[1])]
+                for _ in range(blocks_shape[0])]
 
     @staticmethod
     def _broadcast_shapes(x, y):
@@ -527,7 +528,7 @@ class Array(object):
         n_blocks = i_n - i_0 + 1
         m_blocks = j_n - j_0 + 1
 
-        out_blocks = self._get_out_blocks(n_blocks, m_blocks)
+        out_blocks = self._get_out_blocks((n_blocks, m_blocks))
 
         i_indices = range(i_0, i_n + 1)
         j_indices = range(j_0, j_n + 1)
@@ -737,12 +738,12 @@ class Array(object):
         """
         if mode == 'all':
             n, m = self._n_blocks[0], self._n_blocks[1]
-            out_blocks = self._get_out_blocks(n, m)
+            out_blocks = self._get_out_blocks((n, m))
             _transpose(self._blocks, out_blocks)
         elif mode == 'rows':
             out_blocks = []
             for r in self._iterator(axis=0):
-                _blocks = self._get_out_blocks(*r._n_blocks)
+                _blocks = self._get_out_blocks(r._n_blocks)
 
                 _transpose(r._blocks, _blocks)
 
@@ -750,7 +751,7 @@ class Array(object):
         elif mode == 'columns':
             out_blocks = [[] for _ in range(self._n_blocks[0])]
             for i, c in enumerate(self._iterator(axis=1)):
-                _blocks = self._get_out_blocks(*c._n_blocks)
+                _blocks = self._get_out_blocks(c._n_blocks)
 
                 _transpose(c._blocks, _blocks)
 
@@ -849,9 +850,7 @@ def _get_item(i, j, block):
 
 @task(returns=np.array)
 def _random_block(shape, seed):
-    if seed is not None:
-        np.random.seed(seed)
-
+    np.random.seed(seed)
     return np.random.random(shape)
 
 

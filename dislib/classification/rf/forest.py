@@ -91,7 +91,7 @@ class RandomForestClassifier:
 
         Returns
         -------
-        self : object
+        self : RandomForestClassifier
 
         """
         self.classes = None
@@ -137,10 +137,9 @@ class RandomForestClassifier:
 
         Returns
         -------
-        probabilities : list of unsynchronized arrays
-            List with an array of the predicted probabilities for each rows
-            block. The shape of each array is (rows_block_size, n_classes).
-            The class corresponding to each column of the arrays is given by
+        probabilities : ds-array, shape (n_samples, n_classes)
+            Predicted probabilities for the samples to belong to each class.
+            The columns of the array correspond to the classes given at
             self.classes.
 
         """
@@ -188,12 +187,12 @@ class RandomForestClassifier:
                 for tree in self.trees:
                     tree_predictions.append(tree.predict_proba(x_row))
                 pred_blocks.append(_soft_vote(self.classes, *tree_predictions))
-        s = x._reg_shape
 
         y_pred = Array(blocks=[pred_blocks],
                        top_left_shape=(x._top_left_shape[0], 1),
                        reg_shape=(x._reg_shape[0], 1), shape=(x.shape[0], 1),
                        sparse=False)
+
         return y_pred
 
     def score(self, x, y):
@@ -211,7 +210,7 @@ class RandomForestClassifier:
 
         Returns
         -------
-        score : float
+        score : float (as future object)
             Fraction of correctly classified samples.
 
         """
@@ -233,9 +232,8 @@ class RandomForestClassifier:
                 subset_score = _soft_vote_score(y_row._blocks, self.classes,
                                                 *tree_predictions)
                 partial_scores.append(subset_score)
-        score = compss_wait_on(_merge_scores(*partial_scores))
 
-        return score
+        return _merge_scores(*partial_scores)
 
 
 @task(returns=1)

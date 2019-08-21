@@ -66,7 +66,7 @@ class ALSTest(unittest.TestCase):
     def test_fit(self):
         train, test = load_movielens()
 
-        als = ALS(tol=0.01, random_state=666, n_f=100, verbose=True,
+        als = ALS(tol=0.01, random_state=666, n_f=100, verbose=False,
                   check_convergence=True)
 
         als.fit(train, test)
@@ -80,7 +80,7 @@ class ALSTest(unittest.TestCase):
         data = np.array([[0, 0, 5], [3, 0, 5], [3, 1, 2]])
         ratings = csr_matrix(data)
         train = ds.array(x=ratings, blocks_shape=(1, 1))
-        als = ALS(tol=0.01, random_state=666, n_f=5, verbose=True)
+        als = ALS(tol=0.01, random_state=666, n_f=5, verbose=False)
         als.fit(train)
         predictions = als.predict_user(user_id=0)
 

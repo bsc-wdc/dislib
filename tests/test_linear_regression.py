@@ -6,6 +6,7 @@ from pycompss.api.api import compss_wait_on
 import dislib as ds
 from dislib.regression import LinearRegression
 
+
 class LinearRegressionTest(unittest.TestCase):
 
     def test_fit_and_predict(self):

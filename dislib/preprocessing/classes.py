@@ -1,7 +1,10 @@
 import numpy as np
-from pycompss.api.api import compss_wait_on
-from pycompss.api.parameter import INOUT
+from pycompss.api.parameter import Depth, Type, COLLECTION_IN, COLLECTION_INOUT
 from pycompss.api.task import task
+from scipy.sparse import csr_matrix, issparse
+
+import dislib as ds
+from dislib.data.array import Array
 
 
 class StandardScaler(object):
@@ -12,136 +15,107 @@ class StandardScaler(object):
     deviation are then stored to be used on later data using the transform
     method.
 
-    Parameters
-    ----------
-    arity : int, optional (default=50)
-        Arity of the reduction phase carried out to compute the mean and
-        variance of the input dataset.
-
     Attributes
     ----------
-    mean_ : ndarray, shape (n_features,)
+    mean_ : ds-array, shape (1, n_features)
         The mean value for each feature in the training set.
-    var_ : ndarray, shape (n_features,)
+    var_ : ds-array, shape (1, n_features)
         The variance for each feature in the training set.
     """
 
-    def __init__(self, arity=50):
-        self._mean = None
-        self._var = None
-        self._arity = arity
+    def __init__(self):
+        self.mean_ = None
+        self.var_ = None
 
-    @property
-    def mean_(self):
-        if self._mean is not None:
-            self._mean = compss_wait_on(self._mean)
-            return self._mean
-
-        return None
-
-    @property
-    def var_(self):
-        if self._var is not None:
-            self._var = compss_wait_on(self._var)
-            return self._var
-
-        return None
-
-    def fit(self, dataset):
+    def fit(self, x):
         """ Compute the mean and std to be used for later scaling.
 
         Parameters
         ----------
-        dataset : Dataset
+        x : ds-array, shape=(n_samples, n_features)
+
+        Returns
+        -------
+        self : StandardScaler
         """
-        partial_sums = []
+        self.mean_ = ds.apply_along_axis(np.mean, 0, x)
+        var_blocks = [[]]
 
-        for subset in dataset:
-            partial_sums.append(_partial_sum(subset))
+        for row, m_row in zip(x._iterator(1), self.mean_._iterator(1)):
+            var_blocks[0].append(_compute_var(row._blocks, m_row._blocks))
 
-        total_sum = self._merge_partial_sums(partial_sums)
+        self.var_ = Array(var_blocks, top_left_shape=self.mean_._top_left_shape,
+                          reg_shape=self.mean_._reg_shape,
+                          shape=self.mean_.shape, sparse=False)
 
-        partial_vars = []
+        return self
 
-        for subset in dataset:
-            partial_vars.append(_partial_var(subset, total_sum))
-
-        total_var = self._merge_partial_vars(partial_vars)
-
-        self._mean, self._var = _compute_stats(total_sum, total_var)
-
-    def fit_transform(self, dataset):
+    def fit_transform(self, x):
         """ Fit to data, then transform it.
 
         Parameters
         ----------
-        dataset : Dataset
-        """
-        self.fit(dataset)
-        self.transform(dataset)
+        x : ds-array, shape=(n_samples, n_features)
 
-    def transform(self, dataset):
+        Returns
+        -------
+        x_new : ds-array, shape=(n_samples, n_features)
+            Scaled data.
+        """
+        return self.fit(x).transform(x)
+
+    def transform(self, x):
         """
         Standarize data.
 
         Parameters
         ----------
-        dataset : Dataset
+        x : ds-array, shape=(n_samples, n_features)
+
+        Returns
+        -------
+        x_new : ds-array, shape=(n_samples, n_features)
+            Scaled data.
         """
-        if self._mean is None or self._var is None:
+        if self.mean_ is None or self.var_ is None:
             raise Exception("Model has not been initialized.")
 
-        for subset in dataset:
-            _transform(subset, self._mean, self._var)
+        n_blocks = x._reg_shape[1]
+        blocks = []
+        m_blocks = self.mean_._blocks
+        v_blocks = self.var_._blocks
 
-    def _merge_partial_sums(self, partials):
-        while len(partials) > 1:
-            partials_subset = partials[:self._arity]
-            partials = partials[self._arity:]
-            partials.append(_merge_sums(*partials_subset))
+        for row in x._iterator(axis=0):
+            out_blocks = [object() for _ in range(n_blocks)]
+            _transform(row._blocks, m_blocks, v_blocks, out_blocks)
+            blocks.append(out_blocks)
 
-        return partials[0]
-
-    def _merge_partial_vars(self, partials):
-        while len(partials) > 1:
-            partials_subset = partials[:self._arity]
-            partials = partials[self._arity:]
-            partials.append(_merge_vars(*partials_subset))
-
-        return partials[0]
+        return Array(blocks, top_left_shape=x._top_left_shape,
+                     reg_shape=x._reg_shape, shape=x.shape,
+                     sparse=x._sparse)
 
 
-@task(returns=tuple)
-def _partial_sum(subset):
-    return np.sum(subset.samples, axis=0), subset.samples.shape[0]
+@task(blocks={Type: COLLECTION_IN, Depth: 2},
+      m_blocks={Type: COLLECTION_IN, Depth: 2},
+      returns=1)
+def _compute_var(blocks, m_blocks):
+    x = Array._merge_blocks(blocks)
+    mean = Array._merge_blocks(m_blocks)
+    return np.mean(np.array(x - mean) ** 2, axis=0)
 
 
-@task(returns=tuple)
-def _merge_sums(*partials):
-    sum_ = sum(par[0] for par in partials)
-    size_ = sum(par[1] for par in partials)
-    return sum_, size_
+@task(blocks={Type: COLLECTION_IN, Depth: 2},
+      m_blocks={Type: COLLECTION_IN, Depth: 2},
+      v_blocks={Type: COLLECTION_IN, Depth: 2},
+      out_blocks={Type: COLLECTION_INOUT})
+def _transform(blocks, m_blocks, v_blocks, out_blocks):
+    x = Array._merge_blocks(blocks)
+    mean = Array._merge_blocks(m_blocks)
+    var = Array._merge_blocks(v_blocks)
+    scaled_x = (x - mean) / np.sqrt(var)
 
+    bm = len(blocks)
+    constructor_func = np.array if not issparse(x) else csr_matrix
 
-@task(returns=np.array)
-def _partial_var(subset, sum):
-    mean = sum[0] / sum[1]
-    return np.sum((subset.samples - mean) ** 2, axis=0)
-
-
-@task(returns=np.array)
-def _merge_vars(*partials):
-    return np.sum(partials, axis=0)
-
-
-@task(returns=2)
-def _compute_stats(sum, var):
-    mean_ = sum[0] / sum[1]
-    var_ = var / sum[1]
-    return mean_, var_
-
-
-@task(subset=INOUT)
-def _transform(subset, mean, var):
-    scaled_samples = (subset.samples - mean) / np.sqrt(var)
-    subset.samples = scaled_samples
+    for i, j in enumerate(range(0, x.shape[1], bm)):
+        out_blocks[i] = constructor_func(scaled_x[:, j: j + bm])

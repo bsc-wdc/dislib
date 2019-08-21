@@ -77,7 +77,7 @@ class PCA:
 
         Returns
         -------
-        self : object
+        self : PCA
         """
 
         n_samples = x.shape[0]
