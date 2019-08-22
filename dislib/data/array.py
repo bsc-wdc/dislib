@@ -360,20 +360,16 @@ class Array(object):
         return zip(*itertools.product(*[x, y]))
 
     def __str__(self):
-        if self._top_left_shape is not None:
-            bs = [self._top_left_shape, self._reg_shape]
-        else:
-            bs = self._reg_shape
-        return "ds-array(blocks=(...), reg_shape=%r, shape=%r, sparse=%r)" \
-               % (bs, self.shape, self._sparse)
+        return "ds-array(blocks=(...), top_left_shape=%r, reg_shape=%r, " \
+               "shape=%r, sparse=%r)" % (
+                   self._top_left_shape, self._reg_shape, self.shape,
+                   self._sparse)
 
     def __repr__(self):
-        if self._top_left_shape is not None:
-            bs = [self._top_left_shape, self._reg_shape]
-        else:
-            bs = self._reg_shape
-        return "ds-array(blocks=%r, reg_shape=%r, shape=%r, sparse=%r)" % \
-               (self._blocks, bs, self.shape, self._sparse)
+        return "ds-array(blocks=(...), top_left_shape=%r, reg_shape=%r, " \
+               "shape=%r, sparse=%r)" % (
+                   self._top_left_shape, self._reg_shape, self.shape,
+                   self._sparse)
 
     def _get_row_shape(self, row_idx):
         if row_idx == 0:
@@ -554,7 +550,9 @@ class Array(object):
         # Shape of the top left block
         top, left = self._coords_in_block(0, 0, r_start,
                                           c_start)
-        bi0, bj0 = self._reg_shape[0] - top, self._reg_shape[1] - left
+
+        bi0 = self._reg_shape[0] - (top % self._reg_shape[0])
+        bj0 = self._reg_shape[1] - (left % self._reg_shape[1])
 
         # Regular blocks shape is the same
         bn, bm = self._reg_shape

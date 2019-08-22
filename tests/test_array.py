@@ -3,6 +3,7 @@ import unittest
 from math import ceil
 
 import numpy as np
+from pycompss.api.api import compss_wait_on
 from scipy import sparse as sp
 from scipy.sparse import issparse, csr_matrix
 from sklearn.datasets import load_svmlight_file
@@ -436,6 +437,23 @@ class ArrayTest(unittest.TestCase):
             got = data[top:bot, left:right].collect()
             expected = x[top:bot, left:right]
             self.assertTrue(equal(got, expected))
+
+
+    def test_get_slice_shapes(self):
+        """ Tests that shapes are correct after slicing
+        """
+        arr = ds.random_array((100, 100), (25, 25))
+        ex = arr[1:, arr.shape[1] - 1: arr.shape[1]]
+
+        self.assertEqual(ex._top_left_shape, (24, 1))
+        self.assertEqual(ex._reg_shape, (25, 25))
+        self.assertEqual(ex.shape, (99, 1))
+
+        tl = compss_wait_on(ex._blocks[0][0])
+        reg = compss_wait_on(ex._blocks[1][0])
+        self.assertEqual(tl.shape, (24, 1))
+        self.assertEqual(reg.shape, (25, 1))
+
 
     def test_index_rows_dense(self):
         """ Tests get a slice of rows from the ds.array using lists as index
