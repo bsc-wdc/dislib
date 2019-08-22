@@ -5,7 +5,6 @@ from sklearn.cluster import KMeans as SKMeans
 from sklearn.datasets import make_blobs
 
 import dislib as ds
-from dislib import load_svmlight_file
 from dislib.cluster import KMeans
 
 
@@ -30,7 +29,7 @@ class KMeansTest(unittest.TestCase):
         toy dataset.
         """
         arr = np.array([[1, 2], [2, 1], [-1, -2], [-2, -1]])
-        x = ds.array(arr, blocks_shape=(2, 2))
+        x = ds.array(arr, block_size=(2, 2))
 
         km = KMeans(n_clusters=2, random_state=666, verbose=False)
         km.fit(x)
@@ -44,7 +43,7 @@ class KMeansTest(unittest.TestCase):
         p1, p2, p3, p4 = [1, 2], [2, 1], [-1, -2], [-2, -1]
 
         arr1 = np.array([p1, p2, p3, p4])
-        x = ds.array(arr1, blocks_shape=(2, 2))
+        x = ds.array(arr1, block_size=(2, 2))
 
         km = KMeans(n_clusters=2, random_state=666)
         km.fit(x)
@@ -52,7 +51,7 @@ class KMeansTest(unittest.TestCase):
         p5, p6 = [10, 10], [-10, -10]
 
         arr2 = np.array([p1, p2, p3, p4, p5, p6])
-        x_test = ds.array(arr2, blocks_shape=(2, 2))
+        x_test = ds.array(arr2, block_size=(2, 2))
 
         labels = km.predict(x_test).collect()
         expected_labels = np.array([0, 0, 1, 1, 0, 1])
@@ -65,7 +64,7 @@ class KMeansTest(unittest.TestCase):
         x_filtered = np.vstack(
             (x[y == 0][:500], x[y == 1][:100], x[y == 2][:10]))
 
-        x_train = ds.array(x_filtered, blocks_shape=(300, 2))
+        x_train = ds.array(x_filtered, block_size=(300, 2))
 
         kmeans = KMeans(n_clusters=3, random_state=170)
         labels = kmeans.fit_predict(x_train).collect()

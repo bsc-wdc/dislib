@@ -6,8 +6,6 @@ import time
 from pycompss.api.api import barrier
 
 from dislib.classification import CascadeSVM
-from dislib.data import (load_libsvm_file, load_libsvm_files, load_txt_file,
-                         load_txt_files)
 from dislib.utils import shuffle
 
 

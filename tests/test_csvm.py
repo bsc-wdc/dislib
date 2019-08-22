@@ -1,11 +1,10 @@
 import unittest
 
 import numpy as np
+from pycompss.api.api import compss_wait_on
 
 import dislib as ds
 from dislib.classification import CascadeSVM
-from dislib.data import load_svmlight_file
-from pycompss.api.api import compss_wait_on
 
 
 class CSVMTest(unittest.TestCase):

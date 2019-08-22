@@ -72,12 +72,12 @@ class DataLoadingTest(unittest.TestCase):
         n, m = 6, 10
         bn, bm = 4, 3
         x = np.random.randint(0, 10, size=(n, m))
-        darray = ds.array(x=x, blocks_shape=(bn, bm))
+        darray = ds.array(x=x, block_size=(bn, bm))
 
         _validate_arrays(self, darray, x, (bn, bm))
 
         x = sp.csr_matrix(x)
-        darray = ds.array(x=x, blocks_shape=(bn, bm))
+        darray = ds.array(x=x, block_size=(bn, bm))
 
         _validate_arrays(self, darray, x, (bn, bm))
 
@@ -294,7 +294,7 @@ class ArrayTest(unittest.TestCase):
         x_size, y_size = 40, 25
         bn, bm = 9, 11
         x = np.random.randint(10, size=(x_size, y_size))
-        darray = ds.array(x=x, blocks_shape=(bn, bm))
+        darray = ds.array(x=x, block_size=(bn, bm))
 
         self.assertEqual(darray.shape, (x_size, y_size))
 
@@ -303,7 +303,7 @@ class ArrayTest(unittest.TestCase):
         self.assertEqual(darray._reg_shape, (bn, bm))
 
         x = sp.csr_matrix(x)
-        darray = ds.array(x=x, blocks_shape=(bn, bm))
+        darray = ds.array(x=x, block_size=(bn, bm))
 
         self.assertEqual(darray.shape, (x_size, y_size))
         self.assertEqual(darray._n_blocks,
@@ -316,7 +316,7 @@ class ArrayTest(unittest.TestCase):
         x_size = 2
         # Dense
         x = np.random.randint(10, size=(10, 10))
-        data = ds.array(x=x, blocks_shape=(x_size, 2))
+        data = ds.array(x=x, block_size=(x_size, 2))
         for i, r in enumerate(data._iterator(axis='rows')):
             r_data = r.collect()
             r_x = x[i * x_size:(i + 1) * x_size]
@@ -324,7 +324,7 @@ class ArrayTest(unittest.TestCase):
 
         # Sparse
         x = sp.csr_matrix(x)
-        data = ds.array(x=x, blocks_shape=(x_size, 2))
+        data = ds.array(x=x, block_size=(x_size, 2))
         for i, r in enumerate(data._iterator(axis='rows')):
             r_data = r.collect()
             r_x = x[i * x_size:(i + 1) * x_size]
@@ -336,7 +336,7 @@ class ArrayTest(unittest.TestCase):
         bn, bm = 2, 2
         # Dense
         x = np.random.randint(10, size=(10, 10))
-        data = ds.array(x=x, blocks_shape=(bn, bm))
+        data = ds.array(x=x, block_size=(bn, bm))
 
         for i, c in enumerate(data._iterator(axis='columns')):
             c_data = c.collect()
@@ -345,7 +345,7 @@ class ArrayTest(unittest.TestCase):
 
         # Sparse
         x = sp.csr_matrix(x)
-        data = ds.array(x=x, blocks_shape=(bn, bm))
+        data = ds.array(x=x, block_size=(bn, bm))
 
         for i, c in enumerate(data._iterator(axis='columns')):
             c_data = c.collect()
@@ -357,7 +357,7 @@ class ArrayTest(unittest.TestCase):
         """
         bn, bm = 2, 2
         x = np.random.randint(10, size=(10, 10))
-        data = ds.array(x=x, blocks_shape=(bn, bm))
+        data = ds.array(x=x, block_size=(bn, bm))
 
         for i in range(x.shape[0]):
             for j in range(x.shape[1]):
@@ -377,7 +377,7 @@ class ArrayTest(unittest.TestCase):
         """
         bn, bm = 5, 5
         x = np.random.randint(100, size=(30, 30))
-        data = ds.array(x=x, blocks_shape=(bn, bm))
+        data = ds.array(x=x, block_size=(bn, bm))
 
         slice_indices = [(7, 22, 7, 22),  # many row-column
                          (6, 8, 6, 8),  # single block row-column
@@ -411,7 +411,7 @@ class ArrayTest(unittest.TestCase):
         bn, bm = 5, 5
         x = np.random.randint(100, size=(30, 30))
         x = sp.csr_matrix(x)
-        data = ds.array(x=x, blocks_shape=(bn, bm))
+        data = ds.array(x=x, block_size=(bn, bm))
 
         slice_indices = [(7, 22, 7, 22),  # many row-column
                          (6, 8, 6, 8),  # single block row-column
@@ -461,7 +461,7 @@ class ArrayTest(unittest.TestCase):
         bn, bm = 5, 5
         x = np.random.randint(100, size=(10, 10))
         # x = sp.csr_matrix(x)
-        data = ds.array(x=x, blocks_shape=(bn, bm))
+        data = ds.array(x=x, block_size=(bn, bm))
 
         # indices_lists = [([0, 5], [0, 5]),  # one from each block
         #                  ([0, 1, 3, 4], [0, 1, 2, 4]),  # all from first
@@ -491,7 +491,7 @@ class ArrayTest(unittest.TestCase):
         bn, bm = 5, 5
         x = np.random.randint(100, size=(10, 10))
         # x = sp.csr_matrix(x)
-        data = ds.array(x=x, blocks_shape=(bn, bm))
+        data = ds.array(x=x, block_size=(bn, bm))
 
         indices_lists = [([0, 5], [0, 5]),  # one from each block
                          ([0, 1, 3, 4], [0, 1, 2, 4]),  # all from first
@@ -520,7 +520,7 @@ class ArrayTest(unittest.TestCase):
         bn, bm = 2, 3
 
         x = np.random.randint(10, size=(x_size, y_size))
-        darray = ds.array(x=x, blocks_shape=(bn, bm))
+        darray = ds.array(x=x, block_size=(bn, bm))
 
         darray_t = darray.transpose(mode='all')
         _validate_arrays(self, darray_t, x.transpose(), (bm, bn))
@@ -564,7 +564,7 @@ class ArrayTest(unittest.TestCase):
     def test_apply_axis(self):
         """ Tests apply along axis"""
         x = ds.array(np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]),
-                     blocks_shape=(2, 2))
+                     block_size=(2, 2))
 
         x1 = ds.apply_along_axis(_sum_and_mult, 0, x)
         self.assertTrue(x1.shape, (1, 3))
@@ -592,14 +592,14 @@ class ArrayTest(unittest.TestCase):
         self.assertTrue(np.array_equal(x1.collect(), np.array([14, 32, 50])))
 
         x = ds.array(sp.csr_matrix([[1, 0, -1], [0, 5, 0], [7, 8, 0]]),
-                     blocks_shape=(2, 2))
+                     block_size=(2, 2))
         x1 = ds.apply_along_axis(_sum_and_mult, 0, x, 1, b=2)
         self.assertTrue(x1.shape, (1, 3))
         self.assertTrue(x1._reg_shape, (1, 2))
         self.assertTrue(np.array_equal(x1.collect(), np.array([18, 28, 0])))
 
         x = ds.array(sp.csr_matrix([[1, 0, -1], [0, 5, 0], [7, 8, 0]]),
-                     blocks_shape=(2, 2))
+                     block_size=(2, 2))
         x1 = ds.apply_along_axis(_sum_and_mult, 0, x, 1, b=2)
         self.assertTrue(x1.shape, (1, 3))
         self.assertTrue(x1._reg_shape, (1, 2))
@@ -608,10 +608,10 @@ class ArrayTest(unittest.TestCase):
     def test_apply_sparse(self):
         """ Tests apply with sparse data """
         x_d = ds.array(np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]),
-                       blocks_shape=(2, 2))
+                       block_size=(2, 2))
 
         x_sp = ds.array(csr_matrix([[1, 2, 3], [4, 5, 6], [7, 8, 9]]),
-                        blocks_shape=(2, 2))
+                        block_size=(2, 2))
 
         x1 = ds.apply_along_axis(_sum_and_mult, 0, x_d)
         x2 = ds.apply_along_axis(_sum_and_mult, 0, x_sp)
@@ -621,7 +621,7 @@ class ArrayTest(unittest.TestCase):
     def test_array_functions(self):
         """ Tests various array functions """
         x = ds.array(np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]),
-                     blocks_shape=(2, 2))
+                     block_size=(2, 2))
 
         self.assertTrue((x.min().collect() == [1, 2, 3]).all())
         self.assertTrue((x.max().collect() == [7, 8, 9]).all())

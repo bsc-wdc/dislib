@@ -53,7 +53,7 @@ class DBSCAN():
     >>> import dislib as ds
     >>> import numpy as np
     >>> arr = np.array([[1, 2], [2, 2], [2, 3], [8, 7], [8, 8], [25, 80]])
-    >>> x = ds.array(arr, blocks_shape=(2, 2))
+    >>> x = ds.array(arr, block_size=(2, 2))
     >>> dbscan = DBSCAN(eps=3, min_samples=2)
     >>> y = dbscan.fit_predict(x)
     >>> print(y.collect())

@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
-import dislib as ds
 
+import dislib as ds
 from dislib.cluster import GaussianMixture
 
 
@@ -64,7 +64,7 @@ def main():
                 'corr': create_correlated_dataset()}
     real_labels = {k: v[1] for k, v in datasets.items()}
     for k, v in datasets.items():
-        datasets[k] = ds.array(v[0], blocks_shape=(200, v[0].shape[1]))
+        datasets[k] = ds.array(v[0], block_size=(200, v[0].shape[1]))
 
     covariance_types = 'full', 'tied', 'diag', 'spherical'
 

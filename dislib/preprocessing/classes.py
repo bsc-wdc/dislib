@@ -3,8 +3,8 @@ from pycompss.api.parameter import Depth, Type, COLLECTION_IN, COLLECTION_INOUT
 from pycompss.api.task import task
 from scipy.sparse import csr_matrix, issparse
 
-import dislib as ds
 from dislib.data.array import Array
+import dislib as ds
 
 
 class StandardScaler(object):

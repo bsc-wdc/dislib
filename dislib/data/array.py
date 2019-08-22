@@ -4,297 +4,47 @@ from math import ceil
 
 import numpy as np
 from pycompss.api.api import compss_wait_on
-from pycompss.api.parameter import COLLECTION_INOUT, COLLECTION_IN
-from pycompss.api.parameter import Depth, Type
+from pycompss.api.parameter import Type, COLLECTION_IN, Depth, COLLECTION_INOUT
 from pycompss.api.task import task
 from scipy import sparse as sp
 from scipy.sparse import issparse, csr_matrix
 from sklearn.utils import check_random_state
 
 
-def array(x, blocks_shape):
-    """
-    Loads data into a Distributed Array.
-
-    Parameters
-    ----------
-    x : spmatrix or array-like, shape=[n_samples, n_features]
-        Array of samples.
-    blocks_shape : (int, int)
-        Block sizes in number of samples.
-
-    Returns
-    -------
-    dsarray : ds-array
-        A distributed representation of the data divided in blocks.
-    """
-    sparse = issparse(x)
-
-    if sparse:
-        x = csr_matrix(x, copy=True)
-    else:
-        x = np.array(x, copy=True)
-
-    bn, bm = blocks_shape
-
-    blocks = []
-    for i in range(0, x.shape[0], bn):
-        row = [x[i: i + bn, j: j + bm] for j in range(0, x.shape[1], bm)]
-        blocks.append(row)
-
-    sparse = issparse(x)
-    arr = Array(blocks=blocks, top_left_shape=blocks_shape,
-                reg_shape=blocks_shape, shape=x.shape, sparse=sparse)
-
-    return arr
-
-
-def random_array(shape, blocks_shape, random_state=None):
-    """
-    Returns a distributed array of random floats in the open interval [0.0,
-    1.0). Values are from the "continuous uniform" distribution over the
-    stated interval.
-
-    Parameters
-    ----------
-    shape : tuple of two ints
-        Shape of the output ds-array.
-    blocks_shape : tuple of two ints
-        Size of the ds-array blocks.
-    random_state : int or RandomState, optional (default=None)
-        Seed or numpy.random.RandomState instance to generate the random
-        numbers.
-
-    Returns
-    -------
-    dsarray : ds-array
-        Distributed array of random floats.
-    """
-    if shape[0] < blocks_shape[0] or shape[1] < blocks_shape[1]:
-        raise ValueError("Block size is greater than the array")
-
-    r_state = check_random_state(random_state)
-
-    n_blocks = (int(np.ceil(shape[0] / blocks_shape[0])),
-                int(np.ceil(shape[1] / blocks_shape[1])))
-
-    blocks = list()
-
-    for row_idx in range(n_blocks[0]):
-        blocks.append(list())
-
-        for col_idx in range(n_blocks[1]):
-            b_size0, b_size1 = blocks_shape
-
-            if row_idx == n_blocks[0] - 1:
-                b_size0 = shape[0] - (n_blocks[0] - 1) * blocks_shape[0]
-
-            if col_idx == n_blocks[1] - 1:
-                b_size1 = shape[1] - (n_blocks[1] - 1) * blocks_shape[1]
-
-            seed = r_state.randint(np.iinfo(np.int32).max)
-            blocks[-1].append(_random_block((b_size0, b_size1), seed))
-
-    return Array(blocks, top_left_shape=blocks_shape, reg_shape=blocks_shape,
-                 shape=shape, sparse=False)
-
-
-def apply_along_axis(func, axis, x, *args, **kwargs):
-    """ Apply a function to slices along the given axis.
-
-    Execute func(a, *args, **kwargs) where func operates on nd-arrays and a
-    is a slice of arr along axis. The size of the slices is determined
-    by the blocks shape of x.
-
-    func must meet the following conditions:
-
-        - Take an nd-array as argument
-        - Accept `axis` as a keyword argument
-        - Return an array-like structure
-
-    Parameters
-    ----------
-    func : function
-        This function should accept nd-arrays and an axis argument. It is
-        applied to slices of arr along the specified axis.
-    axis : integer
-        Axis along which arr is sliced. Can be 0 or 1.
-    x : ds-array
-        Input distributed array.
-    args : any
-        Additional arguments to func.
-    kwargs : any
-        Additional named arguments to func.
-
-    Returns
-    -------
-    out : ds-array
-        The output array. The shape of out is identical to the shape of arr,
-        except along the axis dimension. The output ds-array is dense
-        regardless of the type of the input array.
-
-    Examples
-    --------
-    >>> import dislib as ds
-    >>> import numpy as np
-    >>> x = ds.random_array((100, 100), blocks_shape=(25, 25))
-    >>> mean = ds.apply_along_axis(np.mean, 0, x)
-    >>> print(mean.collect())
-    """
-    if axis != 0 and axis != 1:
-        raise ValueError("Axis must be 0 or 1.")
-
-    tlshape = x._top_left_shape
-    bshape = x._reg_shape
-    shape = x.shape
-
-    out_blocks = list()
-
-    for block in x._iterator(axis=(not axis)):
-        out = _block_apply(func, axis, block._blocks, *args, **kwargs)
-        out_blocks.append(out)
-
-    if axis == 0:
-        blocks = [out_blocks]
-        out_tlbshape = (1, tlshape[1])
-        out_bshape = (1, bshape[1])
-        out_shape = (1, shape[1])
-    else:
-        blocks = [[block] for block in out_blocks]
-        out_tlbshape = (tlshape[0], 1)
-        out_bshape = (bshape[0], 1)
-        out_shape = (shape[0], 1)
-
-    return Array(blocks, top_left_shape=out_tlbshape, reg_shape=out_bshape,
-                 shape=out_shape, sparse=False)
-
-
-def load_svmlight_file(path, blocks_shape, n_features, store_sparse):
-    """ Loads a LibSVM file into a Distributed Array.
-
-     Parameters
-    ----------
-    path : string
-        File path.
-    blocks_shape : (int, int)
-        Shape of the blocks for the output darray.
-    n_features : int
-        Number of features.
-    store_sparse : boolean
-        Whether to use scipy.sparse data structures to store data. If False,
-        numpy.array is used instead.
-
-    Returns
-    -------
-    x, y : (darray, ds-array)
-        A distributed representation (ds-array) of the X and y.
-    """
-    n, m = blocks_shape
-    lines = []
-    x_blocks, y_blocks = [], []
-
-    n_rows = 0
-    with open(path, "r") as f:
-        for line in f:
-            n_rows += 1
-            lines.append(line.encode())
-
-            if len(lines) == n:
-                # line 0 -> X, line 1 -> y
-                out_blocks = Array._get_out_blocks((1, ceil(n_features / m)))
-                out_blocks.append([object()])
-                # out_blocks.append([])
-                _read_libsvm(lines, out_blocks, col_size=m,
-                             n_features=n_features, store_sparse=store_sparse)
-                # we append only the list forming the row (out_blocks depth=2)
-                x_blocks.append(out_blocks[0])
-                y_blocks.append(out_blocks[1])
-                lines = []
-
-    if lines:
-        out_blocks = Array._get_out_blocks((1, ceil(n_features / m)))
-        out_blocks.append([object()])
-        _read_libsvm(lines, out_blocks, col_size=m,
-                     n_features=n_features, store_sparse=store_sparse)
-        # we append only the list forming the row (out_blocks depth=2)
-        x_blocks.append(out_blocks[0])
-        y_blocks.append(out_blocks[1])
-
-    x = Array(x_blocks, top_left_shape=blocks_shape, reg_shape=blocks_shape,
-              shape=(n_rows, n_features), sparse=store_sparse)
-
-    # y has only a single line but it's treated as a 'column'
-    y = Array(y_blocks, top_left_shape=(n, 1), reg_shape=(n, 1),
-              shape=(n_rows, 1), sparse=False)
-
-    return x, y
-
-
-@task(out_blocks={Type: COLLECTION_INOUT, Depth: 2})
-def _read_libsvm(lines, out_blocks, col_size, n_features, store_sparse):
-    from tempfile import SpooledTemporaryFile
-    from sklearn.datasets import load_svmlight_file
-
-    # Creating a tmp file to use load_svmlight_file method should be more
-    # efficient than parsing the lines manually
-    tmp_file = SpooledTemporaryFile(mode="wb+", max_size=2e8)
-
-    tmp_file.writelines(lines)
-
-    tmp_file.seek(0)
-
-    x, y = load_svmlight_file(tmp_file, n_features)
-    if not store_sparse:
-        x = x.toarray()
-
-    # tried also converting to csc/ndarray first for faster splitting but it's
-    # not worth. Position 0 contains the X
-    for i in range(ceil(n_features / col_size)):
-        out_blocks[0][i] = x[:, i * col_size:(i + 1) * col_size]
-
-    # Position 1 contains the y block
-    out_blocks[1][0] = y.reshape(-1, 1)
-
-
 class Array(object):
-    """ A dataset containing samples and, optionally, labels that can be
-    # stored in a distributed manner.
-    #
-    # Dataset works as a list of Subset instances, which can be future objects
-    # stored remotely. Accessing Dataset.labels and Dataset.samples runs
-    # collect() and transfers all the data to the local machine.
-    #
-    # Parameters
-    # ----------
-    # blocks : list
-    #     List of lists of numpy / scipy arrays
-    # top_left_shape : tuple
-    #     A single tuple indicating the shape of the top-left block.
-    # reg_shape : tuple
-    #     A single tuple indicating the shape of the regular block.
-    # shape : int
-    #     Total number of elements in the array.
-    # sparse : boolean, optional (default=False)
-    #     Whether this dataset uses sparse data structures.
-    #
-    # Attributes
-    # ----------
-    # _blocks : list
-    #     List of lists of numpy / scipy arrays
-    # _top_left_shape : tuple
-    #     A single tuple indicating the shape of the top-left block. This
-    #     can be different from _reg_shape when slicing arrays.
-    # _reg_shape : tuple
-    #     A single tuple indicating the shape of regular blocks. Top-left and
-    #     and bot-right blocks might have different shapes (and thus, also the
-    #     whole first/last blocks of rows/cols).
-    # _n_blocks : tuple(int, int)
-    #     Total number of (horizontal, vertical) blocks.
-    # shape : int
-    #     Total number of elements in the array.
-    # _sparse: boolean
-    #     True if this dataset uses sparse data structures.
-    # """
+    """ A distributed 2-dimensional array divided in blocks.
+
+    Parameters
+    ----------
+    blocks : list
+        List of lists of nd-array or spmatrix.
+    top_left_shape : tuple
+        A single tuple indicating the shape of the top-left block.
+    reg_shape : tuple
+        A single tuple indicating the shape of the regular block.
+    shape : tuple (int, int)
+        Total number of elements in the array.
+    sparse : boolean, optional (default=False)
+        Whether this array stores sparse data.
+
+    Attributes
+    ----------
+    _blocks : list
+        List of lists of nd-array or spmatrix.
+    _top_left_shape : tuple
+        A single tuple indicating the shape of the top-left block. This
+        can be different from _reg_shape when slicing arrays.
+    _reg_shape : tuple
+        A single tuple indicating the shape of regular blocks. Top-left and
+        and bot-right blocks might have different shapes (and thus, also the
+        whole first/last blocks of rows/cols).
+    _n_blocks : tuple (int, int)
+        Total number of (horizontal, vertical) blocks.
+    _sparse: boolean
+        True if this array contains sparse data.
+    shape : tuple (int, int)
+        Total number of elements in the array.
+    """
 
     INVALID_BLOCK_SHAPE_ERROR = "Blocks shape must be: a tuple, with the " \
                                 "shape of regular block; or a list with the" \
@@ -838,18 +588,169 @@ class Array(object):
         return res
 
 
+def array(x, block_size):
+    """
+    Loads data into a Distributed Array.
+
+    Parameters
+    ----------
+    x : spmatrix or array-like, shape=[n_samples, n_features]
+        Array of samples.
+    block_size : (int, int)
+        Block sizes in number of samples.
+
+    Returns
+    -------
+    dsarray : ds-array
+        A distributed representation of the data divided in blocks.
+    """
+    sparse = issparse(x)
+
+    if sparse:
+        x = csr_matrix(x, copy=True)
+    else:
+        x = np.array(x, copy=True)
+
+    bn, bm = block_size
+
+    blocks = []
+    for i in range(0, x.shape[0], bn):
+        row = [x[i: i + bn, j: j + bm] for j in range(0, x.shape[1], bm)]
+        blocks.append(row)
+
+    sparse = issparse(x)
+    arr = Array(blocks=blocks, top_left_shape=block_size,
+                reg_shape=block_size, shape=x.shape, sparse=sparse)
+
+    return arr
+
+
+def random_array(shape, block_size, random_state=None):
+    """
+    Returns a distributed array of random floats in the open interval [0.0,
+    1.0). Values are from the "continuous uniform" distribution over the
+    stated interval.
+
+    Parameters
+    ----------
+    shape : tuple of two ints
+        Shape of the output ds-array.
+    block_size : tuple of two ints
+        Size of the ds-array blocks.
+    random_state : int or RandomState, optional (default=None)
+        Seed or numpy.random.RandomState instance to generate the random
+        numbers.
+
+    Returns
+    -------
+    dsarray : ds-array
+        Distributed array of random floats.
+    """
+    if shape[0] < block_size[0] or shape[1] < block_size[1]:
+        raise ValueError("Block size is greater than the array")
+
+    r_state = check_random_state(random_state)
+
+    n_blocks = (int(np.ceil(shape[0] / block_size[0])),
+                int(np.ceil(shape[1] / block_size[1])))
+
+    blocks = list()
+
+    for row_idx in range(n_blocks[0]):
+        blocks.append(list())
+
+        for col_idx in range(n_blocks[1]):
+            b_size0, b_size1 = block_size
+
+            if row_idx == n_blocks[0] - 1:
+                b_size0 = shape[0] - (n_blocks[0] - 1) * block_size[0]
+
+            if col_idx == n_blocks[1] - 1:
+                b_size1 = shape[1] - (n_blocks[1] - 1) * block_size[1]
+
+            seed = r_state.randint(np.iinfo(np.int32).max)
+            blocks[-1].append(_random_block((b_size0, b_size1), seed))
+
+    return Array(blocks, top_left_shape=block_size, reg_shape=block_size,
+                 shape=shape, sparse=False)
+
+
+def apply_along_axis(func, axis, x, *args, **kwargs):
+    """ Apply a function to slices along the given axis.
+
+    Execute func(a, *args, **kwargs) where func operates on nd-arrays and a
+    is a slice of arr along axis. The size of the slices is determined
+    by the blocks shape of x.
+
+    func must meet the following conditions:
+
+        - Take an nd-array as argument
+        - Accept `axis` as a keyword argument
+        - Return an array-like structure
+
+    Parameters
+    ----------
+    func : function
+        This function should accept nd-arrays and an axis argument. It is
+        applied to slices of arr along the specified axis.
+    axis : integer
+        Axis along which arr is sliced. Can be 0 or 1.
+    x : ds-array
+        Input distributed array.
+    args : any
+        Additional arguments to func.
+    kwargs : any
+        Additional named arguments to func.
+
+    Returns
+    -------
+    out : ds-array
+        The output array. The shape of out is identical to the shape of arr,
+        except along the axis dimension. The output ds-array is dense
+        regardless of the type of the input array.
+
+    Examples
+    --------
+    >>> import dislib as ds
+    >>> import numpy as np
+    >>> x = ds.random_array((100, 100), block_size=(25, 25))
+    >>> mean = ds.apply_along_axis(np.mean, 0, x)
+    >>> print(mean.collect())
+    """
+    if axis != 0 and axis != 1:
+        raise ValueError("Axis must be 0 or 1.")
+
+    tlshape = x._top_left_shape
+    bshape = x._reg_shape
+    shape = x.shape
+
+    out_blocks = list()
+
+    for block in x._iterator(axis=(not axis)):
+        out = _block_apply(func, axis, block._blocks, *args, **kwargs)
+        out_blocks.append(out)
+
+    if axis == 0:
+        blocks = [out_blocks]
+        out_tlbshape = (1, tlshape[1])
+        out_bshape = (1, bshape[1])
+        out_shape = (1, shape[1])
+    else:
+        blocks = [[block] for block in out_blocks]
+        out_tlbshape = (tlshape[0], 1)
+        out_bshape = (bshape[0], 1)
+        out_shape = (shape[0], 1)
+
+    return Array(blocks, top_left_shape=out_tlbshape, reg_shape=out_bshape,
+                 shape=out_shape, sparse=False)
+
+
 @task(returns=1)
 def _get_item(i, j, block):
     """
     Returns a single item from the block. Coords must be in block space.
     """
     return block[i, j]
-
-
-@task(returns=np.array)
-def _random_block(shape, seed):
-    np.random.seed(seed)
-    return np.random.random(shape)
 
 
 @task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=1)
@@ -920,6 +821,12 @@ def _transpose(blocks, out_blocks):
     for i in range(len(blocks)):
         for j in range(len(blocks[i])):
             out_blocks[i][j] = blocks[i][j].transpose()
+
+
+@task(returns=np.array)
+def _random_block(shape, seed):
+    np.random.seed(seed)
+    return np.random.random(shape)
 
 
 @task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)

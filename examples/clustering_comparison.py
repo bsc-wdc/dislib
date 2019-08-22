@@ -7,8 +7,8 @@ import numpy as np
 from sklearn.datasets import make_blobs, make_circles, make_moons
 from sklearn.preprocessing import StandardScaler
 
+import dislib as ds
 from dislib.cluster import KMeans, DBSCAN, GaussianMixture
-from dislib.data import load_data
 
 
 def main():
@@ -98,14 +98,12 @@ def main():
                                                           "expected.",
                                         category=UserWarning)
 
-                data = load_data(x=X, y=y, subset_size=300)
+                data = ds.array(X, block_size=(300, 2))
                 algorithm.fit(data)
 
             t1 = time.time()
             if hasattr(algorithm, 'predict'):
-                algorithm.predict(data)
-
-            y_pred = data.labels.astype(np.int)
+                y_pred = algorithm.predict(data).collect()
 
             plt.subplot(len(datasets), len(clustering_algorithms), plot_num)
             if i_dataset == 0:
