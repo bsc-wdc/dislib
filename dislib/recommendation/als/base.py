@@ -58,10 +58,10 @@ class ALS(object):
     --------
     >>> import numpy as np
     >>> from scipy.sparse import csr_matrix
-    >>> from dislib.data import load_data
+    >>> import dislib as ds
     >>> data = np.array([[0, 0, 5], [3, 0, 5], [3, 1, 2]])
     >>> ratings = csr_matrix(data).transpose().tocsr()
-    >>> train = load_data(x=ratings, subset_size=1)
+    >>> train = ds.array(ratings, block_size=(1, 3))
     >>> from dislib.recommendation import ALS
     >>> als = ALS()
     >>> als.fit(train)
@@ -129,13 +129,13 @@ class ALS(object):
         # remove NaN errors that come from empty chunks
         return np.mean(rmses[~np.isnan(rmses)])
 
-    def fit(self, dataset, test=None):
+    def fit(self, x, test=None):
         """ Fits a model using training data. Training data is also used to
         check for convergence unless test data is provided.
 
         Parameters
         ----------
-        dataset : Dataset
+        x : Dataset
             darray where each row is the collection of ratings given by a user
         test : csr_matrix
             Sparse matrix used to check convergence with users as rows and
@@ -143,8 +143,8 @@ class ALS(object):
             convergence.
         """
 
-        n_u = dataset.shape[0]
-        n_i = dataset.shape[1]
+        n_u = x.shape[0]
+        n_i = x.shape[1]
 
         if self._verbose:
             print("Item blocks: %s" % n_i)
@@ -159,7 +159,7 @@ class ALS(object):
 
         # Assign average rating as first feature
         # average_ratings = dataset.mean(axis='columns').collect()
-        average_ratings = _mean(dataset)
+        average_ratings = _mean(x)
 
         items[:, 0] = average_ratings
 
@@ -168,12 +168,12 @@ class ALS(object):
         while not self._has_finished(i):
             last_rmse = rmse
 
-            users = self._update(r=dataset, x=items, axis=0)
-            items = self._update(r=dataset, x=users, axis=1)
+            users = self._update(r=x, x=items, axis=0)
+            items = self._update(r=x, x=users, axis=1)
 
             if self._check_convergence:
 
-                _test = dataset if test is None else test
+                _test = x if test is None else test
                 rmse = compss_wait_on(self._compute_rmse(_test, users, items))
                 self.converged = self._has_converged(last_rmse, rmse)
                 if self._verbose:

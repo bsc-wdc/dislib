@@ -5,6 +5,7 @@ import pandas as pd
 from sklearn.datasets import load_iris
 
 from dislib.classification import RandomForestClassifier
+import dislib as ds
 
 
 def main():
@@ -20,15 +21,15 @@ def main():
     # Train the RF classifier
     print("- Training Random Forest classifier with %s samples of Iris "
           "dataset." % len(train_idx))
-    x_train = array(x[train_idx], (10, 4))
-    y_train = array(y[train_idx][:, np.newaxis], (10, 1))
+    x_train = ds.array(x[train_idx], (10, 4))
+    y_train = ds.array(y[train_idx][:, np.newaxis], (10, 1))
     forest = RandomForestClassifier(10)
     forest.fit(x_train, y_train)
 
     # Test the trained RF classifier
     print("- Testing the classifier.", end='')
-    x_test = array(x[test_idx], (10, 4))
-    y_real = array(y[test_idx][:, np.newaxis], (10, 1))
+    x_test = ds.array(x[test_idx], (10, 4))
+    y_real = ds.array(y[test_idx][:, np.newaxis], (10, 1))
     y_pred = forest.predict(x_test)
 
     score = forest.score(x_test, y_real)

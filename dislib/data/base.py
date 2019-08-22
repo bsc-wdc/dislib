@@ -101,13 +101,13 @@ def load_txt_file(path, block_size, delimiter=","):
             lines.append(line.encode())
 
             if len(lines) == block_size[0]:
-                out_blocks = [object() for _ in n_blocks]
+                out_blocks = [object() for _ in range(n_blocks)]
                 _read_lines(lines, block_size[1], delimiter, out_blocks)
                 blocks.append(out_blocks)
                 lines = []
 
     if lines:
-        out_blocks = [object() for _ in n_blocks]
+        out_blocks = [object() for _ in range(n_blocks)]
         _read_lines(lines, block_size[1], delimiter, out_blocks)
         blocks.append(out_blocks)
 

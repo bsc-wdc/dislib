@@ -57,7 +57,7 @@ def main():
     bsize = args.block_size.split(",")
     block_size = (int(bsize[0]), int(bsize[1]))
 
-    if args.libsvm:
+    if args.svmlight:
         x, y = ds.load_svmlight_file(train_data, block_size, args.features,
                                      sparse)
     else:
@@ -65,7 +65,7 @@ def main():
 
     n_features = x.shape[1]
 
-    if args.labeled and not args.libsvm:
+    if args.labeled and not args.svmlight:
         x = x[:, :n_features - 1]
 
     if args.detailed_times:

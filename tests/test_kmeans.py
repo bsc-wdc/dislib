@@ -84,8 +84,8 @@ class KMeansTest(unittest.TestCase):
         data structures. """
         file_ = "tests/files/libsvm/2"
 
-        x_sp, _ = load_svmlight_file(file_, (10, 300), 780, True)
-        x_ds, _ = load_svmlight_file(file_, (10, 300), 780, False)
+        x_sp, _ = ds.load_svmlight_file(file_, (10, 300), 780, True)
+        x_ds, _ = ds.load_svmlight_file(file_, (10, 300), 780, False)
 
         kmeans = KMeans(random_state=170)
 

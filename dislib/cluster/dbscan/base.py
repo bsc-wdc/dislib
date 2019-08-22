@@ -10,7 +10,7 @@ from dislib.cluster.dbscan.classes import Region
 from dislib.data.array import Array
 
 
-class DBSCAN():
+class DBSCAN:
     """ Perform DBSCAN clustering.
 
     This algorithm requires data to be arranged in a multidimensional grid.
@@ -395,8 +395,8 @@ def _merge_labels(labels_list, indices):
 def _merge_dicts(*dicts):
     merged_dict = {}
 
-    for dict in dicts:
-        merged_dict.update(dict)
+    for dct in dicts:
+        merged_dict.update(dct)
 
     return merged_dict
 

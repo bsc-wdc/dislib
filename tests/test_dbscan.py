@@ -135,8 +135,8 @@ class ArrangeTest(unittest.TestCase):
         dense data structures."""
         file_ = "tests/files/libsvm/2"
 
-        sparse, _ = load_svmlight_file(file_, (10, 300), 780, True)
-        dense, _ = load_svmlight_file(file_, (10, 200), 780, False)
+        sparse, _ = ds.load_svmlight_file(file_, (10, 300), 780, True)
+        dense, _ = ds.load_svmlight_file(file_, (10, 200), 780, False)
 
         arranged_d, sort_d, _ = _arrange_samples(dense, 3, [128, 184])
         arranged_sp, sort_sp, _ = _arrange_samples(sparse, 3, [128, 184])

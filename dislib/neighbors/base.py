@@ -54,6 +54,8 @@ class NearestNeighbors:
         n_neighbors: int, optional (default=None)
             Number of neighbors to get. If None, the value passed in the
             constructor is employed.
+        return_distance : boolean, optional (default=True)
+            Whether to return distances.
 
         Returns
         -------
