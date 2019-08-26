@@ -4,46 +4,7 @@ from pycompss.api.parameter import COLLECTION_INOUT, Type, COLLECTION_IN, Depth
 from pycompss.api.task import task
 from scipy.sparse import issparse, vstack
 
-from dislib.data import Dataset
 from dislib.data.array import Array
-
-
-def resample(dataset, n_samples, random_state=None):
-    """ Resamples a dataset without replacement.
-
-    Parameters
-    ----------
-    dataset : Dataset
-        Input data.
-    n_samples : int
-        Number of samples to generate.
-    random_state : int or RandomState, optional (default=None)
-        Seed or numpy.random.RandomState instance to use in the generation of
-        random numbers.
-
-    Returns
-    -------
-    resampled_data : Dataset
-        Resampled dataset. The number of subsets in the returned dataset is
-        less or equal to the number of subsets in the input dataset.
-    """
-    r_data = Dataset(dataset.n_features, dataset.sparse)
-    np.random.seed(random_state)
-    sizes = dataset.subsets_sizes()
-    indices = np.random.choice(range(sum(sizes)), size=n_samples)
-    offset = 0
-
-    for subset, size in zip(dataset, sizes):
-        subset_indices = indices - offset
-        subset_indices = subset_indices[subset_indices >= 0]
-        subset_indices = subset_indices[subset_indices < size]
-
-        if subset_indices.size > 0:
-            r_data.append(_resample(subset, subset_indices))
-
-        offset += size
-
-    return r_data
 
 
 def shuffle(x, y=None, random_state=None):
@@ -206,11 +167,6 @@ def _merge_shuffle_xy(seed, part_out_subsamples, part_out_x_blocks,
     blocks_y = [part_out_y[:, i:i + y_blocks_width]
                 for i in range(0, part_out_y.shape[1], y_blocks_width)]
     part_out_y_blocks[:] = blocks_y
-
-
-@task(returns=1)
-def _resample(subset, indices):
-    return subset[indices]
 
 
 @task(x={Type: COLLECTION_IN, Depth: 2}, subsamples=COLLECTION_INOUT)

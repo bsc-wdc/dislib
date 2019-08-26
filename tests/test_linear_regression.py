@@ -16,8 +16,8 @@ class LinearRegressionTest(unittest.TestCase):
 
         bn, bm = 2, 2
 
-        x = ds.array(x=x_data, blocks_shape=(bn, bm))
-        y = ds.array(x=y_data, blocks_shape=(bn, bm))
+        x = ds.array(x=x_data, block_size=(bn, bm))
+        y = ds.array(x=y_data, block_size=(bn, bm))
 
         reg = LinearRegression()
         reg.fit(x, y)
@@ -30,7 +30,7 @@ class LinearRegressionTest(unittest.TestCase):
         self.assertTrue(np.allclose(reg.intercept_, 0.3))
 
         x_test = np.array([3, 5]).reshape(-1, 1)
-        test_data = ds.array(x=x_test, blocks_shape=(bn, bm))
+        test_data = ds.array(x=x_test, block_size=(bn, bm))
         pred = reg.predict(test_data).collect()
 
         self.assertTrue(np.allclose(pred, [2.1, 3.3]))

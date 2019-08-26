@@ -43,7 +43,7 @@ class PCA:
     >>> import dislib as ds
     >>> x = np.array([[1, 2], [1, 4], [1, 0], [4, 2], [4, 4], [4, 0]])
     >>> bn, bm = 2, 2
-    >>> data = ds.array(x=x, blocks_shape=(bn, bm))
+    >>> data = ds.array(x=x, block_size=(bn, bm))
     >>> pca = PCA()
     >>> transformed_data = pca.fit_transform(data)
     >>> print(transformed_data)

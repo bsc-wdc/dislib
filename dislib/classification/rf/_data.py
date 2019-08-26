@@ -1,7 +1,7 @@
-from numpy.lib import format
-import numpy as np
 import tempfile
 
+import numpy as np
+from numpy.lib import format
 from pycompss.api.parameter import FILE_IN, FILE_INOUT, COLLECTION_IN, Depth, \
     Type
 from pycompss.api.task import task

@@ -76,12 +76,12 @@ class CascadeSVM(object):
     >>> x = np.array([[-1, -1], [-2, -1], [1, 1], [2, 1]])
     >>> y = np.array([1, 1, 2, 2])
     >>> import dislib as ds
-    >>> train_data = ds.array(x, blocks_shape=(4, 2))
-    >>> train_labels = ds.array(x, blocks_shape=(4, 2))
+    >>> train_data = ds.array(x, block_size=(4, 2))
+    >>> train_labels = ds.array(y, block_size=(4, 2))
     >>> from dislib.classification import CascadeSVM
     >>> svm = CascadeSVM()
     >>> svm.fit(train_data, train_labels)
-    >>> test_data = ds.array(np.array([[-0.8, -1]]), blocks_shape=(1, 2))
+    >>> test_data = ds.array(np.array([[-0.8, -1]]), block_size=(1, 2))
     >>> y_pred = svm.predict(test_data)
     >>> print(y_pred)
     """

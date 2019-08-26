@@ -1,11 +1,11 @@
 import unittest
 
+import numpy as np
 from pycompss.api.api import compss_wait_on
 from sklearn.datasets import make_classification
 
 import dislib as ds
 from dislib.classification import RandomForestClassifier
-import numpy as np
 
 
 class RFTest(unittest.TestCase):

@@ -17,7 +17,7 @@ def main():
     random_state = 170
     x, y = make_blobs(n_samples=n_samples, random_state=random_state)
 
-    dataset = ds.array(x, blocks_shape=(300, 2))
+    dataset = ds.array(x, block_size=(300, 2))
 
     # Incorrect number of clusters
     kmeans = KMeans(n_clusters=2, random_state=random_state)
@@ -33,7 +33,7 @@ def main():
     transformation = [[0.60834549, -0.63667341], [-0.40887718, 0.85253229]]
     x_aniso = np.dot(x, transformation)
 
-    dataset = ds.array(x_aniso, blocks_shape=(300, 2))
+    dataset = ds.array(x_aniso, block_size=(300, 2))
 
     kmeans = KMeans(n_clusters=3, random_state=random_state)
     y_pred = kmeans.fit_predict(dataset).collect()
@@ -49,7 +49,7 @@ def main():
                                     cluster_std=[1.0, 2.5, 0.5],
                                     random_state=random_state)
 
-    dataset = ds.array(x_varied, blocks_shape=(300, 2))
+    dataset = ds.array(x_varied, block_size=(300, 2))
 
     kmeans = KMeans(n_clusters=3, random_state=random_state)
     y_pred = kmeans.fit_predict(dataset).collect()
@@ -63,7 +63,7 @@ def main():
     # Unevenly sized blobs
     x_filtered = np.vstack((x[y == 0][:500], x[y == 1][:100], x[y == 2][:10]))
 
-    dataset = ds.array(x_filtered, blocks_shape=(300, 2))
+    dataset = ds.array(x_filtered, block_size=(300, 2))
 
     kmeans = KMeans(n_clusters=3, random_state=random_state)
     y_pred = kmeans.fit_predict(dataset).collect()

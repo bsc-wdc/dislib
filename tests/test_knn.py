@@ -12,8 +12,8 @@ class NearestNeighborsTest(unittest.TestCase):
     def test_kneighbors(self):
         """ Tests kneighbors against scikit-learn """
         x = np.random.random((1500, 5))
-        data = ds.array(x, blocks_shape=(500, 3))
-        q_data = ds.array(x, blocks_shape=(101, 2))
+        data = ds.array(x, block_size=(500, 3))
+        q_data = ds.array(x, block_size=(101, 2))
 
         knn = NearestNeighbors(n_neighbors=10)
         knn.fit(data)
@@ -29,7 +29,7 @@ class NearestNeighborsTest(unittest.TestCase):
     def test_kneighbors_sparse(self):
         """ Tests kneighbors against scikit-learn with sparse data """
         x = csr_matrix(np.random.random((1500, 5)))
-        data = ds.array(x, blocks_shape=(500, 5))
+        data = ds.array(x, block_size=(500, 5))
 
         knn = NearestNeighbors(n_neighbors=10)
         knn.fit(data)

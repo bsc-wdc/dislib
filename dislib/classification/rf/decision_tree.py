@@ -219,7 +219,7 @@ class _Node:
     def predict_proba(self, sample, n_classes):
         node_content = self.content
         if isinstance(node_content, _LeafInfo):
-            single_pred = node_content.frequencies/node_content.size
+            single_pred = node_content.frequencies / node_content.size
             return np.tile(single_pred, (len(sample), 1))
         if isinstance(node_content, _SkTreeWrapper):
             if len(sample) > 0:

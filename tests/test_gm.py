@@ -1,15 +1,15 @@
-import unittest
-import sys
 import io
+import sys
+import unittest
 import warnings
 
 import numpy as np
-import dislib as ds
 from numpy.random.mtrand import RandomState
 from pycompss.api.api import compss_wait_on
 from sklearn.datasets import make_blobs, load_iris
 from sklearn.exceptions import ConvergenceWarning
 
+import dislib as ds
 from dislib.cluster import GaussianMixture
 
 
@@ -49,7 +49,7 @@ class GaussianMixtureTest(unittest.TestCase):
         """Tests GaussianMixture.fit()"""
 
         x = np.array([[1, 2], [2, 1], [-3, -3], [-1, -2], [-2, -1], [3, 3]])
-        ds_x = ds.array(x, blocks_shape=(3, 2))
+        ds_x = ds.array(x, block_size=(3, 2))
 
         gm = GaussianMixture(n_components=2, random_state=666)
         gm.fit(ds_x)
@@ -80,13 +80,13 @@ class GaussianMixtureTest(unittest.TestCase):
     def test_predict(self):
         """Tests GaussianMixture.predict()"""
         x_train = np.array([[1, 2], [-1, -2], [2, 1], [-2, -1]])
-        ds_x_train = ds.array(x_train, blocks_shape=(2, 2))
+        ds_x_train = ds.array(x_train, block_size=(2, 2))
 
         gm = GaussianMixture(n_components=2, random_state=666)
         gm.fit(ds_x_train)
 
         x_test = np.concatenate((x_train, [[2, 2], [-1, -3]]))
-        ds_x_test = ds.array(x_test, blocks_shape=(2, 2))
+        ds_x_test = ds.array(x_test, block_size=(2, 2))
         pred = gm.predict(ds_x_test).collect()
 
         self.assertTrue(pred[0] != pred[1])
@@ -98,9 +98,9 @@ class GaussianMixtureTest(unittest.TestCase):
         x, y = make_blobs(n_samples=1500, random_state=170)
         x_filtered = np.vstack(
             (x[y == 0][:500], x[y == 1][:100], x[y == 2][:10]))
-        y_real = np.concatenate((np.zeros(500), np.ones(100), 2*np.ones(10)))
+        y_real = np.concatenate((np.zeros(500), np.ones(100), 2 * np.ones(10)))
 
-        ds_x = ds.array(x_filtered, blocks_shape=(300, 2))
+        ds_x = ds.array(x_filtered, block_size=(300, 2))
 
         gm = GaussianMixture(n_components=3, random_state=170)
         pred = gm.fit_predict(ds_x).collect()
@@ -111,49 +111,49 @@ class GaussianMixtureTest(unittest.TestCase):
 
     def test_check_n_components(self):
         """Tests GaussianMixture n_components validation"""
-        x = ds.array([[0, 0], [0, 1], [1, 0]], blocks_shape=(10, 2))
+        x = ds.array([[0, 0], [0, 1], [1, 0]], block_size=(10, 2))
         with self.assertRaises(ValueError):
             gm = GaussianMixture(n_components=0)
             gm.fit(x)
 
     def test_check_tol(self):
         """Tests GaussianMixture tol validation"""
-        x = ds.array([[0, 0], [0, 1], [1, 0]], blocks_shape=(10, 2))
+        x = ds.array([[0, 0], [0, 1], [1, 0]], block_size=(10, 2))
         with self.assertRaises(ValueError):
             gm = GaussianMixture(tol=-0.1)
             gm.fit(x)
 
     def test_check_max_iter(self):
         """Tests GaussianMixture max_iter validation"""
-        x = ds.array([[0, 0], [0, 1], [1, 0]], blocks_shape=(10, 2))
+        x = ds.array([[0, 0], [0, 1], [1, 0]], block_size=(10, 2))
         with self.assertRaises(ValueError):
             gm = GaussianMixture(max_iter=0)
             gm.fit(x)
 
     def test_check_reg_covar(self):
         """Tests GaussianMixture reg_covar validation"""
-        x = ds.array([[0, 0], [0, 1], [1, 0]], blocks_shape=(10, 2))
+        x = ds.array([[0, 0], [0, 1], [1, 0]], block_size=(10, 2))
         with self.assertRaises(ValueError):
             gm = GaussianMixture(reg_covar=-0.1)
             gm.fit(x)
 
     def test_check_covariance_type(self):
         """Tests GaussianMixture covariance_type validation"""
-        x = ds.array([[0, 0], [0, 1], [1, 0]], blocks_shape=(10, 2))
+        x = ds.array([[0, 0], [0, 1], [1, 0]], block_size=(10, 2))
         with self.assertRaises(ValueError):
             gm = GaussianMixture(covariance_type='')
             gm.fit(x)
 
     def test_check_init_params(self):
         """Tests GaussianMixture init_params validation"""
-        x = ds.array([[0, 0], [0, 1], [1, 0]], blocks_shape=(10, 2))
+        x = ds.array([[0, 0], [0, 1], [1, 0]], block_size=(10, 2))
         with self.assertRaises(ValueError):
             gm = GaussianMixture(init_params='')
             gm.fit(x)
 
     def test_check_initial_parameters(self):
         """Tests GaussianMixture initial parameters validation"""
-        x = ds.array([[0, 0], [0, 1], [1, 0]], blocks_shape=(10, 2))
+        x = ds.array([[0, 0], [0, 1], [1, 0]], block_size=(10, 2))
         with self.assertRaises(ValueError):
             gm = GaussianMixture(weights_init=[1, 2])
             gm.fit(x)
@@ -264,7 +264,7 @@ class GaussianMixtureTest(unittest.TestCase):
                     'corr': create_correlated_dataset()}
         real_labels = {k: v[1] for k, v in datasets.items()}
         for k, v in datasets.items():
-            datasets[k] = ds.array(v[0], blocks_shape=(200, v[0].shape[1]))
+            datasets[k] = ds.array(v[0], block_size=(200, v[0].shape[1]))
 
         covariance_types = 'full', 'tied', 'diag', 'spherical'
 
@@ -272,7 +272,7 @@ class GaussianMixtureTest(unittest.TestCase):
             """ Computes classification accuracy for binary (0/1) labels"""
             equal_labels = np.count_nonzero(predicted == real)
             equal_ratio = equal_labels / len(real)
-            return max(equal_ratio, 1-equal_ratio)
+            return max(equal_ratio, 1 - equal_ratio)
 
         pred_labels = {}
         for cov_type in covariance_types:
@@ -389,7 +389,7 @@ class GaussianMixtureTest(unittest.TestCase):
         """ Tests GaussianMixture means_init and weights_init parameters """
         x, _ = load_iris(return_X_y=True)
         x_ds = ds.array(x, (75, 4))
-        weights_init = [1/3, 1/3, 1/3]
+        weights_init = [1 / 3, 1 / 3, 1 / 3]
         means_init = np.array([[5, 3, 2, 0],
                                [6, 3, 4, 1],
                                [7, 3, 6, 2]])
@@ -402,7 +402,7 @@ class GaussianMixtureTest(unittest.TestCase):
         """ Tests GaussianMixture with precisions_init='full' """
         x, _ = load_iris(return_X_y=True)
         x_ds = ds.array(x, (75, 4))
-        weights_init = [1/3, 1/3, 1/3]
+        weights_init = [1 / 3, 1 / 3, 1 / 3]
         means_init = [[5, 3, 2, 0],
                       [6, 3, 4, 1],
                       [7, 3, 6, 2]]
@@ -421,7 +421,7 @@ class GaussianMixtureTest(unittest.TestCase):
         """ Tests GaussianMixture with precisions_init='tied' """
         x, _ = load_iris(return_X_y=True)
         x_ds = ds.array(x, (75, 4))
-        weights_init = [1/3, 1/3, 1/3]
+        weights_init = [1 / 3, 1 / 3, 1 / 3]
         means_init = [[5, 3, 2, 0],
                       [6, 3, 4, 1],
                       [7, 3, 6, 2]]
@@ -440,12 +440,12 @@ class GaussianMixtureTest(unittest.TestCase):
         """ Tests GaussianMixture with precisions_init='diag' """
         x, _ = load_iris(return_X_y=True)
         x_ds = ds.array(x, (75, 4))
-        weights_init = np.array([1/3, 1/3, 1/3])
+        weights_init = np.array([1 / 3, 1 / 3, 1 / 3])
         means_init = np.array([[5, 3, 2, 0],
                                [6, 3, 4, 1],
                                [7, 3, 6, 2]])
         np.random.seed(0)
-        precisions_init = np.random.rand(3, 4)*2
+        precisions_init = np.random.rand(3, 4) * 2
 
         gm = GaussianMixture(covariance_type='diag', random_state=0,
                              n_components=3, weights_init=weights_init,
@@ -458,12 +458,12 @@ class GaussianMixtureTest(unittest.TestCase):
         """ Tests GaussianMixture with precisions_init='spherical' """
         x, _ = load_iris(return_X_y=True)
         x_ds = ds.array(x, (75, 4))
-        weights_init = [1/3, 1/3, 1/3]
+        weights_init = [1 / 3, 1 / 3, 1 / 3]
         means_init = np.array([[5, 3, 2, 0],
                                [6, 3, 4, 1],
                                [7, 3, 6, 2]])
         np.random.seed(0)
-        precisions_init = np.random.rand(3)*2
+        precisions_init = np.random.rand(3) * 2
 
         gm = GaussianMixture(covariance_type='spherical', random_state=0,
                              n_components=3, weights_init=weights_init,

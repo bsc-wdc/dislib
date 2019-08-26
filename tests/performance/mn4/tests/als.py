@@ -1,7 +1,8 @@
-import performance
 from math import ceil
 
-from dislib.data import load_libsvm_file
+import performance
+
+import dislib as ds
 from dislib.recommendation import ALS
 
 
@@ -12,12 +13,13 @@ def main():
     n_factors = 100
 
     subset_size = int(ceil(17770 / num_subsets))
-    ds = load_libsvm_file(data, subset_size=subset_size, n_features=480189)
+    x, y = ds.load_svmlight_file(data, block_size=(subset_size, subset_size),
+                                 n_features=480189, store_sparse=True)
 
     als = ALS(tol=0.0001, random_state=676, n_f=n_factors, max_iter=10,
               verbose=False)
 
-    performance.measure("ALS", "Netflix", als, ds)
+    performance.measure("ALS", "Netflix", als, x, y)
 
 
 if __name__ == '__main__':

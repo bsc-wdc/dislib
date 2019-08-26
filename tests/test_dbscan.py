@@ -11,7 +11,6 @@ from sklearn.preprocessing import StandardScaler
 import dislib as ds
 from dislib.cluster import DBSCAN
 from dislib.cluster.dbscan.base import _arrange_samples, _rearrange_labels
-from dislib.data import load_svmlight_file
 
 
 class ArrangeTest(unittest.TestCase):
@@ -19,7 +18,7 @@ class ArrangeTest(unittest.TestCase):
     def test_arrange(self):
         """ Tests the arrange method with toy data."""
         x = ds.array(np.array([[1, 1], [8, 8], [2, 5], [1, 7], [4, 4], [5, 9],
-                               [4, 0], [8, 1], [7, 4]]), blocks_shape=(3, 2))
+                               [4, 0], [8, 1], [7, 4]]), block_size=(3, 2))
 
         arranged, _, _ = _arrange_samples(x, n_regions=3)
         arranged = compss_wait_on(arranged)
@@ -42,7 +41,7 @@ class ArrangeTest(unittest.TestCase):
     def test_rearrange(self):
         """ Tests rearrange function """
         original = np.array([[7], [1], [5], [2], [0], [6]])
-        x = ds.array(original, blocks_shape=(3, 1))
+        x = ds.array(original, block_size=(3, 1))
 
         arranged, sorting, _ = _arrange_samples(x, n_regions=3)
         blocks = compss_wait_on(_rearrange_labels(arranged, sorting, 2))
@@ -55,7 +54,7 @@ class ArrangeTest(unittest.TestCase):
         """ Tests that arrange returns correct indices with toy data.
         """
         x = ds.array(np.array([[1, 1], [8, 8], [2, 5], [1, 7], [4, 4], [5, 9],
-                               [4, 0], [8, 1], [7, 4]]), blocks_shape=(3, 2))
+                               [4, 0], [8, 1], [7, 4]]), block_size=(3, 2))
 
         arranged, sorting, _ = _arrange_samples(x, n_regions=3)
 
@@ -83,7 +82,7 @@ class ArrangeTest(unittest.TestCase):
         """
         x = ds.array(np.array([[0, 1, 9], [8, 8, 2], [2, 5, 4], [1, 7, 6],
                                [4, 4, 2], [5, 9, 0], [4, 0, 1], [9, 1, 7],
-                               [7, 4, 3]]), blocks_shape=(3, 2))
+                               [7, 4, 3]]), block_size=(3, 2))
 
         arranged, _, _ = _arrange_samples(x, n_regions=3, dimensions=[0])
         arranged = compss_wait_on(arranged)
@@ -121,7 +120,7 @@ class ArrangeTest(unittest.TestCase):
         """ Tests arrange when one of the features only takes one value
         """
         x = ds.array(np.array([[1, 0], [8, 0], [2, 0],
-                               [2, 0], [3, 0], [5, 0]]), blocks_shape=(3, 2))
+                               [2, 0], [3, 0], [5, 0]]), block_size=(3, 2))
 
         arranged, _, _ = _arrange_samples(x, n_regions=3)
         arranged = compss_wait_on(arranged)
@@ -136,8 +135,8 @@ class ArrangeTest(unittest.TestCase):
         dense data structures."""
         file_ = "tests/files/libsvm/2"
 
-        sparse, _ = load_svmlight_file(file_, (10, 300), 780, True)
-        dense, _ = load_svmlight_file(file_, (10, 200), 780, False)
+        sparse, _ = ds.load_svmlight_file(file_, (10, 300), 780, True)
+        dense, _ = ds.load_svmlight_file(file_, (10, 200), 780, False)
 
         arranged_d, sort_d, _ = _arrange_samples(dense, 3, [128, 184])
         arranged_sp, sort_sp, _ = _arrange_samples(sparse, 3, [128, 184])
@@ -170,7 +169,7 @@ class DBSCANTest(unittest.TestCase):
         x, y = make_blobs(n_samples=n_samples, n_features=2, random_state=8)
         dbscan = DBSCAN(n_regions=1, eps=.3)
         x = StandardScaler().fit_transform(x)
-        ds_x = ds.array(x, blocks_shape=(300, 2))
+        ds_x = ds.array(x, block_size=(300, 2))
         dbscan.fit(ds_x)
         self.assertEqual(dbscan.n_clusters, 3)
 
@@ -182,7 +181,7 @@ class DBSCANTest(unittest.TestCase):
         x, y = make_circles(n_samples=n_samples, factor=.5, noise=.05)
         dbscan = DBSCAN(n_regions=1, eps=.15)
         x = StandardScaler().fit_transform(x)
-        ds_x = ds.array(x, blocks_shape=(300, 2))
+        ds_x = ds.array(x, block_size=(300, 2))
         dbscan.fit(ds_x)
         self.assertEqual(dbscan.n_clusters, 2)
 
@@ -194,7 +193,7 @@ class DBSCANTest(unittest.TestCase):
         x, y = make_moons(n_samples=n_samples, noise=.05)
         dbscan = DBSCAN(n_regions=1, eps=.3)
         x = StandardScaler().fit_transform(x)
-        ds_x = ds.array(x, blocks_shape=(300, 2))
+        ds_x = ds.array(x, block_size=(300, 2))
         dbscan.fit(ds_x)
         self.assertEqual(dbscan.n_clusters, 2)
 
@@ -208,7 +207,7 @@ class DBSCANTest(unittest.TestCase):
         transformation = [[0.6, -0.6], [-0.4, 0.8]]
         x = np.dot(x, transformation)
         x = StandardScaler().fit_transform(x)
-        ds_x = ds.array(x, blocks_shape=(300, 2))
+        ds_x = ds.array(x, block_size=(300, 2))
         y_pred = dbscan.fit_predict(ds_x).collect()
         true_sizes = {19, 496, 491, 488, 6}
         cluster_sizes = {y_pred[y_pred == -1].size,
@@ -228,7 +227,7 @@ class DBSCANTest(unittest.TestCase):
         x, y = make_blobs(n_samples=n_samples, n_features=2, random_state=8)
         dbscan = DBSCAN(n_regions=1, eps=.3, max_samples=500)
         x = StandardScaler().fit_transform(x)
-        ds_x = ds.array(x, blocks_shape=(300, 2))
+        ds_x = ds.array(x, block_size=(300, 2))
         dbscan.fit(ds_x)
         self.assertEqual(dbscan.n_clusters, 3)
 
@@ -240,7 +239,7 @@ class DBSCANTest(unittest.TestCase):
         x, y = make_circles(n_samples=n_samples, factor=.5, noise=.05)
         dbscan = DBSCAN(n_regions=1, eps=.15, max_samples=500)
         x = StandardScaler().fit_transform(x)
-        ds_x = ds.array(x, blocks_shape=(300, 2))
+        ds_x = ds.array(x, block_size=(300, 2))
         dbscan.fit(ds_x)
         self.assertEqual(dbscan.n_clusters, 2)
 
@@ -252,7 +251,7 @@ class DBSCANTest(unittest.TestCase):
         x, y = make_moons(n_samples=n_samples, noise=.05)
         dbscan = DBSCAN(n_regions=1, eps=.3, max_samples=500)
         x = StandardScaler().fit_transform(x)
-        ds_x = ds.array(x, blocks_shape=(300, 2))
+        ds_x = ds.array(x, block_size=(300, 2))
         dbscan.fit(ds_x)
         self.assertEqual(dbscan.n_clusters, 2)
 
@@ -266,7 +265,7 @@ class DBSCANTest(unittest.TestCase):
         transformation = [[0.6, -0.6], [-0.4, 0.8]]
         x = np.dot(x, transformation)
         x = StandardScaler().fit_transform(x)
-        ds_x = ds.array(x, blocks_shape=(300, 2))
+        ds_x = ds.array(x, block_size=(300, 2))
         y_pred = dbscan.fit_predict(ds_x).collect()
 
         true_sizes = {19, 496, 491, 488, 6}
@@ -287,7 +286,7 @@ class DBSCANTest(unittest.TestCase):
         x, y = make_blobs(n_samples=n_samples, n_features=2, random_state=8)
         dbscan = DBSCAN(n_regions=4, eps=.3, max_samples=300)
         x = StandardScaler().fit_transform(x)
-        ds_x = ds.array(x, blocks_shape=(300, 2))
+        ds_x = ds.array(x, block_size=(300, 2))
         dbscan.fit(ds_x)
         self.assertEqual(dbscan.n_clusters, 3)
 
@@ -299,7 +298,7 @@ class DBSCANTest(unittest.TestCase):
         x, y = make_circles(n_samples=n_samples, factor=.5, noise=.05)
         dbscan = DBSCAN(n_regions=4, eps=.15, max_samples=700)
         x = StandardScaler().fit_transform(x)
-        ds_x = ds.array(x, blocks_shape=(300, 2))
+        ds_x = ds.array(x, block_size=(300, 2))
         dbscan.fit(ds_x)
         self.assertEqual(dbscan.n_clusters, 2)
 
@@ -311,7 +310,7 @@ class DBSCANTest(unittest.TestCase):
         x, y = make_moons(n_samples=n_samples, noise=.05)
         dbscan = DBSCAN(n_regions=4, eps=.3, max_samples=600)
         x = StandardScaler().fit_transform(x)
-        ds_x = ds.array(x, blocks_shape=(300, 2))
+        ds_x = ds.array(x, block_size=(300, 2))
         dbscan.fit(ds_x)
         self.assertEqual(dbscan.n_clusters, 2)
 
@@ -325,7 +324,7 @@ class DBSCANTest(unittest.TestCase):
         transformation = [[0.6, -0.6], [-0.4, 0.8]]
         x = np.dot(x, transformation)
         x = StandardScaler().fit_transform(x)
-        ds_x = ds.array(x, blocks_shape=(300, 2))
+        ds_x = ds.array(x, block_size=(300, 2))
         y_pred = dbscan.fit_predict(ds_x).collect()
         true_sizes = {19, 496, 491, 488, 6}
         cluster_sizes = {y_pred[y_pred == -1].size,
@@ -344,7 +343,7 @@ class DBSCANTest(unittest.TestCase):
         x, y = make_blobs(n_samples=n_samples, n_features=2, random_state=8)
         dbscan = DBSCAN(n_regions=3, eps=.2, max_samples=100)
         x = StandardScaler().fit_transform(x)
-        ds_x = ds.array(x, blocks_shape=(300, 2))
+        ds_x = ds.array(x, block_size=(300, 2))
         dbscan.fit(ds_x)
         self.assertEqual(dbscan.n_clusters, 0)
 
@@ -358,7 +357,7 @@ class DBSCANTest(unittest.TestCase):
         transformation = [[0.6, -0.6], [-0.4, 0.8]]
         x = np.dot(x, transformation)
         x = StandardScaler().fit_transform(x)
-        ds_x = ds.array(x, blocks_shape=(300, 2))
+        ds_x = ds.array(x, block_size=(300, 2))
         y_pred = dbscan.fit_predict(ds_x).collect()
         true_sizes = {19, 496, 491, 488, 6}
         cluster_sizes = {y_pred[y_pred == -1].size,
@@ -381,8 +380,8 @@ class DBSCANTest(unittest.TestCase):
         x = np.dot(x, transformation)
         x = StandardScaler().fit_transform(x)
 
-        dense = ds.array(x, blocks_shape=(300, 2))
-        sparse = ds.array(csr_matrix(x), blocks_shape=(300, 2))
+        dense = ds.array(x, block_size=(300, 2))
+        sparse = ds.array(csr_matrix(x), block_size=(300, 2))
 
         y_dense = dbscan.fit_predict(dense).collect()
         y_sparse = dbscan.fit_predict(sparse).collect()
@@ -393,7 +392,7 @@ class DBSCANTest(unittest.TestCase):
         """ Tests that DBSCAN can find clusters with less than min_samples. """
         x = np.array([[0, 0], [0, 1], [1, 0], [3, 0], [5.1, 0], [6, 0], [6, 1],
                       [10, 10]])
-        ds_x = ds.array(x, blocks_shape=(5, 2))
+        ds_x = ds.array(x, block_size=(5, 2))
 
         # n_regions=1
         dbscan1 = DBSCAN(n_regions=1, eps=2.5, min_samples=4)
@@ -404,7 +403,7 @@ class DBSCANTest(unittest.TestCase):
         """ Tests that DBSCAN can find clusters with less than min_samples. """
         x = np.array([[0, 0], [0, 1], [1, 0], [3, 0], [5.1, 0], [6, 0], [6, 1],
                       [10, 10]])
-        ds_x = ds.array(x, blocks_shape=(5, 2))
+        ds_x = ds.array(x, block_size=(5, 2))
 
         # n_regions=10
         dbscan2 = DBSCAN(n_regions=10, eps=2.5, min_samples=4)
@@ -416,7 +415,7 @@ class DBSCANTest(unittest.TestCase):
         x = np.array([[0, 0], [3.9, 0], [4.1, 0], [4.1, 0.89], [4.1, 0.88],
                       [5.9, 0], [5.9, 0.89], [5.9, 0.88], [6.1, 0], [10, 10],
                       [4.6, 0], [5.4, 0]])
-        ds_x = ds.array(x, blocks_shape=(5, 2))
+        ds_x = ds.array(x, block_size=(5, 2))
 
         dbscan = DBSCAN(n_regions=10, eps=0.9, min_samples=4)
         dbscan.fit(ds_x)
@@ -426,7 +425,7 @@ class DBSCANTest(unittest.TestCase):
         """ Tests that DBSCAN can find clusters between regions. """
         x = np.array([[0, 0], [0.6, 0], [0.9, 0], [1.1, 0.2], [0.9, 0.6],
                       [1.1, 0.8], [1.4, 0.8], [2, 2]])
-        ds_x = ds.array(x, blocks_shape=(5, 2))
+        ds_x = ds.array(x, block_size=(5, 2))
 
         dbscan = DBSCAN(n_regions=2, eps=0.5, min_samples=3)
         dbscan.fit(ds_x)
@@ -438,7 +437,7 @@ class DBSCANTest(unittest.TestCase):
                       [1.4, 0.2], [1.4, 0.21], [0.9, 0.6], [0.6, 0.6],
                       [0.6, 0.61], [1.1, 0.8], [1.4, 0.8], [1.4, 0.81],
                       [2, 2]])
-        ds_x = ds.array(x, blocks_shape=(5, 2))
+        ds_x = ds.array(x, block_size=(5, 2))
 
         dbscan = DBSCAN(n_regions=2, eps=0.5, min_samples=3)
         dbscan.fit(ds_x)
@@ -449,7 +448,7 @@ class DBSCANTest(unittest.TestCase):
         # 1 dimension
         np.random.seed(1)
         x = np.random.uniform(0, 10, size=(1000, 1))
-        ds_x = ds.array(x, blocks_shape=(300, 1))
+        ds_x = ds.array(x, block_size=(300, 1))
         dbscan = DBSCAN(n_regions=100, eps=0.1, min_samples=20)
         y = dbscan.fit_predict(ds_x).collect()
 
@@ -461,7 +460,7 @@ class DBSCANTest(unittest.TestCase):
         # 2 dimensions
         np.random.seed(2)
         x = np.random.uniform(0, 10, size=(1000, 2))
-        ds_x = ds.array(x, blocks_shape=(300, 2))
+        ds_x = ds.array(x, block_size=(300, 2))
         dbscan = DBSCAN(n_regions=10, max_samples=10, eps=0.5, min_samples=10)
         y = dbscan.fit_predict(ds_x).collect()
 
@@ -473,7 +472,7 @@ class DBSCANTest(unittest.TestCase):
         # 3 dimensions
         np.random.seed(3)
         x = np.random.uniform(0, 10, size=(1000, 3))
-        ds_x = ds.array(x, blocks_shape=(300, 3))
+        ds_x = ds.array(x, block_size=(300, 3))
         dbscan = DBSCAN(n_regions=10, dimensions=[0, 1],
                         eps=0.9, min_samples=4)
         y = dbscan.fit_predict(ds_x).collect()

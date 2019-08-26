@@ -1,7 +1,7 @@
 import os
 
-from dislib.data.array import array, load_svmlight_file, random_array, \
-    apply_along_axis
+from dislib.data.array import random_array, apply_along_axis, array
+from dislib.data.base import load_svmlight_file, load_txt_file
 
 name = "dislib"
 version_file = os.path.join(os.path.dirname(os.path.abspath(__file__)),
@@ -24,4 +24,5 @@ else:
               "Probably it was not installed with setup.py.\n%s" % e)
         __version__ = 'unknown'
 
-__all__ = ['random_array', 'array', 'load_svmlight_file', 'apply_along_axis']
+__all__ = ['load_txt_file', 'load_svmlight_file', 'random_array',
+           'apply_along_axis', 'array']

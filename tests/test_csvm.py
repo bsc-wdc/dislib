@@ -1,11 +1,10 @@
 import unittest
 
 import numpy as np
+from pycompss.api.api import compss_wait_on
 
 import dislib as ds
 from dislib.classification import CascadeSVM
-from dislib.data import load_svmlight_file
-from pycompss.api.api import compss_wait_on
 
 
 class CSVMTest(unittest.TestCase):
@@ -47,7 +46,7 @@ class CSVMTest(unittest.TestCase):
         seed = 666
         file_ = "tests/files/libsvm/2"
 
-        x, y = load_svmlight_file(file_, (10, 300), 780, False)
+        x, y = ds.load_svmlight_file(file_, (10, 300), 780, False)
 
         csvm = CascadeSVM(cascade_arity=3, max_iter=5,
                           tol=1e-4, kernel='linear', c=2, gamma=0.1,
@@ -73,7 +72,7 @@ class CSVMTest(unittest.TestCase):
         seed = 666
         file_ = "tests/files/libsvm/2"
 
-        x, y = load_svmlight_file(file_, (10, 300), 780, False)
+        x, y = ds.load_svmlight_file(file_, (10, 300), 780, False)
 
         csvm = CascadeSVM(cascade_arity=3, max_iter=5,
                           tol=1e-4, kernel='linear', c=2,
@@ -191,8 +190,8 @@ class CSVMTest(unittest.TestCase):
         seed = 666
         train = "tests/files/libsvm/3"
 
-        x_sp, y_sp = load_svmlight_file(train, (10, 300), 780, True)
-        x_d, y_d = load_svmlight_file(train, (10, 300), 780, False)
+        x_sp, y_sp = ds.load_svmlight_file(train, (10, 300), 780, True)
+        x_d, y_d = ds.load_svmlight_file(train, (10, 300), 780, False)
 
         csvm_sp = CascadeSVM(random_state=seed)
         csvm_sp.fit(x_sp, y_sp)

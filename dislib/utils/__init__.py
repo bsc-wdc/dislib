@@ -1,3 +1,3 @@
-from dislib.utils.base import shuffle, resample
+from dislib.utils.base import shuffle
 
-__all__ = ['shuffle', 'resample']
+__all__ = ['shuffle']

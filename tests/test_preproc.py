@@ -18,7 +18,7 @@ class StandardScalerTest(unittest.TestCase):
         x, y = make_blobs(n_samples=n_samples, random_state=170)
         transformation = [[0.6, -0.6], [-0.4, 0.8]]
         x = np.dot(x, transformation)
-        ds_arr = ds.array(x, blocks_shape=(300, 2))
+        ds_arr = ds.array(x, block_size=(300, 2))
 
         sc1 = SKScaler()
         scaled_x = sc1.fit_transform(x)
@@ -42,8 +42,8 @@ class StandardScalerTest(unittest.TestCase):
         transformation = [[0.6, -0.6], [-0.4, 0.8]]
         x = np.dot(x, transformation)
 
-        dense_arr = ds.array(x, blocks_shape=(300, 2))
-        sparse_arr = ds.array(csr_matrix(x), blocks_shape=(300, 2))
+        dense_arr = ds.array(x, block_size=(300, 2))
+        sparse_arr = ds.array(csr_matrix(x), block_size=(300, 2))
 
         sc = StandardScaler()
         dense_scaled = sc.fit_transform(dense_arr)
@@ -74,7 +74,7 @@ class StandardScalerTest(unittest.TestCase):
         x, y = make_blobs(n_samples=n_samples, random_state=170)
         transformation = [[0.6, -0.6], [-0.4, 0.8]]
         x = np.dot(x, transformation)
-        ds_arr = ds.array(x, blocks_shape=(300, 2))
+        ds_arr = ds.array(x, block_size=(300, 2))
         ds_arr = ds_arr[297:602]
         x = x[297:602]
 

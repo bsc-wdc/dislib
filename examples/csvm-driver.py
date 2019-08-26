@@ -5,15 +5,14 @@ import time
 
 from pycompss.api.api import barrier
 
+import dislib as ds
 from dislib.classification import CascadeSVM
-from dislib.data import (load_libsvm_file, load_libsvm_files, load_txt_file,
-                         load_txt_files)
 from dislib.utils import shuffle
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--libsvm", help="read files in libsvm format",
+    parser.add_argument("--svmlight", help="read files in SVMLight format",
                         action="store_true")
     parser.add_argument("-dt", "--detailed_times",
                         help="get detailed execution times (read and fit)",
@@ -23,9 +22,11 @@ def main():
                         choices=["linear", "rbf"], default="rbf")
     parser.add_argument("-a", "--arity", metavar="CASCADE_ARITY", type=int,
                         help="default is 2", default=2)
-    parser.add_argument("-p", "--part_size", metavar="PART_SIZE", type=int,
-                        help="size of the partitions in which to divide the "
-                             "input dataset (default is 100)", default=100)
+    parser.add_argument("-b", "--block_size", metavar="BLOCK_SIZE", type=str,
+                        help="two comma separated ints that represent the "
+                             "size of the blocks in which to divide the input "
+                             "data (default is 100,100)",
+                        default="100,100")
     parser.add_argument("-i", "--iteration", metavar="MAX_ITERATIONS",
                         type=int, help="default is 5", default=5)
     parser.add_argument("-g", "--gamma", metavar="GAMMA", type=float,
@@ -34,22 +35,21 @@ def main():
     parser.add_argument("-c", metavar="C", type=float, default=1,
                         help="Penalty parameter C of the error term. "
                              "Default:1")
-    parser.add_argument("-f", "--features", metavar="N_FEATURES", type=int,
-                        default=None, required=True)
+    parser.add_argument("-f", "--features", metavar="N_FEATURES",
+                        help="number of features of the input data "
+                             "(only for SVMLight files)",
+                        type=int, default=None, required=False)
     parser.add_argument("-t", "--test-file", metavar="TEST_FILE_PATH",
-                        help="test CSV file path", type=str, required=False)
+                        help="test file path", type=str, required=False)
     parser.add_argument("-o", "--output_file", metavar="OUTPUT_FILE_PATH",
                         help="output file path", type=str, required=False)
-    parser.add_argument("-nd", "--n_datasets", metavar="N_DATASETS", type=int,
-                        help="number of times to load the dataset", default=1)
     parser.add_argument("--convergence", help="check for convergence",
                         action="store_true")
-    parser.add_argument("--dense", help="use dense data structures",
+    parser.add_argument("--dense", help="store data in dense format (only "
+                                        "for SVMLight files)",
                         action="store_true")
     parser.add_argument("train_data",
-                        help="File or directory containing files "
-                             "(if a directory is provided PART_SIZE is "
-                             "ignored)", type=str)
+                        help="input file in CSV or SVMLight format", type=str)
     parser.add_argument("-v", "--verbose", action="store_true")
     parser.add_argument("-s", "--shuffle", help="shuffle input data",
                         action="store_true")
@@ -65,30 +65,21 @@ def main():
     else:
         gamma = args.gamma
 
-    data = []
     sparse = not args.dense
 
-    if os.path.isdir(train_data):
-        if args.libsvm:
-            for _ in range(args.n_datasets):
-                data.append(load_libsvm_files(train_data, args.features,
-                                              store_sparse=sparse))
-        else:
-            for _ in range(args.n_datasets):
-                data.append(load_txt_files(train_data, args.features,
-                                           label_col="last"))
+    bsize = args.block_size.split(",")
+    block_size = (int(bsize[0]), int(bsize[1]))
+
+    if args.svmlight:
+        x, y = ds.load_svmlight_file(train_data, block_size, args.features,
+                                     sparse)
     else:
-        if args.libsvm:
-            for _ in range(args.n_datasets):
-                data.append(
-                    load_libsvm_file(train_data, subset_size=args.part_size,
-                                     n_features=args.features,
-                                     store_sparse=sparse))
-        else:
-            for _ in range(args.n_datasets):
-                data.append(
-                    load_txt_file(train_data, subset_size=args.part_size,
-                                  n_features=args.features, label_col="last"))
+        x = ds.load_txt_file(train_data, block_size)
+        y = x[:, x.shape[1] - 2: x.shape[1] - 1]
+        x = x[:, :x.shape[1] - 1]
+
+    if args.shuffle:
+        x, y = shuffle(x, y)
 
     if args.detailed_times:
         barrier()
@@ -99,13 +90,7 @@ def main():
                       c=args.c, gamma=gamma,
                       check_convergence=args.convergence, verbose=args.verbose)
 
-    for d in data:
-        dataset = d
-
-        if args.shuffle:
-            dataset = shuffle(d)
-
-        csvm.fit(dataset)
+    csvm.fit(x, y)
 
     barrier()
     fit_time = time.time() - s_time
@@ -118,18 +103,16 @@ def main():
         out.append(len(n_files))
 
     if args.test_file:
-        if args.libsvm:
-            test_data = load_libsvm_file(args.test_file,
-                                         n_features=args.features,
-                                         subset_size=args.part_size,
-                                         store_sparse=sparse)
+        if args.svmlight:
+            x_test, y_test = ds.load_svmlight_file(args.test_file, block_size,
+                                                   args.features,
+                                                   sparse)
         else:
-            test_data = load_txt_file(args.test_file,
-                                      n_features=args.features,
-                                      subset_size=args.part_size,
-                                      label_col="last")
+            x_test = ds.load_txt_file(args.test_file, block_size)
+            y_test = x_test[:, x_test.shape[1] - 2: x_test.shape[1] - 1]
+            x_test = x_test[:, :x_test.shape[1] - 1]
 
-        out.append(csvm.score(test_data))
+        out.append(csvm.score(x_test, y_test))
 
     if args.output_file:
         with open(args.output_file, "ab") as f:

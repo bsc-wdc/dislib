@@ -18,7 +18,7 @@ class NearestNeighbors:
     --------
     >>> from dislib.neighbors import NearestNeighbors
     >>> import dislib as ds
-    >>> data = ds.random_array((100, 5), blocks_shape=(25, 5))
+    >>> data = ds.random_array((100, 5), block_size=(25, 5))
     >>> knn = NearestNeighbors(n_neighbors=10)
     >>> knn.fit(data)
     >>> distances, indices = knn.kneighbors(data)
@@ -54,6 +54,8 @@ class NearestNeighbors:
         n_neighbors: int, optional (default=None)
             Number of neighbors to get. If None, the value passed in the
             constructor is employed.
+        return_distance : boolean, optional (default=True)
+            Whether to return distances.
 
         Returns
         -------

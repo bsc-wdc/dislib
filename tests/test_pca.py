@@ -24,7 +24,7 @@ class PCATest(unittest.TestCase):
             data.append(np.random.multivariate_normal(mu, cov, size))
         data = np.vstack(data)
         bn, bm = 25, 5
-        dataset = ds.array(x=data, blocks_shape=(bn, bm))
+        dataset = ds.array(x=data, block_size=(bn, bm))
 
         pca = PCA()
         pca.fit(dataset)
@@ -47,7 +47,7 @@ class PCATest(unittest.TestCase):
         """Tests PCA.fit_transform()"""
         x, _ = make_blobs(n_samples=10, n_features=4, random_state=0)
         bn, bm = 25, 5
-        dataset = ds.array(x=x, blocks_shape=(bn, bm))
+        dataset = ds.array(x=x, block_size=(bn, bm))
 
         pca = PCA(n_components=3)
         transformed = pca.fit_transform(dataset).collect()

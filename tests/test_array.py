@@ -72,12 +72,12 @@ class DataLoadingTest(unittest.TestCase):
         n, m = 6, 10
         bn, bm = 4, 3
         x = np.random.randint(0, 10, size=(n, m))
-        darray = ds.array(x=x, blocks_shape=(bn, bm))
+        darray = ds.array(x=x, block_size=(bn, bm))
 
         _validate_arrays(self, darray, x, (bn, bm))
 
         x = sp.csr_matrix(x)
-        darray = ds.array(x=x, blocks_shape=(bn, bm))
+        darray = ds.array(x=x, block_size=(bn, bm))
 
         _validate_arrays(self, darray, x, (bn, bm))
 
@@ -104,187 +104,25 @@ class DataLoadingTest(unittest.TestCase):
         _validate_arrays(self, arr_x, x.toarray(), (bn, bm))
         _validate_arrays(self, arr_y, y, (bn, 1))
 
+    def test_load_csv_file(self):
+        """ Tests loading a CSV file. """
+        csv_f = "tests/files/csv/1"
 
-#
-#     def test_load_libsvm_files_sparse(self):
-#         """ Tests loading multiple LibSVM files in sparse mode.
-#         """
-#         dir_ = "tests/files/libsvm"
-#
-#         file_list = os.listdir(dir_)
-#         data = load_libsvm_files(dir_, 780)
-#         data.collect()
-#
-#         for i, subset in enumerate(data):
-#             samples = subset.samples.toarray()
-#             file_ = os.path.join(dir_, file_list[i])
-#             x, y = load_svmlight_file(file_, n_features=780)
-#
-#             self.assertTrue((samples == x).all())
-#             self.assertTrue((subset.labels == y).all())
-#
-#         self.assertEqual(len(data), 3)
-#
-#     def test_load_libsvm_files_dense(self):
-#         """ Tests loading multiple LibSVM files in dense mode.
-#         """
-#         dir_ = "tests/files/libsvm"
-#
-#         file_list = os.listdir(dir_)
-#         data = load_libsvm_files(dir_, 780, False)
-#         data.collect()
-#
-#         for i, subset in enumerate(data):
-#             samples = subset.samples
-#             file_ = os.path.join(dir_, file_list[i])
-#             x, y = load_svmlight_file(file_, n_features=780)
-#
-#             self.assertTrue((samples == x).all())
-#             self.assertTrue((subset.labels == y).all())
-#
-#         self.assertEqual(len(data), 3)
-#
-#     def test_load_csv_file(self):
-#         """ Tests loading a CSV file.
-#         """
-#         csv_file = "tests/files/csv/1"
-#
-#         data = load_txt_file(csv_file, subset_size=300, n_features=122)
-#         data.collect()
-#         csv = np.loadtxt(csv_file, delimiter=",")
-#
-#         read_x = np.empty((0, csv.shape[1]))
-#
-#         for subset in data:
-#             read_x = np.concatenate((read_x, subset.samples))
-#
-#         self.assertTrue((read_x == csv).all())
-#         self.assertEqual(len(data), 15)
-#         self.assertIsNone(subset.labels)
-#
-#     def test_load_csv_file_labels_last(self):
-#         """ Tests loading a CSV file with labels at the last column.
-#         """
-#         csv_file = "tests/files/csv/1"
-#
-#         data = load_txt_file(csv_file, subset_size=1000, n_features=121,
-#                              label_col="last")
-#         data.collect()
-#         csv = np.loadtxt(csv_file, delimiter=",")
-#
-#         read_x = np.empty((0, csv.shape[1] - 1))
-#         read_y = np.empty(0)
-#
-#         for subset in data:
-#             read_x = np.concatenate((read_x, subset.samples))
-#             read_y = np.concatenate((read_y, subset.labels))
-#
-#         self.assertTrue((read_x == csv[:, :-1]).all())
-#         self.assertTrue((read_y == csv[:, -1]).all())
-#         self.assertEqual(len(data), 5)
-#
-#     def test_load_csv_file_labels_first(self):
-#         """ Tests loading a CSV file with labels at the first column.
-#         """
-#         csv_file = "tests/files/csv/2"
-#
-#         data = load_txt_file(csv_file, subset_size=100, n_features=121,
-#                              label_col="first")
-#         data.collect()
-#         csv = np.loadtxt(csv_file, delimiter=",")
-#
-#         read_x = np.empty((0, csv.shape[1] - 1))
-#         read_y = np.empty(0)
-#
-#         for subset in data:
-#             read_x = np.concatenate((read_x, subset.samples))
-#             read_y = np.concatenate((read_y, subset.labels))
-#
-#         self.assertTrue((read_x == csv[:, 1:]).all())
-#         self.assertTrue((read_y == csv[:, 0]).all())
-#         self.assertEqual(len(data), 44)
-#
-#     def test_load_csv_files(self):
-#         """ Tests loading multiple CSV files.
-#         """
-#         csv_dir = "tests/files/csv"
-#
-#         file_list = os.listdir(csv_dir)
-#         data = load_txt_files(csv_dir, n_features=122)
-#         data.collect()
-#
-#         for i, subset in enumerate(data):
-#             csv_file = os.path.join(csv_dir, file_list[i])
-#             csv = np.loadtxt(csv_file, delimiter=",")
-#
-#             self.assertTrue((subset.samples == csv).all())
-#
-#         self.assertEqual(len(data), 3)
-#
-#     def test_load_csv_files_labels_last(self):
-#         """ Tests loading multiple CSV files with labels at the last column.
-#         """
-#         csv_dir = "tests/files/csv"
-#
-#         file_list = os.listdir(csv_dir)
-#         data = load_txt_files(csv_dir, n_features=122, label_col="last")
-#         data.collect()
-#
-#         for i, subset in enumerate(data):
-#             csv_file = os.path.join(csv_dir, file_list[i])
-#             csv = np.loadtxt(csv_file, delimiter=",")
-#
-#             self.assertTrue((subset.samples == csv[:, :-1]).all())
-#             self.assertTrue((subset.labels == csv[:, -1]).all())
-#
-#         self.assertEqual(len(data), 3)
-#
-#     def test_load_csv_files_labels_first(self):
-#         """ Tests loading multiple CSV files with labels at the first column.
-#         """
-#         csv_dir = "tests/files/csv"
-#
-#         file_list = os.listdir(csv_dir)
-#         data = load_txt_files(csv_dir, n_features=122, label_col="first")
-#         data.collect()
-#
-#         for i, subset in enumerate(data):
-#             csv_file = os.path.join(csv_dir, file_list[i])
-#             csv = np.loadtxt(csv_file, delimiter=",")
-#
-#             self.assertTrue((subset.samples == csv[:, 1:]).all())
-#             self.assertTrue((subset.labels == csv[:, 0]).all())
-#
-#         self.assertEqual(len(data), 3)
-#
-#     def test_load_txt_delimiter(self):
-#         """ Tests load_txt_file with a custom delimiter """
-#         path_ = "tests/files/other/4"
-#         data = load_txt_file(path_, n_features=122, subset_size=1000,
-#                              delimiter=" ")
-#         csv = np.loadtxt(path_, delimiter=" ")
-#
-#         self.assertTrue(np.array_equal(data.samples, csv))
-#         self.assertEqual(len(data), 5)
-#         self.assertIsNone(data.labels)
-#
-#     def test_load_txt_files_delimiter(self):
-#         """ Tests loading multiple files with a custom delimiter"""
-#         path_ = "tests/files/other"
-#
-#         file_list = os.listdir(path_)
-#         data = load_txt_files(path_, n_features=122, delimiter=" ")
-#         data.collect()
-#
-#         for i, subset in enumerate(data):
-#             file_ = os.path.join(path_, file_list[i])
-#             read_data = np.loadtxt(file_, delimiter=" ")
-#
-#             self.assertTrue(np.array_equal(subset.samples, read_data))
-#
-#         self.assertEqual(len(data), 2)
-#
-#
+        data = ds.load_txt_file(csv_f, block_size=(300, 50))
+        csv = np.loadtxt(csv_f, delimiter=",")
+
+        self.assertEqual(data._top_left_shape, (300, 50))
+        self.assertEqual(data._reg_shape, (300, 50))
+        self.assertEqual(data.shape, (4235, 122))
+        self.assertEqual(data._n_blocks, (15, 3))
+
+        self.assertTrue(np.array_equal(data.collect(), csv))
+
+        csv_f = "tests/files/other/4"
+        data = ds.load_txt_file(csv_f, block_size=(1000, 122), delimiter=" ")
+        csv = np.loadtxt(csv_f, delimiter=" ")
+
+        self.assertTrue(np.array_equal(data.collect(), csv))
 
 
 class ArrayTest(unittest.TestCase):
@@ -294,7 +132,7 @@ class ArrayTest(unittest.TestCase):
         x_size, y_size = 40, 25
         bn, bm = 9, 11
         x = np.random.randint(10, size=(x_size, y_size))
-        darray = ds.array(x=x, blocks_shape=(bn, bm))
+        darray = ds.array(x=x, block_size=(bn, bm))
 
         self.assertEqual(darray.shape, (x_size, y_size))
 
@@ -303,7 +141,7 @@ class ArrayTest(unittest.TestCase):
         self.assertEqual(darray._reg_shape, (bn, bm))
 
         x = sp.csr_matrix(x)
-        darray = ds.array(x=x, blocks_shape=(bn, bm))
+        darray = ds.array(x=x, block_size=(bn, bm))
 
         self.assertEqual(darray.shape, (x_size, y_size))
         self.assertEqual(darray._n_blocks,
@@ -316,7 +154,7 @@ class ArrayTest(unittest.TestCase):
         x_size = 2
         # Dense
         x = np.random.randint(10, size=(10, 10))
-        data = ds.array(x=x, blocks_shape=(x_size, 2))
+        data = ds.array(x=x, block_size=(x_size, 2))
         for i, r in enumerate(data._iterator(axis='rows')):
             r_data = r.collect()
             r_x = x[i * x_size:(i + 1) * x_size]
@@ -324,7 +162,7 @@ class ArrayTest(unittest.TestCase):
 
         # Sparse
         x = sp.csr_matrix(x)
-        data = ds.array(x=x, blocks_shape=(x_size, 2))
+        data = ds.array(x=x, block_size=(x_size, 2))
         for i, r in enumerate(data._iterator(axis='rows')):
             r_data = r.collect()
             r_x = x[i * x_size:(i + 1) * x_size]
@@ -336,7 +174,7 @@ class ArrayTest(unittest.TestCase):
         bn, bm = 2, 2
         # Dense
         x = np.random.randint(10, size=(10, 10))
-        data = ds.array(x=x, blocks_shape=(bn, bm))
+        data = ds.array(x=x, block_size=(bn, bm))
 
         for i, c in enumerate(data._iterator(axis='columns')):
             c_data = c.collect()
@@ -345,7 +183,7 @@ class ArrayTest(unittest.TestCase):
 
         # Sparse
         x = sp.csr_matrix(x)
-        data = ds.array(x=x, blocks_shape=(bn, bm))
+        data = ds.array(x=x, block_size=(bn, bm))
 
         for i, c in enumerate(data._iterator(axis='columns')):
             c_data = c.collect()
@@ -357,7 +195,7 @@ class ArrayTest(unittest.TestCase):
         """
         bn, bm = 2, 2
         x = np.random.randint(10, size=(10, 10))
-        data = ds.array(x=x, blocks_shape=(bn, bm))
+        data = ds.array(x=x, block_size=(bn, bm))
 
         for i in range(x.shape[0]):
             for j in range(x.shape[1]):
@@ -377,7 +215,7 @@ class ArrayTest(unittest.TestCase):
         """
         bn, bm = 5, 5
         x = np.random.randint(100, size=(30, 30))
-        data = ds.array(x=x, blocks_shape=(bn, bm))
+        data = ds.array(x=x, block_size=(bn, bm))
 
         slice_indices = [(7, 22, 7, 22),  # many row-column
                          (6, 8, 6, 8),  # single block row-column
@@ -411,7 +249,7 @@ class ArrayTest(unittest.TestCase):
         bn, bm = 5, 5
         x = np.random.randint(100, size=(30, 30))
         x = sp.csr_matrix(x)
-        data = ds.array(x=x, blocks_shape=(bn, bm))
+        data = ds.array(x=x, block_size=(bn, bm))
 
         slice_indices = [(7, 22, 7, 22),  # many row-column
                          (6, 8, 6, 8),  # single block row-column
@@ -438,7 +276,6 @@ class ArrayTest(unittest.TestCase):
             expected = x[top:bot, left:right]
             self.assertTrue(equal(got, expected))
 
-
     def test_get_slice_shapes(self):
         """ Tests that shapes are correct after slicing
         """
@@ -454,14 +291,13 @@ class ArrayTest(unittest.TestCase):
         self.assertEqual(tl.shape, (24, 1))
         self.assertEqual(reg.shape, (25, 1))
 
-
     def test_index_rows_dense(self):
         """ Tests get a slice of rows from the ds.array using lists as index
         """
         bn, bm = 5, 5
         x = np.random.randint(100, size=(10, 10))
         # x = sp.csr_matrix(x)
-        data = ds.array(x=x, blocks_shape=(bn, bm))
+        data = ds.array(x=x, block_size=(bn, bm))
 
         # indices_lists = [([0, 5], [0, 5]),  # one from each block
         #                  ([0, 1, 3, 4], [0, 1, 2, 4]),  # all from first
@@ -491,7 +327,7 @@ class ArrayTest(unittest.TestCase):
         bn, bm = 5, 5
         x = np.random.randint(100, size=(10, 10))
         # x = sp.csr_matrix(x)
-        data = ds.array(x=x, blocks_shape=(bn, bm))
+        data = ds.array(x=x, block_size=(bn, bm))
 
         indices_lists = [([0, 5], [0, 5]),  # one from each block
                          ([0, 1, 3, 4], [0, 1, 2, 4]),  # all from first
@@ -520,7 +356,7 @@ class ArrayTest(unittest.TestCase):
         bn, bm = 2, 3
 
         x = np.random.randint(10, size=(x_size, y_size))
-        darray = ds.array(x=x, blocks_shape=(bn, bm))
+        darray = ds.array(x=x, block_size=(bn, bm))
 
         darray_t = darray.transpose(mode='all')
         _validate_arrays(self, darray_t, x.transpose(), (bm, bn))
@@ -564,7 +400,7 @@ class ArrayTest(unittest.TestCase):
     def test_apply_axis(self):
         """ Tests apply along axis"""
         x = ds.array(np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]),
-                     blocks_shape=(2, 2))
+                     block_size=(2, 2))
 
         x1 = ds.apply_along_axis(_sum_and_mult, 0, x)
         self.assertTrue(x1.shape, (1, 3))
@@ -592,14 +428,14 @@ class ArrayTest(unittest.TestCase):
         self.assertTrue(np.array_equal(x1.collect(), np.array([14, 32, 50])))
 
         x = ds.array(sp.csr_matrix([[1, 0, -1], [0, 5, 0], [7, 8, 0]]),
-                     blocks_shape=(2, 2))
+                     block_size=(2, 2))
         x1 = ds.apply_along_axis(_sum_and_mult, 0, x, 1, b=2)
         self.assertTrue(x1.shape, (1, 3))
         self.assertTrue(x1._reg_shape, (1, 2))
         self.assertTrue(np.array_equal(x1.collect(), np.array([18, 28, 0])))
 
         x = ds.array(sp.csr_matrix([[1, 0, -1], [0, 5, 0], [7, 8, 0]]),
-                     blocks_shape=(2, 2))
+                     block_size=(2, 2))
         x1 = ds.apply_along_axis(_sum_and_mult, 0, x, 1, b=2)
         self.assertTrue(x1.shape, (1, 3))
         self.assertTrue(x1._reg_shape, (1, 2))
@@ -608,10 +444,10 @@ class ArrayTest(unittest.TestCase):
     def test_apply_sparse(self):
         """ Tests apply with sparse data """
         x_d = ds.array(np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]),
-                       blocks_shape=(2, 2))
+                       block_size=(2, 2))
 
         x_sp = ds.array(csr_matrix([[1, 2, 3], [4, 5, 6], [7, 8, 9]]),
-                        blocks_shape=(2, 2))
+                        block_size=(2, 2))
 
         x1 = ds.apply_along_axis(_sum_and_mult, 0, x_d)
         x2 = ds.apply_along_axis(_sum_and_mult, 0, x_sp)
@@ -621,7 +457,7 @@ class ArrayTest(unittest.TestCase):
     def test_array_functions(self):
         """ Tests various array functions """
         x = ds.array(np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]),
-                     blocks_shape=(2, 2))
+                     block_size=(2, 2))
 
         self.assertTrue((x.min().collect() == [1, 2, 3]).all())
         self.assertTrue((x.max().collect() == [7, 8, 9]).all())

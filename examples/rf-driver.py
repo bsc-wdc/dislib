@@ -1,41 +1,41 @@
 import argparse
-import os
 import time
 
 import numpy as np
 from pycompss.api.api import barrier
 
+import dislib as ds
 from dislib.classification import RandomForestClassifier
-from dislib.data import (load_libsvm_file, load_libsvm_files, load_txt_file,
-                         load_txt_files)
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--libsvm", help="read files in libsvm format",
+    parser.add_argument("--svmlight", help="read files in SVMLight format",
                         action="store_true")
     parser.add_argument("-dt", "--detailed_times",
                         help="get detailed execution times (read and fit)",
                         action="store_true")
     parser.add_argument("-e", "--estimators", metavar="N_ESTIMATORS",
                         type=int, help="default is 10", default=10)
-    parser.add_argument("-p", "--part_size", metavar="PART_SIZE", type=int,
-                        help="size of the partitions in which to divide the "
-                             "input dataset (default is 100)", default=100)
+    parser.add_argument("-b", "--block_size", metavar="BLOCK_SIZE", type=str,
+                        help="two comma separated ints that represent the "
+                             "size of the blocks in which to divide the input "
+                             "data (default is 100,100)",
+                        default="100,100")
     parser.add_argument("-md", "--max_depth", metavar="MAX_DEPTH",
                         type=int, help="default is np.inf", required=False)
     parser.add_argument("-dd", "--dist_depth", metavar="DIST_DEPTH", type=int,
                         help="default is auto", required=False)
-    parser.add_argument("-f", "--features", metavar="N_FEATURES", type=int,
-                        default=None, required=True)
+    parser.add_argument("-f", "--features", metavar="N_FEATURES",
+                        help="number of features of the input data "
+                             "(only for SVMLight files)",
+                        type=int, default=None, required=False)
     parser.add_argument("--dense", help="use dense data structures",
                         action="store_true")
     parser.add_argument("-t", "--test-file", metavar="TEST_FILE_PATH",
-                        help="test CSV file path", type=str, required=False)
+                        help="test file path", type=str, required=False)
     parser.add_argument("train_data",
-                        help="File or directory containing files "
-                             "(if a directory is provided PART_SIZE is "
-                             "ignored)", type=str)
+                        help="input file in CSV or SVMLight format", type=str)
     args = parser.parse_args()
 
     train_data = args.train_data
@@ -45,20 +45,16 @@ def main():
 
     sparse = not args.dense
 
-    if os.path.isdir(train_data):
-        if args.libsvm:
-            data = load_libsvm_files(train_data, args.features,
-                                     store_sparse=sparse)
-        else:
-            data = load_txt_files(train_data, args.features, label_col="last")
+    bsize = args.block_size.split(",")
+    block_size = (int(bsize[0]), int(bsize[1]))
+
+    if args.svmlight:
+        x, y = ds.load_svmlight_file(train_data, block_size, args.features,
+                                     sparse)
     else:
-        if args.libsvm:
-            data = load_libsvm_file(train_data, subset_size=args.part_size,
-                                    n_features=args.features,
-                                    store_sparse=sparse)
-        else:
-            data = load_txt_file(train_data, subset_size=args.part_size,
-                                 n_features=args.features, label_col="last")
+        x = ds.load_txt_file(train_data, block_size)
+        y = x[:, x.shape[1] - 2: x.shape[1] - 1]
+        x = x[:, :x.shape[1] - 1]
 
     if args.detailed_times:
         barrier()
@@ -78,7 +74,7 @@ def main():
     forest = RandomForestClassifier(n_estimators=args.estimators,
                                     max_depth=max_depth,
                                     distr_depth=dist_depth)
-    forest.fit(data)
+    forest.fit(x, y)
 
     barrier()
     fit_time = time.time() - s_time
@@ -87,18 +83,16 @@ def main():
            read_time, fit_time]
 
     if args.test_file:
-        if args.libsvm:
-            test_data = load_libsvm_file(args.test_file,
-                                         n_features=args.features,
-                                         subset_size=args.part_size,
-                                         store_sparse=sparse)
+        if args.svmlight:
+            x_test, y_test = ds.load_svmlight_file(args.test_file, block_size,
+                                                   args.features,
+                                                   sparse)
         else:
-            test_data = load_txt_file(args.test_file,
-                                      n_features=args.features,
-                                      subset_size=args.part_size,
-                                      label_col="last")
+            x_test = ds.load_txt_file(args.test_file, block_size)
+            y_test = x_test[:, x_test.shape[1] - 2: x_test.shape[1] - 1]
+            x_test = x_test[:, :x_test.shape[1] - 1]
 
-        out.append(forest.score(test_data))
+        out.append(forest.score(x_test, y_test))
 
     print(out)
 
