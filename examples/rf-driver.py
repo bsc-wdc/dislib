@@ -89,7 +89,7 @@ def main():
                                                    sparse)
         else:
             x_test = ds.load_txt_file(args.test_file, block_size)
-            y_test = x_test[:, x_test.shape[1] - 2: x_test.shape[1] - 1]
+            y_test = x_test[:, x_test.shape[1] - 1: x_test.shape[1]]
             x_test = x_test[:, :x_test.shape[1] - 1]
 
         out.append(forest.score(x_test, y_test))
