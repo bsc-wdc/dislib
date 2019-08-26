@@ -1,11 +1,12 @@
-from numpy.lib import format
-import numpy as np
 import tempfile
 
-from pycompss.api.parameter import FILE_IN, FILE_INOUT
+import numpy as np
+from numpy.lib import format
+from pycompss.api.parameter import FILE_IN, FILE_INOUT, COLLECTION_IN, Depth, \
+    Type
 from pycompss.api.task import task
 
-from dislib.data import Dataset
+from dislib.data.array import Array
 
 
 class RfDataset(object):
@@ -175,25 +176,26 @@ class RfDataset(object):
             raise ValueError('Fortran order not supported for features array.')
 
 
-def transform_to_rf_dataset(dataset: Dataset) -> RfDataset:
-    """Creates a RfDataset with data from a Dataset.
+def transform_to_rf_dataset(x: Array, y: Array) -> RfDataset:
+    """Creates a RfDataset object from samples x and labels y.
 
-    This function concatenates the samples and the features of a
-    dislib.data.Dataset creating a dislib.classification.rf.data.RfDataset.
+    This function creates a dislib.classification.rf.data.RfDataset by saving
+    x and y in files.
 
     Parameters
     ----------
-    dataset : dislib.data.Dataset
+    x : ds-array, shape = (n_samples, n_features)
+        The training input samples.
+    y : ds-array, shape = (n_samples,) or (n_samples, n_outputs)
+        The target values.
 
     Returns
     -------
-    rf_dataset : dislib.classification.rf.data.RfDataset
+    rf_dataset : dislib.classification.rf._data.RfDataset
 
     """
-    samples_shapes = []
-    for subset in dataset:
-        samples_shapes.append(_get_samples_shape(subset))
-    samples_shapes, n_samples, n_features = _merge_shapes(*samples_shapes)
+    n_samples = x.shape[0]
+    n_features = x.shape[1]
 
     samples_file = tempfile.NamedTemporaryFile(mode='wb',
                                                prefix='tmp_rf_samples_',
@@ -201,16 +203,23 @@ def transform_to_rf_dataset(dataset: Dataset) -> RfDataset:
     samples_path = samples_file.name
     samples_file.close()
     _allocate_samples_file(samples_path, n_samples, n_features)
-    for i, subset in enumerate(dataset):
-        _fill_samples_file(samples_path, i, subset, samples_shapes)
+
+    start_idx = 0
+    row_blocks_iterator = x._iterator(axis=0)
+    top_row = next(row_blocks_iterator)
+    _fill_samples_file(samples_path, top_row._blocks, start_idx)
+    start_idx += x._top_left_shape[0]
+    for x_row in row_blocks_iterator:
+        _fill_samples_file(samples_path, x_row._blocks, start_idx)
+        start_idx += x._reg_shape[0]
 
     labels_file = tempfile.NamedTemporaryFile(mode='w',
                                               prefix='tmp_rf_labels_',
                                               delete=False)
     labels_path = labels_file.name
     labels_file.close()
-    for subset in dataset:
-        _fill_labels_file(labels_path, subset)
+    for y_row in y._iterator(axis=0):
+        _fill_labels_file(labels_path, y_row._blocks)
 
     rf_dataset = RfDataset(samples_path, labels_path)
     rf_dataset.n_samples = n_samples
@@ -280,15 +289,16 @@ def _allocate_samples_file(samples_path, n_samples, n_features):
                               shape=(n_samples, n_features))
 
 
-@task(samples_path=FILE_INOUT)
-def _fill_samples_file(samples_path, i, subset, samples_shapes):
+@task(samples_path=FILE_INOUT, row_blocks={Type: COLLECTION_IN, Depth: 2})
+def _fill_samples_file(samples_path, row_blocks, start_idx):
+    rows_samples = Array._merge_blocks(row_blocks)
+    rows_samples = rows_samples.astype(dtype='float32', casting='same_kind')
     samples = np.lib.format.open_memmap(samples_path, mode='r+')
-    first = sum(shape[0] for shape in samples_shapes[0:i])
-    ss_samples = subset.samples.astype(dtype='float32', casting='same_kind')
-    samples[first:first+samples_shapes[i][0]] = ss_samples
+    samples[start_idx: start_idx + rows_samples.shape[0]] = rows_samples
 
 
-@task(labels_path=FILE_INOUT)
-def _fill_labels_file(labels_path, subset):
+@task(labels_path=FILE_INOUT, row_blocks={Type: COLLECTION_IN, Depth: 2})
+def _fill_labels_file(labels_path, row_blocks):
+    rows_labels = Array._merge_blocks(row_blocks)
     with open(labels_path, 'at') as f:
-        np.savetxt(f, subset.labels, fmt='%s', encoding='utf-8')
+        np.savetxt(f, rows_labels, fmt='%s', encoding='utf-8')

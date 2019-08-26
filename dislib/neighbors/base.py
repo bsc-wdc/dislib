@@ -1,7 +1,9 @@
 import numpy as np
-from pycompss.api.api import compss_wait_on
+from pycompss.api.parameter import Depth, Type, COLLECTION_IN
 from pycompss.api.task import task
 from sklearn.neighbors import NearestNeighbors as SKNeighbors
+
+from dislib.data.array import Array
 
 
 class NearestNeighbors:
@@ -15,9 +17,8 @@ class NearestNeighbors:
     Examples
     --------
     >>> from dislib.neighbors import NearestNeighbors
-    >>> from dislib.data import load_data
-    >>> x = np.random.random((100, 5))
-    >>> data = load_data(x, subset_size=25)
+    >>> import dislib as ds
+    >>> data = ds.random_array((100, 5), block_size=(25, 5))
     >>> knn = NearestNeighbors(n_neighbors=10)
     >>> knn.fit(data)
     >>> distances, indices = knn.kneighbors(data)
@@ -25,36 +26,43 @@ class NearestNeighbors:
 
     def __init__(self, n_neighbors=5):
         self._n_neighbors = n_neighbors
-        self._fit_dataset = None
+        self._fit_data = None
 
-    def fit(self, dataset):
-        """ Fit the model using dataset as training data.
+    def fit(self, x):
+        """ Fit the model using training data.
 
         Parameters
         ----------
-        dataset : Dataset
+        x : ds-array, shape=(n_samples, n_features)
             Training data.
-        """
-        self._fit_dataset = dataset
 
-    def kneighbors(self, dataset, n_neighbors=None, return_distance=True):
-        """ Finds the K nearest neighbors of the samples in dataset. Returns
+        Returns
+        -------
+        self : NearestNeighbors
+        """
+        self._fit_data = x
+        return self
+
+    def kneighbors(self, x, n_neighbors=None, return_distance=True):
+        """ Finds the K nearest neighbors of the input samples. Returns
         indices and distances to the neighbors of each sample.
 
         Parameters
         ----------
-        dataset : Dataset
+        x : ds-array, shape=(n_samples, n_features)
             The query samples.
         n_neighbors: int, optional (default=None)
             Number of neighbors to get. If None, the value passed in the
             constructor is employed.
+        return_distance : boolean, optional (default=True)
+            Whether to return distances.
 
         Returns
         -------
-        dist : array
+        dist : ds-array, shape=(n_samples, n_neighbors)
             Array representing the lengths to points, only present if
             return_distance=True.
-        ind : array
+        ind : ds-array, shape=(n_samples, n_neighbors)
             Indices of the nearest samples in the fitted data.
         """
         if n_neighbors is None:
@@ -63,27 +71,30 @@ class NearestNeighbors:
         distances = []
         indices = []
 
-        for subset in dataset:
+        for q_row in x._iterator(axis=0):
             queries = []
 
-            for q_subset in self._fit_dataset:
-                queries.append(_get_neighbors(subset, q_subset, n_neighbors))
+            for row in self._fit_data._iterator(axis=0):
+                queries.append(_get_neighbors(row._blocks, q_row._blocks,
+                                              n_neighbors))
 
             dist, ind = _merge_queries(*queries)
-            distances.append(dist)
-            indices.append(ind)
+            distances.append([dist])
+            indices.append([ind])
 
-        final_indices = _merge_arrays(*indices)
-        final_distances = _merge_arrays(*distances)
-
-        final_indices = compss_wait_on(final_indices)
-        query = final_indices
+        ind_arr = Array(blocks=indices,
+                        top_left_shape=(x._top_left_shape[0], n_neighbors),
+                        reg_shape=(x._reg_shape[0], n_neighbors),
+                        shape=(x.shape[0], n_neighbors), sparse=False)
 
         if return_distance:
-            final_distances = compss_wait_on(final_distances)
-            query = final_distances, final_indices
+            dst_arr = Array(blocks=distances,
+                            top_left_shape=(x._top_left_shape[0], n_neighbors),
+                            reg_shape=(x._reg_shape[0], n_neighbors),
+                            shape=(x.shape[0], n_neighbors), sparse=False)
+            return dst_arr, ind_arr
 
-        return query
+        return ind_arr
 
 
 @task(returns=2)
@@ -97,7 +108,9 @@ def _merge_queries(*queries):
         # keep the indices of the samples that are at minimum distance
         m_ind = _min_indices(final_dist, dist)
         comb_ind = np.hstack((final_ind, ind))
-        final_ind = np.array([comb_ind[i][m_ind[i]] for i in range(n_samples)])
+
+        final_ind = np.array([comb_ind[i][m_ind[i]]
+                              for i in range(comb_ind.shape[0])])
 
         # keep the minimum distances
         final_dist = _min_distances(final_dist, dist)
@@ -105,13 +118,17 @@ def _merge_queries(*queries):
     return final_dist, final_ind
 
 
-@task(returns=tuple)
-def _get_neighbors(subset, q_subset, n_neighbors):
-    n_samples = q_subset.samples.shape[0]
+@task(blocks={Type: COLLECTION_IN, Depth: 2},
+      q_blocks={Type: COLLECTION_IN, Depth: 2}, returns=tuple)
+def _get_neighbors(blocks, q_blocks, n_neighbors):
+    samples = Array._merge_blocks(blocks)
+    q_samples = Array._merge_blocks(q_blocks)
+
+    n_samples = samples.shape[0]
 
     knn = SKNeighbors(n_neighbors=n_neighbors)
-    knn.fit(X=q_subset.samples)
-    dist, ind = knn.kneighbors(X=subset.samples)
+    knn.fit(X=samples)
+    dist, ind = knn.kneighbors(X=q_samples)
 
     return dist, ind, n_samples
 
@@ -126,8 +143,3 @@ def _min_indices(d1, d2):
     size, num = d1.shape
     d = [np.argsort(np.hstack((d1[i], d2[i])))[:num] for i in range(size)]
     return np.array(d)
-
-
-@task(returns=np.array)
-def _merge_arrays(*arrays):
-    return np.vstack(arrays)

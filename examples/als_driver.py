@@ -6,12 +6,11 @@ from time import time
 import pandas as pd
 from scipy.sparse import csr_matrix
 
-from dislib.data import load_data
+import dislib as ds
 from dislib.recommendation import ALS
 
 
-def load_movielens(data_path, train_ratio=0.9, num_subsets=8):
-    print("Loading movielens debug dataset.")
+def load_movielens(data_path, train_ratio=0.9):
     cols = ['user_id', 'movie_id', 'rating', 'timestamp']
     file = 'sample_movielens_ratings.csv'
 
@@ -27,25 +26,28 @@ def load_movielens(data_path, train_ratio=0.9, num_subsets=8):
 
     idx = int(df.shape[0] * train_ratio)
 
-    train_df = df.iloc[:idx]
-    test_df = df.iloc[idx:]
+    tr_df = df.iloc[:idx]
+    te_df = df.iloc[idx:]
 
-    train = csr_matrix(
-        (train_df.rating, (train_df.user_id, train_df.movie_id)),
-        shape=(n_u, n_m)).transpose().tocsr()
+    train = csr_matrix((tr_df.rating, (tr_df.user_id, tr_df.movie_id)),
+                       shape=(n_u, n_m))
     test = csr_matrix(
-        (test_df.rating, (test_df.user_id, test_df.movie_id)))
+        (te_df.rating, (te_df.user_id, te_df.movie_id)))
 
-    dataset = load_data(train, int(ceil(train.shape[0] / num_subsets)))
+    x_size, y_size = ceil(train.shape[0] / 2), ceil(train.shape[1] / 3)
+    train_arr = ds.array(train, block_size=(x_size, y_size))
 
-    return dataset, test
+    x_size, y_size = ceil(test.shape[0] / 2), ceil(test.shape[1] / 3)
+    test_arr = ds.array(test, block_size=(x_size, y_size))
+
+    return train_arr, test_arr
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--num_subsets", type=int, default=48)
     parser.add_argument("--num_factors", type=int, default=100)
-    parser.add_argument("--data_path", type=str, default='../tests/files/')
+    parser.add_argument("--data_path", type=str, default='./tests/files/')
 
     args = parser.parse_args()
 
@@ -54,17 +56,16 @@ if __name__ == '__main__':
     data_path = args.data_path
     n_f = args.num_factors
 
-    train_ds, test = load_movielens(data_path=data_path,
-                                    num_subsets=num_subsets)
+    train, test = load_movielens(data_path=data_path)
 
     exec_start = time()
-    als = ALS(tol=0.0001, n_f=n_f, verbose=True)
+    als = ALS(tol=0.0001, n_f=n_f, max_iter=2, verbose=True)
 
     # Fit using training data to check convergence
-    # als.fit(train_ds)
+    # als.fit(train)
 
     # Fit using test data to check convergence
-    als.fit(train_ds, test)
+    als.fit(train, test)
 
     exec_end = time()
 

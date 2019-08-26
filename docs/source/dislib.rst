@@ -6,6 +6,7 @@ Subpackages
 
 .. toctree::
 
+    dislib.data.array.Array
     dislib.classification.csvm
     dislib.classification.rf
     dislib.cluster.kmeans
@@ -14,8 +15,6 @@ Subpackages
     dislib.recommendation.als
     dislib.decomposition.pca
     dislib.regression.linear
-    dislib.data
-    dislib.other
 
 .. automodule:: dislib
     :members:

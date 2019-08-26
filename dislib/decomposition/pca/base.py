@@ -1,7 +1,11 @@
-from pycompss.api.task import task
-import numpy as np
+from copy import copy
 
-from dislib.data import Dataset, Subset
+import numpy as np
+from pycompss.api.api import compss_wait_on
+from pycompss.api.parameter import COLLECTION_IN, Depth, Type, COLLECTION_INOUT
+from pycompss.api.task import task
+
+from dislib.data.array import Array
 
 
 class PCA:
@@ -36,89 +40,114 @@ class PCA:
     --------
     >>> from dislib.decomposition import PCA
     >>> import numpy as np
+    >>> import dislib as ds
     >>> x = np.array([[1, 2], [1, 4], [1, 0], [4, 2], [4, 4], [4, 0]])
-    >>> from dislib.data import load_data
-    >>> data = load_data(x=x, subset_size=2)
+    >>> bn, bm = 2, 2
+    >>> data = ds.array(x=x, block_size=(bn, bm))
     >>> pca = PCA()
     >>> transformed_data = pca.fit_transform(data)
     >>> print(transformed_data)
     >>> print(pca.components_)
     >>> print(pca.explained_variance_)
     """
+
     def __init__(self, n_components=None, arity=50):
         self.n_components = n_components
         self.arity = arity
+        self._components = None
+        self._variance = None
 
-    def fit(self, dataset):
+    @property
+    def components_(self):
+        self._components = compss_wait_on(self._components)
+        return self._components
+
+    @property
+    def explained_variance_(self):
+        self._variance = compss_wait_on(self._variance)
+        return self._variance
+
+    def fit(self, x):
         """ Fit the model with the dataset.
 
         Parameters
         ----------
-        dataset : Dataset, shape (n_samples, n_features)
-            Training dataset.
+        x : ds-array, shape (n_samples, n_features)
+            Training data.
 
         Returns
         -------
-        self: PCA
-            Returns the instance itself.
+        self : PCA
         """
-        n_samples = sum(dataset.subsets_sizes())
-        self.mean_ = _features_mean(dataset, self.arity, n_samples)
-        normalized_dataset = Dataset(n_features=None)
-        for subset in dataset:
-            normalized_dataset.append(_normalize(subset, self.mean_))
-        scatter_matrix = _scatter_matrix(normalized_dataset, self.arity)
+
+        n_samples = x.shape[0]
+        self.mean_ = _features_mean(x, self.arity, n_samples)
+        norm_blocks = []
+        for rows in x._iterator('rows'):
+            aux_rows = [object() for _ in range(x._n_blocks[1])]
+            _normalize(rows._blocks, aux_rows, self.mean_)
+            norm_blocks.append(aux_rows)
+
+        # we shallow copy the original to create a normalized darray
+        norm_x = copy(x)
+        # shallow copy is enough to avoid modifying original darray x when
+        # changing the blocks
+        norm_x._blocks = norm_blocks
+
+        scatter_matrix = _scatter_matrix(norm_x, self.arity)
         covariance_matrix = _estimate_covariance(scatter_matrix, n_samples)
         eig_val, eig_vec = _decompose(covariance_matrix, self.n_components)
-        self.components_ = eig_vec
-        self.explained_variance_ = eig_val
+
+        self._components = eig_vec
+        self._variance = eig_val
 
         return self
 
-    def fit_transform(self, dataset):
+    def fit_transform(self, x):
         """ Fit the model with the dataset and apply the dimensionality
         reduction to it.
 
         Parameters
         ----------
-        dataset : Dataset, shape (n_samples, n_features)
-            Training dataset.
+        x : ds-array, shape (n_samples, n_features)
+            Training data.
 
         Returns
         -------
-        transformed_dataset : Dataset, shape (n_samples, n_components)
+        transformed_darray : ds-array, shape (n_samples, n_components)
         """
-        return self.fit(dataset).transform(dataset)
+        return self.fit(x).transform(x)
 
-    def transform(self, dataset):
+    def transform(self, x):
         """
-        Apply dimensionality reduction to dataset.
+        Apply dimensionality reduction to ds-array.
 
         The given dataset is projected on the first principal components
-        previously extracted from a training dataset.
+        previously extracted from a training ds-array.
 
         Parameters
         ----------
-        dataset : Dataset, shape (n_samples, n_features)
-            New dataset, with the same n_features as the training dataset.
+        x : ds-array, shape (n_samples, n_features)
+            New ds-array, with the same n_features as the training dataset.
 
         Returns
         -------
-        transformed_dataset : Dataset, shape (n_samples, n_components)
+        transformed_darray : ds-array, shape (n_samples, n_components)
         """
-        return _transform(dataset, self.mean_, self.components_)
+        return _transform(x, self.mean_, self.components_)
 
 
-def _features_mean(dataset, arity, n_samples):
+def _features_mean(x, arity, n_samples):
     partials = []
-    for subset in dataset:
-        partials.append(_subset_feature_sum(subset))
+    for rows in x._iterator('rows'):
+        partials.append(_subset_feature_sum(rows._blocks))
     return _reduce_features_mean(partials, arity, n_samples)
 
 
-@task(returns=1)
-def _subset_feature_sum(subset):
-    return subset.samples.sum(axis=0)
+@task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=1)
+def _subset_feature_sum(blocks):
+    block = Array._merge_blocks(blocks)
+    return block.sum(axis=0)
 
 
 def _reduce_features_mean(partials, arity, n_samples):
@@ -139,21 +168,29 @@ def _finalize_features_mean(feature_sums, n_samples):
     return feature_sums / n_samples
 
 
-@task(returns=1)
-def _normalize(subset, means):
-    return Subset(subset.samples - means)
+@task(blocks={Type: COLLECTION_IN, Depth: 2},
+      out_blocks={Type: COLLECTION_INOUT, Depth: 1})
+def _normalize(blocks, out_blocks, means):
+    data = Array._merge_blocks(blocks)
+    data = data - means
+
+    bn, bm = blocks[0][0].shape
+
+    for j in range(len(blocks[0])):
+        out_blocks[j] = data[:, j * bm:(j + 1) * bm]
 
 
-def _scatter_matrix(dataset, arity):
+def _scatter_matrix(x, arity):
     partials = []
-    for subset in dataset:
-        partials.append(_subset_scatter_matrix(subset))
+    for rows in x._iterator('rows'):
+        partials.append(_subset_scatter_matrix(rows._blocks))
     return _reduce_scatter_matrix(partials, arity)
 
 
-@task(returns=1)
-def _subset_scatter_matrix(subset):
-    return np.dot(subset.samples.T, subset.samples)
+@task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=1)
+def _subset_scatter_matrix(blocks):
+    data = Array._merge_blocks(blocks)
+    return np.dot(data.T, data)
 
 
 def _reduce_scatter_matrix(partials, arity):
@@ -171,7 +208,6 @@ def _merge_partial_scatter_matrix(*partials):
 
 @task(returns=1)
 def _estimate_covariance(scatter_matrix, n_samples):
-    print(n_samples)
     return scatter_matrix / (n_samples - 1)
 
 
@@ -196,13 +232,25 @@ def _decompose(covariance_matrix, n_components):
     return eig_val, eig_vec
 
 
-def _transform(dataset, mean, components):
-    transformed = Dataset(n_features=None)
-    for subset in dataset:
-        transformed.append(_subset_transform(subset, mean, components))
-    return transformed
+def _transform(x, mean, components):
+    new_blocks = []
+    for rows in x._iterator('rows'):
+        out_blocks = [object() for _ in range(rows._n_blocks[1])]
+        _subset_transform(rows._blocks, out_blocks, mean, components)
+        new_blocks.append(out_blocks)
+
+    return Array(blocks=new_blocks, top_left_shape=x._top_left_shape,
+                 reg_shape=x._reg_shape,
+                 shape=(x.shape[0], components.shape[1]), sparse=x._sparse)
 
 
-@task(returns=1)
-def _subset_transform(subset, mean, components):
-    return Subset(np.matmul(subset.samples - mean, components.T))
+@task(blocks={Type: COLLECTION_IN, Depth: 2},
+      out_blocks={Type: COLLECTION_INOUT, Depth: 1})
+def _subset_transform(blocks, out_blocks, mean, components):
+    data = Array._merge_blocks(blocks)
+    bn, bm = blocks[0][0].shape
+
+    res = (np.matmul(data - mean, components.T))
+
+    for j in range(0, len(blocks[0])):
+        out_blocks[j] = res[:, j * bm:(j + 1) * bm]

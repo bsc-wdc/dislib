@@ -1,22 +1,26 @@
 import performance
 
+import dislib as ds
 from dislib.classification import RandomForestClassifier
-from dislib.data import load_txt_files, load_libsvm_file
 
 
 def main():
-    kdd = load_txt_files(
-        "/gpfs/projects/bsc19/COMPSs_DATASETS/dislib/kdd99/partitions/384",
-        n_features=121, label_col="last")
-    mnist = load_libsvm_file(
+    x_kdd = ds.load_txt_file(
+        "/gpfs/projects/bsc19/COMPSs_DATASETS/dislib/kdd99/train.csv",
+        block_size=(11482, 122))
+
+    y_kdd = x_kdd[:, 121:122]
+    x_kdd = x_kdd[:, :121]
+
+    x_mn, y_mn = ds.load_svmlight_file(
         "/gpfs/projects/bsc19/COMPSs_DATASETS/dislib/mnist/train.scaled",
-        subset_size=5000, n_features=780, store_sparse=False)
+        block_size=(5000, 780), n_features=780, store_sparse=False)
 
     rf = RandomForestClassifier(n_estimators=100, distr_depth=2)
-    performance.measure("RF", "KDD99", rf, kdd)
+    performance.measure("RF", "KDD99", rf, x_kdd, y_kdd)
 
     rf = RandomForestClassifier(n_estimators=100, distr_depth=2)
-    performance.measure("RF", "mnist", rf, mnist)
+    performance.measure("RF", "mnist", rf, x_mn, y_mn)
 
 
 if __name__ == "__main__":
