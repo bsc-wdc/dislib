@@ -1,79 +1,126 @@
 import unittest
 
 import numpy as np
+from scipy import sparse
+
+import dislib as ds
 from scipy.sparse import csr_matrix
 
-from dislib.data import Subset, Dataset, load_libsvm_file, load_data
+from dislib.data import load_data
 from dislib.utils import shuffle, resample
 
 
 class UtilsTest(unittest.TestCase):
-    def test_shuffle(self):
-        """ Tests shuffle for a given dataset and random_state. Tests that the
-        shuffled dataset contains the same instances as the original dataset,
-        that the position has changed for some instance, that the shuffled
-        dataset is balanced, and that a K-fold partition of the shuffled
-        dataset is balanced.
+    def test_shuffle_x(self):
+        """ Tests shuffle for given x and random_state. Tests that the
+        shuffled array contains the same rows as the original data,
+        and that the position has changed for some row.
         """
-        s1 = Subset(samples=np.array([[1, 1], [0, 0]]),
-                    labels=np.array([0, 1]))
-        s2 = Subset(samples=np.array([[4, 4], [3, 3], [2, 2]]),
-                    labels=np.array([0, 1, 1]))
-        s3 = Subset(samples=np.array([[8, 8], [7, 7], [6, 6], [5, 5]]),
-                    labels=np.array([0, 1, 1, 1]))
-        s4 = Subset(samples=np.array([[9, 9], [9, 8], [9, 7], [9, 6], [9, 5]]),
-                    labels=np.array([0, 0, 1, 1, 0]))
+        x = np.random.rand(8, 3)
+        x_ds = ds.array(x, (3, 2))
 
-        dataset = Dataset(2)
-        dataset.extend([s1, s2, s3, s4])
-
-        shuffled = shuffle(dataset, random_state=0)
-        shuffled.collect()
-
-        sizes_shuffled = shuffled.subsets_sizes()
+        shuffled_x = shuffle(x_ds, random_state=0)
+        shuffled_x = shuffled_x.collect()
 
         # Assert that at least one of the first 2 samples has changed
-        self.assertFalse(np.array_equal([[1, 1], [0, 0]],
-                                        shuffled[0].samples[0:2]))
-        # Assert that the shuffled dataset has the same n_samples
-        self.assertEqual(sum(sizes_shuffled), 14)
-        # Assert that all the original instances are in the shuffled dataset
-        shuffled_instances = set()
-        for subset in shuffled:
-            instances = [(tuple(sample), label) for sample, label in
-                         zip(subset.samples, subset.labels)]
-            shuffled_instances.update(instances)
-        for subset in dataset:
-            instances = [(tuple(sample), label) for sample, label in
-                         zip(subset.samples, subset.labels)]
-            self.assertTrue(shuffled_instances.issuperset(instances))
-        # Assert that the shuffled dataset is balanced
-        for size in sizes_shuffled:
-            self.assertTrue(size == 3 or size == 4)
-        # Assert that a 2-Fold dataset partition is balanced
-        self.assertEqual(sum(sizes_shuffled[0:2]), sum(sizes_shuffled[2:4]))
+        self.assertFalse(np.array_equal(x[0:2], shuffled_x[0:2]))
+        # Assert that the shuffled data has the same shape.
+        self.assertEqual(shuffled_x.shape, x.shape)
+        # Assert that all rows from x are found in the shuffled_x.
+        for x_row in x:
+            found = False
+            for shuffled_idx, shuffle_x_row in enumerate(shuffled_x):
+                if (shuffle_x_row == x_row).all():
+                    found = True
+                    break
+            self.assertTrue(found)
 
-    def test_shuffle_sparse(self):
-        """ Tests that shuffle produces the same results with sparse and
-        dense data structures. """
-        file_ = "tests/files/libsvm/1"
-        random_state = 170
+    def test_shuffle_xy(self):
+        """ Tests shuffle for given x, y and random_state. Tests that the
+        shuffled arrays contain the same rows as the original data,
+        and that the position has changed for some row.
+        """
+        np.random.seed(0)
+        x = np.random.rand(8, 3)
+        y = np.random.rand(8, 1)
+        x_ds = ds.array(x, (3, 2))
+        y_ds = ds.array(y, (4, 1))
 
-        sparse = load_libsvm_file(file_, 10, 780)
-        dense = load_libsvm_file(file_, 10, 780, store_sparse=False)
-        shuf_d = shuffle(dense, random_state=random_state)
-        shuf_sp = shuffle(sparse, random_state=random_state)
-        shuf_sp.collect()
-        shuf_d.collect()
+        shuffled_x, shuffled_y = shuffle(x_ds, y_ds, random_state=0)
+        shuffled_x = shuffled_x.collect()
+        shuffled_y = shuffled_y.collect()
 
-        self.assertEqual(len(shuf_sp), len(shuf_d))
-        self.assertFalse(shuf_d.sparse)
-        self.assertTrue(shuf_sp.sparse)
+        # Assert that at least one of the first 2 samples has changed
+        self.assertFalse(np.array_equal(x[0:2], shuffled_x[0:2]))
+        # Assert that the shuffled data has the same shape.
+        self.assertEqual(shuffled_x.shape, x.shape)
+        self.assertEqual(shuffled_y.shape[0], y.shape[0])
+        # Assert that all rows from x are found in the shuffled_x, and that the
+        # same permutation has been used to shuffle x and y.
+        for idx, x_row in enumerate(x):
+            found = False
+            for shuffled_idx, shuffle_x_row in enumerate(shuffled_x):
+                if (shuffle_x_row == x_row).all():
+                    found = True
+                    self.assertEqual(y[idx], shuffled_y[shuffled_idx])
+                    break
+            self.assertTrue(found)
 
-        for index in range(len(shuf_sp)):
-            samples_sp = shuf_sp[index].samples.toarray()
-            samples_d = shuf_d[index].samples
-            self.assertTrue(np.array_equal(samples_sp, samples_d))
+    def test_shuffle_x_sparse(self):
+        """ Tests shuffle for given sparse x, and random_state. Tests that the
+        shuffled array contains the same rows as the original data, and that
+        the position has changed for some row.
+        """
+        np.random.seed(0)
+        x = sparse.random(8, 10, density=0.5).tocsr()
+        x_ds = ds.array(x, (3, 5))
+
+        shuffled_x = shuffle(x_ds, random_state=0)
+        shuffled_x = shuffled_x.collect()
+
+        # Assert that at least one of the first 2 samples has changed
+        self.assertFalse((x[0:2] != shuffled_x[0:2]).nnz == 0)
+        # Assert that the shuffled data has the same shape.
+        self.assertEqual(shuffled_x.shape, x.shape)
+        # Assert that all rows from x are found in the shuffled_x.
+        for x_row in x:
+            found = False
+            for shuffled_idx, shuffle_x_row in enumerate(shuffled_x):
+                if (shuffle_x_row != x_row).nnz == 0:  # If rows are equal
+                    found = True
+                    break
+            self.assertTrue(found)
+
+    def test_shuffle_xy_sparse(self):
+        """ Tests shuffle for given sparse x and sparse y, and random_state.
+        Tests that the shuffled arrays contain the same rows as the original
+        data, and that the position has changed for some row.
+        """
+        np.random.seed(0)
+        x = sparse.random(8, 10, density=0.5).tocsr()
+        x_ds = ds.array(x, (3, 5))
+        y = sparse.random(8, 1, density=0.5).tocsr()
+        y_ds = ds.array(y, (4, 1))
+
+        shuffled_x, shuffled_y = shuffle(x_ds, y_ds, random_state=0)
+        shuffled_x = shuffled_x.collect()
+        shuffled_y = shuffled_y.collect()
+
+        # Assert that at least one of the first 2 samples has changed
+        self.assertFalse((x[0:2] != shuffled_x[0:2]).nnz == 0)
+        # Assert that the shuffled data has the same shape.
+        self.assertEqual(shuffled_x.shape, x.shape)
+        self.assertEqual(shuffled_y.shape[0], y.shape[0])
+        # Assert that all rows from x are found in the shuffled_x, and that the
+        # same permutation has been used to shuffle x and y.
+        for idx, x_row in enumerate(x):
+            found = False
+            for shuffled_idx, shuffle_x_row in enumerate(shuffled_x):
+                if (shuffle_x_row != x_row).nnz == 0:  # If rows are equal
+                    found = True
+                    self.assertEqual(y[idx, 0], shuffled_y[shuffled_idx, 0])
+                    break
+            self.assertTrue(found)
 
     def test_resample(self):
         """ Tests resample with random data """

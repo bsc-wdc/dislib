@@ -208,7 +208,6 @@ def _merge_partial_scatter_matrix(*partials):
 
 @task(returns=1)
 def _estimate_covariance(scatter_matrix, n_samples):
-    print(n_samples)
     return scatter_matrix / (n_samples - 1)
 
 
