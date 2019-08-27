@@ -57,10 +57,10 @@ class DecisionTreeClassifier:
     -------
     fit(dataset)
         Fits the DecisionTreeClassifier.
-    predict(subset)
-        Predicts classes for the subset samples using a fitted tree.
-    predict_proba(subset)
-        Predicts class probabilities for the subset using a fitted tree.
+    predict(x_row)
+        Predicts classes for the given samples using a fitted tree.
+    predict_proba(x_row)
+        Predicts class probabilities for the given smaples using a fitted tree.
 
     """
 
@@ -138,7 +138,7 @@ class DecisionTreeClassifier:
         self.nodes_info = _merge(*self.nodes_info)
 
     def predict(self, x_row):
-        """Predicts classes for the subset samples using a fitted tree.
+        """Predicts classes for the given samples using a fitted tree.
 
         Parameters
         ----------
@@ -148,9 +148,9 @@ class DecisionTreeClassifier:
         Returns
         -------
         predicted : ndarray
-            An array with the predicted classes for the subset. The values are
-            codes of the fitted dislib.classification.rf.data.RfDataset. The
-            returned object can be a pycompss.runtime.Future object.
+            An array with the predicted classes for the given samples. The
+            values are codes of the fitted dislib.classification.rf.data.RfDataset.
+            The returned object can be a pycompss.runtime.Future object.
 
         """
 
@@ -174,7 +174,7 @@ class DecisionTreeClassifier:
         Returns
         -------
         predicted_proba : ndarray
-            An array with the predicted probabilities for the subset samples.
+            An array with the predicted probabilities for the given samples.
             The shape is (len(subset.samples), self.n_classes), with the index
             of the column being codes of the fitted
             dislib.classification.rf.data.RfDataset. The returned object can be

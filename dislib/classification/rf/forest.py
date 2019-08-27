@@ -198,7 +198,7 @@ class RandomForestClassifier:
     def score(self, x, y):
         """Accuracy classification score.
 
-        Returns the mean accuracy on the given test dataset.
+        Returns the mean accuracy on the given test data.
 
 
         Parameters

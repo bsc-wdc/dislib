@@ -289,7 +289,7 @@ class GaussianMixture:
         return log_prob_norm, resp
 
     def _estimate_prob_resp(self, x_part):
-        """Estimate log-likelihood and responsibilities for a subset.
+        """Estimate log-likelihood and responsibilities for a subsample.
 
         Compute the sum of log-likelihoods, the count of samples, and the
         responsibilities for each sample in the data portion with respect to

@@ -123,7 +123,7 @@ class KMeans:
         return self.predict(x)
 
     def predict(self, x):
-        """ Predict the closest cluster each sample in dataset belongs to.
+        """ Predict the closest cluster each sample in the data belongs to.
 
         Parameters
         ----------

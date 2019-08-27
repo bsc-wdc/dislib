@@ -279,7 +279,7 @@ def _merge_shapes(*samples_shapes):
     n_features = samples_shapes[0][1]
     for shape in samples_shapes:
         n_samples += shape[0]
-        assert shape[1] == n_features, 'Subsets with different n_features.'
+        assert shape[1] == n_features, 'Subsamples with different n_features.'
     return samples_shapes, n_samples, n_features
 
 

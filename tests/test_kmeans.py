@@ -25,8 +25,8 @@ class KMeansTest(unittest.TestCase):
         self.assertEqual(expected, real)
 
     def test_fit(self):
-        """ Tests that the fit method returns the expected centers using a
-        toy dataset.
+        """ Tests that the fit method returns the expected centers using toy
+        data.
         """
         arr = np.array([[1, 2], [2, 1], [-1, -2], [-2, -1]])
         x = ds.array(arr, block_size=(2, 2))
@@ -39,7 +39,7 @@ class KMeansTest(unittest.TestCase):
         self.assertTrue((km.centers == expected_centers).all())
 
     def test_predict(self):
-        """ Tests that labels are correctly predicted using a toy dataset. """
+        """ Tests that labels are correctly predicted using toy data. """
         p1, p2, p3, p4 = [1, 2], [2, 1], [-1, -2], [-2, -1]
 
         arr1 = np.array([p1, p2, p3, p4])
