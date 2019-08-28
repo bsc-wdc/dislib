@@ -149,8 +149,9 @@ class DecisionTreeClassifier:
         -------
         predicted : ndarray
             An array with the predicted classes for the given samples. The
-            values are codes of the fitted dislib.classification.rf.data.RfDataset.
-            The returned object can be a pycompss.runtime.Future object.
+            values are codes of the fitted
+            dislib.classification.rf.data.RfDataset. The returned object can
+            be a pycompss.runtime.Future object.
 
         """
 
