@@ -800,8 +800,9 @@ def load_svmlight_file(path, block_size, n_features, store_sparse):
                 out_blocks = Array._get_out_blocks((1, ceil(n_features / m)))
                 out_blocks.append([object()])
                 # out_blocks.append([])
-                _read_libsvm(lines, out_blocks, col_size=m,
-                             n_features=n_features, store_sparse=store_sparse)
+                _read_svmlight(lines, out_blocks, col_size=m,
+                               n_features=n_features,
+                               store_sparse=store_sparse)
                 # we append only the list forming the row (out_blocks depth=2)
                 x_blocks.append(out_blocks[0])
                 y_blocks.append(out_blocks[1])
@@ -810,8 +811,8 @@ def load_svmlight_file(path, block_size, n_features, store_sparse):
     if lines:
         out_blocks = Array._get_out_blocks((1, ceil(n_features / m)))
         out_blocks.append([object()])
-        _read_libsvm(lines, out_blocks, col_size=m,
-                     n_features=n_features, store_sparse=store_sparse)
+        _read_svmlight(lines, out_blocks, col_size=m,
+                       n_features=n_features, store_sparse=store_sparse)
         # we append only the list forming the row (out_blocks depth=2)
         x_blocks.append(out_blocks[0])
         y_blocks.append(out_blocks[1])
@@ -882,7 +883,7 @@ def _read_lines(lines, block_size, delimiter, out_blocks):
 
 
 @task(out_blocks={Type: COLLECTION_INOUT, Depth: 2})
-def _read_libsvm(lines, out_blocks, col_size, n_features, store_sparse):
+def _read_svmlight(lines, out_blocks, col_size, n_features, store_sparse):
     from tempfile import SpooledTemporaryFile
     from sklearn.datasets import load_svmlight_file
 
