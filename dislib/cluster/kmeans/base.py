@@ -18,6 +18,12 @@ class KMeans:
     n_clusters : int, optional (default=8)
         The number of clusters to form as well as the number of centroids to
         generate.
+    init : {'random', nd-array or sparse matrix}, optional (default='random')
+        Method of initialization, defaults to 'random', which generates
+        random centers at the beginning.
+
+        If an nd-array or sparse matrix is passed, it should be of shape
+        (n_clusters, n_features) and gives the initial centers.
     max_iter : int, optional (default=10)
         Maximum number of iterations of the k-means algorithm for a single run.
     tol : float, optional (default=1e-4)
@@ -54,8 +60,8 @@ class KMeans:
     >>> print(kmeans.centers)
     """
 
-    def __init__(self, n_clusters=8, max_iter=10, tol=1e-4, arity=50,
-                 random_state=None, verbose=False):
+    def __init__(self, n_clusters=8, init='random', max_iter=10, tol=1e-4,
+                 arity=50, random_state=None, verbose=False):
         self._n_clusters = n_clusters
         self._max_iter = max_iter
         self._tol = tol
@@ -64,6 +70,7 @@ class KMeans:
         self.centers = None
         self.n_iter = 0
         self._verbose = verbose
+        self._init = init
 
     def fit(self, x, y=None):
         """ Compute K-means clustering.
@@ -79,11 +86,7 @@ class KMeans:
         -------
         self : KMeans
         """
-        n_features = x.shape[1]
-        sparse = x._sparse
-
-        self.centers = _init_centers(n_features, sparse, self._n_clusters,
-                                     self._random_state)
+        self._init_centers(x.shape[1], x._sparse)
 
         old_centers = None
         iteration = 0
@@ -167,6 +170,23 @@ class KMeans:
             if sum_[1] != 0:
                 self.centers[idx] = sum_[0] / sum_[1]
 
+    def _init_centers(self, n_features, sparse):
+        if isinstance(self._init, np.ndarray) \
+                or isinstance(self._init, csr_matrix):
+            if self._init.shape != (self._n_clusters, n_features):
+                raise ValueError("Init array must be of shape (n_clusters, "
+                                 "n_features)")
+            self.centers = self._init.copy()
+        elif self._init == "random":
+            shape = (self._n_clusters, n_features)
+            self.centers = self._random_state.random_sample(shape)
+
+            if sparse:
+                self.centers = csr_matrix(self.centers)
+        else:
+            raise ValueError("Init must be random, an nd-array, "
+                             "or an sp.matrix")
+
 
 @task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
 def _partial_sum(blocks, centers):
@@ -197,12 +217,3 @@ def _merge(*data):
 def _predict(blocks, centers):
     arr = Array._merge_blocks(blocks)
     return pairwise_distances(arr, centers).argmin(axis=1).reshape(-1, 1)
-
-
-def _init_centers(n_features, sparse, n_clusters, random_state):
-    centers = random_state.random_sample((n_clusters, n_features))
-
-    if sparse:
-        centers = csr_matrix(centers)
-
-    return centers

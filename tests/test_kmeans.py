@@ -1,6 +1,7 @@
 import unittest
 
 import numpy as np
+from scipy.sparse import csr_matrix
 from sklearn.cluster import KMeans as SKMeans
 from sklearn.datasets import make_blobs
 
@@ -17,11 +18,13 @@ class KMeansTest(unittest.TestCase):
         tol = 1e-4
         seed = 666
         arity = 2
+        init = "random"
+
         km = KMeans(n_clusters=n_clusters, max_iter=max_iter, tol=tol,
                     arity=arity, random_state=seed)
 
-        expected = (n_clusters, max_iter, tol, arity)
-        real = (km._n_clusters, km._max_iter, km._tol, km._arity)
+        expected = (n_clusters, init, max_iter, tol, arity)
+        real = (km._n_clusters, km._init, km._max_iter, km._tol, km._arity)
         self.assertEqual(expected, real)
 
     def test_fit(self):
@@ -99,6 +102,30 @@ class KMeansTest(unittest.TestCase):
 
         self.assertTrue(np.allclose(sparse_c, dense_c))
         self.assertTrue(np.array_equal(y_sparse, y_dense))
+
+    def test_init(self):
+        # With dense data
+        x, y = make_blobs(n_samples=1500, random_state=170)
+        x_filtered = np.vstack(
+            (x[y == 0][:500], x[y == 1][:100], x[y == 2][:10]))
+        x_train = ds.array(x_filtered, block_size=(300, 2))
+
+        init = np.random.random((5, 2))
+        km = KMeans(n_clusters=5, init=init)
+        km.fit(x_train)
+
+        self.assertTrue(np.array_equal(km._init, init))
+        self.assertFalse(np.array_equal(km.centers, init))
+
+        # With sparse data
+        x_sp = ds.array(csr_matrix(x_filtered), block_size=(300, 2))
+        init = csr_matrix(np.random.random((5, 2)))
+
+        km = KMeans(n_clusters=5, init=init)
+        km.fit(x_sp)
+
+        self.assertTrue(np.array_equal(km._init.toarray(), init.toarray()))
+        self.assertFalse(np.array_equal(km.centers.toarray(), init.toarray()))
 
 
 def main():
