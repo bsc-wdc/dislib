@@ -2,6 +2,7 @@ import performance
 
 import dislib as ds
 from dislib.classification import CascadeSVM
+from dislib.utils import shuffle
 
 
 def main():
@@ -9,7 +10,7 @@ def main():
         "/gpfs/projects/bsc19/COMPSs_DATASETS/dislib/kdd99/train.csv",
         block_size=(11482, 122))
 
-    x_kdd = ds.shuffle(x_kdd)
+    x_kdd = shuffle(x_kdd)
     y_kdd = x_kdd[:, 121:122]
     x_kdd = x_kdd[:, :121]
 
