@@ -4,6 +4,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2019-09-16
+### Added
+- Distributed array data structure
+- A basic tutorial notebook
+
+### Changed
+- Updated docker image to PyCOMPSs 2.5
+- Modified the whole library to use distributed arrays instead of Datasets
+(including estimators, examples, etc.)
+- Added 'init' parameter to K-means
+- Updated the developer guide
+
+### Removed
+- Dataset and Subset data structures
+- FFT estimator
+- Methods to load from multiple files
+
+### Fixed
+- Fixed the usage of random state in K-means
+- Some issues in the performance tests
+- Other minor bug fixes
+
 ## [0.3.0] - 2019-06-28
 ### Added
 - The VERSION file
@@ -66,7 +88,8 @@ process.
 
 ### Removed
 
-[Unreleased]: https://github.com/olivierlacan/keep-a-changelog/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/bsc-wdc/dislib/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/bsc-wdc/dislib/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/bsc-wdc/dislib/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/bsc-wdc/dislib/compare/v0.1.0...v0.2.0
 
