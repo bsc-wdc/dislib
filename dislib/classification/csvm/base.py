@@ -1,13 +1,17 @@
-from itertools import chain
 from uuid import uuid4
 
 import numpy as np
 from pycompss.api.api import compss_delete_object
 from pycompss.api.api import compss_wait_on
-from pycompss.api.parameter import INOUT
+from pycompss.api.parameter import COLLECTION_IN, Depth, Type
 from pycompss.api.task import task
+from scipy.sparse import hstack as hstack_sp
 from scipy.sparse import issparse
 from sklearn.svm import SVC
+from sklearn.utils import check_random_state
+
+from dislib.data.array import Array
+from dislib.utils.base import _paired_partition
 
 
 class CascadeSVM(object):
@@ -71,14 +75,15 @@ class CascadeSVM(object):
     >>> import numpy as np
     >>> x = np.array([[-1, -1], [-2, -1], [1, 1], [2, 1]])
     >>> y = np.array([1, 1, 2, 2])
-    >>> from dislib.data import load_data
-    >>> train_data = load_data(x=x, y=y, subset_size=4)
+    >>> import dislib as ds
+    >>> train_data = ds.array(x, block_size=(4, 2))
+    >>> train_labels = ds.array(y, block_size=(4, 2))
     >>> from dislib.classification import CascadeSVM
     >>> svm = CascadeSVM()
-    >>> svm.fit(train_data)
-    >>> test_data = load_data(x=np.array([[-0.8, -1]]), subset_size=1)
-    >>> svm.predict(test_data)
-    >>> print(test_data.labels)
+    >>> svm.fit(train_data, train_labels)
+    >>> test_data = ds.array(np.array([[-0.8, -1]]), block_size=(1, 2))
+    >>> y_pred = svm.predict(test_data)
+    >>> print(y_pred)
     """
     _name_to_kernel = {"linear": "_linear_kernel", "rbf": "_rbf_kernel"}
 
@@ -106,9 +111,10 @@ class CascadeSVM(object):
         self._max_iter = max_iter
         self._tol = tol
         self._check_convergence = check_convergence
-        self._random_state = random_state
+        self._random_state = check_random_state(random_state)
         self._verbose = verbose
         self._gamma = gamma
+        self._hstack_f = None
 
         if kernel == "rbf":
             self._clf_params = {"kernel": kernel, "C": c, "gamma": gamma}
@@ -120,87 +126,119 @@ class CascadeSVM(object):
         except AttributeError:
             self._kernel_f = getattr(self, "_rbf_kernel")
 
-    def fit(self, dataset):
+    def fit(self, x, y):
         """ Fits a model using training data.
 
         Parameters
         ----------
-        dataset : Dataset
-            Training data.
+        x : ds-array, shape=(n_samples, n_features)
+            Training samples.
+        y : ds-array, shape=(n_samples, 1)
+            Class labels of x.
+
+        Returns
+        -------
+        self : CascadeSVM
         """
         self._reset_model()
-        self._set_gamma(dataset.n_features)
+        self._set_gamma(x.shape[1])
+        self._hstack_f = hstack_sp if x._sparse else np.hstack
 
-        dataset_ids = [_create_ids(subset) for subset in dataset]
+        ids_list = [[_gen_ids(row._blocks)] for row in x._iterator(axis=0)]
 
         while not self._check_finished():
-            self._do_iteration(dataset, dataset_ids)
+            self._do_iteration(x, y, ids_list)
 
             if self._check_convergence:
                 self._check_convergence_and_update_w()
                 self._print_iteration()
 
-    def predict(self, dataset):
-        """ Perform classification on samples in dataset. This method stores
-        labels in dataset.
+        return self
+
+    def predict(self, x):
+        """ Perform classification on samples.
 
         Parameters
         ----------
-        dataset : Dataset
-        """
-        assert (self._clf is not None or self._feedback is not None), \
-            "Model has not been initialized. Call fit() first."
-
-        for subset in dataset:
-            _predict(subset, self._clf)
-
-    def decision_function(self, dataset):
-        """ Computes distances of the samples in dataset to the separating
-        hyperplane. Distances are stored in dataset.labels.
-
-        Parameters
-        ----------
-        dataset : Dataset
-        """
-        assert (self._clf is not None or self._feedback is not None), \
-            "Model has not been initialized. Call fit() first."
-
-        for subset in dataset:
-            _decision_function(subset, self._clf)
-
-    def score(self, dataset):
-        """
-        Returns the mean accuracy on the given test dataset. This method
-        assumes dataset.labels are true labels.
-
-        Parameters
-        ----------
-        dataset : Dataset
-            Dataset where dataset.labels are true labels for
-            dataset.samples.
+        x : ds-array, shape=(n_samples, n_features)
+            Input samples.
 
         Returns
         -------
-        score : Mean accuracy of self.predict(dataset) wrt. dataset.labels.
+        y : ds-array, shape(n_samples, 1)
+            Class labels of x.
         """
-        assert (self._clf is not None or self._feedback is not None), \
+        assert (self._clf is not None or self._svs is not None), \
+            "Model has not been initialized. Call fit() first."
+
+        y_list = []
+
+        for row in x._iterator(axis=0):
+            y_list.append([_predict(row._blocks, self._clf)])
+
+        return Array(blocks=y_list, top_left_shape=(x._top_left_shape[0], 1),
+                     reg_shape=(x._reg_shape[0], 1),
+                     shape=(x.shape[0], 1), sparse=False)
+
+    def decision_function(self, x):
+        """ Evaluates the decision function for the samples in x.
+
+        Parameters
+        ----------
+        x : ds-array, shape=(n_samples, n_features)
+            Input samples.
+
+        Returns
+        -------
+        df : ds-array, shape=(n_samples, 2)
+            The decision function of the samples for each class in the model.
+        """
+        assert (self._clf is not None or self._svs is not None), \
+            "Model has not been initialized. Call fit() first."
+
+        df = []
+
+        for row in x._iterator(axis=0):
+            df.append([_decision_function(row._blocks, self._clf)])
+
+        return Array(blocks=df, top_left_shape=(x._top_left_shape[0], 1),
+                     reg_shape=(x._reg_shape[0], 1),
+                     shape=(x.shape[0], 1), sparse=False)
+
+    def score(self, x, y):
+        """
+        Returns the mean accuracy on the given test data and labels.
+
+        Parameters
+        ----------
+        x : ds-array, shape=(n_samples, n_features)
+            Test samples.
+        y : ds-array, shape=(n_samples, 1)
+            True labels for x.
+
+        Returns
+        -------
+        score : float (as future object)
+            Mean accuracy of self.predict(x) wrt. y.
+        """
+        assert (self._clf is not None or self._svs is not None), \
             "Model has not been initialized. Call fit() first."
 
         partial_scores = []
 
-        for subset in dataset:
-            partial_scores.append(_score(subset, self._clf))
+        for x_row, y_row in _paired_partition(x, y):
+            partial = _score(x_row._blocks, y_row._blocks, self._clf)
+            partial_scores.append(partial)
 
-        score = compss_wait_on(_merge_scores(*partial_scores))
-
-        return score
+        return _merge_scores(*partial_scores)
 
     def _reset_model(self):
         self.iterations = 0
         self.converged = False
         self._last_w = None
         self._clf = None
-        self._feedback = None
+        self._svs = None
+        self._sv_labels = None
 
     def _set_gamma(self, n_features):
         if self._gamma == "auto":
@@ -208,56 +246,66 @@ class CascadeSVM(object):
             self._clf_params["gamma"] = self._gamma
 
     def _collect_clf(self):
-        self._feedback, self._clf = compss_wait_on(self._feedback, self._clf)
+        self._svs, self._sv_labels, self._clf = compss_wait_on(self._svs,
+                                                               self._sv_labels,
+                                                               self._clf)
 
     def _print_iteration(self):
         if self._verbose:
             print("Iteration %s of %s." % (self.iterations, self._max_iter))
 
-    def _do_iteration(self, dataset, dataset_ids):
+    def _do_iteration(self, x, y, ids_list):
         q = []
-        params = self._clf_params
+        pars = self._clf_params
         arity = self._arity
 
         # first level
-        for subset, subset_ids in zip(dataset, dataset_ids):
-            data = [(subset, subset_ids)]
-            if self._feedback is not None:
-                data.append((self._feedback, self._feedback_ids))
-            flattened_data = chain.from_iterable(data)
-            _out = _train(False, self._random_state, *flattened_data, **params)
-            sup_vec, sup_vec_ids, _ = _out
-            q.append((sup_vec, sup_vec_ids))
+        for partition, id_bk in zip(_paired_partition(x, y), ids_list):
+            x_data = partition[0]._blocks
+            y_data = partition[1]._blocks
+            ids = [id_bk]
+
+            if self._svs is not None:
+                x_data.append(self._svs)
+                y_data.append([self._sv_labels])
+                ids.append([self._sv_ids])
+
+            _tmp = _train(x_data, y_data, ids, self._random_state, **pars)
+            sv, sv_labels, sv_ids, self._clf = _tmp
+            q.append((sv, sv_labels, sv_ids))
 
         # reduction
         while len(q) > arity:
             data = q[:arity]
             del q[:arity]
 
-            flattened_data = chain.from_iterable(data)
-            _out = _train(False, self._random_state, *flattened_data, **params)
-            sup_vec, sup_vec_ids, _ = _out
-            q.append((sup_vec, sup_vec_ids))
+            x_data = [tup[0] for tup in data]
+            y_data = [[tup[1]] for tup in data]
+            ids = [[tup[2]] for tup in data]
+
+            _tmp = _train(x_data, y_data, ids, self._random_state, **pars)
+            sv, sv_labels, sv_ids, self._clf = _tmp
+            q.append((sv, sv_labels, sv_ids))
 
             # delete partial results
             for partial in data:
                 compss_delete_object(partial)
 
         # last layer
-        get_clf = (self._check_convergence or self._is_last_iteration())
-        flattened_q = chain.from_iterable(q)
-        _out = _train(get_clf, self._random_state, *flattened_q, **params)
-        self._feedback, self._feedback_ids, self._clf = _out
-        self.iterations += 1
+        x_data = [tup[0] for tup in q]
+        y_data = [[tup[1]] for tup in q]
+        ids = [[tup[2]] for tup in q]
 
-    def _is_last_iteration(self):
-        return self.iterations == self._max_iter - 1
+        _tmp = _train(x_data, y_data, ids, self._random_state, **pars)
+        self._svs, self._sv_labels, self._sv_ids, self._clf = _tmp
+
+        self.iterations += 1
 
     def _check_finished(self):
         return self.iterations >= self._max_iter or self.converged
 
-    def _lagrangian_fast(self, vectors, labels, coef):
-        set_sl = set(labels)
+    def _lag_fast(self, vectors, labels, coef):
+        set_sl = set(labels.ravel())
         assert len(set_sl) == 2, "Only binary problem can be handled"
         new_sl = labels.copy()
         new_sl[labels == 0] = -1
@@ -275,10 +323,9 @@ class CascadeSVM(object):
 
     def _check_convergence_and_update_w(self):
         self._collect_clf()
-        samples = self._feedback.samples
-        labels = self._feedback.labels
 
-        w = self._lagrangian_fast(samples, labels, self._clf.dual_coef_)
+        vecs = self._hstack_f(self._svs)
+        w = self._lag_fast(vecs, self._sv_labels, self._clf.dual_coef_)
         delta = 0
 
         if self._last_w:
@@ -322,48 +369,60 @@ class CascadeSVM(object):
         return np.dot(x, x.T)
 
 
-@task(returns=1)
-def _create_ids(subset):
-    idx = [uuid4().int for _ in range(subset.samples.shape[0])]
+@task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=1)
+def _gen_ids(blocks):
+    samples = Array._merge_blocks(blocks)
+    idx = [[uuid4().int] for _ in range(samples.shape[0])]
     return np.array(idx)
 
 
-@task(returns=3)
-def _train(return_classifier, random_state, *flattened_data, **params):
-    data = list(zip(*[iter(flattened_data)]*2))  # unflatten, grouping by 2
-
-    subset, ids = _merge(data)
+@task(x_list={Type: COLLECTION_IN, Depth: 2},
+      y_list={Type: COLLECTION_IN, Depth: 2},
+      id_list={Type: COLLECTION_IN, Depth: 2},
+      returns=4)
+def _train(x_list, y_list, id_list, random_state, **params):
+    x, y, ids = _merge(x_list, y_list, id_list)
 
     clf = SVC(random_state=random_state, **params)
-    clf.fit(X=subset.samples, y=subset.labels)
+    clf.fit(X=x, y=y.ravel())
 
-    sup_vec = subset[clf.support_]
-    sup_vec_ids = ids[clf.support_]
+    sup = x[clf.support_]
+    start, end = 0, 0
+    sv = []
 
-    if return_classifier:
-        return sup_vec, sup_vec_ids, clf
-    else:
-        return sup_vec, sup_vec_ids, None
+    for xi in x_list[0]:
+        end += xi.shape[1]
+        sv.append(sup[:, start:end])
+        start = end
 
+    sv_labels = y[clf.support_]
+    sv_ids = ids[clf.support_]
 
-@task(subset=INOUT)
-def _predict(subset, clf):
-    labels = clf.predict(subset.samples)
-    subset.labels = labels
-
-
-@task(subset=INOUT)
-def _decision_function(subset, clf):
-    distances = clf.decision_function(subset.samples)
-    subset.labels = distances
+    return sv, sv_labels, sv_ids, clf
 
 
-@task(returns=tuple)
-def _score(subset, clf):
-    labels = clf.predict(subset.samples)
-    equal = np.equal(labels, subset.labels)
+@task(x_list={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
+def _predict(x_list, clf):
+    x = Array._merge_blocks(x_list)
+    return clf.predict(x).reshape(-1, 1)
 
-    return np.sum(equal), subset.samples.shape[0]
+
+@task(x_list={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
+def _decision_function(x_list, clf):
+    x = Array._merge_blocks(x_list)
+    return clf.decision_function(x).reshape(-1, 1)
+
+
+@task(x_list={Type: COLLECTION_IN, Depth: 2},
+      y_list={Type: COLLECTION_IN, Depth: 2}, returns=tuple)
+def _score(x_list, y_list, clf):
+    x = Array._merge_blocks(x_list)
+    y = Array._merge_blocks(y_list)
+
+    y_pred = clf.predict(x)
+    equal = np.equal(y_pred, y.ravel())
+
+    return np.sum(equal), x.shape[0]
 
 
 @task(returns=float)
@@ -378,21 +437,17 @@ def _merge_scores(*partials):
     return total_correct / total_size
 
 
-def _merge(data):
-    subset, ids = data[0]
-    subset = subset.copy()
+def _merge(x_list, y_list, id_list):
+    samples = Array._merge_blocks(x_list)
+    labels = Array._merge_blocks(y_list)
+    sample_ids = Array._merge_blocks(id_list)
 
-    for subset_x, ids_x in data[1:]:
-        subset, ids = _merge_pair(subset, ids, subset_x, ids_x)
-    return subset, ids
-
-
-def _merge_pair(subset_0, ids_0, subset_1, ids_1):
-    subset_0.concatenate(subset_1)
-    ids = np.concatenate((ids_0, ids_1))
-    ids, uniques = np.unique(ids, return_index=True)
+    _, uniques = np.unique(sample_ids, return_index=True)
     indices = np.argsort(uniques)
     uniques = uniques[indices]
-    ids = ids[indices]
-    subset_0 = subset_0[uniques]
-    return subset_0, ids
+
+    sample_ids = sample_ids[uniques]
+    samples = samples[uniques]
+    labels = labels[uniques]
+
+    return samples, labels, sample_ids

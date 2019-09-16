@@ -3,11 +3,12 @@ from sys import float_info
 import numpy as np
 from numpy.random.mtrand import RandomState
 from pycompss.api.api import compss_delete_object
-from pycompss.api.parameter import FILE_IN
+from pycompss.api.parameter import FILE_IN, Type, COLLECTION_IN, Depth
 from pycompss.api.task import task
 from sklearn.tree import DecisionTreeClassifier as SklearnDTClassifier
 
 from dislib.classification.rf.test_split import test_split
+from dislib.data.array import Array
 
 
 class DecisionTreeClassifier:
@@ -56,10 +57,10 @@ class DecisionTreeClassifier:
     -------
     fit(dataset)
         Fits the DecisionTreeClassifier.
-    predict(subset)
-        Predicts classes for the subset samples using a fitted tree.
-    predict_proba(subset)
-        Predicts class probabilities for the subset using a fitted tree.
+    predict(x_row)
+        Predicts classes for the given samples using a fitted tree.
+    predict_proba(x_row)
+        Predicts class probabilities for the given smaples using a fitted tree.
 
     """
 
@@ -84,7 +85,7 @@ class DecisionTreeClassifier:
 
         Parameters
         ----------
-        dataset : dislib.classification.rf.data.RfDataset
+        dataset : dislib.classification.rf._data.RfDataset
 
         """
 
@@ -136,19 +137,21 @@ class DecisionTreeClassifier:
                 compss_delete_object(y_s)
         self.nodes_info = _merge(*self.nodes_info)
 
-    def predict(self, subset):
-        """Predicts classes for the subset samples using a fitted tree.
+    def predict(self, x_row):
+        """Predicts classes for the given samples using a fitted tree.
 
         Parameters
         ----------
-        subset : dislib.data.Subset
+        x_row : ds-array
+            A row block of samples.
 
         Returns
         -------
         predicted : ndarray
-            An array with the predicted classes for the subset. The values are
-            codes of the fitted dislib.classification.rf.data.RfDataset. The
-            returned object can be a pycompss.runtime.Future object.
+            An array with the predicted classes for the given samples. The
+            values are codes of the fitted
+            dislib.classification.rf.data.RfDataset. The returned object can
+            be a pycompss.runtime.Future object.
 
         """
 
@@ -156,22 +159,23 @@ class DecisionTreeClassifier:
 
         branch_predictions = []
         for i, subtree in enumerate(self.subtrees):
-            pred = _predict_branch(subset, self.tree, self.nodes_info, i,
-                                   subtree, self.distr_depth)
+            pred = _predict_branch(x_row._blocks, self.tree, self.nodes_info,
+                                   i, subtree, self.distr_depth)
             branch_predictions.append(pred)
         return _merge_branches(None, *branch_predictions)
 
-    def predict_proba(self, subset):
-        """Predicts class probabilities for the subset using a fitted tree.
+    def predict_proba(self, x_row):
+        """Predicts class probabilities for a row block using a fitted tree.
 
         Parameters
         ----------
-        subset : dislib.data.Subset
+        x_row : ds-array
+            A row block of samples.
 
         Returns
         -------
         predicted_proba : ndarray
-            An array with the predicted probabilities for the subset samples.
+            An array with the predicted probabilities for the given samples.
             The shape is (len(subset.samples), self.n_classes), with the index
             of the column being codes of the fitted
             dislib.classification.rf.data.RfDataset. The returned object can be
@@ -183,9 +187,9 @@ class DecisionTreeClassifier:
 
         branch_predictions = []
         for i, subtree in enumerate(self.subtrees):
-            pred = _predict_branch_proba(subset, self.tree, self.nodes_info, i,
-                                         subtree, self.distr_depth,
-                                         self.n_classes)
+            pred = _predict_branch_proba(x_row._blocks, self.tree,
+                                         self.nodes_info, i, subtree,
+                                         self.distr_depth, self.n_classes)
             branch_predictions.append(pred)
         return _merge_branches(self.n_classes, *branch_predictions)
 
@@ -216,7 +220,7 @@ class _Node:
     def predict_proba(self, sample, n_classes):
         node_content = self.content
         if isinstance(node_content, _LeafInfo):
-            single_pred = node_content.frequencies/node_content.size
+            single_pred = node_content.frequencies / node_content.size
             return np.tile(single_pred, (len(sample), 1))
         if isinstance(node_content, _SkTreeWrapper):
             if len(sample) > 0:
@@ -481,20 +485,20 @@ def _get_predicted_indices(samples, tree, nodes_info, path):
     return idx_mask
 
 
-@task(returns=1)
-def _predict_branch(subset, tree, nodes_info, subtree_index, subtree,
+@task(row_blocks={Type: COLLECTION_IN, Depth: 2}, returns=1)
+def _predict_branch(row_blocks, tree, nodes_info, subtree_index, subtree,
                     distr_depth):
-    samples = subset.samples
+    samples = Array._merge_blocks(row_blocks)
     path = _get_subtree_path(subtree_index, distr_depth)
     indices_mask = _get_predicted_indices(samples, tree, nodes_info, path)
     prediction = subtree.predict(samples[indices_mask])
     return indices_mask, prediction
 
 
-@task(returns=1)
-def _predict_branch_proba(subset, tree, nodes_info, subtree_index, subtree,
+@task(row_blocks={Type: COLLECTION_IN, Depth: 2}, returns=1)
+def _predict_branch_proba(row_blocks, tree, nodes_info, subtree_index, subtree,
                           distr_depth, n_classes):
-    samples = subset.samples
+    samples = Array._merge_blocks(row_blocks)
     path = _get_subtree_path(subtree_index, distr_depth)
     indices_mask = _get_predicted_indices(samples, tree, nodes_info, path)
     prediction = subtree.predict_proba(samples[indices_mask], n_classes)

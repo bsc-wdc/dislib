@@ -11,7 +11,6 @@ def main():
           "--pythonpath=/gpfs/projects/bsc19/PERFORMANCE/dislib/scripts" \
           ":/gpfs/projects/bsc19/PERFORMANCE/dislib/tests --lang=python " \
           "--worker_in_master_cpus=0 --max_tasks_per_node=48 --num_nodes=9 " \
-          "--master_working_dir=/gpfs/projects/bsc19/PERFORMANCE/dislib/logs" \
           "".split(" ")
 
     out = datetime.datetime.now().strftime("%Y-%m-%d_%H:%M")

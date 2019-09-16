@@ -1,54 +1,41 @@
 API Reference
 =============
 
-dislib.data: Data handling utilities
-------------------------------------
+dislib.array: Distributed array
+-------------------------------
 
 Classes
 .......
 
-:class:`data.Dataset <dislib.data.classes.Dataset>` - Main data structure for
-handling distributed datasets. Dataset works as a list of Subset.
-
-:class:`data.Subset <dislib.data.classes.Subset>` - Collection of samples and
-(optionally) labels.
+:class:`data.Array <dislib.data.array.Array>` - 2-dimensional array divided in
+blocks that can be operated in a distributed way.
 
 
-Functions
-.........
+Array creation routines
+.......................
 
-:meth:`data.load_data <dislib.data.base.load_data>` - Build a
-:class:`Dataset <dislib.data.classes.Dataset>` from an ndarray.
+:meth:`dislib.array <dislib.array>` - Build a distributed array
+(ds-array) from an array-like structure, such as a NumPy array, a list, or a SciPy sparse matrix.
 
-:meth:`data.load_libsvm_file <dislib.data.base.load_libsvm_file>` - Build a
-:class:`Dataset <dislib.data.classes.Dataset>` from a file in LibSVM format
-(sparse).
+:meth:`dislib.load_svmlight_file <dislib.load_svmlight_file>` - Build a
+ds-array from a file in `SVMlight <http://svmlight.joachims.org/>`_ format.
 
-:meth:`data.load_libsvm_files <dislib.data.base.load_libsvm_files>` - Build a
-:class:`Dataset <dislib.data.classes.Dataset>` from multiple files in LibSVM
-format (sparse).
+:meth:`dislib.load_txt_file <dislib.load_txt_file>` - Build a
+ds-array from a text file.
 
-:meth:`data.load_txt_file <dislib.data.base.load_txt_file>` - Build a
-:class:`Dataset <dislib.data.classes.Dataset>` from a text file.
+:meth:`dislib.random_array <dislib.random_array>` - Build a random ds-array.
 
-:meth:`data.load_txt_files <dislib.data.base.load_txt_files>` - Build a
-:class:`Dataset <dislib.data.classes.Dataset>` from multiple text files.
+Other functions
+---------------
 
+:meth:`dislib.apply_along_axis <dislib.apply_along_axis>` - Applies a
+function to a ds-array along a given axis.
 
-dislib.utils: Other utility functions
+dislib.utils: Utility functions
 -------------------------------------
 
-:meth:`utils.as_grid <dislib.utils.base.as_grid>` - Re-organizes samples in a
-:class:`Dataset <dislib.data.classes.Dataset>`
-in a hyper-dimensional grid, where each
-:class:`Subset <dislib.data.classes.Subset>` represents a region in this space.
-
 :meth:`utils.shuffle <dislib.utils.base.shuffle>` - Randomly shuffles the
-samples in a :class:`Dataset <dislib.data.classes.Dataset>`.
-
-:meth:`utils.resample <dislib.utils.base.resample>` - Resamples a
-:class:`Dataset <dislib.data.classes.Dataset>`.
-
+rows of a ds-array.
 
 dislib.preprocessing: Data pre-processing
 -----------------------------------------
@@ -57,7 +44,7 @@ Classes
 .......
 
 :class:`preprocessing.StandardScaler <dislib.preprocessing.classes.StandardScaler>` -
-Scale data to zero mean and unit variance.
+Scale a ds-array to zero mean and unit variance.
 
 dislib.decomposition: Matrix Decomposition
 ------------------------------------------
@@ -125,12 +112,3 @@ Classes
 
 :class:`cluster.NearestNeighbors <dislib.neighbors.base.NearestNeighbors>` -
 Perform k-nearest neighbors queries.
-
-Other functions
----------------
-
-:meth:`fft <dislib.fft.base.fft>` - Distributed fast fourier transform
-computation.
-
-
-

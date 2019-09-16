@@ -4,17 +4,17 @@ from itertools import chain
 
 import numpy as np
 from pycompss.api.task import task
-from scipy.sparse import lil_matrix
+from scipy.sparse import lil_matrix, vstack as vstack_sparse
 from scipy.sparse.csgraph import connected_components
 from sklearn.neighbors import NearestNeighbors
 
 
 class Region(object):
 
-    def __init__(self, region_id, subset, n_samples, epsilon, sparse):
+    def __init__(self, region_id, samples, n_samples, epsilon, sparse):
         self.id = region_id
         self.epsilon = epsilon
-        self.subset = subset
+        self.samples = samples
         self.n_samples = n_samples
         self.labels_region = None
         self.labels = None
@@ -34,12 +34,12 @@ class Region(object):
             self.cp_labels = np.empty(0, dtype=int)
             return
 
-        neigh_subsets = []
+        neigh_samples = []
         total_n_samples = self.n_samples
 
         # get samples from all neighbouring regions
         for region in self._neigh_regions:
-            neigh_subsets.append(region.subset)
+            neigh_samples.append(region.samples)
             total_n_samples += region.n_samples
 
         # if max_samples is not defined, process all samples in a single task
@@ -52,7 +52,8 @@ class Region(object):
         for idx in range(0, self.n_samples, max_samples):
             end_idx = idx + max_samples
             result = _compute_neighbours(self.epsilon, min_samples, idx,
-                                         end_idx, self.subset, *neigh_subsets)
+                                         end_idx, self.samples, self._sparse,
+                                         *neigh_samples)
             cps, in_cp_neighs, out_cp_neighs, non_cp_neighs = result
             cp_list.append(cps)
             self._in_cp_neighs.append(in_cp_neighs)
@@ -105,7 +106,7 @@ def _update_labels(labels_region, labels, components):
 def _compute_equivalences(n_samples, region_ids, *starred_args):
     n_regions = len(region_ids)
     cp_labels_list = starred_args[:n_regions]
-    n_chunks = len(starred_args[n_regions:])//2
+    n_chunks = len(starred_args[n_regions:]) // 2
     out_cp_neighs = iter(chain(*starred_args[n_regions:n_regions + n_chunks]))
     non_cp_neighs = iter(chain(*starred_args[n_regions + n_chunks:]))
 
@@ -143,12 +144,11 @@ def _compute_equivalences(n_samples, region_ids, *starred_args):
 
 
 @task(returns=4)
-def _compute_neighbours(epsilon, min_samples, begin_idx, end_idx, subset,
-                        *neigh_subsets):
-    samples = subset.samples
-    all_len = [samples.shape[0]] + [s.samples.shape[0] for s in neigh_subsets]
+def _compute_neighbours(epsilon, min_samples, begin_idx, end_idx, samples,
+                        sparse, *neigh_samples):
+    all_len = [samples.shape[0]] + [s.shape[0] for s in neigh_samples]
     cum_len = np.cumsum(all_len)
-    all_samples = _concatenate_subsets(subset, *neigh_subsets).samples
+    all_samples = _concatenate_samples(sparse, samples, *neigh_samples)
     nn = NearestNeighbors(radius=epsilon)
     nn.fit(all_samples)
     dists, neighs = nn.radius_neighbors(samples[begin_idx:end_idx],
@@ -181,21 +181,19 @@ def _compute_neighbours(epsilon, min_samples, begin_idx, end_idx, subset,
             for n in neighbors:
                 if n != idx:
                     reg = bisect.bisect(cum_len, n)
-                    reg_idx = n if reg == 0 else n - cum_len[reg-1]
+                    reg_idx = n if reg == 0 else n - cum_len[reg - 1]
                     neighbors_tups.append((reg, reg_idx))
             noncore_neighbors.append(neighbors_tups)
 
-    return core_points, inner_core_neighbors, outer_core_neighbors,\
-        noncore_neighbors
+    return (core_points, inner_core_neighbors, outer_core_neighbors,
+            noncore_neighbors)
 
 
-def _concatenate_subsets(*subsets):
-    subset = subsets[0].copy()
-
-    for set in subsets[1:]:
-        subset.concatenate(set)
-
-    return subset
+def _concatenate_samples(sparse, *samples):
+    if not sparse:
+        return np.vstack(samples)
+    else:
+        return vstack_sparse(samples)
 
 
 @task(returns=1)
