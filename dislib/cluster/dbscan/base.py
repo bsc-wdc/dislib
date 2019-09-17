@@ -1,3 +1,4 @@
+import daal4py.sklearn
 import numpy as np
 from pycompss.api.api import compss_wait_on
 from pycompss.api.parameter import COLLECTION_IN, COLLECTION_INOUT, \
@@ -8,6 +9,8 @@ from scipy.sparse import vstack as vstack_sparse
 
 from dislib.cluster.dbscan.classes import Region
 from dislib.data.array import Array
+
+daal4py.sklearn.patch_sklearn()
 
 
 class DBSCAN:
