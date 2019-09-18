@@ -45,7 +45,7 @@ Follow these steps when drafting a new release:
      
     .. code:: bash
      
-       docker build -t bscwdc/dislib:VERSION
+       docker build -t bscwdc/dislib:VERSION .
    
     - Log in and push it to dockerhub
    
