@@ -1,6 +1,5 @@
 from uuid import uuid4
 
-import daal4py.sklearn
 import numpy as np
 from pycompss.api.api import compss_delete_object
 from pycompss.api.api import compss_wait_on
@@ -8,13 +7,11 @@ from pycompss.api.parameter import COLLECTION_IN, Depth, Type
 from pycompss.api.task import task
 from scipy.sparse import hstack as hstack_sp
 from scipy.sparse import issparse
-from sklearn.svm import SVC
+import daal4py.sklearn.svm.SVC as SVC
 from sklearn.utils import check_random_state
 
 from dislib.data.array import Array
 from dislib.utils.base import _paired_partition
-
-daal4py.sklearn.patch_sklearn()
 
 
 class CascadeSVM(object):
