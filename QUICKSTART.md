@@ -35,13 +35,13 @@ numpydoc >= 0.8.0 is requried to build the documentation.
     * Extract the contents of the tar package.
     
     ```bash
-    tar xzvf dislib-0.1.1.tar.gz
+    tar xzvf dislib-X.Y.Z.tar.gz
     ```
     
     * Run an example application.
     
     ```bash
-    runcompss --python_interpreter=python3 dislib-0.1.1/examples/kmeans.py    
+    runcompss --python_interpreter=python3 dislib-X.Y.Z/examples/kmeans.py    
     ```
 
 ### Using docker
@@ -109,15 +109,15 @@ dislib init
 dislib init /home/user/replace/path/
 ```
 
-#### 4. Run a sample application
+#### 4. Running applications
 
 **Note**: running the docker dislib does not work with applications with GUI or with visual plots such as `examples/clustering_comparison.py`).
 
-First clone dislib repo and checkout release 0.1.0 (docker version and dislib code should preferably be the same to avoid inconsistencies):
+First clone dislib repo and checkout release branch vX.Y.Z (docker version and dislib code should preferably be the same to avoid inconsistencies):
 
 ```bash
 git clone https://github.com/bsc-wdc/dislib.git
-git co v0.1.0
+git co vX.Y.Z
 ```
 
 Init the dislib environment in the root of the repo.
@@ -138,11 +138,26 @@ dislib init
 dislib exec rf_iris.py
 ```
 
-#### 5. Adding more nodes
+#### 5. Running Jupyter notebooks
+
+Notebooks can be run using the `dislib run` command. Run the following snippet from the root of the project:
+
+```bash
+dislib init
+dislib run jupyter-notebook ./notebooks --ip=0.0.0.0  --allow-root
+```
+
+Access your notebook by ctrl-clicking or copy pasting into the browser the link shown on the CLI (e.g. http://127.0.0.1:8888/?token=TOKEN_VALUE).
+
+If the notebook process is not properly closed, you might get the following warning when trying to start jupyter notebooks again:
+
+`The port 8888 is already in use, trying another port.`
+
+To fix it, just restart the dislib container with `dislib init`.
+#### 6. Adding more nodes
 
 
-**Note**: adding more nodes is still in beta phase. Any suggestion, issue, or feedback is highly welcome and appreciated.
-
+**Note**: adding more nodes is still in beta phase. Please report issues, suggestions, or feature requests on [Github](https://github.com/bsc-wdc/dislib).
 
 To add more computing nodes, you can either let docker create more workers for you or manually create and config a custom node.
 

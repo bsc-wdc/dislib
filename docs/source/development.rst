@@ -46,6 +46,8 @@ Follow these steps when drafting a new release:
     .. code:: bash
      
        docker build -t bscwdc/dislib:VERSION .
+       # Create also new 'latest' tag using newly created image
+       docker tag bscwdc/dislib:VERSION bscwdc/dislib:latest
    
     - Log in and push it to dockerhub
    
@@ -53,6 +55,7 @@ Follow these steps when drafting a new release:
 
        docker login -u DOCKERHUB_USER -p DOCKERHUB_PASSWORD
        docker push bscwdc/dislib:VERSION
+       docker push bscwdc/dislib:latest
 
 12. Create a pip package and upload it to PyPi:
 

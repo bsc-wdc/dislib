@@ -17,7 +17,8 @@ if [ -z "${cmd}" ]; then
     echo "    init [WORK_DIR]:         initializes dislib in the current working dir or in WORK_DIR args is set."
     echo "    kill:                    stops and kills all instances of the dislib."
     echo "    update:                  updates the dislib docker image (use only when installing master branch)."
-    echo "    exec FILE [PARAMS]:      executes the FILE inside the container with the given COMPSs [PARAMS]"
+    echo "    run CMD:                 executes the CMD command inside the dislib master container."
+    echo "    exec FILE [PARAMS]:      executes the FILE inside the dislib master container with the given COMPSs [PARAMS]"
     echo "    components list:         lists dislib actives components."
     echo "    components add RESOURCE: adds the RESOURCE to the pool of workers of the dislib."
     echo ""
@@ -35,7 +36,7 @@ if [ "${cmd}" == "kill" ]; then
     python3 -c "from dislib_cmd import _stop_daemon; _stop_daemon()"
 fi
 if [ "${cmd}" == "run" ]; then    subcmd=$@
-    python3 -c "from dislib_cmd import _exec_in_daemon; _exec_in_daemon('${subcmd})"
+    python3 -c "from dislib_cmd import _exec_in_daemon; _exec_in_daemon('${subcmd}')"
 fi
 if [ "${cmd}" == "exec" ]; then
     file=$1
