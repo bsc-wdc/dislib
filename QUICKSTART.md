@@ -79,26 +79,17 @@ docker ps # this should be empty as no docker processes are yet running.
 sudo pip3 install docker
 ```
 
-#### 2. Install the dislib
+#### 2. Install dislib
 
-Download the **[latest release](https://github.com/bsc-wdc/dislib/releases/latest)**.
-
-
-Extract the tar file from your terminal:
-```bash
-tar -zxvf dislib-0.1.1.tar.gz
+```
+sudo pip3 install dislib
 ```
 
-Move ``bin/dislib`` and ``bin/dislib_cmd.py`` to your desired installation path and link the binary to be executable from anywhere:
-```bash
-sudo mkdir /opt/dislib
-sudo mv ./dislib-0.1.1/bin/dislib* /opt/dislib/
-sudo ln -s /opt/dislib/dislib /usr/local/bin/dislib
-```
+This should add the dislib executable to your path.
 
 #### 3. Start dislib in your development directory
 
-Initialize the dislib where your source code will be (you can re-init anytime). This will allow docker to access your local code and run it inside the container.
+Initialize dislib where your source code will be (you can re-init anytime). This will allow docker to access your local code and run it inside the container.
 
 **Note** that the first time dislib needs to download the docker image from the registry, and it may take a while.
 ```
