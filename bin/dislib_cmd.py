@@ -64,9 +64,9 @@ def _start_daemon(working_dir: str = "", restart: bool = True):
               "patient.")
 
         mounts = _get_mounts(user_working_dir=working_dir)
-
+        ports = {'8888/tcp': 8888}  # required for jupyter notebooks
         m = client.containers.run(image=image_name, name=master_name,
-                                  mounts=mounts, detach=True)
+                                  mounts=mounts, detach=True, ports=ports)
 
         _generate_resources_cfg(ips=['localhost'])
         _generate_project_cfg(ips=['localhost'])
