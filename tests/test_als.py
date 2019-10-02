@@ -2,7 +2,6 @@ import unittest
 
 import numpy as np
 from scipy.sparse import csr_matrix
-from numpy import genfromtxt
 
 import dislib as ds
 from dislib.recommendation import ALS
@@ -13,7 +12,7 @@ def load_movielens(train_ratio=0.9):
 
     # 'user_id', 'movie_id', 'rating', 'timestamp'
 
-    data = genfromtxt(file, dtype='int', delimiter=',')
+    data = np.genfromtxt(file, dtype='int', delimiter=',', usecols=range(3))
 
     # just in case there are movies/user without rating
     # movie_id
@@ -23,9 +22,8 @@ def load_movielens(train_ratio=0.9):
 
     idx = int(data.shape[0] * train_ratio)
 
-    split_data = np.array_split(data, [idx])
-    train_data = split_data[0]
-    test_data = split_data[1]
+    train_data = data[:idx]
+    test_data = data[idx:]
 
     train = csr_matrix(
         (train_data[:, 2], (train_data[:, 0], train_data[:, 1])),
@@ -41,6 +39,7 @@ def load_movielens(train_ratio=0.9):
     test_arr = ds.array(test, block_size=(x_size, y_size))
 
     return train_arr, test_arr
+
 
 
 class ALSTest(unittest.TestCase):
