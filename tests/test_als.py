@@ -41,7 +41,6 @@ def load_movielens(train_ratio=0.9):
     return train_arr, test_arr
 
 
-
 class ALSTest(unittest.TestCase):
     def test_init_params(self):
         # Test all parameters
