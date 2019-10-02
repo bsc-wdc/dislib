@@ -1,8 +1,8 @@
 import unittest
 
 import numpy as np
-import pandas as pd
 from scipy.sparse import csr_matrix
+from numpy import genfromtxt
 
 import dislib as ds
 from dislib.recommendation import ALS
@@ -11,25 +11,28 @@ from dislib.recommendation import ALS
 def load_movielens(train_ratio=0.9):
     file = 'tests/files/sample_movielens_ratings.csv'
 
-    cols = ['user_id', 'movie_id', 'rating', 'timestamp']
+    # 'user_id', 'movie_id', 'rating', 'timestamp'
 
-    # 30 users, 100 movies
-    df = pd.read_csv(file, names=cols, usecols=cols[0:3])
+    data = genfromtxt(file, dtype='int', delimiter=',')
 
     # just in case there are movies/user without rating
-    n_m = max(df.movie_id.nunique(), max(df.movie_id) + 1)
-    n_u = max(df.user_id.nunique(), max(df.user_id) + 1)
+    # movie_id
+    n_m = max(len(np.unique(data[:, 1])), max(data[:, 1]) + 1)
+    # user_id
+    n_u = max(len(np.unique(data[:, 0])), max(data[:, 0]) + 1)
 
-    idx = int(df.shape[0] * train_ratio)
+    idx = int(data.shape[0] * train_ratio)
 
-    train_df = df.iloc[:idx]
-    test_df = df.iloc[idx:]
+    split_data = np.array_split(data, [idx])
+    train_data = split_data[0]
+    test_data = split_data[1]
 
     train = csr_matrix(
-        (train_df.rating, (train_df.user_id, train_df.movie_id)),
+        (train_data[:, 2], (train_data[:, 0], train_data[:, 1])),
         shape=(n_u, n_m))
+
     test = csr_matrix(
-        (test_df.rating, (test_df.user_id, test_df.movie_id)))
+        (test_data[:, 2], (test_data[:, 0], test_data[:, 1])))
 
     x_size, y_size = train.shape[0] // 4, train.shape[1] // 4
     train_arr = ds.array(train, block_size=(x_size, y_size))
