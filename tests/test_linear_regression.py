@@ -1,10 +1,12 @@
 import unittest
 
 import numpy as np
+from scipy.sparse import random as sp_random
 from pycompss.api.api import compss_wait_on
 
 import dislib as ds
 from dislib.regression import LinearRegression
+from dislib.data import random_array
 
 
 class LinearRegressionTest(unittest.TestCase):
@@ -34,6 +36,19 @@ class LinearRegressionTest(unittest.TestCase):
         pred = reg.predict(test_data).collect()
 
         self.assertTrue(np.allclose(pred, [2.1, 3.3]))
+
+    def test_sparse(self):
+        """Tests LR raises NotImplementedError for sparse data."""
+        np.random.seed(0)
+        coo_matrix = sp_random(10, 1, density=0.5)
+        sparse_arr = ds.array(x=coo_matrix, block_size=(5, 1))
+        reg = LinearRegression()
+        with self.assertRaises(NotImplementedError):
+            reg.fit(sparse_arr, sparse_arr)
+        dense_arr = random_array((10, 1), (5, 1))
+        reg.fit(dense_arr, dense_arr)
+        with self.assertRaises(NotImplementedError):
+            reg.predict(sparse_arr)
 
 
 def main():

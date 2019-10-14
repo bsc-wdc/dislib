@@ -70,6 +70,27 @@ class PCATest(unittest.TestCase):
             features_opposite = np.allclose(transformed[:, i], -expected[:, i])
             self.assertTrue(features_equal or features_opposite)
 
+    def test_sparse(self):
+        """ Tests PCA produces the same results using dense and sparse
+        data structures. """
+        file_ = "tests/files/libsvm/2"
+        x_sp, _ = ds.load_svmlight_file(file_, (10, 300), 780, True)
+        x_ds, _ = ds.load_svmlight_file(file_, (10, 300), 780, False)
+
+        pca = PCA()
+        transform_dense = pca.fit_transform(x_ds).collect()
+        dense_components = pca.components_
+        dense_variance = pca.explained_variance_
+
+        pca = PCA()
+        transform_sparse = pca.fit_transform(x_sp).collect()
+        sparse_components = pca.components_
+        sparse_variance = pca.explained_variance_
+
+        self.assertTrue(np.array_equal(transform_sparse, transform_dense))
+        self.assertTrue(np.allclose(sparse_components, dense_components))
+        self.assertTrue(np.allclose(sparse_variance, dense_variance))
+
 
 def main():
     unittest.main()
