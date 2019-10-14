@@ -64,7 +64,14 @@ class LinearRegression:
         y : ds-array
             Labels of the samples
 
+        Raises
+        ------
+        NotImplementedError
+            If x is a sparse array.
+
         """
+        if x._sparse or y._sparse:
+            raise NotImplementedError('Sparse data is not supported.')
         mean_x, mean_y = _variable_means(x, y, self._arity)
         beta, alpha = _compute_regression(x, y, mean_x, mean_y, self._arity)
         self.coef_ = beta
@@ -78,11 +85,20 @@ class LinearRegression:
         ----------
         x : ds-array
             Samples to be predicted: x.shape (n_samples, 1).
+
         Returns
         -------
         y : ds-array
             Predicted values
+
+        Raises
+        ------
+        NotImplementedError
+            If x is a sparse array.
+
         """
+        if x._sparse:
+            raise NotImplementedError('Sparse data is not supported.')
 
         blocks = [list()]
 
