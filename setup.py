@@ -24,4 +24,5 @@ setuptools.setup(
         "numpy",
         "scipy"
     ],
+    scripts=["bin/dislib"],
 )

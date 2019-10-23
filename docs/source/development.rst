@@ -43,7 +43,7 @@ Follow these steps when drafting a new release:
 
     - Create the image:
      
-    .. code:: bash
+      .. code:: bash
      
        docker build -t bscwdc/dislib:VERSION .
        # Create also new 'latest' tag using newly created image
@@ -51,7 +51,7 @@ Follow these steps when drafting a new release:
    
     - Log in and push it to dockerhub
    
-    .. code:: bash
+      .. code:: bash
 
        docker login -u DOCKERHUB_USER -p DOCKERHUB_PASSWORD
        docker push bscwdc/dislib:VERSION
@@ -59,7 +59,16 @@ Follow these steps when drafting a new release:
 
 12. Create a pip package and upload it to PyPi:
 
-    .. code:: bash
+    - Ensure that you have the latest version of ``setuptools``,
+      ``wheel``, and ``twine`` installed:
 
-     python3 setup.py sdist bdist_wheel
-     python3 -m twine upload dist/*
+      .. code:: bash
+
+        pip3 install --upgrade setuptools wheel twine
+
+    - Create and upload the pip package:
+
+      .. code:: bash
+
+       python3 setup.py sdist bdist_wheel
+       python3 -m twine upload dist/dislib-X.Y.Z*
