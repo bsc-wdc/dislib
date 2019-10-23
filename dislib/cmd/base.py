@@ -4,9 +4,8 @@ import pickle
 import sys
 from uuid import uuid4
 
-from docker.types import Mount
-
 import docker
+from docker.types import Mount
 
 client = docker.from_env()
 # api_client = docker.APIClient()
