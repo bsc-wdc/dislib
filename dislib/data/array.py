@@ -300,8 +300,8 @@ class Array(object):
          Returns a slice of the ds-array defined by the slices rows / cols.
          Only steps (as defined by slice.step) with value 1 can be used.
          """
-        if (rows.step is not None and rows.step > 1) or \
-                (cols.step is not None and cols.step > 1):
+        if (rows.step is not None and rows.step != 1) or \
+                (cols.step is not None and cols.step != 1):
             raise NotImplementedError("Variable steps not supported, contact"
                                       " the dislib team or open an issue "
                                       "in github.")
@@ -325,9 +325,20 @@ class Array(object):
                                       " the dislib team or open an issue "
                                       "in github.")
 
+        if r_start >= r_stop or c_start >= c_stop:
+            shape = [0, 0]
+            if r_start < r_stop:
+                shape[0] = r_stop - r_start
+            if c_start < c_stop:
+                shape[1] = c_stop - c_start
+            res = Array(blocks=[[np.empty(shape)]], top_left_shape=shape,
+                        reg_shape=self._reg_shape, shape=shape,
+                        sparse=self._sparse)
+            return res
+
         # get the coordinates of top-left and bot-right corners
         i_0, j_0 = self._get_containing_block(r_start, c_start)
-        i_n, j_n = self._get_containing_block(r_stop, c_stop)
+        i_n, j_n = self._get_containing_block(r_stop - 1, c_stop - 1)
 
         # Number of blocks to be returned
         n_blocks = i_n - i_0 + 1

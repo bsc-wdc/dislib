@@ -32,7 +32,7 @@ class BaseSearchCV(ABC):
         time """
         pass
 
-    def fit(self, dataset, **fit_params):
+    def fit(self, x, y=None, **fit_params):
         """Run fit with all sets of parameters.
         Parameters
         ----------
@@ -60,7 +60,7 @@ class BaseSearchCV(ABC):
                                  scorer=scorers, parameters=parameters,
                                  fit_params=fit_params)
                    for parameters, (train, validation)
-                   in product(candidate_params, cv.split(dataset))]
+                   in product(candidate_params, cv.split(x, y))]
 
             nonlocal n_splits
             n_splits = cv.get_n_splits()
@@ -102,7 +102,7 @@ class BaseSearchCV(ABC):
         if self.refit:
             self.best_estimator_ = clone(base_estimator).set_params(
                 **self.best_params_)
-            self.best_estimator_.fit(dataset, **fit_params)
+            self.best_estimator_.fit(x, y, **fit_params)
 
         # Store the only scorer not as a dict for single metric evaluation
         self.scorer_ = scorers if self.multimetric_ else scorers['score']

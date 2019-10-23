@@ -3,14 +3,13 @@ import numpy as np
 
 from sklearn import clone, datasets
 
+import dislib as ds
 from dislib.classification import CascadeSVM, RandomForestClassifier
 from dislib.cluster import DBSCAN, KMeans, GaussianMixture
 from dislib.decomposition import PCA
 from dislib.neighbors import NearestNeighbors
 from dislib.recommendation import ALS
 from dislib.regression import LinearRegression
-
-from dislib.data import load_data
 from dislib.model_selection import GridSearchCV, KFold
 
 
@@ -46,14 +45,15 @@ class GridSearchCVTest(unittest.TestCase):
     def test_fit(self):
         """Tests GridSearchCV fit()."""
         x, y = datasets.load_iris(return_X_y=True)
-        ds = load_data(x, 30, y)
+        x_dsarray = ds.array(x, (30, 4))
+        y_dsarray = ds.array(y[:, np.newaxis], (30, 1))
 
         param_grid = {'n_estimators': (2, 4),
                       'max_depth': range(3, 5)}
         rf = RandomForestClassifier()
 
         searcher = GridSearchCV(rf, param_grid)
-        searcher.fit(ds)
+        searcher.fit(x_dsarray, y_dsarray)
 
         expected_keys = {'param_max_depth', 'param_n_estimators', 'params',
                          'split0_test_score', 'split1_test_score',
@@ -82,13 +82,13 @@ class GridSearchCVTest(unittest.TestCase):
     def test_refit_false(self):
         """Tests GridSearchCV fit() with refit=False."""
         x, y = datasets.load_iris(return_X_y=True)
-
-        ds = load_data(x, 30, y)
+        x_dsarray = ds.array(x, (30, 4))
+        y_dsarray = ds.array(y[:, np.newaxis], (30, 1))
 
         param_grid = {'max_iter': range(1, 5)}
         csvm = CascadeSVM(check_convergence=False)
         searcher = GridSearchCV(csvm, param_grid, cv=3, refit=False)
-        searcher.fit(ds)
+        searcher.fit(x_dsarray, y_dsarray)
 
         self.assertFalse(hasattr(searcher, 'best_estimator_'))
         self.assertTrue(hasattr(searcher, 'best_score_'))
@@ -100,16 +100,17 @@ class GridSearchCVTest(unittest.TestCase):
     def test_scoring_callable(self):
         """Tests GridSearchCV with callable scoring parameter."""
         x, y = datasets.load_iris(return_X_y=True)
-        ds = load_data(x, 30, y)
+        x_dsarray = ds.array(x, (30, 4))
+        y_dsarray = ds.array(y[:, np.newaxis], (30, 1))
 
         param_grid = {'n_estimators': (2, 4)}
         rf = RandomForestClassifier()
 
-        def scoring(clf, pds):
-            return clf.score(pds)
+        def scoring(clf, x_score, y_real):
+            return clf.score(x_score, y_real)
 
         searcher = GridSearchCV(rf, param_grid, cv=3, scoring=scoring)
-        searcher.fit(ds)
+        searcher.fit(x_dsarray, y_dsarray)
 
         self.assertTrue(hasattr(searcher, 'cv_results_'))
         self.assertTrue(hasattr(searcher, 'best_estimator_'))
@@ -118,25 +119,26 @@ class GridSearchCVTest(unittest.TestCase):
         self.assertTrue(hasattr(searcher, 'best_index_'))
         self.assertTrue(hasattr(searcher, 'scorer_'))
 
-        def invalid_scoring(clf, pds):
+        def invalid_scoring(clf, x_score, y_score):
             return '2'
 
         searcher = GridSearchCV(rf, param_grid, cv=3, scoring=invalid_scoring)
         with self.assertRaisesRegex(ValueError,
                                     'scoring must return a number'):
-            searcher.fit(ds)
+            searcher.fit(x_dsarray, y_dsarray)
 
     def test_scoring_dict(self):
         """Tests GridSearchCV with scoring parameter of type dict."""
         x, y = datasets.load_iris(return_X_y=True)
-        ds = load_data(x, 30, y)
+        x_dsarray = ds.array(x, (30, 4))
+        y_dsarray = ds.array(y[:, np.newaxis], (30, 1))
 
         param_grid = {'n_estimators': (2, 4)}
         rf = RandomForestClassifier()
 
-        def hard_vote_score(rand_forest, dataset):
+        def hard_vote_score(rand_forest, x, y):
             rand_forest.hard_vote = True
-            score = rand_forest.score(dataset)
+            score = rand_forest.score(x, y)
             rand_forest.hard_vote = False
             return score
 
@@ -144,7 +146,7 @@ class GridSearchCVTest(unittest.TestCase):
 
         searcher = GridSearchCV(rf, param_grid, cv=3, scoring=scoring,
                                 refit=False)
-        searcher.fit(ds)
+        searcher.fit(x_dsarray, y_dsarray)
 
         self.assertTrue(hasattr(searcher, 'cv_results_'))
         self.assertFalse(hasattr(searcher, 'best_estimator_'))
@@ -156,12 +158,13 @@ class GridSearchCVTest(unittest.TestCase):
         searcher = GridSearchCV(rf, param_grid, cv=3, scoring=scoring,
                                 refit=True)
         with self.assertRaises(ValueError):
-            searcher.fit(ds)
+            searcher.fit(x_dsarray, y_dsarray)
 
     def test_scoring_invalid(self):
         """Checks GridSearchCV raises error with invalid scoring parameter."""
         x, y = datasets.load_iris(return_X_y=True)
-        ds = load_data(x, 30, y)
+        x_dsarray = ds.array(x, (30, 4))
+        y_dsarray = ds.array(y[:, np.newaxis], (30, 1))
 
         param_grid = {'n_estimators': (2, 4)}
         rf = RandomForestClassifier()
@@ -169,12 +172,13 @@ class GridSearchCVTest(unittest.TestCase):
         searcher = GridSearchCV(rf, param_grid, cv=3, scoring='roc_auc',
                                 refit=False)
         with self.assertRaises(ValueError):
-            searcher.fit(ds)
+            searcher.fit(x_dsarray, y_dsarray)
 
     def test_refit_callable(self):
         """Tests GridSearchCV with callable refit parameter."""
         x, y = datasets.load_iris(return_X_y=True)
-        ds = load_data(x, 30, y)
+        x_dsarray = ds.array(x, (30, 4))
+        y_dsarray = ds.array(y[:, np.newaxis], (30, 1))
         param_grid = {'n_estimators': (2, 4)}
         rf = RandomForestClassifier()
 
@@ -184,7 +188,7 @@ class GridSearchCVTest(unittest.TestCase):
             return best_index
 
         searcher = GridSearchCV(rf, param_grid, cv=3, refit=refit)
-        searcher.fit(ds)
+        searcher.fit(x_dsarray, y_dsarray)
 
         self.assertTrue(hasattr(searcher, 'cv_results_'))
         self.assertTrue(hasattr(searcher, 'best_estimator_'))
@@ -196,39 +200,41 @@ class GridSearchCVTest(unittest.TestCase):
         best_index = 'str'
         searcher = GridSearchCV(rf, param_grid, cv=3, refit=refit)
         with self.assertRaises(TypeError):
-            searcher.fit(ds)
+            searcher.fit(x_dsarray, y_dsarray)
 
         best_index = -1
         searcher = GridSearchCV(rf, param_grid, cv=3, refit=refit)
         with self.assertRaises(IndexError):
-            searcher.fit(ds)
+            searcher.fit(x_dsarray, y_dsarray)
 
     def test_param_grid_invalid(self):
         """Tests GridSearchCV with invalid param_grid parameter."""
         x, y = datasets.load_iris(return_X_y=True)
-        ds = load_data(x, 30, y)
+        x_dsarray = ds.array(x, (30, 4))
+        y_dsarray = ds.array(y[:, np.newaxis], (30, 1))
         rf = RandomForestClassifier()
         param_grid = {'n_estimators': np.array([[1, 2], [3, 4]])}
         with self.assertRaises(ValueError):
             searcher = GridSearchCV(rf, param_grid, cv=3)
-            searcher.fit(ds)
+            searcher.fit(x_dsarray, y_dsarray)
         param_grid = {'n_estimators': '2'}
         with self.assertRaises(ValueError):
             searcher = GridSearchCV(rf, param_grid, cv=3)
-            searcher.fit(ds)
+            searcher.fit(x_dsarray, y_dsarray)
         param_grid = {'n_estimators': []}
         with self.assertRaises(ValueError):
             searcher = GridSearchCV(rf, param_grid, cv=3)
-            searcher.fit(ds)
+            searcher.fit(x_dsarray, y_dsarray)
 
     def test_cv_class(self):
         """Tests GridSearchCV with a class cv parameter."""
         x, y = datasets.load_iris(return_X_y=True)
-        ds = load_data(x, 30, y)
+        x_dsarray = ds.array(x, (30, 4))
+        y_dsarray = ds.array(y[:, np.newaxis], (30, 1))
         rf = RandomForestClassifier()
         param_grid = {'n_estimators': (2, 4)}
         searcher = GridSearchCV(rf, param_grid, cv=KFold(4))
-        searcher.fit(ds)
+        searcher.fit(x_dsarray, y_dsarray)
 
         self.assertTrue(hasattr(searcher, 'cv_results_'))
         self.assertTrue(hasattr(searcher, 'best_estimator_'))
@@ -240,9 +246,10 @@ class GridSearchCVTest(unittest.TestCase):
     def test_cv_invalid(self):
         """Tests GridSearchCV with invalid cv parameter."""
         x, y = datasets.load_iris(return_X_y=True)
-        ds = load_data(x, 30, y)
+        x_dsarray = ds.array(x, (30, 4))
+        y_dsarray = ds.array(y[:, np.newaxis], (30, 1))
         rf = RandomForestClassifier()
         param_grid = {'n_estimators': (2, 4)}
         with self.assertRaises(ValueError):
             searcher = GridSearchCV(rf, param_grid, cv={})
-            searcher.fit(ds)
+            searcher.fit(x_dsarray, y_dsarray)
