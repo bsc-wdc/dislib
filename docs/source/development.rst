@@ -39,13 +39,14 @@ Follow these steps when drafting a new release:
     name ``vX.Y.Z``.
 
 11. Create and tag a docker image for the release running the following at the
-    repo's root (change ``VERSION`` accordingly):
+    repo's root:
 
     - Create the image:
      
       .. code:: bash
      
-       docker build -t bscwdc/dislib:VERSION .
+       docker build -t bscwdc/dislib:vX.Y.Z .
+       
        # Create also new 'latest' tag using newly created image
        docker tag bscwdc/dislib:VERSION bscwdc/dislib:latest
    
@@ -54,7 +55,7 @@ Follow these steps when drafting a new release:
       .. code:: bash
 
        docker login -u DOCKERHUB_USER -p DOCKERHUB_PASSWORD
-       docker push bscwdc/dislib:VERSION
+       docker push bscwdc/dislib:v.X.Y.Z
        docker push bscwdc/dislib:latest
 
 12. Create a pip package and upload it to PyPi:
