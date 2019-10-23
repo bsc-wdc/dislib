@@ -108,7 +108,6 @@ First clone dislib repo and checkout release branch vX.Y.Z (docker version and d
 
 ```bash
 git clone https://github.com/bsc-wdc/dislib.git
-git co vX.Y.Z
 ```
 
 Init the dislib environment in the root of the repo.
