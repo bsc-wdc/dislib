@@ -172,7 +172,7 @@ def _finalize_features_mean(feature_sums, n_samples):
       out_blocks={Type: COLLECTION_INOUT, Depth: 1})
 def _normalize(blocks, out_blocks, means):
     data = Array._merge_blocks(blocks)
-    data = data - means
+    data = np.array(data - means)
 
     bn, bm = blocks[0][0].shape
 
