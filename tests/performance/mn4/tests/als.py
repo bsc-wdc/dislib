@@ -7,7 +7,7 @@ from dislib.recommendation import ALS
 
 
 def main():
-    n_blocks = 192
+    n_blocks = 384
     data = "/gpfs/projects/bsc19/COMPSs_DATASETS/dislib/recommendation" \
            "/netflix/netflix_data_libsvm.txt"
     n_factors = 100
