@@ -36,8 +36,10 @@ class BaseSearchCV(ABC):
         """Run fit with all sets of parameters.
         Parameters
         ----------
-        dataset : dislib.data.Dataset
-            Training dataset.
+        x : ds_array
+            Training data samples.
+        y : ds_array, optional (default = None)
+            Training data labels or values.
         **fit_params : dict of string -> object
             Parameters passed to the ``fit`` method of the estimator
         """
@@ -218,9 +220,9 @@ class GridSearchCV(BaseSearchCV):
         dictionaries, in which case the grids spanned by each dictionary
         in the list are explored. This enables searching over any sequence
         of parameter settings.
-    scoring : callable, dict or None, default: None
+    scoring : callable, dict or None, optional (default: None)
         A callable to evaluate the predictions on the test set. It should take
-        2 parameters, estimator and test_ds, and return a score (higher meaning
+        3 parameters, estimator, x and y, and return a score (higher meaning
         better). For evaluating multiple metrics, give a dict with names as
         keys and callables as values. If None, the estimator's score method is
         used.
@@ -230,7 +232,7 @@ class GridSearchCV(BaseSearchCV):
         - None, to use the default 5-fold cross validation,
         - integer, to specify the number of folds in a `KFold`,
         - custom cv generator.
-    refit : boolean, string, or callable, default=True
+    refit : boolean, string, or callable, optional (default=True)
         Refit an estimator using the best found parameters on the whole
         dataset.
         For multiple metric evaluation, this needs to be a string denoting the

@@ -87,8 +87,8 @@ def main():
     compss_barrier()
     fit_time = time.time() - s_time
 
-    out = [dbscan._eps, dbscan._min_samples, dbscan._max_samples,
-           dbscan._n_regions, len(dims), args.part_size, dbscan.n_clusters,
+    out = [dbscan.eps, dbscan.min_samples, dbscan.max_samples,
+           dbscan.n_regions, len(dims), args.part_size, dbscan.n_clusters,
            read_time, fit_time]
 
     print(out)

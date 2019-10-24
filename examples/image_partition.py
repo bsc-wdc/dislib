@@ -8,7 +8,7 @@ import os
 import time
 from os.path import splitext, isfile, basename, join
 from dislib.cluster import KMeans, DBSCAN, GaussianMixture
-from dislib.data import load_data
+import dislib as ds
 
 # == START algorithm definitions ==
 # Add new algorithms to `available_algorithms` and to the following functions.
@@ -221,10 +221,9 @@ def image_partition(img, n_chunks, algorithm, noise_value=None):
     else:  # Channels expected to range between 0 and 1
         rescaling_factor = sqrt(n_pixels)
     img_data[:, 2:dims] = img.reshape(n_pixels, n_channels) * rescaling_factor
-    dataset = load_data(img_data, ceil(n_pixels / n_chunks))
+    x = ds.array(img_data, (ceil(n_pixels / n_chunks), dims))
 
-    algorithm.fit_predict(dataset)
-    labels = dataset.labels.astype(int)
+    labels = algorithm.fit_predict(x).collect().astype(int)
 
     colors = plt.get_cmap('Set3').colors
     n_colors = len(colors)

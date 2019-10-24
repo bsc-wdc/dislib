@@ -82,24 +82,32 @@ class KFold:
         self.shuffle = shuffle
         self.random_state = random_state
 
-    def split(self, x, y):
+    def split(self, x, y=None):
         """Generates K-fold splits.
 
         Parameters
         ----------
-        dataset : Dataset
-            Training data.
+        x : ds_array
+            Samples array.
+        y : ds_array, optional (default=None)
+            Corresponding labels or values.
 
         Yields
         ------
-        train_ds : Dataset
-            The training dataset for that split.
-        test_ds : Dataset
-            The testing dataset for that split.
+        train_data : train_x, train_y
+            The training ds_arrays for that split. If y is None, train_y is
+            None.
+        test_data : test_x, test_y
+            The testing ds_arrays data for that split. If y is None, test_y is
+            None.
         """
         k = self.n_splits
         if self.shuffle:
-            x, y = utils.shuffle(x, y, self.random_state)
+            shuffled = utils.shuffle(x, y, self.random_state)
+            if y is None:
+                x = shuffled
+            else:
+                x, y = shuffled
         n_total = x.shape[0]
         n_each_section, extras = divmod(n_total, k)
         section_sizes = np.empty((k,), dtype=int)
@@ -115,7 +123,7 @@ class KFold:
 
         Returns
         ------
-        n_splits : Dataset
+        n_splits : int
             The number of splits performed by this CV splitter.
         """
         return self.n_splits
@@ -123,9 +131,12 @@ class KFold:
 
 def get_kfold_partition(x, y, start, end):
     train_x = merge_slices(x[:start], x[end:])
-    train_y = merge_slices(y[:start], y[end:])
     test_x = x[start:end]
-    test_y = y[start:end]
+    train_y = None
+    test_y = None
+    if y is not None:
+        train_y = merge_slices(y[:start], y[end:])
+        test_y = y[start:end]
     return (train_x, train_y), (test_x, test_y)
 
 
