@@ -87,8 +87,11 @@ def _get_mounts(user_working_dir: str):
                      source=user_working_dir,
                      type='bind')
 
+    compss_dir = os.environ['HOME'] + '/.COMPSs'
+    os.makedirs(compss_dir, exist_ok=True)
+
     compss_log_dir = Mount(target='/root/.COMPSs',
-                           source=os.environ['HOME'] + '/.COMPSs',
+                           source=compss_dir,
                            type='bind')
 
     mounts = [user_dir, compss_log_dir]
