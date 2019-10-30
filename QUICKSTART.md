@@ -130,10 +130,18 @@ dislib exec rf_iris.py
 
 #### 5. Running Jupyter notebooks
 
-Notebooks can be run using the `dislib run` command. Run the following snippet from the root of the project:
+Notebooks can be run using the `dislib jupyter` command. Run the
+following snippet from the root of the project:
 
 ```bash
 dislib init
+dislib jupyter ./notebooks
+```
+
+An alternative and more flexible way of starting jupyter is using the
+`dislib run` command in the following way:
+
+```bash
 dislib run jupyter-notebook ./notebooks --ip=0.0.0.0  --allow-root
 ```
 
