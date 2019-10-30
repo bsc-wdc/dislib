@@ -19,6 +19,7 @@ if [ -z "${cmd}" ]; then
     echo "    update:                  updates the dislib docker image (use only when installing master branch)."
     echo "    run CMD:                 executes the CMD command inside the dislib master container."
     echo "    exec FILE [PARAMS]:      executes the FILE inside the dislib master container with the given COMPSs [PARAMS]"
+    echo "    jupyter [PATH|FILE]:     starts jupyter-notebook in the given PATH or FILE."
     echo "    components list:         lists dislib actives components."
     echo "    components add RESOURCE: adds the RESOURCE to the pool of workers of the dislib."
     echo ""
@@ -54,4 +55,9 @@ if [ "${cmd}" == "components" ]; then
     subcmd=$@
     python3 -c "from dislib_cmd import _components; _components(arg='${subcmd}')"
 
+fi
+if [ "${cmd}" == "jupyter" ]; then
+    params=$@
+    subcmd="jupyter-notebook ${params} --ip=0.0.0.0 --allow-root"
+    python3 -c "from dislib_cmd import _exec_in_daemon; _exec_in_daemon('${subcmd}')"
 fi
