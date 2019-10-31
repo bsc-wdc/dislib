@@ -34,11 +34,12 @@ class BaseSearchCV(ABC):
 
     def fit(self, x, y=None, **fit_params):
         """Run fit with all sets of parameters.
+
         Parameters
         ----------
-        x : ds_array
+        x : ds-array
             Training data samples.
-        y : ds_array, optional (default = None)
+        y : ds-array, optional (default = None)
             Training data labels or values.
         **fit_params : dict of string -> object
             Parameters passed to the ``fit`` method of the estimator
@@ -275,50 +276,50 @@ class GridSearchCV(BaseSearchCV):
     cv_results_ : dict of numpy (masked) ndarrays
         A dict with keys as column headers and values as columns, that can be
         imported into a pandas ``DataFrame``.
-        For instance the below given table
-        +------------+-----------+------------+-----------------+---+---------+
-        |param_kernel|param_gamma|param_degree|split0_test_score|...|rank_t...|
-        +============+===========+============+=================+===+=========+
-        |  'poly'    |     --    |      2     |       0.80      |...|    2    |
-        +------------+-----------+------------+-----------------+---+---------+
-        |  'poly'    |     --    |      3     |       0.70      |...|    4    |
-        +------------+-----------+------------+-----------------+---+---------+
-        |  'rbf'     |     0.1   |     --     |       0.80      |...|    3    |
-        +------------+-----------+------------+-----------------+---+---------+
-        |  'rbf'     |     0.2   |     --     |       0.93      |...|    1    |
-        +------------+-----------+------------+-----------------+---+---------+
+        For instance the below given table:
+
+        +------------+------------+-----------------+---+---------+
+        |param_kernel|param_degree|split0_test_score|...|rank_t...|
+        +============+============+=================+===+=========+
+        |  'poly'    |      2     |       0.80      |...|    2    |
+        +------------+------------+-----------------+---+---------+
+        |  'poly'    |      3     |       0.70      |...|    4    |
+        +------------+------------+-----------------+---+---------+
+        |  'rbf'     |     --     |       0.80      |...|    3    |
+        +------------+------------+-----------------+---+---------+
+        |  'rbf'     |     --     |       0.93      |...|    1    |
+        +------------+------------+-----------------+---+---------+
+
         will be represented by a ``cv_results_`` dict of::
+
             {
             'param_kernel': masked_array(data = ['poly', 'poly', 'rbf', 'rbf'],
-                                         mask = [False False False False]...)
-            'param_gamma': masked_array(data = [-- -- 0.1 0.2],
-                                        mask = [ True  True False False]...),
+                                         mask = [False False False False]...),
             'param_degree': masked_array(data = [2.0 3.0 -- --],
                                          mask = [False False  True  True]...),
-            'split0_test_score'  : [0.80, 0.70, 0.80, 0.93],
-            'split1_test_score'  : [0.82, 0.50, 0.70, 0.78],
+            'split0_test_score'  : [0.81, 0.70, 0.91, 0.93],
+            'split1_test_score'  : [0.82, 0.50, 0.68, 0.78],
+            'split2_test_score'  : [0.79, 0.55, 0.71, 0.93],
+            ...
             'mean_test_score'    : [0.81, 0.60, 0.75, 0.85],
             'std_test_score'     : [0.01, 0.10, 0.05, 0.08],
             'rank_test_score'    : [2, 4, 3, 1],
-            'split0_train_score' : [0.80, 0.92, 0.70, 0.93],
-            'split1_train_score' : [0.82, 0.55, 0.70, 0.87],
-            'mean_train_score'   : [0.81, 0.74, 0.70, 0.90],
-            'std_train_score'    : [0.01, 0.19, 0.00, 0.03],
-            'mean_fit_time'      : [0.73, 0.63, 0.43, 0.49],
-            'std_fit_time'       : [0.01, 0.02, 0.01, 0.01],
-            'mean_score_time'    : [0.01, 0.06, 0.04, 0.04],
-            'std_score_time'     : [0.00, 0.00, 0.00, 0.01],
             'params'             : [{'kernel': 'poly', 'degree': 2}, ...],
             }
-        NOTE
+
+        NOTES:
+
         The key ``'params'`` is used to store a list of parameter
         settings dicts for all the parameter candidates.
+
         The ``mean_fit_time``, ``std_fit_time``, ``mean_score_time`` and
         ``std_score_time`` are all in seconds.
+
         For multi-metric evaluation, the scores for all the scorers are
         available in the ``cv_results_`` dict at the keys ending with that
         scorer's name (``'_<scorer_name>'``) instead of ``'_score'`` shown
-        above. ('split0_test_precision', 'mean_train_precision' etc.)
+        above ('split0_test_precision', 'mean_train_precision' etc.).
+
     best_estimator_ : estimator or dict
         Estimator that was chosen by the search, i.e. estimator
         which gave highest score (or smallest loss if specified)
@@ -347,10 +348,6 @@ class GridSearchCV(BaseSearchCV):
         ``scoring`` dict which maps the scorer key to the scorer callable.
     n_splits_ : int
         The number of cross-validation splits (folds/iterations).
-    Notes
-    -----
-    The parameters selected are those that maximize the score of the left out
-    data, unless an explicit score is passed in which case it is used instead.
     """
 
     def __init__(self, estimator, param_grid, scoring=None, cv=None,

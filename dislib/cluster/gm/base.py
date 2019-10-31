@@ -727,21 +727,21 @@ def _finalize_covar_spherical(covar_type, reg_covar, nk, means, covariances):
 def _compute_precision_cholesky(covariances, covariance_type):
     """Compute the Cholesky decomposition of the precisions.
 
-        Parameters
-        ----------
-        covariances : array-like
-            The covariance matrix of the current components.
-            The shape depends of the covariance_type.
+    Parameters
+    ----------
+    covariances : array-like
+        The covariance matrix of the current components.
+        The shape depends of the covariance_type.
 
-        covariance_type : {'full', 'tied', 'diag', 'spherical'}
-            The type of precision matrices.
+    covariance_type : {'full', 'tied', 'diag', 'spherical'}
+        The type of precision matrices.
 
-        Returns
-        -------
-        precisions_cholesky : array-like
-            The cholesky decomposition of sample precisions of the current
-            components. The shape depends of the covariance_type.
-        """
+    Returns
+    -------
+    precisions_cholesky : array-like
+        The cholesky decomposition of sample precisions of the current
+        components. The shape depends of the covariance_type.
+    """
     estimate_precision_error_message = (
         "Fitting the mixture model failed because some components have "
         "ill-defined empirical covariance (for instance caused by singleton "

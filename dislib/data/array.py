@@ -325,6 +325,10 @@ class Array(object):
                                       " the dislib team or open an issue "
                                       "in github.")
 
+        # Return ds-array with a single empty block for empty slices.
+        # This is required by Array's constructor for empty arrays.
+        # The empty block will be a numpy array with a shape whose components
+        # will be non-zero for dimensions that have not been sliced to nothing.
         if r_start >= r_stop or c_start >= c_stop:
             shape = [0, 0]
             if r_start < r_stop:

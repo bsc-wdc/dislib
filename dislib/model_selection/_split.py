@@ -87,18 +87,18 @@ class KFold:
 
         Parameters
         ----------
-        x : ds_array
+        x : ds-array
             Samples array.
-        y : ds_array, optional (default=None)
+        y : ds-array, optional (default=None)
             Corresponding labels or values.
 
         Yields
         ------
         train_data : train_x, train_y
-            The training ds_arrays for that split. If y is None, train_y is
+            The training ds-arrays for that split. If y is None, train_y is
             None.
         test_data : test_x, test_y
-            The testing ds_arrays data for that split. If y is None, test_y is
+            The testing ds-arrays data for that split. If y is None, test_y is
             None.
         """
         k = self.n_splits
@@ -141,35 +141,48 @@ def get_kfold_partition(x, y, start, end):
 
 
 def merge_slices(s1, s2):
-    """Merges horizontal slices s1 and s2 of an array. The order of rows may
-    change."""
+    """Merges horizontal slices s1 and s2 of an array. It works as in a
+    concatenation, but the order of rows may change."""
     assert s1._shape[1] == s2._shape[1], """The arrays must have the same
-     shape, except in the concatenation dimension."""
+     number of columns."""
     assert s1._sparse == s2._sparse, """A sparse and a dense array cannot
-     be concatenated."""
-    assert s1._reg_shape == s2._reg_shape, """The arrays must have the same
-     shape, except in the concatenation dimension."""
-    reg_shape = s1._reg_shape
-    reg_rows = reg_shape[0]
+     be merged."""
+    assert s1._reg_shape == s2._reg_shape, """The array regular blocks must
+    have the same shape."""
 
     len_s1 = s1.shape[0]
     len_s2 = s2.shape[0]
+
+    # If s1 or s2 is empty, quickly return the other slice.
     if len_s1 == 0:
         return s2
     if len_s2 == 0:
         return s1
 
+    reg_shape = s1._reg_shape
+    reg_rows = reg_shape[0]
+
+    # Compute the start and end of regular row blocks for s1
     top_rows_s1 = s1._top_left_shape[0]
     reg_rows_start_s1 = top_rows_s1 if top_rows_s1 != reg_rows else 0
     reg_rows_end_s1 = len_s1 - (len_s1 - reg_rows_start_s1) % reg_rows
 
+    # Compute the start and end of regular row blocks for s2
     top_rows_s2 = s2._top_left_shape[0]
     reg_rows_start_s2 = top_rows_s2 if top_rows_s2 != reg_rows else 0
     reg_rows_end_s2 = len_s2 - (len_s2 - reg_rows_start_s2) % reg_rows
 
+    # Get arrays with the regular row blocks for s1 and s2
     reg_s1 = s1[reg_rows_start_s1:reg_rows_end_s1]
     reg_s2 = s2[reg_rows_start_s2:reg_rows_end_s2]
 
+    # Add the regular row blocks to the list all_blocks
+    all_blocks = []
+    all_blocks.extend(reg_s1._blocks)
+    all_blocks.extend(reg_s2._blocks)
+
+    # If there are remaining rows on the top or bottom of s1 and s2, add them
+    # to the list extras. These are row blocks with less than reg_rows.
     extras = []
     if reg_rows_start_s1 > 0:
         extras.append(s1[:reg_rows_start_s1])
@@ -179,6 +192,10 @@ def merge_slices(s1, s2):
         extras.append(s1[reg_rows_end_s1:])
     if reg_rows_end_s2 < len_s2:
         extras.append(s2[reg_rows_end_s2:])
+
+    # Arrange the rows of the arrays in extras in groups of reg_rows rows,
+    # slicing the arrays when necessary. The last group may have less than
+    # reg_rows rows.
     groups = []
     current_capacity = 0
     for extra in extras:
@@ -193,9 +210,9 @@ def merge_slices(s1, s2):
             groups[-1].append(extra[:current_capacity])
             groups.append([extra[current_capacity:]])
             current_capacity = current_capacity - len_extra + reg_rows
-    all_blocks = []
-    all_blocks.extend(reg_s1._blocks)
-    all_blocks.extend(reg_s2._blocks)
+
+    # Merge the row blocks in each group, forming a single row block per group,
+    # and add it to the list all blocks.
     for g in groups:
         blocks = []
         for a in g:
@@ -205,6 +222,8 @@ def merge_slices(s1, s2):
         _merge_rows_keeping_cols(blocks, group_blocks)
         all_blocks.append(group_blocks)
 
+    # Now all_blocks contains all the rows of s1 and s2 in an appropiate
+    # arrangement to create the merged array.
     return Array(blocks=all_blocks, top_left_shape=reg_shape,
                  reg_shape=reg_shape, shape=(len_s1 + len_s2, s1.shape[1]),
                  sparse=s1._sparse)

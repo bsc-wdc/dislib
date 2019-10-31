@@ -112,3 +112,16 @@ Classes
 
 :class:`cluster.NearestNeighbors <dislib.neighbors.base.NearestNeighbors>` -
 Perform k-nearest neighbors queries.
+
+
+dislib.model_selection: Model selection
+---------------------------------------
+
+Classes
+.......
+
+:class:`model_selection.GridSearchCV <dislib.model_selection.GridSearchCV>` -
+Exhaustive search over specified parameter values for an estimator.
+
+:class:`model_selection.KFold <dislib.model_selection.KFold>` -
+K-fold splitter for cross-validation.

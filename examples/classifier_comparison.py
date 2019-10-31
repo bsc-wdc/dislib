@@ -54,8 +54,7 @@ def main():
 
         for name, clf in zip(names, classifiers):
             clf.fit(ds_x_train, ds_y_train)
-            scores[(ds_cnt, name)] = compss_wait_on(clf.score(ds_x_test,
-                                                              ds_y_test))
+            scores[(ds_cnt, name)] = clf.score(ds_x_test, ds_y_test)
 
             mesh = np.c_[xx.ravel(), yy.ravel()]
             mesh_array = ds.array(mesh, (mesh.shape[0], 2))
