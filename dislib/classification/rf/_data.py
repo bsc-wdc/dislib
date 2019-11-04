@@ -286,7 +286,7 @@ def _merge_shapes(*samples_shapes):
 @task(samples_path=FILE_INOUT)
 def _allocate_samples_file(samples_path, n_samples, n_features):
     np.lib.format.open_memmap(samples_path, mode='w+', dtype='float32',
-                              shape=(n_samples, n_features))
+                              shape=(int(n_samples), int(n_features)))
 
 
 @task(samples_path=FILE_INOUT, row_blocks={Type: COLLECTION_IN, Depth: 2})

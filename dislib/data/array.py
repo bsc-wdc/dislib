@@ -300,8 +300,8 @@ class Array(object):
          Returns a slice of the ds-array defined by the slices rows / cols.
          Only steps (as defined by slice.step) with value 1 can be used.
          """
-        if (rows.step is not None and rows.step > 1) or \
-                (cols.step is not None and cols.step > 1):
+        if (rows.step is not None and rows.step != 1) or \
+                (cols.step is not None and cols.step != 1):
             raise NotImplementedError("Variable steps not supported, contact"
                                       " the dislib team or open an issue "
                                       "in github.")
@@ -325,9 +325,27 @@ class Array(object):
                                       " the dislib team or open an issue "
                                       "in github.")
 
+        n_rows = r_stop - r_start
+        n_cols = c_stop - c_start
+
+        # If the slice is empty (no rows or no columns), return a ds-array with
+        # a single empty block. This empty block is required by the Array
+        # constructor.
+        if n_rows <= 0 or n_cols <= 0:
+            n_rows = max(0, n_rows)
+            n_cols = max(0, n_cols)
+            if self._sparse:
+                empty_block = csr_matrix((0, 0))
+            else:
+                empty_block = np.empty((0, 0))
+            res = Array(blocks=[[empty_block]], top_left_shape=self._reg_shape,
+                        reg_shape=self._reg_shape, shape=(n_rows, n_cols),
+                        sparse=self._sparse)
+            return res
+
         # get the coordinates of top-left and bot-right corners
         i_0, j_0 = self._get_containing_block(r_start, c_start)
-        i_n, j_n = self._get_containing_block(r_stop, c_stop)
+        i_n, j_n = self._get_containing_block(r_stop - 1, c_stop - 1)
 
         # Number of blocks to be returned
         n_blocks = i_n - i_0 + 1
@@ -357,8 +375,7 @@ class Array(object):
                 out_blocks[out_i][out_j] = fb
 
         # Shape of the top left block
-        top, left = self._coords_in_block(0, 0, r_start,
-                                          c_start)
+        top, left = self._coords_in_block(0, 0, r_start, c_start)
 
         bi0 = self._reg_shape[0] - (top % self._reg_shape[0])
         bj0 = self._reg_shape[1] - (left % self._reg_shape[1])
@@ -366,7 +383,7 @@ class Array(object):
         # Regular blocks shape is the same
         bn, bm = self._reg_shape
 
-        out_shape = r_stop - r_start, c_stop - c_start
+        out_shape = n_rows, n_cols
 
         res = Array(blocks=out_blocks, top_left_shape=(bi0, bj0),
                     reg_shape=(bn, bm), shape=out_shape, sparse=self._sparse)

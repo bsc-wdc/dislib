@@ -36,7 +36,6 @@ Contents
 * :doc:`Quickstart <quickstart>`
 * :doc:`API Reference <api-reference>`
 * :doc:`Development <development>`
-* :doc:`FAQ <faq>`
 
 Performance
 -----------

@@ -1,11 +1,12 @@
 import numpy as np
 from pycompss.api.parameter import COLLECTION_IN, Depth, Type
 from pycompss.api.task import task
+from sklearn.base import BaseEstimator
 
 from dislib.data.array import Array
 
 
-class LinearRegression:
+class LinearRegression(BaseEstimator):
     """
     Simple linear regression using ordinary least squares.
 
@@ -51,7 +52,7 @@ class LinearRegression:
     """
 
     def __init__(self, arity=50):
-        self._arity = arity
+        self.arity = arity
 
     def fit(self, x, y):
         """
@@ -72,8 +73,8 @@ class LinearRegression:
         """
         if x._sparse or y._sparse:
             raise NotImplementedError('Sparse data is not supported.')
-        mean_x, mean_y = _variable_means(x, y, self._arity)
-        beta, alpha = _compute_regression(x, y, mean_x, mean_y, self._arity)
+        mean_x, mean_y = _variable_means(x, y, self.arity)
+        beta, alpha = _compute_regression(x, y, mean_x, mean_y, self.arity)
         self.coef_ = beta
         self.intercept_ = alpha
 

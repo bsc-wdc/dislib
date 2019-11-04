@@ -4,11 +4,13 @@ import numpy as np
 from pycompss.api.api import compss_wait_on
 from pycompss.api.parameter import COLLECTION_IN, Depth, Type, COLLECTION_INOUT
 from pycompss.api.task import task
+from sklearn.base import BaseEstimator
+from sklearn.utils import validation
 
 from dislib.data.array import Array
 
 
-class PCA:
+class PCA(BaseEstimator):
     """ Principal component analysis (PCA) using the covariance method.
 
     Performs a full eigendecomposition of the covariance matrix.
@@ -54,16 +56,16 @@ class PCA:
     def __init__(self, n_components=None, arity=50):
         self.n_components = n_components
         self.arity = arity
-        self._components = None
-        self._variance = None
 
     @property
     def components_(self):
+        validation.check_is_fitted(self, '_components')
         self._components = compss_wait_on(self._components)
         return self._components
 
     @property
     def explained_variance_(self):
+        validation.check_is_fitted(self, '_variance')
         self._variance = compss_wait_on(self._variance)
         return self._variance
 

@@ -2,7 +2,7 @@ import numpy as np
 from pycompss.api.api import compss_wait_on
 from pylab import scatter, plot, show
 
-from dislib.data import load_data
+import dislib as ds
 from dislib.regression import LinearRegression
 
 
@@ -16,10 +16,10 @@ def main():
                   12000, 7000, 3000])
     y = np.array([9914, 40487, 54324, 50044, 34719, 42551, 94871, 118914,
                   158484, 131348, 78504, 36284])
-
-    ds = load_data(x=x[:, np.newaxis], y=y, subset_size=4)
+    x_ds = ds.array(x[:, np.newaxis], (4, 1))
+    y_ds = ds.array(y[:, np.newaxis], (4, 1))
     reg = LinearRegression()
-    reg.fit(ds)
+    reg.fit(x_ds, y_ds)
     reg.coef_ = compss_wait_on(reg.coef_)
     reg.intercept_ = compss_wait_on(reg.intercept_)
     print(reg.coef_, reg.intercept_)

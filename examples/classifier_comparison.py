@@ -32,12 +32,12 @@ def main():
                 linearly_separable
                 ]
 
-    plt.figure(figsize=(27, 9))
-    i = 1
-    # iterate over datasets
-    for ds_cnt, dataset in enumerate(datasets):
+    preprocessed_data = dict()
+    scores = dict()
+    mesh_accuracy_ds = dict()
+    for ds_cnt, data in enumerate(datasets):
         # preprocess dataset, split into training and test part
-        x, y = dataset
+        x, y = data
         x = StandardScaler().fit_transform(x)
         x_train, x_test, y_train, y_test = \
             train_test_split(x, y, test_size=.4, random_state=42)
@@ -50,6 +50,26 @@ def main():
         y_min, y_max = x[:, 1].min() - .5, x[:, 1].max() + .5
         xx, yy = np.meshgrid(np.arange(x_min, x_max, h),
                              np.arange(y_min, y_max, h))
+        preprocessed_data[ds_cnt] = x, x_train, x_test, y_train, y_test, xx, yy
+
+        for name, clf in zip(names, classifiers):
+            clf.fit(ds_x_train, ds_y_train)
+            scores[(ds_cnt, name)] = clf.score(ds_x_test, ds_y_test)
+
+            mesh = np.c_[xx.ravel(), yy.ravel()]
+            mesh_array = ds.array(mesh, (mesh.shape[0], 2))
+
+            if hasattr(clf, "decision_function"):
+                mesh_proba = clf.decision_function(mesh_array)
+            else:
+                mesh_proba = clf.predict_proba(mesh_array)
+            mesh_accuracy_ds[(ds_cnt, name)] = mesh_proba
+
+    # Synchronize while plotting the results
+    plt.figure(figsize=(27, 9))
+    i = 1
+    for ds_cnt, data in enumerate(datasets):
+        x, x_train, x_test, y_train, y_test, xx, yy = preprocessed_data[ds_cnt]
 
         # just plot the dataset first
         cm = plt.cm.RdBu
@@ -74,18 +94,13 @@ def main():
         for name, clf in zip(names, classifiers):
             ax = plt.subplot(len(datasets), len(classifiers) + 1, i)
 
-            clf.fit(ds_x_train, ds_y_train)
-            score = compss_wait_on(clf.score(ds_x_test, ds_y_test))
-
-            # Plot the decision boundary. For that, we will assign a color to
-            # each point in the mesh [x_min, x_max]x[y_min, y_max].
-            mesh = np.c_[xx.ravel(), yy.ravel()]
-            mesh_data = ds.array(mesh, (mesh.shape[0], 2))
+            score = compss_wait_on(scores[(ds_cnt, name)])
+            mesh_proba = mesh_accuracy_ds[(ds_cnt, name)]
 
             if hasattr(clf, "decision_function"):
-                Z = clf.decision_function(mesh_data).collect()
+                Z = mesh_proba.collect()
             else:
-                Z = clf.predict_proba(mesh_data).collect()[:, 1]
+                Z = mesh_proba.collect()[:, 1]
 
             # Put the result into a color plot
             Z = Z.reshape(xx.shape)

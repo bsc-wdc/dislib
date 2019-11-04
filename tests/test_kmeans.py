@@ -24,7 +24,7 @@ class KMeansTest(unittest.TestCase):
                     arity=arity, random_state=seed)
 
         expected = (n_clusters, init, max_iter, tol, arity)
-        real = (km._n_clusters, km._init, km._max_iter, km._tol, km._arity)
+        real = (km.n_clusters, km.init, km.max_iter, km.tol, km.arity)
         self.assertEqual(expected, real)
 
     def test_fit(self):
@@ -114,7 +114,7 @@ class KMeansTest(unittest.TestCase):
         km = KMeans(n_clusters=5, init=init)
         km.fit(x_train)
 
-        self.assertTrue(np.array_equal(km._init, init))
+        self.assertTrue(np.array_equal(km.init, init))
         self.assertFalse(np.array_equal(km.centers, init))
 
         # With sparse data
@@ -124,7 +124,7 @@ class KMeansTest(unittest.TestCase):
         km = KMeans(n_clusters=5, init=init)
         km.fit(x_sp)
 
-        self.assertTrue(np.array_equal(km._init.toarray(), init.toarray()))
+        self.assertTrue(np.array_equal(km.init.toarray(), init.toarray()))
         self.assertFalse(np.array_equal(km.centers.toarray(), init.toarray()))
 
 

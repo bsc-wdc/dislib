@@ -3,14 +3,15 @@ from pycompss.api.api import compss_wait_on
 from pycompss.api.parameter import COLLECTION_IN, Depth, Type
 from pycompss.api.task import task
 from scipy.sparse import csr_matrix
+from sklearn.base import BaseEstimator
 from sklearn.metrics import pairwise_distances
 from sklearn.metrics.pairwise import paired_distances
-from sklearn.utils import check_random_state
+from sklearn.utils import check_random_state, validation
 
 from dislib.data.array import Array
 
 
-class KMeans:
+class KMeans(BaseEstimator):
     """ Perform K-means clustering.
 
     Parameters
@@ -62,15 +63,13 @@ class KMeans:
 
     def __init__(self, n_clusters=8, init='random', max_iter=10, tol=1e-4,
                  arity=50, random_state=None, verbose=False):
-        self._n_clusters = n_clusters
-        self._max_iter = max_iter
-        self._tol = tol
-        self._random_state = check_random_state(random_state)
-        self._arity = arity
-        self.centers = None
-        self.n_iter = 0
-        self._verbose = verbose
-        self._init = init
+        self.n_clusters = n_clusters
+        self.max_iter = max_iter
+        self.tol = tol
+        self.random_state = random_state
+        self.arity = arity
+        self.verbose = verbose
+        self.init = init
 
     def fit(self, x, y=None):
         """ Compute K-means clustering.
@@ -86,6 +85,7 @@ class KMeans:
         -------
         self : KMeans
         """
+        self.random_state = check_random_state(self.random_state)
         self._init_centers(x.shape[1], x._sparse)
 
         old_centers = None
@@ -138,6 +138,7 @@ class KMeans:
         labels : ds-array, shape=(n_samples, 1)
             Index of the cluster each sample belongs to.
         """
+        validation.check_is_fitted(self, 'centers')
         blocks = []
 
         for row in x._iterator(axis=0):
@@ -153,15 +154,15 @@ class KMeans:
 
         diff = np.sum(paired_distances(self.centers, old_centers))
 
-        if self._verbose:
+        if self.verbose:
             print("Iteration %s - Convergence crit. = %s" % (iteration, diff))
 
-        return diff < self._tol ** 2 or iteration >= self._max_iter
+        return diff < self.tol ** 2 or iteration >= self.max_iter
 
     def _recompute_centers(self, partials):
         while len(partials) > 1:
-            partials_subset = partials[:self._arity]
-            partials = partials[self._arity:]
+            partials_subset = partials[:self.arity]
+            partials = partials[self.arity:]
             partials.append(_merge(*partials_subset))
 
         partials = compss_wait_on(partials)
@@ -171,15 +172,15 @@ class KMeans:
                 self.centers[idx] = sum_[0] / sum_[1]
 
     def _init_centers(self, n_features, sparse):
-        if isinstance(self._init, np.ndarray) \
-                or isinstance(self._init, csr_matrix):
-            if self._init.shape != (self._n_clusters, n_features):
+        if isinstance(self.init, np.ndarray) \
+                or isinstance(self.init, csr_matrix):
+            if self.init.shape != (self.n_clusters, n_features):
                 raise ValueError("Init array must be of shape (n_clusters, "
                                  "n_features)")
-            self.centers = self._init.copy()
-        elif self._init == "random":
-            shape = (self._n_clusters, n_features)
-            self.centers = self._random_state.random_sample(shape)
+            self.centers = self.init.copy()
+        elif self.init == "random":
+            shape = (self.n_clusters, n_features)
+            self.centers = self.random_state.random_sample(shape)
 
             if sparse:
                 self.centers = csr_matrix(self.centers)
