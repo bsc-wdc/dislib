@@ -325,18 +325,20 @@ class Array(object):
                                       " the dislib team or open an issue "
                                       "in github.")
 
-        # Return ds-array with a single empty block for empty slices.
-        # This is required by Array's constructor for empty arrays.
-        # The empty block will be a numpy array with a shape whose components
-        # will be non-zero for dimensions that have not been sliced to nothing.
-        if r_start >= r_stop or c_start >= c_stop:
-            shape = [0, 0]
-            if r_start < r_stop:
-                shape[0] = r_stop - r_start
-            if c_start < c_stop:
-                shape[1] = c_stop - c_start
-            res = Array(blocks=[[np.empty(shape)]], top_left_shape=shape,
-                        reg_shape=self._reg_shape, shape=shape,
+        n_rows = r_stop - r_start
+        n_cols = c_stop - c_start
+
+        # If the slice is empty (no rows or no columns), return a ds-array with
+        # a single empty block. This empty block is required by the Array
+        # constructor.
+        if n_rows <= 0 or n_cols <= 0:
+            if n_rows <= 0:
+                n_rows = 0
+            if n_cols < 0:
+                n_cols = 0
+            res = Array(blocks=[[np.empty((0, 0))]],
+                        top_left_shape=self._reg_shape,
+                        reg_shape=self._reg_shape, shape=(n_rows, n_cols),
                         sparse=self._sparse)
             return res
 
@@ -372,8 +374,7 @@ class Array(object):
                 out_blocks[out_i][out_j] = fb
 
         # Shape of the top left block
-        top, left = self._coords_in_block(0, 0, r_start,
-                                          c_start)
+        top, left = self._coords_in_block(0, 0, r_start, c_start)
 
         bi0 = self._reg_shape[0] - (top % self._reg_shape[0])
         bj0 = self._reg_shape[1] - (left % self._reg_shape[1])
@@ -381,7 +382,7 @@ class Array(object):
         # Regular blocks shape is the same
         bn, bm = self._reg_shape
 
-        out_shape = r_stop - r_start, c_stop - c_start
+        out_shape = n_rows, n_cols
 
         res = Array(blocks=out_blocks, top_left_shape=(bi0, bj0),
                     reg_shape=(bn, bm), shape=out_shape, sparse=self._sparse)
