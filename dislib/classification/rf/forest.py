@@ -11,7 +11,7 @@ from sklearn.utils import check_random_state
 from dislib.classification.rf.decision_tree import DecisionTreeClassifier
 from dislib.data.array import Array
 from dislib.utils.base import _paired_partition
-from ._data import transform_to_rf_dataset
+from dislib.classification.rf._data import transform_to_rf_dataset
 
 
 class RandomForestClassifier(BaseEstimator):
