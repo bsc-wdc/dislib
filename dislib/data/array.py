@@ -406,10 +406,12 @@ class Array(object):
             to_merge.append(row)
             n_rows += rows_in_block
             # enough rows to merge into a row_block
-            if n_rows > self._reg_shape[0]:
+            if n_rows >= self._reg_shape[0]:
                 out_blocks = [object() for _ in range(self._n_blocks[1])]
-                new_rb = _merge_rows(to_merge, out_blocks, self._reg_shape)
-                final_blocks.append(new_rb)
+                _merge_rows(to_merge, out_blocks, self._reg_shape)
+                final_blocks.append(out_blocks)
+                n_rows = 0
+                to_merge = []
 
         if n_rows > 0:
             out_blocks = [object() for _ in range(self._n_blocks[1])]
@@ -454,10 +456,12 @@ class Array(object):
             to_merge.append(col)
             n_cols += cols_in_block
             # enough cols to merge into a col_block
-            if n_cols > self._reg_shape[0]:
+            if n_cols >= self._reg_shape[0]:
                 out_blocks = [object() for _ in range(self._n_blocks[1])]
-                new_rb = _merge_cols(to_merge, out_blocks, self._reg_shape)
-                final_blocks.append(new_rb)
+                _merge_cols(to_merge, out_blocks, self._reg_shape)
+                final_blocks.append(out_blocks)
+                n_cols = 0
+                to_merge = []
 
         if n_cols > 0:
             out_blocks = [object() for _ in range(self._n_blocks[1])]
