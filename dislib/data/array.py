@@ -332,12 +332,13 @@ class Array(object):
         # a single empty block. This empty block is required by the Array
         # constructor.
         if n_rows <= 0 or n_cols <= 0:
-            if n_rows <= 0:
-                n_rows = 0
-            if n_cols < 0:
-                n_cols = 0
-            res = Array(blocks=[[np.empty((0, 0))]],
-                        top_left_shape=self._reg_shape,
+            n_rows = max(0, n_rows)
+            n_cols = max(0, n_cols)
+            if self._sparse:
+                empty_block = csr_matrix((0, 0))
+            else:
+                empty_block = np.empty((0, 0))
+            res = Array(blocks=[[empty_block]], top_left_shape=self._reg_shape,
                         reg_shape=self._reg_shape, shape=(n_rows, n_cols),
                         sparse=self._sparse)
             return res
