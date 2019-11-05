@@ -145,7 +145,6 @@ class Array(object):
         Helper function that merges the _blocks attribute of a ds-array into
         a single ndarray / sparse matrix.
         """
-
         sparse = None
         b0 = blocks[0][0]
         if sparse is None:
@@ -409,9 +408,8 @@ class Array(object):
             rows_in_block = len(adj_row_idxs[rowblock_idx])
             # only launch the task if we are selecting rows from that block
             if rows_in_block > 0:
-                row_block = _filter_row(blocks=row._blocks,
-                                        rows=adj_row_idxs[rowblock_idx],
-                                        cols=None)
+                row_block = _filter_rows(blocks=row._blocks,
+                                         rows=adj_row_idxs[rowblock_idx])
                 row_blocks.append((rows_in_block, [row_block]))
 
         # now we need to merge the rowblocks until they have as much rows as
@@ -459,9 +457,8 @@ class Array(object):
             cols_in_block = len(adj_col_idxs[colblock_idx])
             # only launch the task if we are selecting rows from that block
             if cols_in_block > 0:
-                col_block = _filter_row(blocks=col._blocks,
-                                        rows=None,
-                                        cols=adj_col_idxs[colblock_idx])
+                col_block = _filter_cols(blocks=col._blocks,
+                                         cols=adj_col_idxs[colblock_idx])
                 col_blocks.append((cols_in_block, col_block))
 
         # now we need to merge the rowblocks until they have as much rows as
@@ -475,14 +472,14 @@ class Array(object):
             # enough cols to merge into a col_block
             if n_cols >= self._reg_shape[0]:
                 out_blocks = [object() for _ in range(self._n_blocks[1])]
-                _merge_cols(to_merge, out_blocks, self._reg_shape)
+                _merge_cols([to_merge], out_blocks, self._reg_shape)
                 final_blocks.append(out_blocks)
                 n_cols = 0
                 to_merge = []
 
         if n_cols > 0:
             out_blocks = [object() for _ in range(self._n_blocks[1])]
-            _merge_cols(to_merge, out_blocks, self._reg_shape)
+            _merge_cols([to_merge], out_blocks, self._reg_shape)
             final_blocks.append(out_blocks)
 
         # list are in col-order transpose them for the correct ordering
@@ -938,23 +935,21 @@ def _get_item(i, j, block):
 
 
 @task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=1)
-def _filter_row(blocks, rows, cols):
+def _filter_rows(blocks, rows):
     """
-    Returns an array resulting of selecting rows:cols of the input   blocks
+    Returns an array resulting of selecting rows of the input blocks
     """
     data = Array._merge_blocks(blocks)
+    return data[rows, :]
 
-    if issparse(blocks[0][0]):
-        # sparse indexes element by element we need to do the cartesian
-        # product of indices to get all coords
-        rows, cols = zip(*itertools.product(*[rows, cols]))
 
-    if rows is None:
-        return data[:, cols]
-    elif cols is None:
-        return data[rows, :]
-
-    return data[rows, cols]
+@task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=1)
+def _filter_cols(blocks, cols):
+    """
+    Returns an array resulting of selecting rows of the input blocks
+    """
+    data = Array._merge_blocks(blocks)
+    return data[:, cols]
 
 
 @task(blocks={Type: COLLECTION_IN, Depth: 2},
@@ -971,7 +966,7 @@ def _merge_rows(blocks, out_blocks, blocks_shape):
         out_blocks[j] = data[:bn, j * bm: (j + 1) * bm]
 
 
-@task(blocks={Type: COLLECTION_IN, Depth: 1},
+@task(blocks={Type: COLLECTION_IN, Depth: 2},
       out_blocks={Type: COLLECTION_INOUT, Depth: 1})
 def _merge_cols(blocks, out_blocks, blocks_shape):
     """

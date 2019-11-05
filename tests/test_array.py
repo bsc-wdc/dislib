@@ -464,13 +464,17 @@ class ArrayTest(unittest.TestCase):
         self.assertTrue((x.mean().collect() == [4, 5, 6]).all())
         self.assertTrue((x.sum().collect() == [12, 15, 18]).all())
 
-    def test_fancy_indexing(self):
-        """ Tests fancy indexing """
-        arr = ds.array([[1, 2, 3, 4],
-                        [5, 6, 7, 8],
-                        [9, 10, 11, 12],
-                        [13, 14, 15, 16],
-                        [17, 18, 19, 20]], (3, 3))
+    def test_fancy_indexing_dense(self):
+        """ Tests fancy indexing dense"""
+        nparr = np.array([[1, 2, 3, 4],
+                          [5, 6, 7, 8],
+                          [9, 10, 11, 12],
+                          [13, 14, 15, 16],
+                          [17, 18, 19, 20]])
+
+        arr = ds.array(nparr, (3, 3))
+
+        self.assertTrue(np.array_equal(arr[1].collect(), nparr[1]))
 
         slice1 = arr[[0, 1, 2, 3]]
         slice2 = arr[0:4]
@@ -489,6 +493,39 @@ class ArrayTest(unittest.TestCase):
         self.assertEqual(slice1._top_left_shape, slice2._top_left_shape)
         self.assertEqual(len(slice1._n_blocks), len(slice2._n_blocks))
         self.assertTrue(np.array_equal(slice1.collect(), slice2.collect()))
+
+    def test_fancy_indexing_sparse(self):
+        """ Tests fancy indexing sparse"""
+        csr = csr_matrix([[1, 2, 3, 4],
+                          [5, 6, 7, 8],
+                          [9, 10, 11, 12],
+                          [13, 14, 15, 16],
+                          [17, 18, 19, 20]])
+
+        arr = ds.array(csr, (3, 3))
+
+        self.assertTrue(
+            np.array_equal(arr[1].collect().toarray(), csr[1].toarray()))
+
+        slice1 = arr[[0, 1, 2, 3]]
+        slice2 = arr[0:4]
+
+        self.assertEqual(slice1.shape, slice2.shape)
+        self.assertEqual(slice1._reg_shape, slice2._reg_shape)
+        self.assertEqual(slice1._top_left_shape, slice2._top_left_shape)
+        self.assertEqual(len(slice1._n_blocks), len(slice2._n_blocks))
+        self.assertTrue(np.array_equal(slice1.collect().toarray(),
+                                       slice2.collect().toarray()))
+
+        slice1 = arr[:, [0, 1, 2, 3]]
+        slice2 = arr[:, 0:4]
+
+        self.assertEqual(slice1.shape, slice2.shape)
+        self.assertEqual(slice1._reg_shape, slice2._reg_shape)
+        self.assertEqual(slice1._top_left_shape, slice2._top_left_shape)
+        self.assertEqual(len(slice1._n_blocks), len(slice2._n_blocks))
+        self.assertTrue(np.array_equal(slice1.collect().toarray(),
+                                       slice2.collect().toarray()))
 
 
 def main():
