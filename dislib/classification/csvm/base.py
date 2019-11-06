@@ -7,7 +7,7 @@ from pycompss.api.parameter import COLLECTION_IN, Depth, Type
 from pycompss.api.task import task
 from scipy.sparse import hstack as hstack_sp
 from scipy.sparse import issparse
-import daal4py.sklearn.svm.SVC as SVC
+import daal4py.sklearn
 from sklearn.utils import check_random_state
 
 from dislib.data.array import Array
@@ -383,7 +383,7 @@ def _gen_ids(blocks):
 def _train(x_list, y_list, id_list, random_state, **params):
     x, y, ids = _merge(x_list, y_list, id_list)
 
-    clf = SVC(random_state=random_state, **params)
+    clf = daal4py.sklearn.svm.SVC(random_state=random_state, **params)
     clf.fit(X=x, y=y.ravel())
 
     sup = x[clf.support_]
@@ -398,7 +398,7 @@ def _train(x_list, y_list, id_list, random_state, **params):
     sv_labels = y[clf.support_]
     sv_ids = ids[clf.support_]
 
-    return sv, sv_labels, sv_ids, clf
+    return sv, sv_labels, sv_ids, 0
 
 
 @task(x_list={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
