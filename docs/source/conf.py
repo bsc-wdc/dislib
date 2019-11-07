@@ -342,6 +342,8 @@ def linkcode_resolve(domain, info):
     else:
         linespec = ""
 
+    modname = inspect.getmodule(obj).__name__
+
     return "http://github.com/bsc-wdc/dislib/blob/master/%s.py%s" \
            % (modname.replace(".", "/"), linespec)
 
