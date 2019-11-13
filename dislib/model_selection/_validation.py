@@ -6,7 +6,6 @@ import numpy as np
 
 def fit_and_score(estimator, train_ds, validation_ds, scorer, parameters,
                   fit_params):
-
     if parameters is not None:
         estimator.set_params(**parameters)
     t0_fit = time.time()
