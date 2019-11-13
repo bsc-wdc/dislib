@@ -417,20 +417,31 @@ class Array(object):
         n_rows = 0
         to_merge = []
         final_blocks = []
+        skip = 0
+
         for rows_in_block, row in row_blocks:
             to_merge.append(row)
             n_rows += rows_in_block
             # enough rows to merge into a row_block
             if n_rows >= self._reg_shape[0]:
                 out_blocks = [object() for _ in range(self._n_blocks[1])]
-                _merge_rows(to_merge, out_blocks, self._reg_shape)
+                _merge_rows(to_merge, out_blocks, self._reg_shape, skip)
                 final_blocks.append(out_blocks)
-                n_rows = 0
-                to_merge = []
+
+                # if we didn't take all rows, we keep the last block and
+                # remember to skip the rows that have been merged
+                if n_rows > self._reg_shape[0]:
+                    to_merge = [row]
+                    n_rows = n_rows - self._reg_shape[0]
+                    skip = rows_in_block - n_rows
+                else:
+                    to_merge = []
+                    n_rows = 0
+                    skip = 0
 
         if n_rows > 0:
             out_blocks = [object() for _ in range(self._n_blocks[1])]
-            _merge_rows(to_merge, out_blocks, self._reg_shape)
+            _merge_rows(to_merge, out_blocks, self._reg_shape, skip)
             final_blocks.append(out_blocks)
 
         return Array(blocks=final_blocks, top_left_shape=self._top_left_shape,
@@ -466,20 +477,31 @@ class Array(object):
         n_cols = 0
         to_merge = []
         final_blocks = []
+        skip = 0
+
         for cols_in_block, col in col_blocks:
             to_merge.append(col)
             n_cols += cols_in_block
             # enough cols to merge into a col_block
             if n_cols >= self._reg_shape[0]:
                 out_blocks = [object() for _ in range(self._n_blocks[1])]
-                _merge_cols([to_merge], out_blocks, self._reg_shape)
+                _merge_cols([to_merge], out_blocks, self._reg_shape, skip)
                 final_blocks.append(out_blocks)
-                n_cols = 0
-                to_merge = []
+
+                # if we didn't take all cols, we keep the last block and
+                # remember to skip the cols that have been merged
+                if n_cols > self._reg_shape[0]:
+                    to_merge = [col]
+                    n_cols = n_cols - self._reg_shape[0]
+                    skip = cols_in_block - n_cols
+                else:
+                    to_merge = []
+                    n_cols = 0
+                    skip = 0
 
         if n_cols > 0:
             out_blocks = [object() for _ in range(self._n_blocks[1])]
-            _merge_cols([to_merge], out_blocks, self._reg_shape)
+            _merge_cols([to_merge], out_blocks, self._reg_shape, skip)
             final_blocks.append(out_blocks)
 
         # list are in col-order transpose them for the correct ordering
@@ -954,7 +976,7 @@ def _filter_cols(blocks, cols):
 
 @task(blocks={Type: COLLECTION_IN, Depth: 2},
       out_blocks={Type: COLLECTION_INOUT, Depth: 1})
-def _merge_rows(blocks, out_blocks, blocks_shape):
+def _merge_rows(blocks, out_blocks, blocks_shape, skip):
     """
     Merges the blocks into a single list of blocks where each block has bn
     as number of rows (the number of cols remains the same per block).
@@ -963,12 +985,12 @@ def _merge_rows(blocks, out_blocks, blocks_shape):
     data = Array._merge_blocks(blocks)
 
     for j in range(0, ceil(data.shape[1] / bm)):
-        out_blocks[j] = data[:bn, j * bm: (j + 1) * bm]
+        out_blocks[j] = data[skip:bn, j * bm: (j + 1) * bm]
 
 
 @task(blocks={Type: COLLECTION_IN, Depth: 2},
       out_blocks={Type: COLLECTION_INOUT, Depth: 1})
-def _merge_cols(blocks, out_blocks, blocks_shape):
+def _merge_cols(blocks, out_blocks, blocks_shape, skip):
     """
     Merges the blocks into a single list of blocks where each block has bn
     as number of rows (the number of cols remains the same per block).
@@ -977,7 +999,7 @@ def _merge_cols(blocks, out_blocks, blocks_shape):
     data = Array._merge_blocks(blocks)
 
     for i in range(0, ceil(data.shape[0] / bn)):
-        out_blocks[i] = data[i * bn: (i + 1) * bn, :bm]
+        out_blocks[i] = data[i * bn: (i + 1) * bn, skip:bm]
 
 
 @task(returns=1)
