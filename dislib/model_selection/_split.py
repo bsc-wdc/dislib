@@ -61,7 +61,7 @@ class KFold:
         by `np.random`. Used when ``shuffle`` == True.
     """
 
-    def __init__(self, n_splits=5, shuffle=True, random_state=None):
+    def __init__(self, n_splits=5, shuffle=False, random_state=None):
         if not isinstance(n_splits, numbers.Integral):
             raise ValueError('The number of folds must be of Integral type. '
                              '%s of type %s was passed.'
