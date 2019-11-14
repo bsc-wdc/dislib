@@ -11,6 +11,7 @@ from dislib.neighbors import NearestNeighbors
 from dislib.recommendation import ALS
 from dislib.regression import LinearRegression
 from dislib.model_selection import GridSearchCV, KFold
+from dislib.utils import shuffle
 
 
 class GridSearchCVTest(unittest.TestCase):
@@ -81,14 +82,17 @@ class GridSearchCVTest(unittest.TestCase):
 
     def test_refit_false(self):
         """Tests GridSearchCV fit() with refit=False."""
-        x, y = datasets.load_iris(return_X_y=True)
-        x_dsarray = ds.array(x, (30, 4))
-        y_dsarray = ds.array(y[:, np.newaxis], (30, 1))
+        x_np, y_np = datasets.load_iris(return_X_y=True)
+        x = ds.array(x_np, (30, 4))
+        y = ds.array(y_np[:, np.newaxis], (30, 1))
+
+        seed = 0
+        x, y = shuffle(x, y, random_state=seed)
 
         param_grid = {'max_iter': range(1, 5)}
         csvm = CascadeSVM(check_convergence=False)
         searcher = GridSearchCV(csvm, param_grid, cv=3, refit=False)
-        searcher.fit(x_dsarray, y_dsarray)
+        searcher.fit(x, y)
 
         self.assertFalse(hasattr(searcher, 'best_estimator_'))
         self.assertTrue(hasattr(searcher, 'best_score_'))
