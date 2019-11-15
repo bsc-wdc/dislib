@@ -8,6 +8,7 @@ from dislib.classification import CascadeSVM, RandomForestClassifier
 from dislib.cluster import DBSCAN, KMeans, GaussianMixture
 from dislib.decomposition import PCA
 from dislib.neighbors import NearestNeighbors
+from dislib.preprocessing import StandardScaler
 from dislib.recommendation import ALS
 from dislib.regression import LinearRegression
 from dislib.model_selection import GridSearchCV, KFold
@@ -16,7 +17,7 @@ from dislib.model_selection import GridSearchCV, KFold
 class GridSearchCVTest(unittest.TestCase):
 
     def test_estimators_compatibility(self):
-        """Checks that dislib estimators are compatible with GridSearchCV.
+        """Tests that dislib estimators are compatible with GridSearchCV.
 
         GridSearchCV uses sklearn.clone(estimator), that requires estimators to
         have methods get_params() and set_params() working properly. This is
@@ -71,6 +72,24 @@ class GridSearchCVTest(unittest.TestCase):
             self.assertIn((m, n), expected_params)
             expected_params.remove((m, n))
         self.assertEqual(len(expected_params), 0)
+
+        self.assertTrue(hasattr(searcher, 'best_estimator_'))
+        self.assertTrue(hasattr(searcher, 'best_score_'))
+        self.assertTrue(hasattr(searcher, 'best_params_'))
+        self.assertTrue(hasattr(searcher, 'best_index_'))
+        self.assertTrue(hasattr(searcher, 'scorer_'))
+        self.assertEqual(searcher.n_splits_, 5)
+
+    def test_fit_2(self):
+        """Tests GridSearchCV fit() with different data."""
+        x_np, y_np = datasets.load_breast_cancer(return_X_y=True)
+        x = ds.array(x_np, block_size=(100, 10))
+        x = StandardScaler().fit_transform(x)
+        y = ds.array(y_np.reshape(-1, 1), block_size=(100, 1))
+        parameters = {'c': [0.1], 'gamma': [0.1]}
+        csvm = CascadeSVM()
+        searcher = GridSearchCV(csvm, parameters, cv=5)
+        searcher.fit(x, y)
 
         self.assertTrue(hasattr(searcher, 'best_estimator_'))
         self.assertTrue(hasattr(searcher, 'best_score_'))
@@ -161,7 +180,7 @@ class GridSearchCVTest(unittest.TestCase):
             searcher.fit(x_dsarray, y_dsarray)
 
     def test_scoring_invalid(self):
-        """Checks GridSearchCV raises error with invalid scoring parameter."""
+        """Tests GridSearchCV raises error with invalid scoring parameter."""
         x, y = datasets.load_iris(return_X_y=True)
         x_dsarray = ds.array(x, (30, 4))
         y_dsarray = ds.array(y[:, np.newaxis], (30, 1))

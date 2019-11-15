@@ -178,8 +178,10 @@ def merge_slices(s1, s2):
 
     # Add the regular row blocks to the list all_blocks
     all_blocks = []
-    all_blocks.extend(reg_s1._blocks)
-    all_blocks.extend(reg_s2._blocks)
+    if reg_s1.shape[0]:
+        all_blocks.extend(reg_s1._blocks)
+    if reg_s2.shape[0]:
+        all_blocks.extend(reg_s2._blocks)
 
     # If there are remaining rows on the top or bottom of s1 and s2, add them
     # to the list extras. These are row blocks with less than reg_rows.
