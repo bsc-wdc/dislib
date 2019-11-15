@@ -494,6 +494,12 @@ class ArrayTest(unittest.TestCase):
         self.assertEqual(len(slice1._n_blocks), len(slice2._n_blocks))
         self.assertTrue(np.array_equal(slice1.collect(), slice2.collect()))
 
+        arr = ds.array(np.random.rand(5, 4), (3, 3))
+        self.assertEqual(arr[[0, 1, 3, 4]].collect().shape, (4, 4))
+
+        arr = ds.array(np.random.rand(4, 5), (3, 3))
+        self.assertEqual(arr[:, [0, 1, 3, 4]].collect().shape, (4, 4))
+
     def test_fancy_indexing_sparse(self):
         """ Tests fancy indexing sparse"""
         csr = csr_matrix([[1, 2, 3, 4],
@@ -526,6 +532,12 @@ class ArrayTest(unittest.TestCase):
         self.assertEqual(len(slice1._n_blocks), len(slice2._n_blocks))
         self.assertTrue(np.array_equal(slice1.collect().toarray(),
                                        slice2.collect().toarray()))
+
+        arr = ds.array(csr_matrix(np.random.rand(5, 4)), (3, 3))
+        self.assertEqual(arr[[0, 1, 3, 4]].collect().shape, (4, 4))
+
+        arr = ds.array(csr_matrix(np.random.rand(4, 5)), (3, 3))
+        self.assertEqual(arr[:, [0, 1, 3, 4]].collect().shape, (4, 4))
 
 
 def main():
