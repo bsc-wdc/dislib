@@ -94,6 +94,12 @@ J. Álvarez Cid-Fuentes, S. Solà, P. Álvarez, A. Castro-Ginard, and R. M. Badi
  }            
 ```
 
+## Acknowledgements
+
+This work has received funding from the European Union’s Horizon 2020 research and innovation programme under the Marie Skłodowska-Curie grant agreement H2020-MSCA-COFUND-2016-754433.
+
+This work has also received funding from the collaboration project between the Barcelona Supercomputing Center (BSC) and Fujitsu Ltd.
+
 ## License
 
 Apache License Version 2.0, see [LICENSE](LICENSE)
