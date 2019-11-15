@@ -46,6 +46,8 @@ The Distributed Computing Library (dislib) provides distributed algorithms ready
 - [Quickstart](#quickstart)
 - [Availability](#availability)
 - [Contributing](#contributing)
+- [Citing dislib](#citing-dislib)
+- [Acknowledgements](#acknowledgements)
 - [License](#license)
 
 
