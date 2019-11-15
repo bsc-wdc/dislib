@@ -346,8 +346,14 @@ def linkcode_resolve(domain, info):
     modname = inspect.getmodule(obj).__name__
 
     try:
-        branch = subp.getoutput(["git branch | grep origin | cut -d' ' -f5"])
-        branch = branch.split("/")[1][:-1]
+        branch = subp.getoutput(["git branch"]).split()[4]
+
+        # branch is origin/name or a hash in the case of the stable version
+        if "origin" in branch:
+            branch = branch.split("/")[1][:-1]
+        else:
+            branch = branch[:-1]
+
     except subp.CalledProcessError as e:
         print("Error getting branch name. I will use master:\n", e.output)
         branch = "master"
