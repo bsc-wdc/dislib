@@ -46,6 +46,8 @@ The Distributed Computing Library (dislib) provides distributed algorithms ready
 - [Quickstart](#quickstart)
 - [Availability](#availability)
 - [Contributing](#contributing)
+- [Citing dislib](#citing-dislib)
+- [Acknowledgements](#acknowledgements)
 - [License](#license)
 
 
@@ -93,6 +95,12 @@ J. Álvarez Cid-Fuentes, S. Solà, P. Álvarez, A. Castro-Ginard, and R. M. Badi
             year        = {2019},
  }            
 ```
+
+## Acknowledgements
+
+This work has received funding from the European Union’s Horizon 2020 research and innovation programme under the Marie Skłodowska-Curie grant agreement H2020-MSCA-COFUND-2016-754433.
+
+This work has also received funding from the collaboration project between the Barcelona Supercomputing Center (BSC) and Fujitsu Ltd.
 
 ## License
 

@@ -15,6 +15,7 @@
 
 import inspect
 import os
+import subprocess as subp
 import sys
 
 # If extensions (or modules to document with autodoc) are in another directory,
@@ -61,8 +62,8 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'dislib'
-copyright = '2019, Workflows and Distributed Computing'
-author = 'Workflows and Distributed Computing'
+copyright = '2019, Barcelona Supercomputing Center (BSC)'
+author = 'Barcelona Supercomputing Center (BSC)'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -256,7 +257,7 @@ latex_elements = {
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
     (master_doc, 'dislib.tex', 'dislib Documentation',
-     'Workflows and Distributed Computing', 'manual'),
+     'Barcelona Supercomputing Center', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -344,8 +345,21 @@ def linkcode_resolve(domain, info):
 
     modname = inspect.getmodule(obj).__name__
 
-    return "http://github.com/bsc-wdc/dislib/blob/master/%s.py%s" \
-           % (modname.replace(".", "/"), linespec)
+    try:
+        branch = subp.getoutput(["git branch"]).split()[4]
+
+        # branch is origin/name or a hash in the case of the stable version
+        if "origin" in branch:
+            branch = branch.split("/")[1][:-1]
+        else:
+            branch = branch[:-1]
+
+    except subp.CalledProcessError as e:
+        print("Error getting branch name. I will use master:\n", e.output)
+        branch = "master"
+
+    return "http://github.com/bsc-wdc/dislib/blob/%s/%s.py%s" \
+           % (branch, modname.replace(".", "/"), linespec)
 
 
 # -- Options for Texinfo output -------------------------------------------
