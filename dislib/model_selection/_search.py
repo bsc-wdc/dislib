@@ -450,8 +450,8 @@ class RandomizedSearchCV(BaseSearchCV):
         evaluation.
 
     random_state : int, RandomState instance or None, optional, default=None
-        Pseudo random number generator state used for random uniform sampling
-        from lists of possible values instead of scipy.stats distributions.
+        Pseudo random number generator state used for random sampling of params
+        in param_distributions. This is not passed to each estimator.
         If int, random_state is the seed used by the random number generator;
         If RandomState instance, random_state is the random number generator;
         If None, the random number generator is the RandomState instance used
