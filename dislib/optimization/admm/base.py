@@ -34,15 +34,22 @@ class ADMM(object):
     :param objective_fn: objective function
     """
 
-    def __init__(self, rho=1, abstol=1e-4, reltol=1e-2, warm_start=False,
-                 objective_fn=None):
+    def __init__(self, z, u, n, rho=1, soft_thres=None, abstol=1e-4,
+                 reltol=1e-2, warm_start=False, objective_fn=None):
         self.rho = rho
         self.abstol = abstol
         self.reltol = reltol
         self.warm_start = warm_start
         self.objective_fn = objective_fn
+        self.N = n
+        self.soft_thres = soft_thres
+        self.converged = False
+        self.z = z
+        self.u = u
+        self.x = None
 
-    def soft_thr(self, v, k):
+    @staticmethod
+    def _soft_thresholding(v, k):
         z = np.zeros(v.shape)
         for i in range(z.shape[0]):
             if np.abs(v[i]) <= k:
@@ -54,47 +61,51 @@ class ADMM(object):
                     z[i] = v[i] + k
         return z
 
-    def step(self, z, data_chunk, target_chunk, u, frac, z_old, i, n, N):
+    def step(self, data_chunk, target_chunk, n, N):
         # update x
-        x = list(
-            map(functools.partial(self.x_update, z, self.rho), data_chunk,
-                target_chunk, u))
-        x = compss_wait_on(x)
+        self.x = list(
+            map(functools.partial(x_update, self.z, self.objective_fn,
+                                  self.warm_start), data_chunk, target_chunk,
+                self.u))
+        self.x = compss_wait_on(self.x)
+
+        z_old = self.z
 
         # update z
-        z = self.soft_thr(np.mean(x, axis=0) + np.mean(u, axis=0), frac)
+        self.z = self._soft_thresholding(
+            np.mean(self.x, axis=0) + np.mean(self.u, axis=0),
+            self.soft_thres)
 
         # update u
-        u = list(map(functools.partial(self.u_update, z), x, u))
-        u = compss_wait_on(u)
+        self.u = list(map(functools.partial(u_update, self.z), self.u, self.x))
+        self.u = compss_wait_on(self.u)
 
-        nxstack = np.sqrt(np.sum(np.linalg.norm(x, axis=1) ** 2))
-        nystack = np.sqrt(np.sum(np.linalg.norm(u, axis=1) ** 2))
+        nxstack = np.sqrt(np.sum(np.linalg.norm(self.x, axis=1) ** 2))
+        nystack = np.sqrt(np.sum(np.linalg.norm(self.u, axis=1) ** 2))
 
         # termination check
-        dualres = np.sqrt(N) * self.rho * np.linalg.norm(z - z_old)
+        dualres = np.sqrt(N) * self.rho * np.linalg.norm(self.z - z_old)
         prires = np.sqrt(
-            np.sum(np.linalg.norm(np.array(x) - z_old, axis=1) ** 2))
+            np.sum(np.linalg.norm(np.array(self.x) - z_old, axis=1) ** 2))
 
         eps_pri = (np.sqrt(N * n)) * self.abstol + self.reltol * \
-                  (max(nxstack, np.sqrt(N) * np.linalg.norm(z)))
+                  (max(nxstack, np.sqrt(N) * np.linalg.norm(self.z)))
         eps_dual = np.sqrt(N * n) * self.abstol + self.reltol * nystack
 
         if prires <= eps_pri and dualres <= eps_dual:
-            req_iter = i
-            return x, z, u, True
+            self.converged = True
 
-        return x, z, u, False
 
-    @task(returns=np.array)
-    def x_update(self, z, rho, a, b, u):
-        n = a.shape[1]
-        sol = cp.Variable(n)
-        problem = cp.Problem(
-            cp.Minimize(self.objective_fn(a, b, sol, z, u, rho)))
-        problem.solve(warm_start=self.warm_start)
-        return sol.value
+@task(returns=np.array)
+def x_update(z, objective_fn, warm_start, a, b, u):
+    n = a.shape[1]
+    sol = cp.Variable(n)
+    problem = cp.Problem(
+        cp.Minimize(objective_fn(a, b, sol, z, u)))
+    problem.solve(warm_start=warm_start)
+    return sol.value
 
-    @task(returns=np.array)
-    def u_update(self, z, u, x):
-        return u + x - z
+
+@task(returns=np.array)
+def u_update(z, u, x):
+    return u + x - z

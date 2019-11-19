@@ -14,6 +14,8 @@ from pycompss.api.parameter import FILE_IN
 from pycompss.api.task import task
 from sklearn.base import BaseEstimator
 
+from dislib.optimization import ADMM
+
 
 class Lasso(BaseEstimator):
     """Lasso represents the Least Absolute Shrinkage and Selection Operator
@@ -27,14 +29,18 @@ class Lasso(BaseEstimator):
 
     """
 
-    def __init__(self, n, max_iter=500, lmbd=1e-3, optimizer=None):
+    def __init__(self, n, max_iter=500, lmbd=1e-3, rho=1, abstol=1e-4,
+                 reltol=1e-2, warm_start=False):
         self.N = n
         self.max_iter = max_iter
         self.lmbd = lmbd
-        self.optimizer = optimizer
+        self.rho = rho
+        self.abstol = abstol
+        self.reltol = reltol
+        self.warm_start = warm_start
+        self.n_iter_ = 0
 
-    def fit(self, x, y):
-
+    def fit(self, a, b):
         # file names
         rng = np.asarray(range(self.N))
         str_a = ["A" + str(i + 1) + ".dat" for i in rng]
@@ -46,31 +52,23 @@ class Lasso(BaseEstimator):
         target_chunk = list(map(self.read_b_data, str_b))
         target_chunk = compss_wait_on(target_chunk)
 
+        soft_thres = self.lmbd / self.rho
+
         # get the dimensions
-        (part, n) = data_chunk[0].shape
-        m = part * self.N
+        n = data_chunk[0].shape[1]
 
         # initialization
-        x = [np.zeros(n) for i in range(self.N)]
         z = np.zeros(n)
-        z_old = np.zeros(n)
         u = [np.zeros(n) for _ in range(self.N)]
 
-        req_iter = self.max_iter
-        frac = self.lmbd / self.optimizer.rho
+        admm = ADMM(z, u, self.N, self.rho, soft_thres, self.abstol,
+                    self.reltol, self.warm_start, self.objective_x)
 
-        for i in range(self.max_iter):
-            x, z, u, should_stop = \
-                self.optimizer.step(z, data_chunk, target_chunk, u, frac,
-                                    z_old, i, n, self.N)
+        while not admm.converged and self.n_iter_ < self.max_iter:
+            admm.step(data_chunk, target_chunk, n, self.N)
+            self.n_iter_ += 1
 
-            if should_stop:
-                break
-
-            z_old = z
-
-        self.z = z
-        return z
+        return self
 
     def predict(self, x):
         return np.dot(x, self.z)
@@ -85,8 +83,9 @@ class Lasso(BaseEstimator):
     def regularizer_x(self, x, z, u):
         return cp.norm(x - z + u, p=2) ** 2
 
-    def objective_x(self, a, b, x, z, u, rho):
-        return self.loss_fn(a, b, x) + rho / 2 * self.regularizer_x(x, z, u)
+    def objective_x(self, a, b, x, z, u):
+        return self.loss_fn(a, b, x) + self.rho / 2 * self.regularizer_x(x,
+                                                                        z, u)
 
     @task(fileName=FILE_IN, returns=np.array)
     def read_a_data(self, file_name):
@@ -107,11 +106,7 @@ class Lasso(BaseEstimator):
     def read_b_data(self, file_name):
         # read vector b, fileName="b"+str(i+1)+".dat"
         f = open(file_name, 'r')
-        line1 = f.readline()
-        dims = list(map(int, line1.split()))
-        res = np.asarray(dims)
-        m = res[0]
-        n = res[1]
+        f.readline()
         rest = f.read()
         vecl = list(map(float, rest.split()))
         vec = np.asarray(vecl)
