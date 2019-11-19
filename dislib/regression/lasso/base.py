@@ -9,11 +9,9 @@ Commission under Grant Agreement No. 780787.
 """
 import cvxpy as cp
 import numpy as np
-from pycompss.api.api import compss_wait_on
-from pycompss.api.parameter import FILE_IN
-from pycompss.api.task import task
 from sklearn.base import BaseEstimator
 
+import dislib as ds
 from dislib.optimization import ADMM
 
 
@@ -29,9 +27,8 @@ class Lasso(BaseEstimator):
 
     """
 
-    def __init__(self, n, max_iter=500, lmbd=1e-3, rho=1, abstol=1e-4,
-                 reltol=1e-2, warm_start=False):
-        self.N = n
+    def __init__(self, max_iter=500, lmbd=1e-3, rho=1, abstol=1e-4,
+                 reltol=1e-2, warm_start=False, verbose=False):
         self.max_iter = max_iter
         self.lmbd = lmbd
         self.rho = rho
@@ -39,75 +36,41 @@ class Lasso(BaseEstimator):
         self.reltol = reltol
         self.warm_start = warm_start
         self.n_iter_ = 0
+        self._verbose = verbose
 
-    def fit(self, a, b):
-        # file names
-        rng = np.asarray(range(self.N))
-        str_a = ["A" + str(i + 1) + ".dat" for i in rng]
-        str_b = ["b" + str(i + 1) + ".dat" for i in rng]
+    @staticmethod
+    def _loss_fn(x, y, w):
+        return 1 / 2 * cp.norm(cp.matmul(x, w) - y, p=2) ** 2
 
-        # reading the data
-        data_chunk = list(map(self.read_a_data, str_a))
-        data_chunk = compss_wait_on(data_chunk)
-        target_chunk = list(map(self.read_b_data, str_b))
-        target_chunk = compss_wait_on(target_chunk)
+    def fit(self, x, y):
+        if x._reg_shape != x._top_left_shape:
+            raise ValueError("x must be a regular ds-array")
 
-        soft_thres = self.lmbd / self.rho
-
-        # get the dimensions
-        n = data_chunk[0].shape[1]
+        n_samples, n_features = x.shape
 
         # initialization
-        z = np.zeros(n)
-        u = [np.zeros(n) for _ in range(self.N)]
+        z = np.zeros(n_features)
 
-        admm = ADMM(z, u, self.N, self.rho, soft_thres, self.abstol,
-                    self.reltol, self.warm_start, self.objective_x)
+        # u has one row per each row-block in x
+        u = ds.zeros((x._n_blocks[0], n_features), (1, x._reg_shape[1]))
+        soft_thres = self.lmbd / self.rho
 
-        while not admm.converged and self.n_iter_ < self.max_iter:
-            admm.step(data_chunk, target_chunk, n, self.N)
+        admm = ADMM(z, u, self.rho, soft_thres, self.abstol,
+                    self.reltol, self.warm_start, Lasso._loss_fn)
+
+        while not admm.converged_ and self.n_iter_ < self.max_iter:
+            admm.step(x, y)
             self.n_iter_ += 1
 
+            if self._verbose:
+                print("Iteration ", self.n_iter_)
+
+        self.coef_ = admm.z
         return self
 
     def predict(self, x):
-        return np.dot(x, self.z)
+        return np.dot(x.collect(), self.coef_)
 
     def fit_predict(self, x):
         self.fit()
         return self.predict(x)
-
-    def loss_fn(self, a, b, x):
-        return 1 / 2 * cp.norm(cp.matmul(a, x) - b, p=2) ** 2
-
-    def regularizer_x(self, x, z, u):
-        return cp.norm(x - z + u, p=2) ** 2
-
-    def objective_x(self, a, b, x, z, u):
-        return self.loss_fn(a, b, x) + self.rho / 2 * self.regularizer_x(x,
-                                                                        z, u)
-
-    @task(fileName=FILE_IN, returns=np.array)
-    def read_a_data(self, file_name):
-        # read matrix A, fileName="A"+str(i+1)+".dat"
-        f = open(file_name, 'r')
-        line1 = f.readline()
-        dims = list(map(int, line1.split()))
-        res = np.asarray(dims)
-        m = res[0]
-        n = res[1]
-        rest = f.read()
-        vecl = list(map(float, rest.split()))
-        vec = np.asarray(vecl)
-
-        return vec.reshape(n, m).T
-
-    @task(fileName=FILE_IN, returns=np.array)
-    def read_b_data(self, file_name):
-        # read vector b, fileName="b"+str(i+1)+".dat"
-        f = open(file_name, 'r')
-        f.readline()
-        rest = f.read()
-        vecl = list(map(float, rest.split()))
-        vec = np.asarray(vecl)
-        return vec

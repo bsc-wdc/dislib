@@ -8,12 +8,14 @@ This work is supported by the I-BiDaaS project, funded by the European
 Commission under Grant Agreement No. 780787.
 """
 
-import functools
-
 import cvxpy as cp
 import numpy as np
 from pycompss.api.api import compss_wait_on
+from pycompss.api.parameter import Type, Depth, COLLECTION_IN, COLLECTION_INOUT
 from pycompss.api.task import task
+
+from dislib.data.array import Array
+from dislib.utils.base import _paired_partition
 
 
 class ADMM(object):
@@ -31,81 +33,187 @@ class ADMM(object):
     :param reltol: The relative tolerance used to calculate the early
     stoppage criterion for ADMM
     :param warm_start: cvxpy warm start option
-    :param objective_fn: objective function
+    :param loss_fn: objective function
     """
 
-    def __init__(self, z, u, n, rho=1, soft_thres=None, abstol=1e-4,
-                 reltol=1e-2, warm_start=False, objective_fn=None):
+    def __init__(self, z, u, rho=1, soft_thres=None, abstol=1e-4,
+                 reltol=1e-2, warm_start=False, loss_fn=None):
         self.rho = rho
         self.abstol = abstol
         self.reltol = reltol
         self.warm_start = warm_start
-        self.objective_fn = objective_fn
-        self.N = n
+        self.loss_fn = loss_fn
         self.soft_thres = soft_thres
-        self.converged = False
+        self._converged = False
         self.z = z
         self.u = u
-        self.x = None
+        self.w = None
 
-    @staticmethod
-    def _soft_thresholding(v, k):
-        z = np.zeros(v.shape)
-        for i in range(z.shape[0]):
-            if np.abs(v[i]) <= k:
-                z[i] = 0
-            else:
-                if v[i] > k:
-                    z[i] = v[i] - k
-                else:
-                    z[i] = v[i] + k
-        return z
+    @property
+    def converged_(self):
+        return compss_wait_on(self._converged)
 
-    def step(self, data_chunk, target_chunk, n, N):
-        # update x
-        self.x = list(
-            map(functools.partial(x_update, self.z, self.objective_fn,
-                                  self.warm_start), data_chunk, target_chunk,
-                self.u))
-        self.x = compss_wait_on(self.x)
+    def step(self, x, y):
+        # update w
+        self._w_step(x, y)
 
         z_old = self.z
 
         # update z
-        self.z = self._soft_thresholding(
-            np.mean(self.x, axis=0) + np.mean(self.u, axis=0),
-            self.soft_thres)
+        self._z_step()
 
         # update u
-        self.u = list(map(functools.partial(u_update, self.z), self.u, self.x))
-        self.u = compss_wait_on(self.u)
+        self._u_step()
 
-        nxstack = np.sqrt(np.sum(np.linalg.norm(self.x, axis=1) ** 2))
-        nystack = np.sqrt(np.sum(np.linalg.norm(self.u, axis=1) ** 2))
+        # after norm in axis=1 and sum in axis=0, these should be ds-arrays
+        # of a single element, so we keep the only block
+        nxstack = (self.w.norm(axis=1) ** 2).sum().sqrt()._blocks[0][0]
+        nystack = (self.u.norm(axis=1) ** 2).sum().sqrt()._blocks[0][0]
 
         # termination check
-        dualres = np.sqrt(N) * self.rho * np.linalg.norm(self.z - z_old)
-        prires = np.sqrt(
-            np.sum(np.linalg.norm(np.array(self.x) - z_old, axis=1) ** 2))
+        n_samples, n_features = self.u.shape
+        dualres = _compute_dual_res(n_samples, self.rho, self.z, z_old)
+        prires = self._compute_primal_res(z_old)
+        n_total = n_samples * n_features
 
-        eps_pri = (np.sqrt(N * n)) * self.abstol + self.reltol * \
-                  (max(nxstack, np.sqrt(N) * np.linalg.norm(self.z)))
-        eps_dual = np.sqrt(N * n) * self.abstol + self.reltol * nystack
+        self._converged = _check_convergence(prires, dualres, n_samples,
+                                             n_total, nxstack, nystack,
+                                             self.abstol, self.reltol, self.z)
 
-        if prires <= eps_pri and dualres <= eps_dual:
-            self.converged = True
+    def _compute_primal_res(self, z_old):
+        blocks = []
+
+        for w_hblock in self.w._iterator():
+            out_blocks = [object() for _ in range(self.w._n_blocks[1])]
+            _substract(w_hblock._blocks, z_old, out_blocks)
+            blocks.append(out_blocks)
+
+        prires = Array(blocks, self.w._reg_shape, self.w._reg_shape,
+                       self.w.shape, self.w._sparse)
+
+        # this should be a ds-array of a single element. We return only the
+        # block
+        return (prires.norm(axis=1) ** 2).sum().sqrt()._blocks[0][0]
+
+    def _u_step(self):
+        u_blocks = []
+
+        for u_hblock, w_hblock in zip(self.u._iterator(), self.w._iterator()):
+            out_blocks = [object() for _ in range(self.u._n_blocks[1])]
+            _update_u(self.z, u_hblock._blocks, w_hblock._blocks, out_blocks)
+            u_blocks.append(out_blocks)
+
+        r_shape = self.u._reg_shape
+        shape = self.u.shape
+        self.u = Array(u_blocks, r_shape, r_shape, shape, self.u._sparse)
+
+    def _z_step(self):
+        w_blocks = self.w.mean(axis=0)._blocks
+        u_blocks = self.u.mean(axis=0)._blocks
+        self.z = _soft_thresholding(w_blocks, u_blocks, self.soft_thres)
+
+    def _w_step(self, x, y):
+        w_blocks = []
+
+        for xy_hblock, u_hblock in zip(_paired_partition(x, y),
+                                       self.u._iterator()):
+            x_hblock, y_hblock = xy_hblock
+            w_hblock = [object() for _ in range(x._n_blocks[1])]
+            x_blocks = x_hblock._blocks
+            y_blocks = y_hblock._blocks
+            u_blocks = u_hblock._blocks
+
+            _update_w(x_blocks, y_blocks, self.z, u_blocks, self.rho,
+                      self.loss_fn, self.warm_start, w_hblock)
+            w_blocks.append(w_hblock)
+
+        r_shape = self.u._reg_shape
+        self.w = Array(w_blocks, r_shape, r_shape, self.u.shape, x._sparse)
 
 
-@task(returns=np.array)
-def x_update(z, objective_fn, warm_start, a, b, u):
-    n = a.shape[1]
-    sol = cp.Variable(n)
-    problem = cp.Problem(
-        cp.Minimize(objective_fn(a, b, sol, z, u)))
+@task(x_blocks={Type: COLLECTION_IN, Depth: 2},
+      y_blocks={Type: COLLECTION_IN, Depth: 2},
+      u_blocks={Type: COLLECTION_IN, Depth: 2},
+      w_blocks={Type: COLLECTION_INOUT, Depth: 1})
+def _update_w(x_blocks, y_blocks, z, u_blocks, rho, loss, warm_start,
+              w_blocks):
+    x_np = Array._merge_blocks(x_blocks)
+    y_np = np.squeeze(Array._merge_blocks(y_blocks))
+    u_np = np.squeeze(Array._merge_blocks(u_blocks))
+
+    w_new = cp.Variable(x_np.shape[1])
+    problem = cp.Problem(cp.Minimize(_objective(loss, x_np, y_np, w_new, z,
+                                                u_np, rho)))
     problem.solve(warm_start=warm_start)
-    return sol.value
+
+    w_np = w_new.value
+    n_cols = x_blocks[0][0].shape[1]
+
+    for i in range(len(w_blocks)):
+        w_blocks[i] = w_np[i * n_cols:(i + 1) * n_cols].reshape(1, -1)
 
 
-@task(returns=np.array)
-def u_update(z, u, x):
-    return u + x - z
+def _objective(loss, x, y, w, z, u, rho):
+    reg = cp.norm(w - z + u, p=2) ** 2
+    return loss(x, y, w) + rho / 2 * reg
+
+
+@task(w_blocks={Type: COLLECTION_IN, Depth: 2},
+      u_blocks={Type: COLLECTION_IN, Depth: 2},
+      returns=np.array)
+def _soft_thresholding(w_blocks, u_blocks, k):
+    w_mean = np.squeeze(Array._merge_blocks(w_blocks))
+    u_mean = np.squeeze(Array._merge_blocks(u_blocks))
+    v = w_mean + u_mean
+
+    z = np.zeros(v.shape)
+    for i in range(z.shape[0]):
+        if np.abs(v[i]) <= k:
+            z[i] = 0
+        else:
+            if v[i] > k:
+                z[i] = v[i] - k
+            else:
+                z[i] = v[i] + k
+    return z
+
+
+@task(u_blocks={Type: COLLECTION_IN, Depth: 2},
+      w_blocks={Type: COLLECTION_IN, Depth: 2},
+      out_blocks={Type: COLLECTION_INOUT, Depth: 1})
+def _update_u(z, u_blocks, w_blocks, out_blocks):
+    u_np = np.squeeze(Array._merge_blocks(u_blocks))
+    w_np = np.squeeze(Array._merge_blocks(w_blocks))
+    u_new = u_np + w_np - z
+    n_cols = u_blocks[0][0].shape[1]
+
+    for i in range(len(out_blocks)):
+        out_blocks[i] = u_new[i * n_cols: (i + 1) * n_cols].reshape(1, -1)
+
+
+@task(returns=1)
+def _compute_dual_res(n_samples, rho, z, z_old):
+    return np.sqrt(n_samples) * rho * np.linalg.norm(z - z_old)
+
+
+@task(blocks={Type: COLLECTION_IN, Depth: 2},
+      out_blocks={Type: COLLECTION_INOUT, Depth: 1})
+def _substract(blocks, z, out_blocks):
+    w_np = Array._merge_blocks(blocks) - z
+    n_cols = blocks[0][0].shape[1]
+
+    for i in range(len(out_blocks)):
+        out_blocks[i] = w_np[i * n_cols: (i + 1) * n_cols].reshape(1, -1)
+
+
+@task(returns=bool)
+def _check_convergence(prires, dualres, n_samples, n_total, nxstack,
+                       nystack, abstol, reltol, z):
+    eps_pri = (np.sqrt(n_total)) * abstol + reltol * (
+        max(nxstack, np.sqrt(n_samples) * np.linalg.norm(z)))
+    eps_dual = np.sqrt(n_total) * abstol + reltol * nystack
+
+    if prires <= eps_pri and dualres <= eps_dual:
+        return True
+
+    return False

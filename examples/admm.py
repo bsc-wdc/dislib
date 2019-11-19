@@ -11,7 +11,7 @@ def main():
 
     optimizer = ADMM(rho=1, abstol=1e-4, reltol=1e-2)
     lasso = Lasso(n=n, max_iter=500, lmbd=1e-3, optimizer=optimizer)
-    optimizer.objective_fn = lasso.objective_x
+    optimizer.obj_func = lasso.objective
 
     z = lasso.fit()
 
