@@ -119,7 +119,7 @@ class BaseSearchCV(ABC):
     def _format_results(candidate_params, scorers, n_splits, out):
         n_candidates = len(candidate_params)
 
-        (test_score_dicts, master_fit_time, master_score_time) = zip(*out)
+        (test_score_dicts,) = zip(*out)
 
         test_scores = aggregate_score_dicts(test_score_dicts)
 
@@ -143,10 +143,6 @@ class BaseSearchCV(ABC):
             if rank:
                 results["rank_%s" % key_name] = np.asarray(
                     rankdata(-array_means, method='min'), dtype=np.int32)
-
-        # Hide (comment) master_fit_time and master_score_time by request:
-        # _store('master_fit_time', master_fit_time)
-        # _store('master_score_time', master_score_time)
 
         # Use one MaskedArray and mask all the places where the param is not
         # applicable for that candidate. Use defaultdict as each candidate may

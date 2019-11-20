@@ -1,5 +1,4 @@
 import numbers
-import time
 
 import numpy as np
 
@@ -8,16 +7,12 @@ def fit_and_score(estimator, train_ds, validation_ds, scorer, parameters,
                   fit_params):
     if parameters is not None:
         estimator.set_params(**parameters)
-    t0_fit = time.time()
     x_train, y_train = train_ds
     estimator.fit(x_train, y_train, **fit_params)
-    master_fit_time = time.time() - t0_fit
-    t0_score = time.time()
     x_test, y_test = validation_ds
     test_scores = _score(estimator, x_test, y_test, scorer)
-    master_score_time = time.time() - t0_score
 
-    return [test_scores, master_fit_time, master_score_time]
+    return [test_scores]
 
 
 def _score(estimator, x, y, scorers):
