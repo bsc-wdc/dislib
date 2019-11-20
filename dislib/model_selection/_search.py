@@ -223,7 +223,7 @@ class GridSearchCV(BaseSearchCV):
         dictionaries, in which case the grids spanned by each dictionary
         in the list are explored. This enables searching over any sequence
         of parameter settings.
-    scoring : callable, dict or None, optional (default: None)
+    scoring : callable, dict or None, optional (default=None)
         A callable to evaluate the predictions on the test set. It should take
         3 parameters, estimator, x and y, and return a score (higher meaning
         better). For evaluating multiple metrics, give a dict with names as
@@ -413,10 +413,10 @@ class RandomizedSearchCV(BaseSearchCV):
         method for sampling (such as those from scipy.stats.distributions).
         If a list is given, it is sampled uniformly.
 
-    n_iter : int, optional (default: 10)
+    n_iter : int, optional (default=10)
         Number of parameter settings that are sampled.
 
-    scoring : callable, dict or None, optional (default: None)
+    scoring : callable, dict or None, optional (default=None)
         A callable to evaluate the predictions on the test set. It should take
         3 parameters, estimator, x and y, and return a score (higher meaning
         better). For evaluating multiple metrics, give a dict with names as
