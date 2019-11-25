@@ -186,7 +186,7 @@
       same "printed page" as the copyright notice for easier
       identification within third-party archives.
 
-   Copyright 2019 Barcelona Supercomputing Center (BSC)
+   Copyright [yyyy] [name of copyright owner]
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -200,7 +200,16 @@
    See the License for the specific language governing permissions and
    limitations under the License.
    
+-----------------------------------------------------------------------------
 
+The following files contain modified code from the scikit-learn project, which
+is available under a "3-clause BSD" license:
 
-This product includes modified code from scikit-learn, which is available under a
-"3-clause BSD" license.  For details, see https://scikit-learn.org.
+dislib/cluster/gm/base.py
+dislib/model_selection/_validation.py
+dislib/model_selection/_split.py
+dislib/model_selection/_search.py
+examples/classifier_comparison.py
+examples/clustering_comparison.py
+examples/gm_covariance_types_comp.py
+examples/kmeans.py
