@@ -1,7 +1,11 @@
 #!/bin/bash
 
-#cmd_path="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
-cmd_path="$(dirname "$(readlink -f "$0")")"
+getpath() {
+    [[ $1 = /* ]] && echo "$1" || echo "$PWD/${1#./}"
+}
+
+cmd_path=$(dirname $(getpath "$0"))
+
 cmd=$1
 shift 1
 
