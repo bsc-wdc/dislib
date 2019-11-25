@@ -4,6 +4,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2019-11-25
+### Added
+- Grid search and randomized search CV
+- K-fold splitter
+- Support for jupyter-notebooks from dislib docker image
+- Automatic installation of dislib executable when running pip install
+  dislib
+- Support for sparse data in PCA
+- A new notebook with more usage examples
+- jupyter command to dislib executable
+- Pointer to sklearn license in LICENSE file
+
+### Changed
+- Estimators now extend sklearn BaseEstimator
+- Extended tutorial notebook with other examples
+- Added acknowledgements to README
+
+### Removed
+- Pandas dependency in test_als
+- CODEOWNERS file
+
+### Fixed
+- Small fixes to tutorial notebook
+- Small fixes to documentation
+- dislib executable now works even if PyCOMPSs is not installed
+- Bug fix in ALS performance test
+- Several bugs in fancy indexing of ds-arrays
+- Fixed dislib executable on MacOS
+
 ## [0.4.0] - 2019-09-16
 ### Added
 - Distributed array data structure
@@ -86,9 +115,8 @@ process.
 - Moved the quickstart guide to a separate file and included it in the documentation
 - Fixed several bugs
 
-### Removed
-
-[Unreleased]: https://github.com/bsc-wdc/dislib/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/bsc-wdc/dislib/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/bsc-wdc/dislib/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/bsc-wdc/dislib/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/bsc-wdc/dislib/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/bsc-wdc/dislib/compare/v0.1.0...v0.2.0
