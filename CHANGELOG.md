@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.5.0] - 2019-11-25
 ### Added
-- Grid search and randomized search CV
+- Grid search and randomized search with cross-validation
 - K-fold splitter
 - Support for jupyter-notebooks from dislib docker image
 - Automatic installation of dislib executable when running pip install
