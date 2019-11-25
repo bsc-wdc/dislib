@@ -186,7 +186,7 @@
       same "printed page" as the copyright notice for easier
       identification within third-party archives.
 
-   Copyright 2019 Barcelona Supercomputing Center (BSC)
+   Copyright [yyyy] [name of copyright owner]
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -200,7 +200,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
    
+-----------------------------------------------------------------------------
 
-
-This product includes modified code from scikit-learn, which is available under a
-"3-clause BSD" license.  For details, see https://scikit-learn.org.
+This product includes modified code from scikit-learn, which is available
+under a "3-clause BSD" license.

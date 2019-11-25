@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A new notebook with more usage examples
 - jupyter command to dislib executable
 - Pointer to sklearn license in LICENSE file
+- NOTICE file
 
 ### Changed
 - Estimators now extend sklearn BaseEstimator
