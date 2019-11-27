@@ -20,8 +20,8 @@ def main():
 
     csvm = CascadeSVM(c=10000, gamma=0.01)
 
-    performance.measure("CSVM", "KDD99", csvm, x_kdd, y_kdd)
-    performance.measure("CSVM", "ijcnn1", csvm, x_ij, y_ij)
+    performance.measure("CSVM", "KDD99", csvm.fit, x_kdd, y_kdd)
+    performance.measure("CSVM", "ijcnn1", csvm.fit, x_ij, y_ij)
 
 
 if __name__ == "__main__":

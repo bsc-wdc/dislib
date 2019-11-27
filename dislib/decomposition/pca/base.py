@@ -69,13 +69,15 @@ class PCA(BaseEstimator):
         self._variance = compss_wait_on(self._variance)
         return self._variance
 
-    def fit(self, x):
+    def fit(self, x, y=None):
         """ Fit the model with the dataset.
 
         Parameters
         ----------
         x : ds-array, shape (n_samples, n_features)
             Training data.
+        y : ignored
+            Not used, present here for API consistency by convention.
 
         Returns
         -------

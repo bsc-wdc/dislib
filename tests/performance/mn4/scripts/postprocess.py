@@ -5,6 +5,7 @@ import sys
 def main():
     res_path = "/gpfs/projects/bsc19/PERFORMANCE/dislib/results"
     log_path = "/gpfs/projects/bsc19/PERFORMANCE/dislib/logs"
+    gpfs_path = "/gpfs/scratch/bsc19/compss/COMPSs_Sandbox"
 
     os.makedirs(res_path, exist_ok=True)
     out = os.path.join(res_path, sys.argv[1])
@@ -12,29 +13,41 @@ def main():
 
     for f in os.listdir(log_dir):
         if f.endswith(".out"):
-            time = -1
+            wd = "scratch"
 
             for line in open(os.path.join(log_dir, f), "r"):
-                if "Worker WD:" in line:
-                    if "gpfs" in str(line.split(" ")[-1]):
-                        wd = "gpfs"
-                    else:
-                        wd = "scratch"
-                elif "==== STARTING ====" in line:
-                    time = -1
-                    test_name = str(line.split(" ")[-1]).rstrip()
-                elif "==== OUTPUT ====" in line:
+                if gpfs_path in line:
+                    wd = "gpfs"
+                    break
+
+            test_name = ""
+            dataset = ""
+
+            for line in open(os.path.join(log_dir, f), "r"):
+                if "==== STARTING ====" in line:
+                    if test_name:
+                        output = (test_name + " "
+                                  + wd + " "
+                                  + dataset + " ERROR\n")
+
+                        with open(out, "a") as fout:
+                            fout.write(output)
+
+                    dataset = str(line.split(" ")[-1]).rstrip()
+                    test_name = str(line.split(" ")[-2])
+                elif "==== TIME ====" in line:
                     time = float(line.split(" ")[-1])
-                    dataset = str(line.split(" ")[-2])
+
+                    output = (test_name + " "
+                              + wd + " "
+                              + dataset + " "
+                              + str(time) + "\n")
 
                     with open(out, "a") as fout:
-                        fout.write(
-                            test_name + " " + wd + " " + dataset + " " + str(
-                                time) + "\n")
+                        fout.write(output)
 
-            if time == -1:
-                with open(out, "a") as fout:
-                    fout.write(test_name + " " + wd + " ERROR\n")
+                    test_name = ""
+                    dataset = ""
 
 
 if __name__ == "__main__":

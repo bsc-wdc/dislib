@@ -3,18 +3,26 @@ import os
 import subprocess
 from subprocess import PIPE
 
-tests_dir = "/gpfs/projects/bsc19/PERFORMANCE/dislib/tests"
+base_dir = "/gpfs/projects/bsc19/PERFORMANCE/dislib"
+tests_dir = os.path.join(base_dir, "tests")
+logs_dir = os.path.join(base_dir, "logs")
+scripts_dir = os.path.join(base_dir, "scripts")
+exec_time = 60
+scheduler = "es.bsc.compss.scheduler.fifodatanew.FIFODataScheduler"
 
 
 def main():
-    cmd = "enqueue_compss --exec_time=60 " \
-          "--pythonpath=/gpfs/projects/bsc19/PERFORMANCE/dislib/scripts" \
-          ":/gpfs/projects/bsc19/PERFORMANCE/dislib/tests --lang=python " \
-          "--worker_in_master_cpus=0 --max_tasks_per_node=48 --num_nodes=9 " \
-          "".split(" ")
+    cmd = ("enqueue_compss"
+           " --exec_time=" + str(exec_time) +
+           " --scheduler=" + scheduler +
+           " --pythonpath=" + scripts_dir + ":" + tests_dir +
+           " --lang=python"
+           " --worker_in_master_cpus=0"
+           " --max_tasks_per_node=48"
+           " --num_nodes=9 ").split(" ")
 
     out = datetime.datetime.now().strftime("%Y-%m-%d_%H:%M")
-    logdir = os.path.join("/gpfs/projects/bsc19/PERFORMANCE/dislib/logs/", out)
+    logdir = os.path.join(logs_dir, out)
     os.makedirs(logdir, exist_ok=True)
     cmd.append("--master_working_dir=" + logdir)
 
@@ -25,20 +33,18 @@ def main():
 
     for f in os.listdir(tests_dir):
         if f.endswith(".py"):
-            script_path = os.path.join(tests_dir, f)
+            test_path = os.path.join(tests_dir, f)
 
             print("Submitting " + f)
 
-            job_id = run_job(gpfs_cmd + [script_path])
+            job_id = run_job(gpfs_cmd + [test_path])
             dependencies = dependencies + ":" + job_id
 
-            job_id = run_job(scratch_cmd + [script_path])
+            job_id = run_job(scratch_cmd + [test_path])
             dependencies = dependencies + ":" + job_id
 
     final_cmd = ["sbatch", "-n1", "--dependency=" + dependencies,
-                 "/gpfs/projects/bsc19/PERFORMANCE/dislib/scripts"
-                 "/postprocess.sh",
-                 out]
+                 os.path.join(scripts_dir, "postprocess.sh"), out]
     subprocess.run(final_cmd)
 
 
