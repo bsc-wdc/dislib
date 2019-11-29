@@ -6,6 +6,7 @@ import numpy as np
 from pycompss.api.api import compss_wait_on
 from pycompss.api.parameter import Type, COLLECTION_IN, Depth, COLLECTION_INOUT
 from pycompss.api.task import task
+from hecuba.hnumpy import StorageNumpy
 from scipy import sparse as sp
 from scipy.sparse import issparse, csr_matrix
 from sklearn.utils import check_random_state
@@ -155,6 +156,12 @@ class Array(object):
         else:
             ret = np.block(blocks)
 
+        if len(ret.shape) == 1:
+            # if the argument was passed to a function as a StorageNumpy with type=COLLECTION_IN
+            # it is passed flattened and as a list
+            print("needed reshape")
+            ret = ret.reshape(-1, 2)
+
         return ret
 
     @staticmethod
@@ -209,6 +216,12 @@ class Array(object):
         return self.shape[0], n_c
 
     def _iterator(self, axis=0):
+        if isinstance(self._blocks, StorageNumpy):
+            # only iterate through rows supported by now
+            for block in self._blocks.np_split(block_size=self._top_left_shape[0]):
+                yield Array(blocks=block, top_left_shape=block.shape, reg_shape=block.shape, shape=block.shape,
+                            sparse=self._sparse)
+
         # iterate through rows
         if axis == 0 or axis == 'rows':
             for i, row in enumerate(self._blocks):
@@ -682,6 +695,11 @@ def array(x, block_size):
     arr = Array(blocks=blocks, top_left_shape=block_size,
                 reg_shape=block_size, shape=x.shape, sparse=sparse)
 
+    return arr
+
+
+def hecuba_array(x, block_size):
+    arr = Array(blocks=x, top_left_shape=block_size, reg_shape=block_size, shape=x.shape, sparse=False)
     return arr
 
 
