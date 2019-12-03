@@ -1,3 +1,4 @@
+import uuid
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from collections.abc import Sequence
@@ -5,12 +6,14 @@ from functools import partial
 from itertools import product
 
 import numpy as np
-from pycompss.api.api import compss_wait_on
+from pycompss.api.api import compss_wait_on, compss_wait_on_file
+from pycompss.util.serialization.serializer import deserialize_from_file
 from scipy.stats import rankdata
 from sklearn import clone
 from sklearn.model_selection import ParameterGrid, ParameterSampler
 from sklearn.utils.fixes import MaskedArray
 
+from dislib.model_selection._nested_search import evaluate_candidate_nested
 from dislib.model_selection._split import infer_cv
 from dislib.model_selection._validation import check_scorer, fit_and_score, \
     validate_score, aggregate_score_dicts
@@ -50,8 +53,8 @@ class BaseSearchCV(ABC):
         scorers, refit_metric = self._infer_scorers()
 
         base_estimator = clone(estimator)
+        splits = list(cv.split(x, y))
 
-        n_splits = None
         all_candidate_params = []
         all_out = []
 
@@ -63,15 +66,31 @@ class BaseSearchCV(ABC):
                                  scorer=scorers, parameters=parameters,
                                  fit_params=fit_params)
                    for parameters, (train, validation)
-                   in product(candidate_params, cv.split(x, y))]
-
-            nonlocal n_splits
-            n_splits = cv.get_n_splits()
+                   in product(candidate_params, splits)]
 
             all_candidate_params.extend(candidate_params)
             all_out.extend(out)
 
-        self._run_search(evaluate_candidates)
+        def evaluate_candidates_with_nesting(candidate_params):
+            """Evaluate some parameters"""
+            cand_params = list(candidate_params)
+            out_files = []
+            for params, (train, validation) in product(cand_params, splits):
+                out_file = '/home/bscuser/git/dislib/examples/' +\
+                           str(uuid.uuid4())
+                out_files.append(out_file)
+                evaluate_candidate_nested(out_file, base_estimator, scorers,
+                                          params, fit_params,
+                                          (train, validation))
+
+            all_candidate_params.extend(candidate_params)
+            out = []
+            for out_file in out_files:
+                compss_wait_on_file(out_file)
+                out.append(deserialize_from_file(out_file))
+            all_out.extend(out)
+
+        self._run_search(evaluate_candidates_with_nesting)
 
         for params_result in all_out:
             scores = params_result[0]
@@ -79,6 +98,7 @@ class BaseSearchCV(ABC):
                 score = compss_wait_on(score)
                 scores[scorer_name] = validate_score(score, scorer_name)
 
+        n_splits = cv.get_n_splits()
         results = self._format_results(all_candidate_params, scorers,
                                        n_splits, all_out)
 
