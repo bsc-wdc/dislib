@@ -10,7 +10,7 @@ ready-to-use [docker image](#using-docker).
 
 dislib currently requires:
 
-* PyCOMPSs == 2.5
+* PyCOMPSs >= 2.5
 * Scikit-learn >= 0.19.1
 * Scipy >= 1.0.0
 * NumPy >= 1.15.4
@@ -21,9 +21,9 @@ numpydoc >= 0.8.0 is requried to build the documentation.
 #### Installation steps 
 
 1. Check which PyCOMPSs version to install. 
-    * Latest dislib release requires **PyCOMPSs 2.5** (check [here](https://github.com/bsc-wdc/dislib/releases) for information about other releases).
+    * Latest dislib release requires **PyCOMPSs 2.5** or greater (check [here](https://github.com/bsc-wdc/dislib/releases) for information about other releases).
     
-2. Install PyCOMPSs following these [instructions](http://compss.bsc.es/releases/compss/latest/docs/COMPSs_Installation_Manual.pdf).
+2. Install PyCOMPSs following these [instructions](https://compss-doc.readthedocs.io/en/2.6/Sections/01_Installation.html).
 
 3. Install the latest dislib version with ``pip3 install dislib``.
    * **IMPORTANT:** dislib requires the ``pycompss`` Python module. However, this command will **NOT** install the module automatically. The module should be available after manually installing PyCOMPSs following the instructions in step 2. For more information on this, see [here](https://github.com/bsc-wdc/dislib/issues/190).
