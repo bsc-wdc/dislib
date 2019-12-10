@@ -13,19 +13,19 @@ export PYTHONPATH=$PYTHONPATH:${cmd_path}
 
 if [ -z "${cmd}" ]; then
 
-    echo "Dislib: The Distributed Computing Library"
+    echo "dislib: The Distributed Computing Library"
     echo ""
     echo "Usage: dislib COMMAND"
     echo ""
     echo "Available commands:"
-    echo "    init [WORK_DIR]:         initializes dislib in the current working dir or in WORK_DIR args is set."
-    echo "    kill:                    stops and kills all instances of the dislib."
-    echo "    update:                  updates the dislib docker image (use only when installing master branch)."
-    echo "    run CMD:                 executes the CMD command inside the dislib master container."
-    echo "    exec FILE [PARAMS]:      executes the FILE inside the dislib master container with the given COMPSs [PARAMS]"
-    echo "    jupyter [PATH|FILE]:     starts jupyter-notebook in the given PATH or FILE."
-    echo "    components list:         lists dislib actives components."
-    echo "    components add RESOURCE: adds the RESOURCE to the pool of workers of the dislib."
+    echo "    init [WORK_DIR]:              initializes dislib in the current working dir or in WORK_DIR args is set."
+    echo "    kill:                         stops and kills all instances of the dislib."
+    echo "    update:                       updates the dislib docker image (use only when installing master branch)."
+    echo "    run CMD:                      executes the CMD command inside the dislib master container."
+    echo "    exec [OPTIONS] FILE [PARAMS]: executes FILE with PyCOMPSs, where OPTIONS are COMPSs options and PARAMS are application parameters."
+    echo "    jupyter [PATH|FILE]:          starts jupyter-notebook in the given PATH or FILE."
+    echo "    components list:              lists dislib actives components."
+    echo "    components add RESOURCE:      adds the RESOURCE to the pool of workers of the dislib."
     echo ""
     echo "       Example given: dislib add worker '127.0.0.1:6' # to add a local worker with 6 computing units."
 fi
@@ -44,16 +44,14 @@ if [ "${cmd}" == "run" ]; then    subcmd=$@
     python3 -c "from dislib_cmd import _exec_in_daemon; _exec_in_daemon('${subcmd}')"
 fi
 if [ "${cmd}" == "exec" ]; then
-    file=$1
-    shift 1
     params=$@
     python3 -c "from dislib_cmd import _exec_in_daemon; \
-    _exec_in_daemon('runcompss ${params} \
+    _exec_in_daemon('runcompss \
         --lang=python \
         --python_interpreter=python3 \
         --project=/project.xml \
         --resources=/resources.xml \
-        ${file}')"
+        ${params}')"
 fi
 if [ "${cmd}" == "components" ]; then
     subcmd=$@
