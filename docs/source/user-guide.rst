@@ -136,8 +136,7 @@ blocks provides the same parallelism as 2x8 blocks, but has the overhead of
 dealing with five additional blocks. If we were only doing K-means
 clustering, 2x8 blocks would probably be the optimal choice in this case.
 
-However, certain array operations like
-:func:`shuffle <dislib.utils.base.shuffle>`, and some estimators like
+However, some estimators like
 :class:`ALS <dislib.recommendation.als.base.ALS>` benefit from having a uniform
 number of blocks both vertically and horizontally. In these cases, it might
 be better to split the ds-array in NxN blocks, where N is the number of
@@ -176,6 +175,33 @@ supports common data formats, such as CSV and `SVMLight <http://svmlight
 
 Slicing
 .......
+
+Similar to NumPy arrays, ds-arrays provide different types of slicing. The
+result of an slicing operation is a new ds-array with a subset of elements
+of the original ds-array.
+
+Currently, these are the supported slicing methods:
+
+``x[i]``
+  returns the ith row of x.
+
+``x[i,j]``
+  returns the element at the (i,j) position.
+
+``x[i:j]``
+  returns a set of rows (from i to j), where i and j are optional.
+
+``x[:, i:j]``
+  returns a set of columns (from i to j), where i and j are optional.
+
+``x[[i,j,k]]``
+  returns a set of non-consecutive rows.
+
+``x[:, [i,j,k]]``
+  returns a set of non-consecutive columns.
+
+``x[i:j, k:m]``
+  returns a set of elements, where i, j, m, and n are optional.
 
 Other operations
 ................
