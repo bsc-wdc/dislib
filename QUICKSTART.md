@@ -76,13 +76,13 @@ docker ps # this should be empty as no docker processes are yet running.
 4. Install [docker-py](https://docker-py.readthedocs.io/en/stable/)
 
 ```
-sudo pip3 install docker
+pip3 install docker
 ```
 
 #### 2. Install dislib
 
 ```
-sudo pip3 install dislib
+pip3 install dislib
 ```
 
 This should add the dislib executable to your path.
