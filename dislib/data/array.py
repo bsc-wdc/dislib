@@ -66,7 +66,8 @@ class Array(object):
         True if this array contains sparse data.
     """
 
-    def __init__(self, blocks, top_left_shape, reg_shape, shape, sparse, backend=None):
+    def __init__(self, blocks, top_left_shape, reg_shape, shape, sparse,
+                 backend=None):
         self._validate_blocks(blocks)
 
         self._blocks = blocks
@@ -153,7 +154,7 @@ class Array(object):
         try:
             if isinstance(blocks[0][0], StorageNumpy):
                 return np.array(list(blocks[0][0]))
-        except:
+        except NameError as ex:
             pass
 
         sparse = None
