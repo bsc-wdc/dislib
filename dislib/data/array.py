@@ -3,13 +3,16 @@ from collections import defaultdict
 from math import ceil
 
 import numpy as np
+import importlib
 from pycompss.api.api import compss_wait_on
 from pycompss.api.parameter import Type, COLLECTION_IN, Depth, COLLECTION_INOUT
 from pycompss.api.task import task
-from hecuba.hnumpy import StorageNumpy
 from scipy import sparse as sp
 from scipy.sparse import issparse, csr_matrix
 from sklearn.utils import check_random_state
+
+if importlib.util.find_spec("hecuba"):
+    from hecuba.hnumpy import StorageNumpy
 
 
 class Array(object):
@@ -63,7 +66,7 @@ class Array(object):
         True if this array contains sparse data.
     """
 
-    def __init__(self, blocks, top_left_shape, reg_shape, shape, sparse):
+    def __init__(self, blocks, top_left_shape, reg_shape, shape, sparse, backend=None):
         self._validate_blocks(blocks)
 
         self._blocks = blocks
@@ -73,6 +76,7 @@ class Array(object):
         self._n_blocks = (len(blocks), len(blocks[0]))
         self._shape = shape
         self._sparse = sparse
+        self._backend = backend
 
     def __str__(self):
         return "ds-array(blocks=(...), top_left_shape=%r, reg_shape=%r, " \
@@ -146,6 +150,12 @@ class Array(object):
         Helper function that merges the _blocks attribute of a ds-array into
         a single ndarray / sparse matrix.
         """
+        try:
+            if isinstance(blocks[0][0], StorageNumpy):
+                return np.array(list(blocks[0][0]))
+        except:
+            pass
+
         sparse = None
         b0 = blocks[0][0]
         if sparse is None:
@@ -155,12 +165,6 @@ class Array(object):
             ret = sp.bmat(blocks, format=b0.getformat(), dtype=b0.dtype)
         else:
             ret = np.block(blocks)
-
-        if len(ret.shape) == 1:
-            # if the argument was passed to a function as a StorageNumpy with type=COLLECTION_IN
-            # it is passed flattened and as a list
-            print("needed reshape")
-            ret = ret.reshape(-1, 2)
 
         return ret
 
@@ -216,12 +220,6 @@ class Array(object):
         return self.shape[0], n_c
 
     def _iterator(self, axis=0):
-        if isinstance(self._blocks, StorageNumpy):
-            # only iterate through rows supported by now
-            for block in self._blocks.np_split(block_size=self._top_left_shape[0]):
-                yield Array(blocks=block, top_left_shape=block.shape, reg_shape=block.shape, shape=block.shape,
-                            sparse=self._sparse)
-
         # iterate through rows
         if axis == 0 or axis == 'rows':
             for i, row in enumerate(self._blocks):
@@ -658,7 +656,7 @@ class Array(object):
         return res
 
 
-def array(x, block_size):
+def array(x, block_size, **kwargs):
     """
     Loads data into a Distributed Array.
 
@@ -674,32 +672,44 @@ def array(x, block_size):
     dsarray : ds-array
         A distributed representation of the data divided in blocks.
     """
-    sparse = issparse(x)
-
-    if sparse:
-        x = csr_matrix(x, copy=True)
-    else:
-        x = np.array(x, copy=True)
-
-    if len(x.shape) < 2:
-        raise ValueError("Input array must have two dimensions.")
-
     bn, bm = block_size
 
-    blocks = []
-    for i in range(0, x.shape[0], bn):
-        row = [x[i: i + bn, j: j + bm] for j in range(0, x.shape[1], bm)]
-        blocks.append(row)
+    backend = kwargs.get("backend", None)
+    if backend == "hecuba":
+        name = kwargs.get("name", None)
+        storage_id = kwargs.get("storage_id", None)
+        persistent_data = StorageNumpy(input_array=x,
+                                       name=name,
+                                       storage_id=storage_id)
+        if x is None:
+            persistent_data = persistent_data[None]
+        blocks = []
+        for block in persistent_data.np_split(block_size=bn):
+            blocks.append([block])
 
-    sparse = issparse(x)
-    arr = Array(blocks=blocks, top_left_shape=block_size,
-                reg_shape=block_size, shape=x.shape, sparse=sparse)
+        arr = Array(blocks=blocks, top_left_shape=block_size,
+                    reg_shape=block_size, shape=persistent_data.shape,
+                    sparse=False, backend=backend)
+    else:
+        sparse = issparse(x)
 
-    return arr
+        if sparse:
+            x = csr_matrix(x, copy=True)
+        else:
+            x = np.array(x, copy=True)
 
+        if len(x.shape) < 2:
+            raise ValueError("Input array must have two dimensions.")
 
-def hecuba_array(x, block_size):
-    arr = Array(blocks=x, top_left_shape=block_size, reg_shape=block_size, shape=x.shape, sparse=False)
+        blocks = []
+        for i in range(0, x.shape[0], bn):
+            row = [x[i: i + bn, j: j + bm] for j in range(0, x.shape[1], bm)]
+            blocks.append(row)
+
+        sparse = issparse(x)
+        arr = Array(blocks=blocks, top_left_shape=block_size,
+                    reg_shape=block_size, shape=x.shape, sparse=sparse)
+
     return arr
 
 
