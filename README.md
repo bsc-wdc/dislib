@@ -87,7 +87,7 @@ J. Álvarez Cid-Fuentes, S. Solà, P. Álvarez, A. Castro-Ginard, and R. M. Badi
 ### Bibtex:
 
 ```latex
-\inproceedings{dislib,
+@inproceedings{dislib,
             title       = {{dislib: Large Scale High Performance Machine Learning in Python}},
             author      = {Javier Álvarez Cid-Fuentes and Salvi Solà and Pol Álvarez and Alfred Castro-Ginard and Rosa M. Badia},
             booktitle   = {Proceedings of the 15th International Conference on eScience},
