@@ -1,4 +1,5 @@
 import itertools
+import os
 from collections import defaultdict
 from math import ceil
 
@@ -11,7 +12,8 @@ from scipy import sparse as sp
 from scipy.sparse import issparse, csr_matrix
 from sklearn.utils import check_random_state
 
-if importlib.util.find_spec("hecuba"):
+if os.environ.get("CONTACT_NAMES") and \
+        importlib.util.find_spec("hecuba"):
     from hecuba.hnumpy import StorageNumpy
 
 
@@ -151,11 +153,9 @@ class Array(object):
         Helper function that merges the _blocks attribute of a ds-array into
         a single ndarray / sparse matrix.
         """
-        try:
-            if isinstance(blocks[0][0], StorageNumpy):
-                return np.array(list(blocks[0][0]))
-        except NameError as ex:
-            pass
+        if os.environ.get("CONTACT_NAMES") and \
+                isinstance(blocks[0][0], StorageNumpy):
+            return np.array(list(blocks[0][0]))
 
         sparse = None
         b0 = blocks[0][0]
@@ -682,8 +682,16 @@ def array(x, block_size, **kwargs):
         persistent_data = StorageNumpy(input_array=x,
                                        name=name,
                                        storage_id=storage_id)
+
         if x is None:
             persistent_data = persistent_data[None]
+        else:
+            # to ensure that all data is already inserted
+            import gc
+            del persistent_data
+            gc.collect()
+            persistent_data = StorageNumpy(name=name, storage_id=storage_id)
+
         blocks = []
         for block in persistent_data.np_split(block_size=bn):
             blocks.append([block])
