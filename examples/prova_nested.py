@@ -6,6 +6,7 @@ import numpy as np
 
 from dislib import random_array, array
 from dislib.classification import CascadeSVM
+from dislib.model_selection import GridSearchCV
 from dislib.model_selection._nested_search import evaluate_candidate_nested
 from dislib.model_selection._validation import check_scorer
 
@@ -19,9 +20,8 @@ def main():
                    (5, 1))
     data = (train_x, train_y), (test_x, test_y)
     scorers = {"score": check_scorer(CascadeSVM(), None)}
-
-    id1 = '/home/bscuser/git/dislib/examples/'+str(uuid4())
-    id2 = '/home/bscuser/git/dislib/examples/'+str(uuid4())
+    id1 = str(uuid4())
+    id2 = str(uuid4())
     out = evaluate_candidate_nested(id1, CascadeSVM(), scorers,
                                     {'cascade_arity': 4}, {}, data)
     out2 = evaluate_candidate_nested(id2, CascadeSVM(), scorers,

@@ -22,11 +22,13 @@ from dislib.model_selection._validation import check_scorer, fit_and_score, \
 class BaseSearchCV(ABC):
     """Abstract base class for hyper parameter search with cross-validation."""
 
-    def __init__(self, estimator, scoring=None, cv=None, refit=True):
+    def __init__(self, estimator, scoring=None, cv=None, refit=True,
+                 nesting=False):
         self.estimator = estimator
         self.scoring = scoring
         self.cv = cv
         self.refit = refit
+        self.nesting = nesting
 
     @abstractmethod
     def _run_search(self, evaluate_candidates):
@@ -76,8 +78,7 @@ class BaseSearchCV(ABC):
             cand_params = list(candidate_params)
             out_files = []
             for params, (train, validation) in product(cand_params, splits):
-                out_file = '/home/bscuser/git/dislib/examples/' +\
-                           str(uuid.uuid4())
+                out_file = str(uuid.uuid4())
                 out_files.append(out_file)
                 evaluate_candidate_nested(out_file, base_estimator, scorers,
                                           params, fit_params,
@@ -90,7 +91,11 @@ class BaseSearchCV(ABC):
                 out.append(deserialize_from_file(out_file))
             all_out.extend(out)
 
-        self._run_search(evaluate_candidates_with_nesting)
+        if self.nesting:
+            evaluate_candidates_method = evaluate_candidates_with_nesting
+        else:
+            evaluate_candidates_method = evaluate_candidates
+        self._run_search(evaluate_candidates_method)
 
         for params_result in all_out:
             scores = params_result[0]
@@ -366,9 +371,9 @@ class GridSearchCV(BaseSearchCV):
     """
 
     def __init__(self, estimator, param_grid, scoring=None, cv=None,
-                 refit=True):
+                 refit=True, nesting=False):
         super().__init__(estimator=estimator, scoring=scoring, cv=cv,
-                         refit=refit)
+                         refit=refit, nesting=nesting)
         self.param_grid = param_grid
         self._check_param_grid(param_grid)
 
@@ -583,9 +588,9 @@ class RandomizedSearchCV(BaseSearchCV):
         The number of cross-validation splits (folds/iterations).
     """
     def __init__(self, estimator, param_distributions, n_iter=10, scoring=None,
-                 cv=None, refit=True, random_state=None):
+                 cv=None, refit=True, nesting=False, random_state=None):
         super().__init__(estimator=estimator, scoring=scoring, cv=cv,
-                         refit=refit)
+                         refit=refit, nesting=nesting)
         self.param_distributions = param_distributions
         self.n_iter = n_iter
         self.random_state = random_state
