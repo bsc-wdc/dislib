@@ -1,8 +1,9 @@
+docker exec dislib sh -c "apt-get update -y && apt-get update"
 docker exec dislib sh -c "apt-get install -y cmake python-dev libpython-dev gcc-4.8 libtool python-numpy"
-docker exec dislib sh -c "curl -L https://github.com/bsc-dd/hecuba/tree/NumpyWritePartitions|tar -xz"
+docker exec dislib sh -c "curl -L https://github.com/bsc-dd/hecuba/archive/NumpyWritePartitions.tar.gz | tar -xz"
 
-docker exec dislib sh -c "pip install -r hecuba/requirements.txt"
-docker exec dislib sh -c "python hecuba/setup.py install"
+docker exec dislib sh -c "pip install -r hecuba-NumpyWritePartitions/requirements.txt"
+docker exec dislib sh -c "python hecuba-NumpyWritePartitions/setup.py install"
 
 docker network create --driver bridge cassandra_bridge
 # launch Cassandra
