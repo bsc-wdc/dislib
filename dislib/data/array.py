@@ -678,19 +678,8 @@ def array(x, block_size, **kwargs):
     backend = kwargs.get("backend", None)
     if backend == "hecuba":
         name = kwargs.get("name", None)
-        storage_id = kwargs.get("storage_id", None)
         persistent_data = StorageNumpy(input_array=x,
-                                       name=name,
-                                       storage_id=storage_id)
-
-        if x is None:
-            persistent_data = persistent_data[None]
-        else:
-            # to ensure that all data is already inserted
-            import gc
-            del persistent_data
-            gc.collect()
-            persistent_data = StorageNumpy(name=name, storage_id=storage_id)
+                                       name=name)
 
         blocks = []
         for block in persistent_data.np_split(block_size=bn):
