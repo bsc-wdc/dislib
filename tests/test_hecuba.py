@@ -30,7 +30,8 @@ class HecubaTest(unittest.TestCase):
         config.session.execute("TRUNCATE TABLE hecuba.istorage")
         config.session.execute("DROP KEYSPACE IF EXISTS hecuba_dislib")
         block_size = (2, 10)
-        x = np.array([[j for j in range(i * 10, i * 10 + 10)] for i in range(10)])
+        x = np.array([[j for j in range(i * 10, i * 10 + 10)]
+                      for i in range(10)])
 
         data = ds.load_from_hecuba(x=x, block_size=block_size,
                                    name="hecuba_dislib.test_array")
@@ -88,7 +89,8 @@ class HecubaTest(unittest.TestCase):
         block_size = (x_filtered.shape[0] // 10, x_filtered.shape[1])
 
         x_train = ds.array(x_filtered, block_size=block_size)
-        x_train_hecuba = ds.load_from_hecuba(x=x_filtered, block_size=block_size,
+        x_train_hecuba = ds.load_from_hecuba(x=x_filtered,
+                                             block_size=block_size,
                                              name="hecuba_dislib.test_array2")
 
         kmeans = KMeans(n_clusters=3, random_state=170, verbose=True)
@@ -112,7 +114,8 @@ class HecubaTest(unittest.TestCase):
         block_size = (x_filtered.shape[0] // 10, x_filtered.shape[1])
 
         x_train = ds.array(x_filtered, block_size=block_size)
-        x_train_hecuba = ds.load_from_hecuba(x=x_filtered, block_size=block_size,
+        x_train_hecuba = ds.load_from_hecuba(x=x_filtered,
+                                             block_size=block_size,
                                              name="hecuba_dislib.test_array2")
 
         # ensure that all data is released from memory
