@@ -6,5 +6,5 @@ CASSANDRA_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddres
 # connect dislib container to Cassandra container
 docker network connect cassandra_bridge dislib
 # add environment variable CONTACT_NAMES needed by Hecuba
-docker exec -d dislib /bin/bash -c 'CONTACT_NAMES=${$1}' "$CASSANDRA_IP"
+docker exec -d dislib /bin/bash -c 'export CONTACT_NAMES=${$1}' "$CASSANDRA_IP"
 
