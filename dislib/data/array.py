@@ -657,7 +657,7 @@ class Array(object):
         return res
 
 
-def array(x, block_size, **kwargs):
+def array(x, block_size):
     """
     Loads data into a Distributed Array.
 
@@ -675,39 +675,61 @@ def array(x, block_size, **kwargs):
     """
     bn, bm = block_size
 
-    backend = kwargs.get("backend", None)
-    if backend == "hecuba":
-        name = kwargs.get("name", None)
-        persistent_data = StorageNumpy(input_array=x,
-                                       name=name)
+    sparse = issparse(x)
 
-        blocks = []
-        for block in persistent_data.np_split(block_size=bn):
-            blocks.append([block])
-
-        arr = Array(blocks=blocks, top_left_shape=block_size,
-                    reg_shape=block_size, shape=persistent_data.shape,
-                    sparse=False, backend=backend)
+    if sparse:
+        x = csr_matrix(x, copy=True)
     else:
-        sparse = issparse(x)
+        x = np.array(x, copy=True)
 
-        if sparse:
-            x = csr_matrix(x, copy=True)
-        else:
-            x = np.array(x, copy=True)
+    if len(x.shape) < 2:
+        raise ValueError("Input array must have two dimensions.")
 
-        if len(x.shape) < 2:
-            raise ValueError("Input array must have two dimensions.")
+    blocks = []
+    for i in range(0, x.shape[0], bn):
+        row = [x[i: i + bn, j: j + bm] for j in range(0, x.shape[1], bm)]
+        blocks.append(row)
 
-        blocks = []
-        for i in range(0, x.shape[0], bn):
-            row = [x[i: i + bn, j: j + bm] for j in range(0, x.shape[1], bm)]
-            blocks.append(row)
+    sparse = issparse(x)
+    arr = Array(blocks=blocks, top_left_shape=block_size,
+                reg_shape=block_size, shape=x.shape, sparse=sparse)
 
-        sparse = issparse(x)
-        arr = Array(blocks=blocks, top_left_shape=block_size,
-                    reg_shape=block_size, shape=x.shape, sparse=sparse)
+    return arr
 
+
+def load_from_hecuba(x, block_size, name):
+    """
+    Loads data into an Hecuba persistent Array.
+
+    Parameters
+    ----------
+    x : array-like or None, shape=(n_samples, n_features)
+        Array of samples.
+    block_size : (int, int)
+        Block sizes in number of samples.
+    name : str
+        Name of the data. It will be used to recover the data
+        when x=None
+
+    Returns
+    -------
+    storagenumpy : StorageNumpy
+        A distributed and persistent representation of the data
+        divided in blocks.
+    """
+    if len(x.shape) < 2:
+        raise ValueError("Input array must have two dimensions.")
+
+    persistent_data = StorageNumpy(input_array=x, name=name)
+
+    bn, bm = block_size
+
+    blocks = []
+    for block in persistent_data.np_split(block_size=bn):
+        blocks.append([block])
+
+    arr = Array(blocks=blocks, top_left_shape=block_size,
+                reg_shape=block_size, shape=x.shape, sparse=False)
     return arr
 
 

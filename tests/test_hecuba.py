@@ -13,31 +13,71 @@ from dislib.neighbors import NearestNeighbors
 from dislib.regression import LinearRegression
 
 
+def equal(arr1, arr2):
+    equal = not (arr1 != arr2).any()
+
+    if not equal:
+        print("\nArr1: \n%s" % arr1)
+        print("Arr2: \n%s" % arr2)
+
+    return equal
+
+
 class HecubaTest(unittest.TestCase):
 
     def test_iterate_rows(self):
-        """
-        Tests iterating through the rows of the Hecuba array
-        """
+        """ Tests iterating through the rows of the Hecuba array """
         config.session.execute("TRUNCATE TABLE hecuba.istorage")
         config.session.execute("DROP KEYSPACE IF EXISTS hecuba_dislib")
-        block_size = (20, 10)
-        x = np.array([[i] * 10 for i in range(100)])
+        block_size = (2, 10)
+        x = np.array([[j for j in range(i * 10, i * 10 + 10)] for i in range(10)])
 
-        data = ds.array(x=x, block_size=block_size, backend="hecuba",
-                        name="hecuba_dislib.test_array")
+        data = ds.load_from_hecuba(x=x, block_size=block_size,
+                                   name="hecuba_dislib.test_array")
+        ds_data = ds.array(x=x, block_size=block_size)
 
-        for i, chunk in enumerate(data._iterator(axis="rows")):
-            r_data = chunk.collect()
-            r_x = np.array([[j] * 10
-                            for j in range(i * block_size[0],
-                                           i * block_size[0] + block_size[0])])
-            self.assertTrue(np.array_equal(r_data, r_x))
+        for h_chunk, chunk in zip(data._iterator(axis="rows"),
+                                  ds_data._iterator(axis="rows")):
+            r_data = h_chunk.collect()
+            should_be = chunk.collect()
+            self.assertTrue(np.array_equal(r_data, should_be))
 
-        self.assertEqual(i + 1, len(data._blocks))
+    def test_get_slice_dense(self):
+        """ Tests get a dense slice of the Hecuba array """
+        bn, bm = 5, 5
+        x = np.random.randint(100, size=(30, 30))
+        data = ds.load_from_hecuba(x=x, block_size=(bn, bm),
+                                   name="hecuba_dislib.test_array")
 
-    def test_fit_predict(self):
-        """ Tests fit_predict."""
+        slice_indices = [(7, 22, 7, 22),  # many row-column
+                         (6, 8, 6, 8),  # single block row-column
+                         (6, 8, None, None),  # single-block rows, all columns
+                         (None, None, 6, 8),  # all rows, single-block columns
+                         (15, 16, 15, 16),  # single element
+                         # (-10, -5, -10, -5),  # out-of-bounds (not
+                         # implemented)
+                         # (-10, 5, -10, 5),  # out-of-bounds (not implemented)
+                         (21, 40, 21, 40)]  # out-of-bounds (correct)
+
+        for top, bot, left, right in slice_indices:
+            got = data[top:bot, left:right].collect()
+            expected = x[top:bot, left:right]
+
+            self.assertTrue(equal(got, expected))
+
+        # Try slicing with irregular array
+        x = x[1:, 1:]
+        data = data[1:, 1:]
+
+        for top, bot, left, right in slice_indices:
+            got = data[top:bot, left:right].collect()
+            expected = x[top:bot, left:right]
+
+            self.assertTrue(equal(got, expected))
+
+    def test_kmeans(self):
+        """ Tests K-means fit_predict and compares the result with
+            regular ds-arrays """
         config.session.execute("TRUNCATE TABLE hecuba.istorage")
         config.session.execute("DROP KEYSPACE IF EXISTS hecuba_dislib")
 
@@ -48,9 +88,8 @@ class HecubaTest(unittest.TestCase):
         block_size = (x_filtered.shape[0] // 10, x_filtered.shape[1])
 
         x_train = ds.array(x_filtered, block_size=block_size)
-        x_train_hecuba = ds.array(x=x_filtered, block_size=block_size,
-                                  backend="hecuba",
-                                  name="hecuba_dislib.test_array2")
+        x_train_hecuba = ds.load_from_hecuba(x=x_filtered, block_size=block_size,
+                                             name="hecuba_dislib.test_array2")
 
         kmeans = KMeans(n_clusters=3, random_state=170, verbose=True)
         labels = kmeans.fit_predict(x_train).collect()
@@ -62,6 +101,8 @@ class HecubaTest(unittest.TestCase):
         self.assertTrue(np.allclose(labels, h_labels))
 
     def test_already_persistent(self):
+        """ Tests K-means fit_predict and compares the result with regular
+            ds-arrays, using an already persistent Hecuba array """
         config.session.execute("TRUNCATE TABLE hecuba.istorage")
         config.session.execute("DROP KEYSPACE IF EXISTS hecuba_dislib")
         x, y = make_blobs(n_samples=1500, random_state=170)
@@ -71,9 +112,8 @@ class HecubaTest(unittest.TestCase):
         block_size = (x_filtered.shape[0] // 10, x_filtered.shape[1])
 
         x_train = ds.array(x_filtered, block_size=block_size)
-        x_train_hecuba = ds.array(x=x_filtered, block_size=block_size,
-                                  backend="hecuba",
-                                  name="hecuba_dislib.test_array2")
+        x_train_hecuba = ds.load_from_hecuba(x=x_filtered, block_size=block_size,
+                                             name="hecuba_dislib.test_array2")
 
         # ensure that all data is released from memory
         blocks = x_train_hecuba._blocks
@@ -82,9 +122,8 @@ class HecubaTest(unittest.TestCase):
         del x_train_hecuba
         gc.collect()
 
-        x_train_hecuba = ds.array(x=None, block_size=block_size,
-                                  backend="hecuba",
-                                  name="hecuba_dislib.test_array2")
+        x_train_hecuba = ds.load_from_hecuba(x=None, block_size=block_size,
+                                             name="hecuba_dislib.test_array2")
 
         kmeans = KMeans(n_clusters=3, random_state=170)
         labels = kmeans.fit_predict(x_train).collect()
@@ -95,7 +134,9 @@ class HecubaTest(unittest.TestCase):
         self.assertTrue(np.allclose(kmeans.centers, kmeans2.centers))
         self.assertTrue(np.allclose(labels, h_labels))
 
-    def test_linear_fit_predict(self):
+    def test_linear_regression(self):
+        """ Tests linear regression fit_predict and compares the result with
+            regular ds-arrays """
         config.session.execute("TRUNCATE TABLE hecuba.istorage")
         config.session.execute("DROP KEYSPACE IF EXISTS hecuba_dislib")
 
@@ -104,10 +145,10 @@ class HecubaTest(unittest.TestCase):
 
         block_size = (x_data.shape[0] // 3, x_data.shape[1])
 
-        x = ds.array(x=x_data, block_size=block_size, backend="hecuba",
-                     name="hecuba_dislib.test_array_x")
-        y = ds.array(x=y_data, block_size=block_size, backend="hecuba",
-                     name="hecuba_dislib.test_array_y")
+        x = ds.load_from_hecuba(x=x_data, block_size=block_size,
+                                name="hecuba_dislib.test_array_x")
+        y = ds.load_from_hecuba(x=y_data, block_size=block_size,
+                                name="hecuba_dislib.test_array_y")
 
         reg = LinearRegression()
         reg.fit(x, y)
@@ -119,13 +160,14 @@ class HecubaTest(unittest.TestCase):
         self.assertTrue(np.allclose(reg.intercept_, 0.3))
 
         x_test = np.array([3, 5]).reshape(-1, 1)
-        test_data = ds.array(x=x_test, block_size=block_size,
-                             backend="hecuba",
-                             name="hecuba_dislib.test_array_test")
+        test_data = ds.load_from_hecuba(x=x_test, block_size=block_size,
+                                        name="hecuba_dislib.test_array_test")
         pred = reg.predict(test_data).collect()
         self.assertTrue(np.allclose(pred, [2.1, 3.3]))
 
     def test_knn_fit(self):
+        """ Tests knn fit_predict and compares the result with
+            regular ds-arrays """
         config.session.execute("TRUNCATE TABLE hecuba.istorage")
         config.session.execute("DROP KEYSPACE IF EXISTS hecuba_dislib")
 
@@ -136,10 +178,10 @@ class HecubaTest(unittest.TestCase):
         data = ds.array(x, block_size=block_size)
         q_data = ds.array(x, block_size=block_size2)
 
-        data_h = ds.array(x, block_size=block_size, backend="hecuba",
-                          name="hecuba_dislib.test_array")
-        q_data_h = ds.array(x, block_size=block_size2, backend="hecuba",
-                            name="hecuba_dislib.test_array_q")
+        data_h = ds.load_from_hecuba(x, block_size=block_size,
+                                     name="hecuba_dislib.test_array")
+        q_data_h = ds.load_from_hecuba(x, block_size=block_size2,
+                                       name="hecuba_dislib.test_array_q")
 
         knn = NearestNeighbors(n_neighbors=10)
         knn.fit(data)
@@ -154,13 +196,14 @@ class HecubaTest(unittest.TestCase):
         self.assertTrue(np.array_equal(ind.collect(), ind_h.collect()))
 
     def test_pca_fit_transform(self):
+        """ Tests PCA fit_transform """
         config.session.execute("TRUNCATE TABLE hecuba.istorage")
         config.session.execute("DROP KEYSPACE IF EXISTS hecuba_dislib")
 
         x, _ = make_blobs(n_samples=10, n_features=4, random_state=0)
         bn, bm = 25, 5
-        dataset = ds.array(x=x, block_size=(bn, bm), backend="hecuba",
-                           name="hecuba_dislib.test_array")
+        dataset = ds.load_from_hecuba(x=x, block_size=(bn, bm),
+                                      name="hecuba_dislib.test_array")
 
         pca = PCA(n_components=3)
         transformed = pca.fit_transform(dataset).collect()
