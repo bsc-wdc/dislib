@@ -656,6 +656,36 @@ class Array(object):
             res = np.squeeze(res)
         return res
 
+    def make_persistent(self, name):
+        """
+        Stores data in Hecuba.
+
+        Parameters
+        ----------
+        name : str
+            Name of the data.
+
+        Returns
+        -------
+        dsarray : ds-array
+            A distributed and persistent representation of the data
+            divided in blocks.
+        """
+        if self._sparse:
+            raise Exception("Data must not be a sparse matrix.")
+
+        x = self.collect()
+
+        persistent_data = StorageNumpy(input_array=x, name=name)
+
+        bn, bm = self._top_left_shape
+
+        blocks = []
+        for block in persistent_data.np_split(block_size=(bn, bm)):
+            blocks.append([block])
+        self._blocks = blocks
+        return self
+
 
 def array(x, block_size):
     """
@@ -697,19 +727,16 @@ def array(x, block_size):
     return arr
 
 
-def load_from_hecuba(x, block_size, name):
+def load_from_hecuba(name, block_size):
     """
-    Loads data into an Hecuba persistent Array.
+    Loads data from Hecuba.
 
     Parameters
     ----------
-    x : array-like or None, shape=(n_samples, n_features)
-        Array of samples.
+    name : str
+        Name of the data.
     block_size : (int, int)
         Block sizes in number of samples.
-    name : str
-        Name of the data. It will be used to recover the data
-        when x=None
 
     Returns
     -------
@@ -717,19 +744,16 @@ def load_from_hecuba(x, block_size, name):
         A distributed and persistent representation of the data
         divided in blocks.
     """
-    if len(x.shape) < 2:
-        raise ValueError("Input array must have two dimensions.")
-
-    persistent_data = StorageNumpy(input_array=x, name=name)
+    persistent_data = StorageNumpy(name=name)
 
     bn, bm = block_size
 
     blocks = []
-    for block in persistent_data.np_split(block_size=bn):
+    for block in persistent_data.np_split(block_size=(bn, bm)):
         blocks.append([block])
 
     arr = Array(blocks=blocks, top_left_shape=block_size,
-                reg_shape=block_size, shape=x.shape, sparse=False)
+                reg_shape=block_size, shape=persistent_data.shape, sparse=False)
     return arr
 
 

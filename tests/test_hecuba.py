@@ -33,8 +33,8 @@ class HecubaTest(unittest.TestCase):
         x = np.array([[j for j in range(i * 10, i * 10 + 10)]
                       for i in range(10)])
 
-        data = ds.load_from_hecuba(x=x, block_size=block_size,
-                                   name="hecuba_dislib.test_array")
+        data = ds.array(x=x, block_size=block_size)
+        data.make_persistent(name="hecuba_dislib.test_array")
         ds_data = ds.array(x=x, block_size=block_size)
 
         for h_chunk, chunk in zip(data._iterator(axis="rows"),
@@ -43,12 +43,32 @@ class HecubaTest(unittest.TestCase):
             should_be = chunk.collect()
             self.assertTrue(np.array_equal(r_data, should_be))
 
+    def test_iterate_columns(self):
+        """
+        Tests iterating through the rows of the Hecuba array
+        """
+        config.session.execute("TRUNCATE TABLE hecuba.istorage")
+        config.session.execute("DROP KEYSPACE IF EXISTS hecuba_dislib")
+        block_size = (10, 2)
+        x = np.array([[j for j in range(i * 10, i * 10 + 10)]
+                      for i in range(10)])
+
+        data = ds.array(x=x, block_size=block_size)
+        data.make_persistent(name="hecuba_dislib.test_array")
+        ds_data = ds.array(x=x, block_size=block_size)
+
+        for h_chunk, chunk in zip(data._iterator(axis="columns"),
+                                  ds_data._iterator(axis="columns")):
+            r_data = h_chunk.collect()
+            should_be = chunk.collect()
+            self.assertTrue(np.array_equal(r_data, should_be))
+
     def test_get_slice_dense(self):
         """ Tests get a dense slice of the Hecuba array """
         bn, bm = 5, 5
         x = np.random.randint(100, size=(30, 30))
-        data = ds.load_from_hecuba(x=x, block_size=(bn, bm),
-                                   name="hecuba_dislib.test_array")
+        data = ds.array(x=x, block_size=(bn, bm))
+        data.make_persistent(name="hecuba_dislib.test_array")
 
         slice_indices = [(7, 22, 7, 22),  # many row-column
                          (6, 8, 6, 8),  # single block row-column
@@ -89,9 +109,9 @@ class HecubaTest(unittest.TestCase):
         block_size = (x_filtered.shape[0] // 10, x_filtered.shape[1])
 
         x_train = ds.array(x_filtered, block_size=block_size)
-        x_train_hecuba = ds.load_from_hecuba(x=x_filtered,
-                                             block_size=block_size,
-                                             name="hecuba_dislib.test_array2")
+        x_train_hecuba = ds.array(x=x_filtered,
+                                  block_size=block_size)
+        x_train_hecuba.make_persistent(name="hecuba_dislib.test_array")
 
         kmeans = KMeans(n_clusters=3, random_state=170, verbose=True)
         labels = kmeans.fit_predict(x_train).collect()
@@ -114,9 +134,9 @@ class HecubaTest(unittest.TestCase):
         block_size = (x_filtered.shape[0] // 10, x_filtered.shape[1])
 
         x_train = ds.array(x_filtered, block_size=block_size)
-        x_train_hecuba = ds.load_from_hecuba(x=x_filtered,
-                                             block_size=block_size,
-                                             name="hecuba_dislib.test_array2")
+        x_train_hecuba = ds.array(x=x_filtered,
+                                  block_size=block_size)
+        x_train_hecuba.make_persistent(name="hecuba_dislib.test_array")
 
         # ensure that all data is released from memory
         blocks = x_train_hecuba._blocks
@@ -125,8 +145,8 @@ class HecubaTest(unittest.TestCase):
         del x_train_hecuba
         gc.collect()
 
-        x_train_hecuba = ds.load_from_hecuba(x=None, block_size=block_size,
-                                             name="hecuba_dislib.test_array2")
+        x_train_hecuba = ds.load_from_hecuba(name="hecuba_dislib.test_array2",
+                                             block_size=block_size)
 
         kmeans = KMeans(n_clusters=3, random_state=170)
         labels = kmeans.fit_predict(x_train).collect()
@@ -148,10 +168,10 @@ class HecubaTest(unittest.TestCase):
 
         block_size = (x_data.shape[0] // 3, x_data.shape[1])
 
-        x = ds.load_from_hecuba(x=x_data, block_size=block_size,
-                                name="hecuba_dislib.test_array_x")
-        y = ds.load_from_hecuba(x=y_data, block_size=block_size,
-                                name="hecuba_dislib.test_array_y")
+        x = ds.array(x=x_data, block_size=block_size)
+        x.make_persistent(name="hecuba_dislib.test_array_x")
+        y = ds.array(x=y_data, block_size=block_size)
+        y.make_persistent(name="hecuba_dislib.test_array_y")
 
         reg = LinearRegression()
         reg.fit(x, y)
@@ -163,8 +183,8 @@ class HecubaTest(unittest.TestCase):
         self.assertTrue(np.allclose(reg.intercept_, 0.3))
 
         x_test = np.array([3, 5]).reshape(-1, 1)
-        test_data = ds.load_from_hecuba(x=x_test, block_size=block_size,
-                                        name="hecuba_dislib.test_array_test")
+        test_data = ds.array(x=x_test, block_size=block_size)
+        test_data.make_persistent(name="hecuba_dislib.test_array_test")
         pred = reg.predict(test_data).collect()
         self.assertTrue(np.allclose(pred, [2.1, 3.3]))
 
@@ -181,10 +201,10 @@ class HecubaTest(unittest.TestCase):
         data = ds.array(x, block_size=block_size)
         q_data = ds.array(x, block_size=block_size2)
 
-        data_h = ds.load_from_hecuba(x, block_size=block_size,
-                                     name="hecuba_dislib.test_array")
-        q_data_h = ds.load_from_hecuba(x, block_size=block_size2,
-                                       name="hecuba_dislib.test_array_q")
+        data_h = ds.array(x, block_size=block_size)
+        data_h.make_persistent(name="hecuba_dislib.test_array")
+        q_data_h = ds.array(x, block_size=block_size2)
+        q_data_h.make_persistent(name="hecuba_dislib.test_array_q")
 
         knn = NearestNeighbors(n_neighbors=10)
         knn.fit(data)
@@ -205,8 +225,8 @@ class HecubaTest(unittest.TestCase):
 
         x, _ = make_blobs(n_samples=10, n_features=4, random_state=0)
         bn, bm = 25, 5
-        dataset = ds.load_from_hecuba(x=x, block_size=(bn, bm),
-                                      name="hecuba_dislib.test_array")
+        dataset = ds.array(x=x, block_size=(bn, bm))
+        dataset.make_persistent(name="hecuba_dislib.test_array")
 
         pca = PCA(n_components=3)
         transformed = pca.fit_transform(dataset).collect()
