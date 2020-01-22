@@ -753,7 +753,8 @@ def load_from_hecuba(name, block_size):
         blocks.append([block])
 
     arr = Array(blocks=blocks, top_left_shape=block_size,
-                reg_shape=block_size, shape=persistent_data.shape, sparse=False)
+                reg_shape=block_size, shape=persistent_data.shape,
+                sparse=False)
     return arr
 
 
