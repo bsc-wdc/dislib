@@ -1,5 +1,6 @@
 import itertools
 import os
+import uuid
 from collections import defaultdict
 from math import ceil
 
@@ -68,8 +69,7 @@ class Array(object):
         True if this array contains sparse data.
     """
 
-    def __init__(self, blocks, top_left_shape, reg_shape, shape, sparse,
-                 backend=None):
+    def __init__(self, blocks, top_left_shape, reg_shape, shape, sparse):
         self._validate_blocks(blocks)
 
         self._blocks = blocks
@@ -79,7 +79,6 @@ class Array(object):
         self._n_blocks = (len(blocks), len(blocks[0]))
         self._shape = shape
         self._sparse = sparse
-        self._backend = backend
 
     def __str__(self):
         return "ds-array(blocks=(...), top_left_shape=%r, reg_shape=%r, " \
@@ -94,6 +93,9 @@ class Array(object):
                    self._sparse)
 
     def __getitem__(self, arg):
+        if getattr(self, "_base_array", None) is not None:
+            return array(x=list(self._base_array[arg]),
+                         block_size=self._reg_shape)
 
         # return a single row
         if isinstance(arg, int):
@@ -153,12 +155,16 @@ class Array(object):
         Helper function that merges the _blocks attribute of a ds-array into
         a single ndarray / sparse matrix.
         """
-        if os.environ.get("CONTACT_NAMES") and \
-                isinstance(blocks[0][0], StorageNumpy):
-            return np.array(list(blocks[0][0]))
-
         sparse = None
         b0 = blocks[0][0]
+
+        if os.environ.get("CONTACT_NAMES") and \
+                isinstance(blocks[0][0], StorageNumpy):
+            if len(b0.shape) > 2:
+                return np.array(list(b0[0]))
+            else:
+                return np.array(list(b0))
+
         if sparse is None:
             sparse = issparse(b0)
 
@@ -675,15 +681,18 @@ class Array(object):
             raise Exception("Data must not be a sparse matrix.")
 
         x = self.collect()
-
         persistent_data = StorageNumpy(input_array=x, name=name)
-
-        bn, bm = self._top_left_shape
+        # self._base_array is used for much more efficient slicing.
+        # It does not take up more space since it is a reference to the db.
+        self._base_array = persistent_data
 
         blocks = []
-        for block in persistent_data.np_split(block_size=(bn, bm)):
-            blocks.append([block])
+        for block in self._blocks:
+            persistent_block = StorageNumpy(input_array=block, name=name,
+                                            storage_id=uuid.uuid4())
+            blocks.append(persistent_block)
         self._blocks = blocks
+
         return self
 
 
@@ -755,6 +764,7 @@ def load_from_hecuba(name, block_size):
     arr = Array(blocks=blocks, top_left_shape=block_size,
                 reg_shape=block_size, shape=persistent_data.shape,
                 sparse=False)
+    arr._base_array = persistent_data
     return arr
 
 
