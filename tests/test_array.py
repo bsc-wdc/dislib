@@ -228,7 +228,15 @@ class ArrayTest(unittest.TestCase):
                            _gen_irregular_arrays("sparse", (98, 10), (85, 2)) +
                            (None, [0, 1, 2, 5]),
                            _gen_irregular_arrays("sparse", (10, 98), (2, 85)) +
-                           ([0, 1, 2, 5], None)])
+                           ([0, 1, 2, 5], None),
+                           _gen_irregular_arrays("dense", (22, 49), (3, 1)) +
+                           (None, [18, 20, 41, 44]),
+                           _gen_irregular_arrays("dense", (49, 22), (1, 3)) +
+                           ([18, 20, 41, 44], None),
+                           _gen_random_arrays("dense", (5, 4), (3, 3)) +
+                           ([0, 1, 3, 4], None),
+                           _gen_random_arrays("dense", (4, 5), (3, 3)) +
+                           (None, [0, 1, 3, 4])])
     def test_fancy_indexing(self, x, x_np, rows=None, cols=None):
         """ Tests fancy indexing """
 

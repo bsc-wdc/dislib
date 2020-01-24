@@ -368,9 +368,10 @@ class Array(object):
                                    boundaries=boundaries)
                 out_blocks[out_i][out_j] = fb
 
-        # To compute the shape of the resulting top left block, we need to
-        # know where the block is located (can be a regular block or an
-        # irregular block at one of the edges)
+        # The shape of the top left block of the sliced array depends on the
+        # slice. To compute it, we need the shape of the block of
+        # the original array where the sliced array starts. This block can
+        # be regular or irregular (i.e., the block is on the edges).
         b0, b1 = self._reg_shape
 
         if i_0 == 0:
