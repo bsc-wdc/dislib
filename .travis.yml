@@ -17,8 +17,8 @@ env:
     - TEST_CASSANDRA_VERSION=3.11.4
 
 before_script:
-    - docker build --tag bscwdc/dislib .
     - source launch_cassandra.sh
+    - docker build --tag bscwdc/dislib .
     - docker run $(bash <(curl -s https://codecov.io/env)) --network cassandra_bridge -d --name dislib bscwdc/dislib
 
 

@@ -2,11 +2,14 @@
 
 # Default process per worker
 export ComputingUnits=4
+echo "Using Cassandra host $CONTACT_NAMES"
+echo "export CONTACT_NAMES=$CONTACT_NAMES" >> ~/.bashrc
 
 # Run the tests/__main__.py file which calls all the tests named test_*.py
 runcompss \
     --pythonpath=$(pwd) \
     --python_interpreter=python3 \
+    --classpath=./StorageItf-1.0-jar-with-dependencies.jar \
     ./tests/__main__.py &> >(tee output.log)
 
 # Check the unittest output because PyCOMPSs exits with code 0 even if there
