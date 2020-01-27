@@ -98,7 +98,6 @@ class Array(object):
 
         # slicing only rows
         elif isinstance(arg, slice):
-            # slice only rows
             return self._get_slice(rows=arg, cols=slice(None, None))
 
         # we have indices for both dimensions
@@ -397,8 +396,9 @@ class Array(object):
         block_shape = (b0, b1)
 
         top, left = self._coords_in_block(i_0, j_0, r_start, c_start)
-        bi0 = block_shape[0] - (top % block_shape[0])
-        bj0 = block_shape[1] - (left % block_shape[1])
+
+        bi0 = min(n_rows, block_shape[0] - (top % block_shape[0]))
+        bj0 = min(n_cols, block_shape[1] - (left % block_shape[1]))
 
         # Regular blocks shape is the same
         bn, bm = self._reg_shape
