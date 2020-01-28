@@ -3,7 +3,7 @@
 # Default process per worker
 export ComputingUnits=4
 echo "Using Cassandra host $CONTACT_NAMES"
-echo "export CONTACT_NAMES=$CONTACT_NAMES" >> ~/.bashrc
+#echo "export CONTACT_NAMES=$CONTACT_NAMES" >> ~/.bashrc
 
 # Run the tests/__main__.py file which calls all the tests named test_*.py
 runcompss \
