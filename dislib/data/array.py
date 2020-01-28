@@ -164,6 +164,7 @@ class Array(object):
             #     return np.array(list(b0[0]))
             # else:
             #     return np.array(list(b0))
+        raise Exception("no esta entrando")
 
         if sparse is None:
             sparse = issparse(b0)
