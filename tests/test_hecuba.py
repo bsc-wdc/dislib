@@ -1,7 +1,10 @@
 import gc
+import os
 import unittest
 
 import numpy as np
+
+os.environ["CONTACT_NAMES"] = "cassandra_container"
 from hecuba import config
 from pycompss.api.api import compss_wait_on
 from sklearn.datasets import make_blobs

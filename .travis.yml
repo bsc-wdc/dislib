@@ -19,10 +19,10 @@ env:
 before_script:
     - source launch_cassandra.sh
     - docker build --tag bscwdc/dislib .
-    - docker run $(bash <(curl -s https://codecov.io/env)) --network cassandra_bridge -d --name dislib bscwdc/dislib
+    - docker run $(bash <(curl -s https://codecov.io/env)) --network cassandra_bridge -d --name dislib adrianespejo/dislib_hecuba:0.1
 
 
-script: "docker exec -e CONTACT_NAMES=$CONTACT_NAMES dislib /dislib/run_ci_checks.sh"
+script: "docker exec dislib /dislib/run_ci_checks.sh"
 
 after_script:
   - docker images
