@@ -159,10 +159,11 @@ class Array(object):
         b0 = blocks[0][0]
 
         if type(b0) != np.ndarray:
-            if len(b0.shape) > 2:
-                return np.array(list(b0[0]))
-            else:
-                return np.array(list(b0))
+            raise Exception("esta entrando")
+            # if len(b0.shape) > 2:
+            #     return np.array(list(b0[0]))
+            # else:
+            #     return np.array(list(b0))
 
         if sparse is None:
             sparse = issparse(b0)
