@@ -1,5 +1,4 @@
 import itertools
-import os
 import uuid
 from collections import defaultdict
 from math import ceil
@@ -13,9 +12,11 @@ from scipy import sparse as sp
 from scipy.sparse import issparse, csr_matrix
 from sklearn.utils import check_random_state
 
-if os.environ.get("CONTACT_NAMES") and \
-        importlib.util.find_spec("hecuba"):
-    from hecuba.hnumpy import StorageNumpy
+if importlib.util.find_spec("hecuba"):
+    try:
+        from hecuba.hnumpy import StorageNumpy
+    except Exception:
+        pass
 
 
 class Array(object):
