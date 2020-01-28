@@ -1,4 +1,4 @@
-docker network create --attachable --driver bridge cassandra_network
+docker network create --attachable --driver bridge cassandra_bridge
 # launch Cassandra
 CASSANDRA_ID=$(docker run --rm --name cassandra_container --network=cassandra_bridge -d cassandra)
 sleep 30
