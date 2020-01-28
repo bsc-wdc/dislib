@@ -162,7 +162,7 @@ class Array(object):
         if type(b0) != np.ndarray and type(b0) != csr_matrix:
             # raise Exception("esta entrando")
             if len(b0.shape) > 2:
-                return np.array(list(b0[0]))
+                return np.array(list(b0)[0])
             else:
                 return np.array(list(b0))
         # raise Exception("no esta entrando")
