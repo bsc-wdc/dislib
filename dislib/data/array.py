@@ -1,5 +1,6 @@
 import itertools
 import os
+import sys
 import uuid
 from collections import defaultdict
 from math import ceil
@@ -158,8 +159,9 @@ class Array(object):
         sparse = None
         b0 = blocks[0][0]
 
-        if os.environ.get("CONTACT_NAMES") and \
+        if "hecuba" in sys.modules and \
                 isinstance(blocks[0][0], StorageNumpy):
+            print("merging blocks of a numpy")
             if len(b0.shape) > 2:
                 return np.array(list(b0[0]))
             else:
