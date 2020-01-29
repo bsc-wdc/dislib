@@ -159,7 +159,7 @@ class Array(object):
         sparse = None
         b0 = blocks[0][0]
         # raise Exception(str(blocks) + "\n\n\n" + str(type(b0)) + str(b0))
-        if type(b0) != np.ndarray and type(b0) != csr_matrix:
+        if b0.__class__.__name__ == "StorageNumpy":
             # raise Exception("esta entrando")
             if len(b0.shape) > 2:
                 return np.array(list(b0[0]))
