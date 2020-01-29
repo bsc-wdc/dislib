@@ -162,7 +162,7 @@ class Array(object):
         if b0.__class__.__name__ == "StorageNumpy":
             # raise Exception("esta entrando")
             if len(b0.shape) > 2:
-                return np.array(list(b0[0]))
+                return np.array(list(b0)[0])
             else:
                 return np.array(list(b0))
         # raise Exception("no esta entrando")
