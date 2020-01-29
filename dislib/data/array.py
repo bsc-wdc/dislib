@@ -681,7 +681,9 @@ class Array(object):
         if self._sparse:
             raise Exception("Data must not be a sparse matrix.")
 
-        x = self.collect()
+        # x = self.collect()
+        x = np.block(self._blocks)
+        x = np.squeeze(x)
         persistent_data = StorageNumpy(input_array=x, name=name)
         # self._base_array is used for much more efficient slicing.
         # It does not take up more space since it is a reference to the db.
