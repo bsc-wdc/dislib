@@ -157,7 +157,9 @@ class Array(object):
         a single ndarray / sparse matrix.
         """
         sparse = None
-        raise Exception(str(blocks))
+        raise Exception(f"{str(type(blocks))}, {str(type(blocks[0]))}, "
+                        f"{str(type(blocks[0][0]))}, "
+                        f"{str(type(blocks[0][0][0]))}")
         if blocks[0].__class__.__name__ == "StorageNumpy":
             b0 = blocks[0]
             if len(b0.shape) > 2:
