@@ -207,7 +207,10 @@ class Array(object):
         if axis == 0 or axis == 'rows':
             for i, row in enumerate(self._blocks):
                 row_shape = self._get_row_shape(i)
-                yield Array(blocks=[row], top_left_shape=self._top_left_shape,
+
+                yield Array(blocks=[row],
+                            top_left_shape=(row_shape[0],
+                                            self._top_left_shape[1]),
                             reg_shape=self._reg_shape, shape=row_shape,
                             sparse=self._sparse)
 
@@ -218,7 +221,8 @@ class Array(object):
                 col_blocks = [[self._blocks[i][j]] for i in
                               range(self._n_blocks[0])]
                 yield Array(blocks=col_blocks,
-                            top_left_shape=self._top_left_shape,
+                            top_left_shape=(self._top_left_shape[0],
+                                            col_shape[1]),
                             reg_shape=self._reg_shape,
                             shape=col_shape, sparse=self._sparse)
 
@@ -424,9 +428,11 @@ class Array(object):
             adj_row_idxs[containing_block].append(adj_idx)
 
         row_blocks = []
+        total_rows = 0
         for rowblock_idx, row in enumerate(self._iterator(axis='rows')):
             # create an empty list for the filtered row (single depth)
             rows_in_block = len(adj_row_idxs[rowblock_idx])
+            total_rows += rows_in_block
             # only launch the task if we are selecting rows from that block
             if rows_in_block > 0:
                 row_block = _filter_rows(blocks=row._blocks,
@@ -467,7 +473,10 @@ class Array(object):
             _merge_rows(to_merge, out_blocks, self._reg_shape, skip)
             final_blocks.append(out_blocks)
 
-        return Array(blocks=final_blocks, top_left_shape=self._top_left_shape,
+        top_left_shape = (min(total_rows, self._reg_shape[0]),
+                          self._reg_shape[1])
+
+        return Array(blocks=final_blocks, top_left_shape=top_left_shape,
                      reg_shape=self._reg_shape,
                      shape=(len(rows), self._shape[1]), sparse=self._sparse)
 
@@ -486,9 +495,11 @@ class Array(object):
             adj_col_idxs[containing_block].append(adj_idx)
 
         col_blocks = []
+        total_cols = 0
         for colblock_idx, col in enumerate(self._iterator(axis='columns')):
             # create an empty list for the filtered row (single depth)
             cols_in_block = len(adj_col_idxs[colblock_idx])
+            total_cols += cols_in_block
             # only launch the task if we are selecting rows from that block
             if cols_in_block > 0:
                 col_block = _filter_cols(blocks=col._blocks,
@@ -532,7 +543,10 @@ class Array(object):
         # list are in col-order transpose them for the correct ordering
         final_blocks = list(map(list, zip(*final_blocks)))
 
-        return Array(blocks=final_blocks, top_left_shape=self._top_left_shape,
+        top_left_shape = (self._reg_shape[0],
+                          min(total_cols, self._reg_shape[1]))
+
+        return Array(blocks=final_blocks, top_left_shape=top_left_shape,
                      reg_shape=self._reg_shape,
                      shape=(self._shape[0], len(cols)), sparse=self._sparse)
 
