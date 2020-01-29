@@ -157,14 +157,15 @@ class Array(object):
         a single ndarray / sparse matrix.
         """
         sparse = None
-        b0 = blocks[0][0]
 
-        if b0.__class__.__name__ == "StorageNumpy":
+        if blocks[0].__class__.__name__ == "StorageNumpy":
+            b0 = blocks[0]
             if len(b0.shape) > 2:
                 return np.array(list(b0)[0])
             else:
                 return np.array(list(b0))
 
+        b0 = blocks[0][0]
         if sparse is None:
             sparse = issparse(b0)
 
