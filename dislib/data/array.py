@@ -159,6 +159,7 @@ class Array(object):
         sparse = None
 
         if blocks[0].__class__.__name__ == "StorageNumpy":
+            raise Exception(str(blocks))
             b0 = blocks[0]
             if len(b0.shape) > 2:
                 return np.array(list(b0)[0])
