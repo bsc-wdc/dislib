@@ -157,15 +157,15 @@ class Array(object):
         a single ndarray / sparse matrix.
         """
         sparse = None
-        raise Exception(str(type(blocks)) + ", " + str(type(blocks[0]))
-                        + ", " + str(type(blocks[0][0]))
-                        + ", " + str(type(blocks[0][0][0])))
-        if blocks[0].__class__.__name__ == "StorageNumpy":
-            b0 = blocks[0]
-            if len(b0.shape) > 2:
-                return np.array(list(b0)[0])
-            else:
-                return np.array(list(b0))
+        # raise Exception(str(type(blocks)) + ", " + str(type(blocks[0]))
+        #                 + ", " + str(type(blocks[0][0]))
+        #                 + ", " + str(type(blocks[0][0][0])))
+        # if blocks[0].__class__.__name__ == "StorageNumpy":
+        #     b0 = blocks[0]
+        #     if len(b0.shape) > 2:
+        #         return np.array(list(b0)[0])
+        #     else:
+        #         return np.array(list(b0))
 
         b0 = blocks[0][0]
         if sparse is None:
@@ -683,9 +683,7 @@ class Array(object):
         if self._sparse:
             raise Exception("Data must not be a sparse matrix.")
 
-        # x = self.collect()
-        x = np.block(self._blocks)
-        x = np.squeeze(x)
+        x = self.collect()
         persistent_data = StorageNumpy(input_array=x, name=name)
         # self._base_array is used for much more efficient slicing.
         # It does not take up more space since it is a reference to the db.
