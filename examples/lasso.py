@@ -74,7 +74,9 @@ m, s, _ = plt.stem(np.where(lasso_sk.coef_)[0], lasso_sk.coef_[
                    use_line_collection=True)
 plt.setp([m, s], color='#af1b32')
 
-m, s, _ = plt.stem(np.where(lasso.coef_)[0], lasso.coef_[lasso.coef_ != 0],
+lasso_coef = lasso.coef_.collect()
+
+m, s, _ = plt.stem(np.where(lasso_coef)[0], lasso_coef[lasso_coef != 0],
                    markerfmt='x', label='Lasso (dislib) coefficients',
                    use_line_collection=True)
 plt.setp([m, s], color='#ff7f0e')
