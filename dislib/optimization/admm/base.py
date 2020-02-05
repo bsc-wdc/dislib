@@ -204,9 +204,14 @@ def _update_w(x_blocks, y_blocks, z, u_blocks, rho, loss, w_blocks):
     u_np = np.squeeze(Array._merge_blocks(u_blocks))
 
     w_new = cp.Variable(x_np.shape[1])
+
     problem = cp.Problem(cp.Minimize(_objective(loss, x_np, y_np, w_new, z,
                                                 u_np, rho)))
     problem.solve()
+    status = problem.status
+
+    if 'infeasible' in status or 'unbounded' in status:
+        raise Exception("Cannot solve the problem. CVXPY status: %s" % status)
 
     w_np = w_new.value
     n_cols = x_blocks[0][0].shape[1]
@@ -217,7 +222,7 @@ def _update_w(x_blocks, y_blocks, z, u_blocks, rho, loss, w_blocks):
 
 def _objective(loss, x, y, w, z, u, rho):
     reg = cp.norm(w - z + u, p=2) ** 2
-    return loss(x, y, w) + rho / 2 * reg
+    return loss(x, y, w) + (rho / 2) * reg
 
 
 @task(w_blocks={Type: COLLECTION_IN, Depth: 2},
