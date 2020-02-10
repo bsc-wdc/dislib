@@ -45,7 +45,7 @@ RUN apt-get update && \
     python3-dev python3-pip python3-setuptools && \
     pip3 install wheel dill decorator coverage numpy==1.15.4 ipython==7.9.0 \
     scipy==1.3.0 jupyter==1.0.0 scikit-learn==0.19.1 pandas==0.23.1 \
-    matplotlib==2.2.3 flake8 codecov && \
+    matplotlib==2.2.3 flake8 codecov parameterized && \
 # Configure user environment
 # =============================================================================
 # System configuration

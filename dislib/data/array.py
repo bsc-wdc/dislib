@@ -1,4 +1,3 @@
-import itertools
 from collections import defaultdict
 from math import ceil
 
@@ -25,8 +24,10 @@ class Array(object):
         - ``A[i:j]`` : returns a set of rows (with ``i`` and ``j`` optional)
         - ``A[:, i:j]`` : returns a set of columns (with ``i`` and ``j``
           optional)
-        - ``A[[i,j,k]]`` : returns a set of non-consecutive rows
-        - ``A[:, [i,j,k]]`` : returns a set of non-consecutive columns
+        - ``A[[i,j,k]]`` : returns a set of non-consecutive rows. Rows are
+        returned ordered by their index in the input array.
+        - ``A[:, [i,j,k]]`` : returns a set of non-consecutive columns.
+        Columns are returned ordered by their index in the input array.
         - ``A[i:j, k:m]`` : returns a set of elements (with ``i``, ``j``,
           ``k``, and ``m`` optional)
 
@@ -97,7 +98,6 @@ class Array(object):
 
         # slicing only rows
         elif isinstance(arg, slice):
-            # slice only rows
             return self._get_slice(rows=arg, cols=slice(None, None))
 
         # we have indices for both dimensions
@@ -118,6 +118,9 @@ class Array(object):
         # slicing both dimensions
         elif isinstance(rows, slice) and isinstance(cols, slice):
             return self._get_slice(rows, cols)
+
+        elif isinstance(rows, slice) and isinstance(cols, int):
+            raise NotImplementedError("Single column indexing not supported.")
 
         raise IndexError("Invalid indexing information: %s" % str(arg))
 
@@ -166,15 +169,6 @@ class Array(object):
         return [[object() for _ in range(n_blocks[1])]
                 for _ in range(n_blocks[0])]
 
-    @staticmethod
-    def _broadcast_shapes(x, y):
-        if len(x) != 1 or len(y) != 1:
-            raise IndexError("shape mismatch: indexing arrays could "
-                             "not be broadcast together with shapes %s %s" %
-                             (len(x), len(y)))
-
-        return zip(*itertools.product(*[x, y]))
-
     def _get_row_shape(self, row_idx):
         if row_idx == 0:
             return self._top_left_shape[0], self.shape[1]
@@ -213,7 +207,10 @@ class Array(object):
         if axis == 0 or axis == 'rows':
             for i, row in enumerate(self._blocks):
                 row_shape = self._get_row_shape(i)
-                yield Array(blocks=[row], top_left_shape=self._top_left_shape,
+
+                yield Array(blocks=[row],
+                            top_left_shape=(row_shape[0],
+                                            self._top_left_shape[1]),
                             reg_shape=self._reg_shape, shape=row_shape,
                             sparse=self._sparse)
 
@@ -224,7 +221,8 @@ class Array(object):
                 col_blocks = [[self._blocks[i][j]] for i in
                               range(self._n_blocks[0])]
                 yield Array(blocks=col_blocks,
-                            top_left_shape=self._top_left_shape,
+                            top_left_shape=(self._top_left_shape[0],
+                                            col_shape[1]),
                             reg_shape=self._reg_shape,
                             shape=col_shape, sparse=self._sparse)
 
@@ -281,8 +279,8 @@ class Array(object):
         Return the element in (i, j) as a ds-array with a single element.
         """
         # we are returning a single element
-        if i > self.shape[0] or j > self.shape[0]:
-            raise IndexError("Shape is %s" % self.shape)
+        if i > self.shape[0] or j > self.shape[1]:
+            raise IndexError("Shape is ", self.shape)
 
         bi, bj = self._get_containing_block(i, j)
         local_i, local_j = self._coords_in_block(bi, bj, i, j)
@@ -373,11 +371,38 @@ class Array(object):
                                    boundaries=boundaries)
                 out_blocks[out_i][out_j] = fb
 
-        # Shape of the top left block
-        top, left = self._coords_in_block(0, 0, r_start, c_start)
+        # The shape of the top left block of the sliced array depends on the
+        # slice. To compute it, we need the shape of the block of
+        # the original array where the sliced array starts. This block can
+        # be regular or irregular (i.e., the block is on the edges).
+        b0, b1 = self._reg_shape
 
-        bi0 = self._reg_shape[0] - (top % self._reg_shape[0])
-        bj0 = self._reg_shape[1] - (left % self._reg_shape[1])
+        if i_0 == 0:
+            # block is at the top
+            b0 = self._top_left_shape[0]
+        elif i_0 == self._n_blocks[0] - 1:
+            # block is at the bottom (can be regular or irregular)
+            b0 = (self.shape[0] - self._top_left_shape[0]) % self._reg_shape[0]
+
+            if b0 == 0:
+                b0 = self._reg_shape[0]
+
+        if j_0 == 0:
+            # block is leftmost
+            b1 = self._top_left_shape[1]
+        elif j_0 == self._n_blocks[1] - 1:
+            # block is rightmost (can be regular or irregular)
+            b1 = (self.shape[1] - self._top_left_shape[1]) % self._reg_shape[1]
+
+            if b1 == 0:
+                b1 = self._reg_shape[1]
+
+        block_shape = (b0, b1)
+
+        top, left = self._coords_in_block(i_0, j_0, r_start, c_start)
+
+        bi0 = min(n_rows, block_shape[0] - (top % block_shape[0]))
+        bj0 = min(n_cols, block_shape[1] - (left % block_shape[1]))
 
         # Regular blocks shape is the same
         bn, bm = self._reg_shape
@@ -391,8 +416,8 @@ class Array(object):
     def _get_by_lst_rows(self, rows):
         """
          Returns a slice of the ds-array defined by the lists of indices in
-          rows.
-         """
+         rows.
+        """
 
         # create dict where each key contains the adjusted row indices for that
         # block of rows
@@ -403,9 +428,11 @@ class Array(object):
             adj_row_idxs[containing_block].append(adj_idx)
 
         row_blocks = []
+        total_rows = 0
         for rowblock_idx, row in enumerate(self._iterator(axis='rows')):
             # create an empty list for the filtered row (single depth)
             rows_in_block = len(adj_row_idxs[rowblock_idx])
+            total_rows += rows_in_block
             # only launch the task if we are selecting rows from that block
             if rows_in_block > 0:
                 row_block = _filter_rows(blocks=row._blocks,
@@ -424,7 +451,8 @@ class Array(object):
             n_rows += rows_in_block
             # enough rows to merge into a row_block
             if n_rows >= self._reg_shape[0]:
-                out_blocks = [object() for _ in range(self._n_blocks[1])]
+                n_blocks = ceil(self.shape[1] / self._reg_shape[1])
+                out_blocks = [object() for _ in range(n_blocks)]
                 _merge_rows(to_merge, out_blocks, self._reg_shape, skip)
                 final_blocks.append(out_blocks)
 
@@ -440,11 +468,15 @@ class Array(object):
                     skip = 0
 
         if n_rows > 0:
-            out_blocks = [object() for _ in range(self._n_blocks[1])]
+            n_blocks = ceil(self.shape[1] / self._reg_shape[1])
+            out_blocks = [object() for _ in range(n_blocks)]
             _merge_rows(to_merge, out_blocks, self._reg_shape, skip)
             final_blocks.append(out_blocks)
 
-        return Array(blocks=final_blocks, top_left_shape=self._top_left_shape,
+        top_left_shape = (min(total_rows, self._reg_shape[0]),
+                          self._reg_shape[1])
+
+        return Array(blocks=final_blocks, top_left_shape=top_left_shape,
                      reg_shape=self._reg_shape,
                      shape=(len(rows), self._shape[1]), sparse=self._sparse)
 
@@ -463,9 +495,11 @@ class Array(object):
             adj_col_idxs[containing_block].append(adj_idx)
 
         col_blocks = []
+        total_cols = 0
         for colblock_idx, col in enumerate(self._iterator(axis='columns')):
             # create an empty list for the filtered row (single depth)
             cols_in_block = len(adj_col_idxs[colblock_idx])
+            total_cols += cols_in_block
             # only launch the task if we are selecting rows from that block
             if cols_in_block > 0:
                 col_block = _filter_cols(blocks=col._blocks,
@@ -483,16 +517,17 @@ class Array(object):
             to_merge.append(col)
             n_cols += cols_in_block
             # enough cols to merge into a col_block
-            if n_cols >= self._reg_shape[0]:
-                out_blocks = [object() for _ in range(self._n_blocks[1])]
+            if n_cols >= self._reg_shape[1]:
+                n_blocks = ceil(self.shape[0] / self._reg_shape[0])
+                out_blocks = [object() for _ in range(n_blocks)]
                 _merge_cols([to_merge], out_blocks, self._reg_shape, skip)
                 final_blocks.append(out_blocks)
 
                 # if we didn't take all cols, we keep the last block and
                 # remember to skip the cols that have been merged
-                if n_cols > self._reg_shape[0]:
+                if n_cols > self._reg_shape[1]:
                     to_merge = [col]
-                    n_cols = n_cols - self._reg_shape[0]
+                    n_cols = n_cols - self._reg_shape[1]
                     skip = cols_in_block - n_cols
                 else:
                     to_merge = []
@@ -500,14 +535,18 @@ class Array(object):
                     skip = 0
 
         if n_cols > 0:
-            out_blocks = [object() for _ in range(self._n_blocks[1])]
+            n_blocks = ceil(self.shape[0] / self._reg_shape[0])
+            out_blocks = [object() for _ in range(n_blocks)]
             _merge_cols([to_merge], out_blocks, self._reg_shape, skip)
             final_blocks.append(out_blocks)
 
         # list are in col-order transpose them for the correct ordering
         final_blocks = list(map(list, zip(*final_blocks)))
 
-        return Array(blocks=final_blocks, top_left_shape=self._top_left_shape,
+        top_left_shape = (self._reg_shape[0],
+                          min(total_cols, self._reg_shape[1]))
+
+        return Array(blocks=final_blocks, top_left_shape=top_left_shape,
                      reg_shape=self._reg_shape,
                      shape=(self._shape[0], len(cols)), sparse=self._sparse)
 
@@ -985,7 +1024,7 @@ def _merge_rows(blocks, out_blocks, blocks_shape, skip):
     data = Array._merge_blocks(blocks)
 
     for j in range(0, ceil(data.shape[1] / bm)):
-        out_blocks[j] = data[skip:bn, j * bm: (j + 1) * bm]
+        out_blocks[j] = data[skip:bn + skip, j * bm: (j + 1) * bm]
 
 
 @task(blocks={Type: COLLECTION_IN, Depth: 2},
@@ -999,7 +1038,7 @@ def _merge_cols(blocks, out_blocks, blocks_shape, skip):
     data = Array._merge_blocks(blocks)
 
     for i in range(0, ceil(data.shape[0] / bn)):
-        out_blocks[i] = data[i * bn: (i + 1) * bn, skip:bm]
+        out_blocks[i] = data[i * bn: (i + 1) * bn, skip:bm + skip]
 
 
 @task(returns=1)
