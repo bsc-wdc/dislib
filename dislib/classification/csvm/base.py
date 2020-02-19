@@ -2,8 +2,9 @@ from uuid import uuid4
 
 import numpy as np
 from pycompss.api.api import compss_delete_object
-from pycompss.api.api import compss_wait_on
-from pycompss.api.parameter import COLLECTION_IN, Depth, Type
+from pycompss.api.api import compss_wait_on, TaskGroup
+from pycompss.api.exceptions import COMPSsException
+from pycompss.api.parameter import COLLECTION_IN, Depth, Type, INOUT
 from pycompss.api.task import task
 from scipy.sparse import hstack as hstack_sp
 from scipy.sparse import issparse
@@ -12,6 +13,7 @@ from sklearn.svm import SVC
 
 from dislib.data.array import Array
 from dislib.utils.base import _paired_partition
+import uuid
 
 
 class CascadeSVM(BaseEstimator):
@@ -115,19 +117,26 @@ class CascadeSVM(BaseEstimator):
         -------
         self : CascadeSVM
         """
+        self._name = str(uuid.uuid4())
         self._check_initial_parameters()
         self._reset_model()
         self._set_gamma(x.shape[1])
         self._set_kernel()
         self._hstack_f = hstack_sp if x._sparse else np.hstack
+        self._clf = SVC(random_state=self.random_state, **self._clf_params)
 
         ids_list = [[_gen_ids(row._blocks)] for row in x._iterator(axis=0)]
 
-        while not self._check_finished():
-            self._do_iteration(x, y, ids_list)
+        with TaskGroup(self._name, False):
+            while not self._check_finished():
+                self._do_iteration(x, y, ids_list)
 
-            if self.check_convergence:
-                self._check_convergence_and_update_w()
+                if self.check_convergence:
+                    new_w = _compute_w(self._svs, self._sv_labels, self._clf,
+                                       x._sparse, self._kernel_f)
+                    _check_convergence(self._last_w, new_w, self.tol)
+                    self._last_w = new_w
+
                 self._print_iteration()
 
         return self
@@ -281,7 +290,7 @@ class CascadeSVM(BaseEstimator):
                 ids.append([self._sv_ids])
 
             _tmp = _train(x_data, y_data, ids, self.random_state, **pars)
-            sv, sv_labels, sv_ids, self._clf = _tmp
+            sv, sv_labels, sv_ids = _tmp
             q.append((sv, sv_labels, sv_ids))
 
         # reduction
@@ -294,7 +303,7 @@ class CascadeSVM(BaseEstimator):
             ids = [[tup[2]] for tup in data]
 
             _tmp = _train(x_data, y_data, ids, self.random_state, **pars)
-            sv, sv_labels, sv_ids, self._clf = _tmp
+            sv, sv_labels, sv_ids = _tmp
             q.append((sv, sv_labels, sv_ids))
 
             # delete partial results
@@ -306,48 +315,13 @@ class CascadeSVM(BaseEstimator):
         y_data = [[tup[1]] for tup in q]
         ids = [[tup[2]] for tup in q]
 
-        _tmp = _train(x_data, y_data, ids, self.random_state, **pars)
-        self._svs, self._sv_labels, self._sv_ids, self._clf = _tmp
+        _tmp = _retrain(x_data, y_data, ids, self._clf)
+        self._svs, self._sv_labels, self._sv_ids = _tmp
 
         self.iterations += 1
 
     def _check_finished(self):
-        return self.iterations >= self.max_iter or self.converged
-
-    def _lag_fast(self, vectors, labels, coef):
-        set_sl = set(labels.ravel())
-        assert len(set_sl) == 2, "Only binary problem can be handled"
-        new_sl = labels.copy()
-        new_sl[labels == 0] = -1
-
-        if issparse(coef):
-            coef = coef.toarray()
-
-        c1, c2 = np.meshgrid(coef, coef)
-        l1, l2 = np.meshgrid(new_sl, new_sl)
-        double_sum = c1 * c2 * l1 * l2 * self._kernel_f(vectors)
-        double_sum = double_sum.sum()
-        w = -0.5 * double_sum + coef.sum()
-
-        return w
-
-    def _check_convergence_and_update_w(self):
-        self._collect_clf()
-
-        vecs = self._hstack_f(self._svs)
-        w = self._lag_fast(vecs, self._sv_labels, self._clf.dual_coef_)
-        delta = 0
-
-        if self._last_w:
-            delta = np.abs((w - self._last_w) / self._last_w)
-
-            if delta < self.tol:
-                self.converged = True
-
-        if self.verbose:
-            self._print_convergence(delta, w)
-
-        self._last_w = w
+        return self.iterations >= self.max_iter
 
     def _print_convergence(self, delta, w):
         print("Computed W %s" % w)
@@ -379,6 +353,40 @@ class CascadeSVM(BaseEstimator):
         return np.dot(x, x.T)
 
 
+@task()
+def _check_convergence(last_w, w, tol):
+    if last_w:
+        delta = np.abs((w - last_w) / last_w)
+
+        if delta < tol:
+            raise COMPSsException("Converged with delta: " + str(delta))
+
+
+@task(returns=1)
+def _compute_w(svs, sv_labels, clf, sparse, kernel_f):
+    hstack_f = hstack_sp if sparse else np.hstack
+    vecs = hstack_f(svs)
+    return _lag_fast(vecs, sv_labels, clf.dual_coef_, kernel_f)
+
+
+def _lag_fast(vectors, labels, coef, kernel_f):
+    set_sl = set(labels.ravel())
+    assert len(set_sl) == 2, "Only binary problem can be handled"
+    new_sl = labels.copy()
+    new_sl[labels == 0] = -1
+
+    if issparse(coef):
+        coef = coef.toarray()
+
+    c1, c2 = np.meshgrid(coef, coef)
+    l1, l2 = np.meshgrid(new_sl, new_sl)
+    double_sum = c1 * c2 * l1 * l2 * kernel_f(vectors)
+    double_sum = double_sum.sum()
+    w = -0.5 * double_sum + coef.sum()
+
+    return w
+
+
 @task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=1)
 def _gen_ids(blocks):
     samples = Array._merge_blocks(blocks)
@@ -389,7 +397,7 @@ def _gen_ids(blocks):
 @task(x_list={Type: COLLECTION_IN, Depth: 2},
       y_list={Type: COLLECTION_IN, Depth: 2},
       id_list={Type: COLLECTION_IN, Depth: 2},
-      returns=4)
+      returns=3)
 def _train(x_list, y_list, id_list, random_state, **params):
     x, y, ids = _merge(x_list, y_list, id_list)
 
@@ -408,7 +416,32 @@ def _train(x_list, y_list, id_list, random_state, **params):
     sv_labels = y[clf.support_]
     sv_ids = ids[clf.support_]
 
-    return sv, sv_labels, sv_ids, clf
+    return sv, sv_labels, sv_ids
+
+
+@task(x_list={Type: COLLECTION_IN, Depth: 2},
+      y_list={Type: COLLECTION_IN, Depth: 2},
+      id_list={Type: COLLECTION_IN, Depth: 2},
+      clf=INOUT,
+      returns=3)
+def _retrain(x_list, y_list, id_list, clf):
+    x, y, ids = _merge(x_list, y_list, id_list)
+
+    clf.fit(X=x, y=y.ravel())
+
+    sup = x[clf.support_]
+    start, end = 0, 0
+    sv = []
+
+    for xi in x_list[0]:
+        end += xi.shape[1]
+        sv.append(sup[:, start:end])
+        start = end
+
+    sv_labels = y[clf.support_]
+    sv_ids = ids[clf.support_]
+
+    return sv, sv_labels, sv_ids
 
 
 @task(x_list={Type: COLLECTION_IN, Depth: 2}, returns=np.array)

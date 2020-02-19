@@ -5,15 +5,17 @@ from functools import partial
 from itertools import product
 
 import numpy as np
+from pycompss.api.api import compss_barrier_group
 from pycompss.api.api import compss_wait_on
+from pycompss.api.exceptions import COMPSsException
 from scipy.stats import rankdata
 from sklearn import clone
 from sklearn.model_selection import ParameterGrid, ParameterSampler
 from sklearn.utils.fixes import MaskedArray
 
 from dislib.model_selection._split import infer_cv
-from dislib.model_selection._validation import check_scorer, fit_and_score, \
-    validate_score, aggregate_score_dicts
+from dislib.model_selection._validation import check_scorer, validate_score, \
+    aggregate_score_dicts, only_fit, only_score
 
 
 class BaseSearchCV(ABC):
@@ -58,12 +60,25 @@ class BaseSearchCV(ABC):
         def evaluate_candidates(candidate_params):
             """Evaluate some parameters"""
             candidate_params = list(candidate_params)
+            estimators = []
 
-            out = [fit_and_score(clone(base_estimator), train, validation,
-                                 scorer=scorers, parameters=parameters,
-                                 fit_params=fit_params)
-                   for parameters, (train, validation)
-                   in product(candidate_params, cv.split(x, y))]
+            for parameters, (train, validation) in product(candidate_params,
+                                                           cv.split(x, y)):
+                cloned = clone(base_estimator)
+                estimators.append(cloned)
+                only_fit(cloned, train, parameters=parameters,
+                         fit_params=fit_params)
+
+            out = []
+
+            for estim in estimators:
+                try:
+                    compss_barrier_group(estim._name)
+                except COMPSsException:
+                    print("Estimator " + estim._name + " converged after " +
+                          estim.iterations + " iterations.")
+
+                out.append(only_score(estim, validation, scorer=scorers))
 
             nonlocal n_splits
             n_splits = cv.get_n_splits()
@@ -562,6 +577,7 @@ class RandomizedSearchCV(BaseSearchCV):
     n_splits_ : int
         The number of cross-validation splits (folds/iterations).
     """
+
     def __init__(self, estimator, param_distributions, n_iter=10, scoring=None,
                  cv=None, refit=True, random_state=None):
         super().__init__(estimator=estimator, scoring=scoring, cv=cv,
