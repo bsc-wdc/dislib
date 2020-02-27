@@ -140,6 +140,22 @@ class DataLoadingTest(unittest.TestCase):
 
         self.assertTrue(np.array_equal(data.collect(), csv))
 
+    def test_load_npy_file(self):
+        """ Tests loading an npy file """
+        path = "tests/files/npy/1.npy"
+
+        x = ds.load_npy_file(path, block_size=(3, 9))
+        x_np = np.load(path)
+
+        self.assertTrue(_check_array_shapes(x))
+        self.assertTrue(np.array_equal(x.collect(), x_np))
+
+        with self.assertRaises(ValueError):
+            ds.load_npy_file(path, block_size=(1000, 1000))
+
+        with self.assertRaises(ValueError):
+            ds.load_npy_file("tests/files/npy/3d.npy", block_size=(3, 3))
+
 
 class ArrayTest(unittest.TestCase):
 
