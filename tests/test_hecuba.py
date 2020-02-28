@@ -90,12 +90,10 @@ class HecubaTest(unittest.TestCase):
         for top, bot, left, right in slice_indices:
             print("1")
             print(data[top:bot, left:right])
-
-            expected = ds_data[top:bot, left:right].collect()
-
+            got = data[top:bot, left:right].collect()
             print("2")
             print(ds_data[top:bot, left:right])
-            got = data[top:bot, left:right].collect()
+            expected = ds_data[top:bot, left:right].collect()
             print("3")
             self.assertTrue(equal(got, expected))
 
