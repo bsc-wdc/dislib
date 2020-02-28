@@ -70,7 +70,7 @@ class HecubaTest(unittest.TestCase):
         """ Tests get a dense slice of the Hecuba array """
         config.session.execute("TRUNCATE TABLE hecuba.istorage")
         config.session.execute("DROP KEYSPACE IF EXISTS hecuba_dislib")
-
+        print("test")
         bn, bm = 5, 5
         x = np.random.randint(100, size=(30, 30))
         ds_data = ds.array(x=x, block_size=(bn, bm))
