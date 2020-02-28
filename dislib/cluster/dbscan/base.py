@@ -3,6 +3,8 @@ from pycompss.api.api import compss_wait_on
 from pycompss.api.parameter import COLLECTION_IN, COLLECTION_INOUT, \
     Type, Depth
 from pycompss.api.task import task
+from numba import jit
+
 from scipy.sparse import issparse
 from scipy.sparse import vstack as vstack_sparse
 from sklearn.base import BaseEstimator
@@ -411,6 +413,7 @@ def _merge_dicts(*dicts):
 
 
 @task(returns=1)
+@jit()
 def _get_connected_components(equiv):
     # Add inverse equivalences
     for node, neighs in equiv.items():

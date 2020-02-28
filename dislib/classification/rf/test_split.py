@@ -1,8 +1,8 @@
-from sys import float_info
-
 import numpy as np
+from numba import jit
 
 
+@jit(nopython=True)
 def gini_criteria_proxy(l_weight, l_length, r_weight, r_length, not_repeated):
     """
     Maximizing the Gini gain is equivalent to minimizing this proxy function.
@@ -11,10 +11,11 @@ def gini_criteria_proxy(l_weight, l_length, r_weight, r_length, not_repeated):
     return -(l_weight / l_length + r_weight / r_length) * not_repeated
 
 
+@jit(nopython=True)
 def test_split(sample, y_s, feature, n_classes):
     size = y_s.shape[0]
     if size == 0:
-        return float_info.max, np.float64(np.inf)
+        return 1.7976931348623157e+308, np.float64(np.inf)
 
     f = feature[sample]
     sort_indices = np.argsort(f)
@@ -26,13 +27,19 @@ def test_split(sample, y_s, feature, n_classes):
     not_repeated[size - 1] = True
 
     l_freq = np.zeros((n_classes, size), dtype=np.int64)
-    l_freq[y_sorted, np.arange(size)] = 1
+    for i in np.arange(size):
+        l_freq[y_sorted[i], i] = 1
 
     r_freq = np.zeros((n_classes, size), dtype=np.int64)
     r_freq[:, 1:] = l_freq[:, :0:-1]
 
-    l_weight = np.sum(np.square(np.cumsum(l_freq, axis=-1)), axis=0)
-    r_weight = np.sum(np.square(np.cumsum(r_freq, axis=-1)), axis=0)[::-1]
+    for i in np.arange(n_classes):
+        l_freq[i] = np.cumsum(l_freq[i])
+    for i in np.arange(n_classes):
+        r_freq[i] = np.cumsum(r_freq[i])
+
+    l_weight = np.sum(np.square(l_freq), 0)
+    r_weight = np.sum(np.square(r_freq), 0)[::-1]
 
     l_length = np.arange(1, size + 1, dtype=np.int32)
     r_length = np.arange(size - 1, -1, -1, dtype=np.int32)
@@ -48,3 +55,4 @@ def test_split(sample, y_s, feature, n_classes):
     else:
         b_value = (f_sorted[min_index] + f_sorted[min_index + 1]) / 2
     return scores[min_index], b_value
+
