@@ -89,6 +89,7 @@ class HecubaTest(unittest.TestCase):
         print("test3")
         for top, bot, left, right in slice_indices:
             print("1")
+            print(data[top:bot, left:right])
             got = data[top:bot, left:right].collect()
             print("2")
             print(ds_data[top:bot, left:right])
