@@ -91,6 +91,7 @@ class HecubaTest(unittest.TestCase):
             print("1")
             got = data[top:bot, left:right].collect()
             print("2")
+            print(ds_data[top:bot, left:right])
             expected = ds_data[top:bot, left:right].collect()
             print("3")
             self.assertTrue(equal(got, expected))
