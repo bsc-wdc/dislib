@@ -88,10 +88,13 @@ class HecubaTest(unittest.TestCase):
                          (21, 40, 21, 40)]  # out-of-bounds (correct)
         print("test3")
         for top, bot, left, right in slice_indices:
+            print("1")
             got = data[top:bot, left:right].collect()
+            print("2")
             expected = ds_data[top:bot, left:right].collect()
-
+            print("3")
             self.assertTrue(equal(got, expected))
+
         print("test4")
         # Try slicing with irregular array
         x = data[1:, 1:]
