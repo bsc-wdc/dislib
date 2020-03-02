@@ -70,13 +70,12 @@ class HecubaTest(unittest.TestCase):
         """ Tests get a dense slice of the Hecuba array """
         config.session.execute("TRUNCATE TABLE hecuba.istorage")
         config.session.execute("DROP KEYSPACE IF EXISTS hecuba_dislib")
-        print("test")
         bn, bm = 5, 5
         x = np.random.randint(100, size=(30, 30))
         ds_data = ds.array(x=x, block_size=(bn, bm))
         data = ds.array(x=x, block_size=(bn, bm))
         data.make_persistent(name="hecuba_dislib.test_array")
-        print("test2")
+        ds_data.make_persistent(name="hecuba_dislib.test_array2")
         slice_indices = [(7, 22, 7, 22),  # many row-column
                          (6, 8, 6, 8),  # single block row-column
                          (6, 8, None, None),  # single-block rows, all columns
@@ -86,22 +85,17 @@ class HecubaTest(unittest.TestCase):
                          # implemented)
                          # (-10, 5, -10, 5),  # out-of-bounds (not implemented)
                          (21, 40, 21, 40)]  # out-of-bounds (correct)
-        print("test3")
+
         for top, bot, left, right in slice_indices:
-            print("1")
             print(data[top:bot, left:right])
             got = data[top:bot, left:right].collect()
-            print("2")
             print(ds_data[top:bot, left:right])
             expected = ds_data[top:bot, left:right].collect()
-            print("3")
             self.assertTrue(equal(got, expected))
 
-        print("test4")
         # Try slicing with irregular array
         x = data[1:, 1:]
         data = ds_data[1:, 1:]
-        print("test5")
         for top, bot, left, right in slice_indices:
             got = x[top:bot, left:right].collect()
             expected = data[top:bot, left:right].collect()
