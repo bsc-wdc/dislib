@@ -658,6 +658,7 @@ class Array(object):
         """
 
         self._blocks = compss_wait_on(self._blocks)
+        print("1")
         res = self._merge_blocks(self._blocks)
         if not self._sparse:
             res = np.squeeze(res)
