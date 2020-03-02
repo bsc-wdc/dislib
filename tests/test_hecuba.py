@@ -288,7 +288,7 @@ class HecubaTest(unittest.TestCase):
 
 
 def main():
-    unittest.main(verbosity=3)
+    unittest.main(verbosity=2)
 
 
 if __name__ == '__main__':
