@@ -658,7 +658,7 @@ class Array(object):
         """
         print("llega")
         self._blocks = compss_wait_on(self._blocks)
-        print("passed")
+        print(self.blocks)
         res = self._merge_blocks(self._blocks)
         if not self._sparse:
             res = np.squeeze(res)
