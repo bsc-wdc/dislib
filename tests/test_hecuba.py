@@ -95,6 +95,7 @@ class HecubaTest(unittest.TestCase):
             expected=got
             print("2")
             self.assertTrue(equal(got, expected))
+            print("error")
 
         # Try slicing with irregular array
         x = data[1:, 1:]
