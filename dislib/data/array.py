@@ -656,10 +656,8 @@ class Array(object):
         array : nd-array or spmatrix
             The actual contents of the ds-array.
         """
-        print(self._blocks)
-        #self._blocks = compss_wait_on(self._blocks)
-        value= compss_wait_on(self._blocks)
-        print(value)
+
+        self._blocks = compss_wait_on(self._blocks, to_write=True)
         res = self._merge_blocks(self._blocks)
         if not self._sparse:
             res = np.squeeze(res)

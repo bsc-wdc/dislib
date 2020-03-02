@@ -90,10 +90,7 @@ class HecubaTest(unittest.TestCase):
             #print(data[top:bot, left:right])
             got = data[top:bot, left:right].collect()
             print("el que falla")
-            #expected = ds_data[top:bot, left:right].collect()
-            print("1")
-            expected=got
-            print("2")
+            expected = ds_data[top:bot, left:right].collect()
             self.assertTrue(equal(got, expected))
             print(str(equal(got, expected)))
 
