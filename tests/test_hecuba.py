@@ -14,7 +14,7 @@ from dislib.cluster import KMeans
 from dislib.decomposition import PCA
 from dislib.neighbors import NearestNeighbors
 from dislib.regression import LinearRegression
-
+import time
 
 def equal(arr1, arr2):
     equal = not (arr1 != arr2).any()
@@ -75,7 +75,7 @@ class HecubaTest(unittest.TestCase):
         ds_data = ds.array(x=x, block_size=(bn, bm))
         data = ds.array(x=x, block_size=(bn, bm))
         data.make_persistent(name="hecuba_dislib.test_array")
-        ds_data.make_persistent(name="hecuba_dislib.test_array")
+        #ds_data.make_persistent(name="hecuba_dislib.test_array")
         slice_indices = [(7, 22, 7, 22),  # many row-column
                          (6, 8, 6, 8),  # single block row-column
                          (6, 8, None, None),  # single-block rows, all columns
@@ -90,7 +90,9 @@ class HecubaTest(unittest.TestCase):
             #print(data[top:bot, left:right])
             got = data[top:bot, left:right].collect()
             print("el que falla")
+            time.sleep(3)
             expected = ds_data[top:bot, left:right].collect()
+            time.sleep(3)
             self.assertTrue(equal(got, expected))
             print(str(equal(got, expected)))
 
