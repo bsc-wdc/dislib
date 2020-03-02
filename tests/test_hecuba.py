@@ -91,7 +91,9 @@ class HecubaTest(unittest.TestCase):
             got = data[top:bot, left:right].collect()
             print("el que falla")
             #expected = ds_data[top:bot, left:right].collect()
+            print("1")
             expected=got
+            print("2")
             self.assertTrue(equal(got, expected))
 
         # Try slicing with irregular array
