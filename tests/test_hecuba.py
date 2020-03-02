@@ -103,7 +103,7 @@ class HecubaTest(unittest.TestCase):
             expected = data[top:bot, left:right].collect()
 
             self.assertTrue(equal(got, expected))
-
+    @task
     def test_index_rows_dense(self):
         """ Tests get a slice of rows from the ds.array using lists as index
         """
@@ -132,7 +132,7 @@ class HecubaTest(unittest.TestCase):
             expected = x[rows].collect()
 
             self.assertTrue(equal(got, expected))
-
+    @task
     def test_kmeans(self):
         """ Tests K-means fit_predict and compares the result with
             regular ds-arrays """
@@ -193,7 +193,7 @@ class HecubaTest(unittest.TestCase):
     #
     #     self.assertTrue(np.allclose(kmeans.centers, kmeans2.centers))
     #     self.assertTrue(np.allclose(labels, h_labels))
-
+    @task
     def test_linear_regression(self):
         """ Tests linear regression fit_predict and compares the result with
             regular ds-arrays """
@@ -224,7 +224,7 @@ class HecubaTest(unittest.TestCase):
         test_data.make_persistent(name="hecuba_dislib.test_array_test")
         pred = reg.predict(test_data).collect()
         self.assertTrue(np.allclose(pred, [2.1, 3.3]))
-
+    @task
     def test_knn_fit(self):
         """ Tests knn fit_predict and compares the result with
             regular ds-arrays """
@@ -254,7 +254,7 @@ class HecubaTest(unittest.TestCase):
         self.assertTrue(np.allclose(dist.collect(), dist_h.collect(),
                                     atol=1e-7))
         self.assertTrue(np.array_equal(ind.collect(), ind_h.collect()))
-
+    @task
     def test_pca_fit_transform(self):
         """ Tests PCA fit_transform """
         config.session.execute("TRUNCATE TABLE hecuba.istorage")
