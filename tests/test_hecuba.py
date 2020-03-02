@@ -99,6 +99,7 @@ class HecubaTest(unittest.TestCase):
         data = ds_data[1:, 1:]
         for top, bot, left, right in slice_indices:
             got = x[top:bot, left:right].collect()
+            print("here")
             expected = data[top:bot, left:right].collect()
 
             self.assertTrue(equal(got, expected))
