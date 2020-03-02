@@ -642,7 +642,6 @@ class Array(object):
         """
         return apply_along_axis(np.mean, axis, self)
 
-    @task
     def collect(self):
         """
         Collects the contents of this ds-array and returns the equivalent
