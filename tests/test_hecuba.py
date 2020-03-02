@@ -87,9 +87,9 @@ class HecubaTest(unittest.TestCase):
                          (21, 40, 21, 40)]  # out-of-bounds (correct)
 
         for top, bot, left, right in slice_indices:
-            print(data[top:bot, left:right])
+            #print(data[top:bot, left:right])
             got = data[top:bot, left:right].collect()
-            print(ds_data[top:bot, left:right])
+            #print(ds_data[top:bot, left:right])
             expected = ds_data[top:bot, left:right].collect()
             self.assertTrue(equal(got, expected))
 
