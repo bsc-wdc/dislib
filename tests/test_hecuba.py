@@ -15,6 +15,7 @@ from dislib.decomposition import PCA
 from dislib.neighbors import NearestNeighbors
 from dislib.regression import LinearRegression
 
+from pycompss.api.task import task
 
 def equal(arr1, arr2):
     equal = not (arr1 != arr2).any()
