@@ -642,7 +642,7 @@ class Array(object):
             Mean along axis.
         """
         return apply_along_axis(np.mean, axis, self)
-
+    @local
     def collect(self):
         """
         Collects the contents of this ds-array and returns the equivalent
@@ -659,8 +659,7 @@ class Array(object):
         """
         #description = compss_open(self._blocks, 'r')
         #print(str(description))
-        self._blocks = compss_wait_on(self._blocks, to_write=True)
-        print(self._blocks)
+        #self._blocks = compss_wait_on(self._blocks)
         res = self._merge_blocks(self._blocks)
         if not self._sparse:
             res = np.squeeze(res)
