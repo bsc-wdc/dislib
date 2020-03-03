@@ -74,6 +74,7 @@ class HecubaTest(unittest.TestCase):
     @task()
     def test_get_slice_dense(self):
         """ Tests get a dense slice of the Hecuba array """
+        print("hi")
         config.session.execute("TRUNCATE TABLE hecuba.istorage")
         config.session.execute("DROP KEYSPACE IF EXISTS hecuba_dislib")
         bn, bm = 5, 5
