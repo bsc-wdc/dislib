@@ -6,8 +6,6 @@ from math import ceil
 import numpy as np
 import importlib
 from pycompss.api.api import compss_wait_on
-from pycompss.api.api import compss_open
-from pycompss.api.local import local
 
 from pycompss.api.parameter import Type, COLLECTION_IN, Depth, COLLECTION_INOUT
 from pycompss.api.task import task
