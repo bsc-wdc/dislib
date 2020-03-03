@@ -294,7 +294,7 @@ class HecubaTest(unittest.TestCase):
             features_opposite = np.allclose(transformed[:, i], -expected[:, i])
             self.assertTrue(features_equal or features_opposite)
 
-@task()
+
 def main():
     unittest.main(verbosity=2)
 
