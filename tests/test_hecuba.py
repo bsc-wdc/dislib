@@ -68,7 +68,7 @@ class HecubaTest(unittest.TestCase):
             r_data = h_chunk.collect()
             should_be = chunk.collect()
             self.assertTrue(np.array_equal(r_data, should_be))
-    @task
+    @task()
     def test_get_slice_dense(self):
         """ Tests get a dense slice of the Hecuba array """
         config.session.execute("TRUNCATE TABLE hecuba.istorage")
