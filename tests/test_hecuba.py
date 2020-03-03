@@ -75,7 +75,6 @@ class HecubaTest(unittest.TestCase):
         ds_data = ds.array(x=x, block_size=(bn, bm))
         data = ds.array(x=x, block_size=(bn, bm))
         data.make_persistent(name="hecuba_dislib.test_array")
-        ds_data.make_persistent(name="hecuba_dislib.test_array2")
         slice_indices = [(7, 22, 7, 22),  # many row-column
                          (6, 8, 6, 8),  # single block row-column
                          (6, 8, None, None),  # single-block rows, all columns
@@ -89,7 +88,6 @@ class HecubaTest(unittest.TestCase):
         for top, bot, left, right in slice_indices:
             #print(data[top:bot, left:right])
             got = data[top:bot, left:right].collect()
-            print("el que falla")
             expected = ds_data[top:bot, left:right].collect()
             self.assertTrue(equal(got, expected))
             print(str(equal(got, expected)))
