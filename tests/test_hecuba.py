@@ -70,6 +70,7 @@ class HecubaTest(unittest.TestCase):
             r_data = h_chunk.collect()
             should_be = chunk.collect()
             self.assertTrue(np.array_equal(r_data, should_be))
+
     @task()
     def test_get_slice_dense(self):
         """ Tests get a dense slice of the Hecuba array """
@@ -95,7 +96,7 @@ class HecubaTest(unittest.TestCase):
             got = data[top:bot, left:right].collect()
             expected = ds_data[top:bot, left:right].collect()
             self.assertTrue(equal(got, expected))
-            print(str(equal(got, expected)))
+            print("dentro")
 
         # Try slicing with irregular array
         x = data[1:, 1:]
