@@ -658,7 +658,7 @@ class Array(object):
             The actual contents of the ds-array.
         """
         description = compss_open(self._blocks, 'r')
-        print(str(description))
+        #print(str(description))
         self._blocks = compss_wait_on(self._blocks)
         print("1")
         res = self._merge_blocks(self._blocks)
