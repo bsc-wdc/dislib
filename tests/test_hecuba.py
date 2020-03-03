@@ -9,6 +9,9 @@ from hecuba import config
 from pycompss.api.api import compss_wait_on
 from sklearn.datasets import make_blobs
 
+from pycompss.api.task import task    # Import @task decorator
+from pycompss.api.parameter import *  # Import parameter metadata for the @task decorator
+
 import dislib as ds
 from dislib.cluster import KMeans
 from dislib.decomposition import PCA
@@ -65,7 +68,7 @@ class HecubaTest(unittest.TestCase):
             r_data = h_chunk.collect()
             should_be = chunk.collect()
             self.assertTrue(np.array_equal(r_data, should_be))
-
+    @task
     def test_get_slice_dense(self):
         """ Tests get a dense slice of the Hecuba array """
         config.session.execute("TRUNCATE TABLE hecuba.istorage")
