@@ -19,6 +19,7 @@ from dislib.neighbors import NearestNeighbors
 from dislib.regression import LinearRegression
 import time
 
+@task()
 def equal(arr1, arr2):
     equal = not (arr1 != arr2).any()
 
