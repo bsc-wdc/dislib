@@ -660,7 +660,7 @@ class Array(object):
         #description = compss_open(self._blocks, 'r')
         #print(str(description))
         self._blocks = compss_wait_on(self._blocks, to_write=True)
-        print("1")
+        print(self._blocks)
         res = self._merge_blocks(self._blocks)
         if not self._sparse:
             res = np.squeeze(res)
