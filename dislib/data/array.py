@@ -657,7 +657,7 @@ class Array(object):
         array : nd-array or spmatrix
             The actual contents of the ds-array.
         """
-        description = compss_open(self._blocks, 'r')
+        #description = compss_open(self._blocks, 'r')
         #print(str(description))
         self._blocks = compss_wait_on(self._blocks)
         print("1")
