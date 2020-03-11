@@ -156,9 +156,11 @@ class HecubaTest(unittest.TestCase):
                                   block_size=block_size)
         x_train_hecuba.make_persistent(name="hecuba_dislib.test_array")
 
+        print(x_train)
         kmeans = KMeans(n_clusters=3, random_state=170)
         labels = kmeans.fit_predict(x_train).collect()
 
+        print(x_train_hecuba)
         kmeans2 = KMeans(n_clusters=3, random_state=170)
         h_labels = kmeans2.fit_predict(x_train_hecuba).collect()
 
