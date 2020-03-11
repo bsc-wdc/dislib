@@ -160,7 +160,7 @@ class HecubaTest(unittest.TestCase):
         #kmeans = KMeans(n_clusters=3, random_state=170)
         #labels = kmeans.fit_predict(x_train).collect()
 
-        print(NumpyStorage("x_train_hecuba").__iter())
+        print(StorageNumpy(name="x_train_hecuba").__iter())
         #kmeans2 = KMeans(n_clusters=3, random_state=170)
         #h_labels = kmeans2.fit_predict(x_train_hecuba).collect()
 
