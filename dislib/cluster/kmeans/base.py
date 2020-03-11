@@ -94,7 +94,7 @@ class KMeans(BaseEstimator):
         while not self._converged(old_centers, iteration):
             old_centers = self.centers.copy()
             partials = []
-            for t in x._iterator:
+            for t in iter(x):
                 print(t)
             for row in x._iterator(axis=0):
                 partial = _partial_sum(row._blocks, old_centers)
