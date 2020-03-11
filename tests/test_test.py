@@ -681,7 +681,7 @@ class Array(object):
         """
         #description = compss_open(self._blocks, 'r')
         #print(str(description))
-        self._blocks = compss_wait_on(self._blocks)
+        #self._blocks = compss_wait_on(self._blocks)
         res = self._merge_blocks(self._blocks)
         if not self._sparse:
             res = np.squeeze(res)
@@ -775,13 +775,13 @@ l=load_from_hecuba(name="hecuba_dislib.test_array",block_size=block_size)
 print(l)
 
 kmeans = KMeans(n_clusters=3, random_state=170)
-labels = kmeans.fit_predict(x_train).collect()
+labels = kmeans.fit_predict(x_train)
 
 kmeans2 = KMeans(n_clusters=3, random_state=170)
-h_labels = kmeans2.fit_predict(l).collect()
+h_labels = kmeans2.fit_predict(l)
 
-#self.assertTrue(np.allclose(kmeans.centers, kmeans2.centers))
-#self.assertTrue(np.allclose(labels, h_labels))
+self.assertTrue(np.allclose(kmeans.centers, kmeans2.centers))
+self.assertTrue(np.allclose(labels, h_labels))
 
 
 
