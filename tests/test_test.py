@@ -40,6 +40,36 @@ from dislib.neighbors import NearestNeighbors
 from dislib.regression import LinearRegression
 import time
 
+def load_from_hecuba(name, block_size):
+    """
+    Loads data from Hecuba.
+
+    Parameters
+    ----------
+    name : str
+        Name of the data.
+    block_size : (int, int)
+        Block sizes in number of samples.
+
+    Returns
+    -------
+    storagenumpy : StorageNumpy
+        A distributed and persistent representation of the data
+        divided in blocks.
+    """
+    persistent_data = StorageNumpy(name=name)
+
+    bn, bm = block_size
+
+    blocks = []
+    for block in persistent_data.np_split(block_size=(bn, bm)):
+        blocks.append([block])
+
+    arr = Array(blocks=blocks, top_left_shape=block_size,
+                reg_shape=block_size, shape=persistent_data.shape,
+                sparse=False)
+    arr._base_array = persistent_data
+    return arr
 
 config.session.execute("TRUNCATE TABLE hecuba.istorage")
 config.session.execute("DROP KEYSPACE IF EXISTS hecuba_dislib")
@@ -56,7 +86,7 @@ x_train_hecuba = ds.array(x=x_filtered,
 x_train_hecuba.make_persistent(name="hecuba_dislib.test_array")
 
 print(x_train)
-l=StorageNumpy(name="hecuba_dislib.test_array")
+l=load_from_hecuba(name="hecuba_dislib.test_array",block_size=block_size)
 print(l)
 
 kmeans = KMeans(n_clusters=3, random_state=170)
@@ -67,4 +97,6 @@ h_labels = kmeans2.fit_predict(l).collect()
 
 #self.assertTrue(np.allclose(kmeans.centers, kmeans2.centers))
 #self.assertTrue(np.allclose(labels, h_labels))
+
+
 
