@@ -19,6 +19,26 @@ if importlib.util.find_spec("hecuba"):
     except Exception:
         pass
 
+import gc
+import os
+import unittest
+
+import numpy as np
+
+os.environ["CONTACT_NAMES"] = "cassandra_container"
+from hecuba import config
+from pycompss.api.api import compss_wait_on
+from sklearn.datasets import make_blobs
+
+from pycompss.api.task import task    # Import @task decorator
+from pycompss.api.parameter import *  # Import parameter metadata for the @task decorator
+
+import dislib as ds
+from dislib.cluster import KMeans
+from dislib.decomposition import PCA
+from dislib.neighbors import NearestNeighbors
+from dislib.regression import LinearRegression
+import time
 
 
 config.session.execute("TRUNCATE TABLE hecuba.istorage")
