@@ -57,7 +57,7 @@ x_train_hecuba.make_persistent(name="hecuba_dislib.test_array")
 
 print(x_train)
 l=StorageNumpy("hecuba_dislib.test_array")
-while (l._numpy_full_loaded == false):
+while (l._numpy_full_loaded == False):
     x=1
 print(x_train_hecuba._numpy_full_loaded)
 
