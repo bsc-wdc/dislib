@@ -59,8 +59,9 @@ kmeans = KMeans(n_clusters=3, random_state=170)
 labels = kmeans.fit_predict(x_train).collect()
 
 kmeans2 = KMeans(n_clusters=3, random_state=170)
-h_labels = kmeans2.fit_predict(x_train_hecuba).collect()
+h_labels = kmeans2.fit_predict(x_train_hecuba)
 
 #self.assertTrue(np.allclose(kmeans.centers, kmeans2.centers))
 #self.assertTrue(np.allclose(labels, h_labels))
 print(labels)
+print(h_labels)
