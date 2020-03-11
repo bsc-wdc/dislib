@@ -56,7 +56,7 @@ x_train_hecuba = ds.array(x=x_filtered,
 x_train_hecuba.make_persistent(name="hecuba_dislib.test_array")
 
 print(x_train)
-l=StorageNumpy("hecuba_dislib.test_array")
+l=x_train_hecuba._numpy_full_loaded
 print(l)
 
 #kmeans = KMeans(n_clusters=3, random_state=170)
