@@ -164,7 +164,7 @@ class KMeans(BaseEstimator):
             partials_subset = partials[:self.arity]
             partials = partials[self.arity:]
             partials.append(_merge(*partials_subset))
-
+        print(partials)
         partials = compss_wait_on(partials)
 
         for idx, sum_ in enumerate(partials[0]):
