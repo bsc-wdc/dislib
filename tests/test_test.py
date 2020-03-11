@@ -59,11 +59,11 @@ print(x_train)
 l=StorageNumpy(name="hecuba_dislib.test_array")
 print(l)
 
-#kmeans = KMeans(n_clusters=3, random_state=170)
-#labels = kmeans.fit_predict(x_train).collect()
+kmeans = KMeans(n_clusters=3, random_state=170)
+labels = kmeans.fit_predict(x_train).collect()
 
-#kmeans2 = KMeans(n_clusters=3, random_state=170)
-#h_labels = kmeans2.fit_predict(x_train_hecuba).collect()
+kmeans2 = KMeans(n_clusters=3, random_state=170)
+h_labels = kmeans2.fit_predict(l).collect()
 
 #self.assertTrue(np.allclose(kmeans.centers, kmeans2.centers))
 #self.assertTrue(np.allclose(labels, h_labels))
