@@ -56,8 +56,8 @@ x_train_hecuba = ds.array(x=x_filtered,
 x_train_hecuba.make_persistent(name="hecuba_dislib.test_array")
 
 print(x_train)
-l=StorageNumpy("test_array")
-while (x_train_hecuba._numpy_full_loaded == false):
+l=StorageNumpy("hecuba_dislib.test_array")
+while (l._numpy_full_loaded == false):
     x=1
 print(x_train_hecuba._numpy_full_loaded)
 
