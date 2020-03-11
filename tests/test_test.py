@@ -24,5 +24,5 @@ if importlib.util.find_spec("hecuba"):
 bn, bm = (20, 5)
 x = np.arange(100).reshape(10, -1)
 data = StorageNumpy(input_array=x, name="test_array")
-print("x: " + x)
-print("data: " + data)
+print( x)
+print(data)
