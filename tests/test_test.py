@@ -54,7 +54,7 @@ block_size = (x_filtered.shape[0] // 10, x_filtered.shape[1])
 x_train = ds.array(x_filtered, block_size=block_size)
 x_train_hecuba = ds.array(x=x_filtered,
                           block_size=block_size)
-#x_train_hecuba.make_persistent(name="hecuba_dislib.test_array")
+x_train_hecuba.make_persistent(name="hecuba_dislib.test_array")
 
 print(x_train)
 
