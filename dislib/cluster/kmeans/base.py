@@ -120,8 +120,9 @@ class KMeans(BaseEstimator):
         labels : ds-array, shape=(n_samples, 1)
             Index of the cluster each sample belongs to.
         """
-
+        print("fit")
         self.fit(x)
+        print("predict")
         return self.predict(x)
 
     def predict(self, x):
