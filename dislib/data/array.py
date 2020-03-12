@@ -161,6 +161,8 @@ class Array(object):
         if blocks[0].__class__.__name__ == "StorageNumpy":
             b0 = blocks[0]
             print("no llego")
+            print(str(b0.shape))
+            print(list(b0)[0])
             if len(b0.shape) > 2:
                 return np.array(list(b0)[0])
             else:
