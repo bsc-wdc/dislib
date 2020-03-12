@@ -85,6 +85,7 @@ class KMeans(BaseEstimator):
         -------
         self : KMeans
         """
+        print("1")
         self.random_state = check_random_state(self.random_state)
         self._init_centers(x.shape[1], x._sparse)
 
@@ -92,9 +93,11 @@ class KMeans(BaseEstimator):
         iteration = 0
 
         while not self._converged(old_centers, iteration):
+            print("2")
             old_centers = self.centers.copy()
             partials = []
             for row in x._iterator(axis=0):
+                print("3")
                 partial = _partial_sum(row._blocks, old_centers)
                 partials.append(partial)
 
