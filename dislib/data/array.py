@@ -8,6 +8,7 @@ from pycompss.api.task import task
 from scipy import sparse as sp
 from scipy.sparse import issparse, csr_matrix
 from sklearn.utils import check_random_state
+from numpy.lib import format
 
 
 class Array(object):
@@ -953,7 +954,62 @@ def load_txt_file(path, block_size, delimiter=","):
                  shape=(n_lines, n_cols), sparse=False)
 
 
-@task(out_blocks=COLLECTION_INOUT, returns=1)
+def load_npy_file(path, block_size):
+    """ Loads a file in npy format (must be 2-dimensional).
+
+    Parameters
+    ----------
+    path : str
+        Path to the npy file.
+    block_size : tuple (int, int)
+        Block size of the resulting ds-array.
+
+    Returns
+    -------
+    x : ds-array
+    """
+    try:
+        fid = open(path, "rb")
+        version = format.read_magic(fid)
+        format._check_version(version)
+        shape, fortran_order, dtype = format._read_array_header(fid, version)
+
+        if fortran_order:
+            raise ValueError("Fortran order not supported for npy files")
+
+        if len(shape) != 2:
+            raise ValueError("Array is not 2-dimensional")
+
+        if block_size[0] > shape[0] or block_size[1] > shape[1]:
+            raise ValueError("Block size is larger than the array")
+
+        blocks = []
+        n_blocks = int(ceil(shape[1] / block_size[1]))
+
+        for i in range(0, shape[0], block_size[0]):
+            read_count = min(block_size[0], shape[0] - i)
+            read_size = int(read_count * shape[1] * dtype.itemsize)
+            data = fid.read(read_size)
+            out_blocks = [object() for _ in range(n_blocks)]
+            _read_from_buffer(data, dtype, shape[1], block_size[1], out_blocks)
+            blocks.append(out_blocks)
+
+        return Array(blocks=blocks, top_left_shape=block_size,
+                     reg_shape=block_size, shape=shape, sparse=False)
+    finally:
+        fid.close()
+
+
+@task(out_blocks=COLLECTION_INOUT)
+def _read_from_buffer(data, dtype, shape, block_size, out_blocks):
+    arr = np.frombuffer(data, dtype=dtype)
+    arr = arr.reshape((-1, shape))
+
+    for i in range(len(out_blocks)):
+        out_blocks[i] = arr[:, i * block_size:(i + 1) * block_size]
+
+
+@task(out_blocks=COLLECTION_INOUT)
 def _read_lines(lines, block_size, delimiter, out_blocks):
     samples = np.genfromtxt(lines, delimiter=delimiter)
 

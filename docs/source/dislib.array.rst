@@ -15,6 +15,8 @@ Array creation routines
 
 .. autofunction:: dislib.load_svmlight_file
 
+.. autofunction:: dislib.load_npy_file
+
 .. autofunction:: dislib.random_array
 
 

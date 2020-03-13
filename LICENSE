@@ -213,3 +213,8 @@ examples/classifier_comparison.py
 examples/clustering_comparison.py
 examples/gm_covariance_types_comp.py
 examples/kmeans.py
+
+The following files contain modified code from the NumPy project, which
+is available under a "3-clause BSD" license:
+
+dislib/data/array.py
