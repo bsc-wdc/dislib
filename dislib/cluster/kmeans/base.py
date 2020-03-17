@@ -93,7 +93,7 @@ class KMeans(BaseEstimator):
                 print("row")
                 print(row)
                 print("row blocks")
-                print(row._base_array)
+                print(row._blocks)
                 partial = _partial_sum(row._blocks, old_centers)
                 partials.append(partial)
 
