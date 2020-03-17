@@ -158,7 +158,6 @@ class Array(object):
         a single ndarray / sparse matrix.
         """
         sparse = None
-        print(blocks)
         if blocks[0].__class__.__name__ == "StorageNumpy":
             b0 = blocks[0]
             print("no llego")
