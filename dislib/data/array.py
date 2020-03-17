@@ -166,7 +166,7 @@ class Array(object):
             else:
                 print("shape mal")
                 return np.array(list(b0))
-
+        print("no estoy entrando en el merge")
         b0 = blocks[0][0]
         if sparse is None:
             sparse = issparse(b0)
