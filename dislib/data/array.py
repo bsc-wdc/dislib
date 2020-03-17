@@ -701,6 +701,8 @@ class Array(object):
             blocks.append(persistent_block)
         self._blocks = blocks
 
+        print("self despues")
+        print(self)
         return self
 
 
