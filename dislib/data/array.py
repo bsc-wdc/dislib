@@ -702,7 +702,9 @@ class Array(object):
         self._blocks = blocks
 
         print("self despues")
-        print(self)
+        print(self._base_array)
+        print(self._blocks)
+        print("self cierro")
         return self
 
 
