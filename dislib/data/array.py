@@ -159,7 +159,7 @@ class Array(object):
         """
         sparse = None
         print(list(blocks[0])[0])
-        print(blocks[0].__class__.__name__ )
+        print(blocks[0].__class__)
         if blocks[0].__class__.__name__ == "StorageNumpy":
             b0 = blocks[0]
             print("no llego")
