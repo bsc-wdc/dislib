@@ -18,7 +18,7 @@ if importlib.util.find_spec("hecuba"):
         from hecuba.hnumpy import StorageNumpy
     except Exception:
         pass
-
+from pprint import pprint
 
 class Array(object):
     """ A distributed 2-dimensional array divided in blocks.
@@ -158,7 +158,7 @@ class Array(object):
         a single ndarray / sparse matrix.
         """
         sparse = None
-        print(blocks[0])
+        pprint(blocks)
         print(blocks[0].__class__.__name__)
         if blocks[0].__class__.__name__ == "StorageNumpy":
             b0 = blocks[0]
