@@ -13,7 +13,6 @@ from dislib.data.array import Array
 
 class KMeans(BaseEstimator):
     """ Perform K-means clustering.
-
     Parameters
     ----------
     n_clusters : int, optional (default=8)
@@ -22,7 +21,6 @@ class KMeans(BaseEstimator):
     init : {'random', nd-array or sparse matrix}, optional (default='random')
         Method of initialization, defaults to 'random', which generates
         random centers at the beginning.
-
         If an nd-array or sparse matrix is passed, it should be of shape
         (n_clusters, n_features) and gives the initial centers.
     max_iter : int, optional (default=10)
@@ -37,14 +35,12 @@ class KMeans(BaseEstimator):
         for centroid initialization.
     verbose: boolean, optional (default=False)
         Whether to print progress information.
-
     Attributes
     ----------
     centers : ndarray
         Computed centroids.
     n_iter : int
         Number of iterations performed.
-
     Examples
     --------
     >>> from dislib.cluster import KMeans
@@ -73,14 +69,12 @@ class KMeans(BaseEstimator):
 
     def fit(self, x, y=None):
         """ Compute K-means clustering.
-
         Parameters
         ----------
         x : ds-array
             Samples to cluster.
         y : ignored
             Not used, present here for API consistency by convention.
-
         Returns
         -------
         self : KMeans
@@ -92,18 +86,10 @@ class KMeans(BaseEstimator):
         iteration = 0
 
         while not self._converged(old_centers, iteration):
-            print("2")
             old_centers = self.centers.copy()
             partials = []
-            for row in x._iterator(axis=0):
-                print("3")
-                print("row")
-                print(row)
-                print(row.__class__.__name__)
-                print("row blocs")
 
-                print(row._blocks)
-                print(row._blocks.__class__.__name__)
+            for row in x._iterator(axis=0):
                 partial = _partial_sum(row._blocks, old_centers)
                 partials.append(partial)
 
@@ -116,32 +102,27 @@ class KMeans(BaseEstimator):
 
     def fit_predict(self, x, y=None):
         """ Compute cluster centers and predict cluster index for each sample.
-
         Parameters
         ----------
         x : ds-array
             Samples to cluster.
         y : ignored
             Not used, present here for API consistency by convention.
-
         Returns
         -------
         labels : ds-array, shape=(n_samples, 1)
             Index of the cluster each sample belongs to.
         """
-        print("fit")
+
         self.fit(x)
-        print("predict")
         return self.predict(x)
 
     def predict(self, x):
         """ Predict the closest cluster each sample in the data belongs to.
-
         Parameters
         ----------
         x : ds-array
             New data to predict.
-
         Returns
         -------
         labels : ds-array, shape=(n_samples, 1)
@@ -198,14 +179,11 @@ class KMeans(BaseEstimator):
                              "or an sp.matrix")
 
 
-#@task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
+@task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
 def _partial_sum(blocks, centers):
-    print("aqui entro")
     partials = np.zeros((centers.shape[0], 2), dtype=object)
-    #blocks = compss_wait_on(blocks)
     arr = Array._merge_blocks(blocks)
-    print("lo paso")
-    print(arr)
+
     close_centers = pairwise_distances(arr, centers).argmin(axis=1)
 
     for center_idx, _ in enumerate(centers):

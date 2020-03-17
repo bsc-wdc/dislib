@@ -6,7 +6,6 @@ from math import ceil
 import numpy as np
 import importlib
 from pycompss.api.api import compss_wait_on
-
 from pycompss.api.parameter import Type, COLLECTION_IN, Depth, COLLECTION_INOUT
 from pycompss.api.task import task
 from scipy import sparse as sp
@@ -18,7 +17,7 @@ if importlib.util.find_spec("hecuba"):
         from hecuba.hnumpy import StorageNumpy
     except Exception:
         pass
-from pprint import pprint
+
 
 class Array(object):
     """ A distributed 2-dimensional array divided in blocks.
@@ -158,17 +157,13 @@ class Array(object):
         a single ndarray / sparse matrix.
         """
         sparse = None
-        pprint(blocks)
-        print(blocks[0].__class__.__name__)
         if blocks[0].__class__.__name__ == "StorageNumpy":
             b0 = blocks[0]
-            print("no llego")
             if len(b0.shape) > 2:
                 return np.array(list(b0)[0])
             else:
-                print("shape mal")
                 return np.array(list(b0))
-        print("no estoy entrando en el merge")
+
         b0 = blocks[0][0]
         if sparse is None:
             sparse = issparse(b0)
@@ -176,9 +171,8 @@ class Array(object):
         if sparse:
             ret = sp.bmat(blocks, format=b0.getformat(), dtype=b0.dtype)
         else:
-            ret = np.block(blocks[0])
+            ret = np.block(blocks)
 
-        print(ret)
         return ret
 
     @staticmethod
@@ -662,8 +656,6 @@ class Array(object):
         array : nd-array or spmatrix
             The actual contents of the ds-array.
         """
-        #description = compss_open(self._blocks, 'r')
-        #print(str(description))
         self._blocks = compss_wait_on(self._blocks)
         res = self._merge_blocks(self._blocks)
         if not self._sparse:
@@ -687,6 +679,7 @@ class Array(object):
         """
         if self._sparse:
             raise Exception("Data must not be a sparse matrix.")
+
         x = self.collect()
         persistent_data = StorageNumpy(input_array=x, name=name)
         # self._base_array is used for much more efficient slicing.
