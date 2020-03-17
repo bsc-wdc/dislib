@@ -160,7 +160,7 @@ class Array(object):
         sparse = None
         pprint(blocks)
         print(blocks[0].__class__.__name__)
-        if blocks[0].__class__.__name__ == "StorageNumpy":
+        if blocks[0].__class__.__name__ == "StorageNumpy" or blocks[0].__class__.__name__ == "list":
             b0 = blocks[0]
             print("no llego")
             if len(b0.shape) > 2:
