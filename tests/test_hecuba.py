@@ -32,23 +32,23 @@ def equal(arr1, arr2):
 
 class HecubaTest(unittest.TestCase):
 
-    def test_iterate_rows(self):
-        """ Tests iterating through the rows of the Hecuba array """
-        config.session.execute("TRUNCATE TABLE hecuba.istorage")
-        config.session.execute("DROP KEYSPACE IF EXISTS hecuba_dislib")
-        block_size = (2, 10)
-        x = np.array([[j for j in range(i * 10, i * 10 + 10)]
-                      for i in range(10)])
-
-        data = ds.array(x=x, block_size=block_size)
-        data.make_persistent(name="hecuba_dislib.test_array")
-        ds_data = ds.array(x=x, block_size=block_size)
-
-        for h_chunk, chunk in zip(data._iterator(axis="rows"),
-                                  ds_data._iterator(axis="rows")):
-            r_data = h_chunk.collect()
-            should_be = chunk.collect()
-            self.assertTrue(np.array_equal(r_data, should_be))
+    # def test_iterate_rows(self):
+    #     """ Tests iterating through the rows of the Hecuba array """
+    #     config.session.execute("TRUNCATE TABLE hecuba.istorage")
+    #     config.session.execute("DROP KEYSPACE IF EXISTS hecuba_dislib")
+    #     block_size = (2, 10)
+    #     x = np.array([[j for j in range(i * 10, i * 10 + 10)]
+    #                   for i in range(10)])
+    #
+    #     data = ds.array(x=x, block_size=block_size)
+    #     data.make_persistent(name="hecuba_dislib.test_array")
+    #     ds_data = ds.array(x=x, block_size=block_size)
+    #
+    #     for h_chunk, chunk in zip(data._iterator(axis="rows"),
+    #                               ds_data._iterator(axis="rows")):
+    #         r_data = h_chunk.collect()
+    #         should_be = chunk.collect()
+    #         self.assertTrue(np.array_equal(r_data, should_be))
 
 
     # def test_iterate_columns(self):
@@ -170,41 +170,41 @@ class HecubaTest(unittest.TestCase):
     #     #self.assertTrue(np.allclose(kmeans.centers, kmeans2.centers))
     #     #self.assertTrue(np.allclose(labels, h_labels))
 
-    # def test_already_persistent(self):
-    #     """ Tests K-means fit_predict and compares the result with regular
-    #         ds-arrays, using an already persistent Hecuba array """
-    #     config.session.execute("TRUNCATE TABLE hecuba.istorage")
-    #     config.session.execute("DROP KEYSPACE IF EXISTS hecuba_dislib")
-    #     x, y = make_blobs(n_samples=1500, random_state=170)
-    #     x_filtered = np.vstack(
-    #         (x[y == 0][:500], x[y == 1][:100], x[y == 2][:10]))
-    #
-    #     block_size = (x_filtered.shape[0] // 10, x_filtered.shape[1])
-    #
-    #     x_train = ds.array(x_filtered, block_size=block_size)
-    #     x_train_hecuba = ds.array(x=x_filtered,
-    #                               block_size=block_size)
-    #     x_train_hecuba.make_persistent(name="hecuba_dislib.test_array")
-    #
-    #     # ensure that all data is released from memory
-    #     blocks = x_train_hecuba._blocks
-    #     for block in blocks:
-    #         del block
-    #     del x_train_hecuba
-    #     gc.collect()
-    #
-    #     x_train_hecuba = ds.load_from_hecuba(name="hecuba_dislib.test_array",
-    #                                          block_size=block_size)
-    #
-    #     #kmeans = KMeans(n_clusters=3, random_state=170)
-    #     #labels = kmeans.fit_predict(x_train).collect()
-    #     print("tipo de dato")
-    #     print(x_train_hecuba)
-    #     kmeans2 = KMeans(n_clusters=3, random_state=170)
-    #     h_labels = kmeans2.fit_predict(x_train_hecuba).collect()
-    #
-    #     self.assertTrue(np.allclose(kmeans.centers, kmeans2.centers))
-    #     self.assertTrue(np.allclose(labels, h_labels))
+    def test_already_persistent(self):
+        """ Tests K-means fit_predict and compares the result with regular
+            ds-arrays, using an already persistent Hecuba array """
+        config.session.execute("TRUNCATE TABLE hecuba.istorage")
+        config.session.execute("DROP KEYSPACE IF EXISTS hecuba_dislib")
+        x, y = make_blobs(n_samples=1500, random_state=170)
+        x_filtered = np.vstack(
+            (x[y == 0][:500], x[y == 1][:100], x[y == 2][:10]))
+
+        block_size = (x_filtered.shape[0] // 10, x_filtered.shape[1])
+
+        x_train = ds.array(x_filtered, block_size=block_size)
+        x_train_hecuba = ds.array(x=x_filtered,
+                                  block_size=block_size)
+        x_train_hecuba.make_persistent(name="hecuba_dislib.test_array")
+
+        # ensure that all data is released from memory
+        blocks = x_train_hecuba._blocks
+        for block in blocks:
+            del block
+        del x_train_hecuba
+        gc.collect()
+
+        x_train_hecuba = ds.load_from_hecuba(name="hecuba_dislib.test_array",
+                                             block_size=block_size)
+
+        #kmeans = KMeans(n_clusters=3, random_state=170)
+        #labels = kmeans.fit_predict(x_train).collect()
+        print("tipo de dato")
+        print(x_train_hecuba)
+        kmeans2 = KMeans(n_clusters=3, random_state=170)
+        h_labels = kmeans2.fit_predict(x_train_hecuba).collect()
+
+        self.assertTrue(np.allclose(kmeans.centers, kmeans2.centers))
+        self.assertTrue(np.allclose(labels, h_labels))
 
 
     # def test_linear_regression(self):
