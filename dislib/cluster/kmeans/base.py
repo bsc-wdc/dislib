@@ -199,6 +199,7 @@ class KMeans(BaseEstimator):
 def _partial_sum(blocks, centers):
     print("aqui entro")
     partials = np.zeros((centers.shape[0], 2), dtype=object)
+    blocks = compss_wait_on(blocks)
     arr = Array._merge_blocks(blocks)
     print("lo paso")
     print(arr)
