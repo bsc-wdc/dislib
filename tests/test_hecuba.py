@@ -162,7 +162,7 @@ class HecubaTest(unittest.TestCase):
 
         print(x_train_hecuba)
         print("self despues")
-        print(x_train_hecuba._base_array)
+        print(StorageNumpy(name="hecuba_dislib.test_array"))
         print("self cierro")
         kmeans2 = KMeans(n_clusters=3, random_state=170)
         h_labels = kmeans2.fit_predict(x_train_hecuba).collect()
