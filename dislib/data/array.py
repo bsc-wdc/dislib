@@ -701,10 +701,6 @@ class Array(object):
             blocks.append(persistent_block)
         self._blocks = blocks
 
-        print("self despues")
-        print(self._base_array)
-        print(self._blocks)
-        print("self cierro")
         return self
 
 
