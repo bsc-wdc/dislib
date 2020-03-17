@@ -101,7 +101,7 @@ class KMeans(BaseEstimator):
                 print(row)
                 print("row blocs")
                 print(row._blocks)
-                partial = _partial_sum(row._blocks, old_centers)
+                partial = _partial_sum(row, old_centers)
                 partials.append(partial)
 
             self._recompute_centers(partials)
