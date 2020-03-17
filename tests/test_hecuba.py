@@ -44,6 +44,7 @@ class HecubaTest(unittest.TestCase):
         data.make_persistent(name="hecuba_dislib.test_array")
         ds_data = ds.array(x=x, block_size=block_size)
 
+        print(data)
         for h_chunk, chunk in zip(data._iterator(axis="rows"),
                                   ds_data._iterator(axis="rows")):
             r_data = h_chunk.collect()
