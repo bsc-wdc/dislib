@@ -181,7 +181,8 @@ class HecubaTest(unittest.TestCase):
             (x[y == 0][:500], x[y == 1][:100], x[y == 2][:10]))
 
         block_size = (x_filtered.shape[0] // 10, x_filtered.shape[1])
-
+        print("shape del objeo")
+        print(x_filtered.shape)
         x_train = ds.array(x_filtered, block_size=block_size)
         x_train_hecuba = ds.array(x=x_filtered,
                                   block_size=block_size)
