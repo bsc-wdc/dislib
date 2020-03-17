@@ -86,6 +86,7 @@ class KMeans(BaseEstimator):
         self : KMeans
         """
         print("1")
+        print(x)
         self.random_state = check_random_state(self.random_state)
         self._init_centers(x.shape[1], x._sparse)
 
