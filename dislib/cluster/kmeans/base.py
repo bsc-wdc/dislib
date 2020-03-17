@@ -97,6 +97,10 @@ class KMeans(BaseEstimator):
             partials = []
             for row in x._iterator(axis=0):
                 print("3")
+                print("row")
+                print(row)
+                print("row blocs")
+                print(row._blocks)
                 partial = _partial_sum(row._blocks, old_centers)
                 partials.append(partial)
 
