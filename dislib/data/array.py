@@ -179,8 +179,8 @@ class Array(object):
             ret = np.block(blocks)
 
         print("resultado")
-        print(ret)
-        return ret
+        print(ret[0])
+        return ret[0]
 
     @staticmethod
     def _get_out_blocks(n_blocks):
