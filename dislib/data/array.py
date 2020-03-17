@@ -176,10 +176,9 @@ class Array(object):
         if sparse:
             ret = sp.bmat(blocks, format=b0.getformat(), dtype=b0.dtype)
         else:
-            ret = np.block(blocks)
+            ret = np.block(blocks[0])
 
-        print("resultado")
-        print(list(ret))
+        print(ret)
         return ret
 
     @staticmethod
