@@ -201,6 +201,7 @@ def _partial_sum(blocks, centers):
     partials = np.zeros((centers.shape[0], 2), dtype=object)
     arr = Array._merge_blocks(blocks)
     print("lo paso")
+    print(arr)
     close_centers = pairwise_distances(arr, centers).argmin(axis=1)
 
     for center_idx, _ in enumerate(centers):
