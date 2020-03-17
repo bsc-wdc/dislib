@@ -686,8 +686,6 @@ class Array(object):
         """
         if self._sparse:
             raise Exception("Data must not be a sparse matrix.")
-        print("make persistent")
-        print(self)
         x = self.collect()
         persistent_data = StorageNumpy(input_array=x, name=name)
         # self._base_array is used for much more efficient slicing.
