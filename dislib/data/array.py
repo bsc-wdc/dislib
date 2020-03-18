@@ -179,8 +179,9 @@ class Array(object):
             ret = sp.bmat(blocks, format=b0.getformat(), dtype=b0.dtype)
         else:
             ret = np.block(blocks)
-
-        return ret
+        print("return")
+        print(ret)
+        return ret[0][0]
 
     @staticmethod
     def _get_out_blocks(n_blocks):
