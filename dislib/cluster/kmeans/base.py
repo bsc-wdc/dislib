@@ -185,7 +185,7 @@ class KMeans(BaseEstimator):
                              "or an sp.matrix")
 
 
-#@task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
+@task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
 def _partial_sum(blocks, centers):
     partials = np.zeros((centers.shape[0], 2), dtype=object)
     arr = Array._merge_blocks(blocks)
@@ -211,7 +211,7 @@ def _merge(*data):
     return accum
 
 
-#@task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
+@task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
 def _predict(blocks, centers):
     arr = Array._merge_blocks(blocks)
     return pairwise_distances(arr, centers).argmin(axis=1).reshape(-1, 1)
