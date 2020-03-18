@@ -158,7 +158,7 @@ class Array(object):
         """
         sparse = None
         print("merge")
-        pprint(blocks[0][0])
+        print(blocks[0][0].__class__.__name__ )
         if blocks[0].__class__.__name__ == "StorageNumpy":
             print("entro")
             b0 = blocks[0]
