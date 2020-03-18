@@ -198,8 +198,8 @@ class HecubaTest(unittest.TestCase):
         x_train_hecuba = ds.load_from_hecuba(name="hecuba_dislib.test_array",
                                              block_size=block_size)
 
-        #kmeans = KMeans(n_clusters=3, random_state=170)
-        #labels = kmeans.fit_predict(x_train).collect()
+        kmeans = KMeans(n_clusters=3, random_state=170)
+        labels = kmeans.fit_predict(x_train).collect()
         print("tipo de dato")
         print(x_train_hecuba)
         kmeans2 = KMeans(n_clusters=3, random_state=170)
