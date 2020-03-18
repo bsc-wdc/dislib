@@ -189,7 +189,8 @@ class KMeans(BaseEstimator):
 def _partial_sum(blocks, centers):
     partials = np.zeros((centers.shape[0], 2), dtype=object)
     arr = Array._merge_blocks(blocks)
-
+    print("shape del return")
+    print(arr.shape)
     close_centers = pairwise_distances(arr, centers).argmin(axis=1)
 
     for center_idx, _ in enumerate(centers):
