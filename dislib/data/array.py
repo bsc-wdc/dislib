@@ -162,7 +162,7 @@ class Array(object):
         if blocks[0][0].__class__.__name__ == "StorageNumpy":
             print("entro")
             b0 = blocks[0][0]
-            prin(b0.shape)
+            print(b0.shape)
             if len(b0.shape) > 2:
                 return np.array(list(b0)[0])
             else:
