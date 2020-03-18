@@ -160,9 +160,9 @@ class Array(object):
         print("merge")
         print(blocks[0][0].__class__.__name__ )
         print(blocks)
-        if blocks[0][0].__class__.__name__ == "StorageNumpy":
+        if blocks[0].__class__.__name__ == "StorageNumpy":
             print("entro")
-            b0 = blocks[0][0]
+            b0 = blocks[0]
             print(b0.shape)
             print(np.array(list(b0)[0]))
             if len(b0.shape) > 2:
