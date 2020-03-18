@@ -181,7 +181,7 @@ class Array(object):
             ret = np.block(blocks)
         print("return")
         print(ret)
-        return ret[0][0]
+        return ret
 
     @staticmethod
     def _get_out_blocks(n_blocks):
