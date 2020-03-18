@@ -185,7 +185,7 @@ class KMeans(BaseEstimator):
                              "or an sp.matrix")
 
 
-@task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
+@task(blocks={Type: COLLECTION_IN, Depth: 3}, returns=np.array)
 def _partial_sum(blocks, centers):
     partials = np.zeros((centers.shape[0], 2), dtype=object)
     arr = Array._merge_blocks(blocks)
