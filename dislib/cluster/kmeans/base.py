@@ -132,6 +132,8 @@ class KMeans(BaseEstimator):
         labels : ds-array, shape=(n_samples, 1)
             Index of the cluster each sample belongs to.
         """
+        print("predict")
+        print(x)
         validation.check_is_fitted(self, 'centers')
         blocks = []
 
