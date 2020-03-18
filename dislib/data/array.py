@@ -159,7 +159,7 @@ class Array(object):
         sparse = None
         print("merge")
         print(blocks[0][0].__class__.__name__ )
-        if blocks[0].__class__.__name__ == "StorageNumpy":
+        if blocks[0][0].__class__.__name__ == "StorageNumpy":
             print("entro")
             b0 = blocks[0]
             if len(b0.shape) > 2:
