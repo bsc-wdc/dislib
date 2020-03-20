@@ -212,7 +212,8 @@ class KMeans(BaseEstimator):
 #
 #     return partials
 
-@task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
+#@task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
+@task(returns=np.array)
 def _partial_sum(blocks, centers):
     partials = np.zeros((centers.shape[0], 2), dtype=object)
 
