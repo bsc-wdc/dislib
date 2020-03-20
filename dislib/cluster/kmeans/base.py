@@ -109,7 +109,7 @@ class KMeans(BaseEstimator):
                 partial = _partial_sum(test, old_centers)
                 partials.append(partial)
 
-            self._recompute_centers(partials)
+            #self._recompute_centers(partials)
             iteration += 1
 
         self.n_iter = iteration
