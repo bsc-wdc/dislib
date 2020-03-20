@@ -10,6 +10,13 @@ from sklearn.utils import check_random_state, validation
 
 from dislib.data.array import Array
 
+from hecuba import StorageDict, StorageObj
+
+
+class MyObj(StorageObj):
+    '''
+    @ClassField a int
+    '''
 
 class KMeans(BaseEstimator):
     """ Perform K-means clustering.
@@ -66,11 +73,6 @@ class KMeans(BaseEstimator):
         self.arity = arity
         self.verbose = verbose
         self.init = init
-
-    class MyObj(StorageObj):
-        '''
-        @ClassField a int
-        '''
 
     def fit(self, x, y=None):
         """ Compute K-means clustering.
