@@ -32,142 +32,142 @@ def equal(arr1, arr2):
 
 class HecubaTest(unittest.TestCase):
 
-    def test_iterate_rows(self):
-        """ Tests iterating through the rows of the Hecuba array """
-        config.session.execute("TRUNCATE TABLE hecuba.istorage")
-        config.session.execute("DROP KEYSPACE IF EXISTS hecuba_dislib")
-        block_size = (2, 10)
-        x = np.array([[j for j in range(i * 10, i * 10 + 10)]
-                      for i in range(10)])
-
-        data = ds.array(x=x, block_size=block_size)
-        data.make_persistent(name="hecuba_dislib.test_array")
-        ds_data = ds.array(x=x, block_size=block_size)
-
-        print(data)
-        for h_chunk, chunk in zip(data._iterator(axis="rows"),
-                                  ds_data._iterator(axis="rows")):
-            r_data = h_chunk.collect()
-            should_be = chunk.collect()
-            self.assertTrue(np.array_equal(r_data, should_be))
-
-
-    def test_iterate_columns(self):
-        """
-        Tests iterating through the rows of the Hecuba array
-        """
-        config.session.execute("TRUNCATE TABLE hecuba.istorage")
-        config.session.execute("DROP KEYSPACE IF EXISTS hecuba_dislib")
-        block_size = (10, 2)
-        x = np.array([[j for j in range(i * 10, i * 10 + 10)]
-                      for i in range(10)])
-
-        data = ds.array(x=x, block_size=block_size)
-        data.make_persistent(name="hecuba_dislib.test_array")
-        ds_data = ds.array(x=x, block_size=block_size)
-
-        for h_chunk, chunk in zip(data._iterator(axis="columns"),
-                                  ds_data._iterator(axis="columns")):
-            r_data = h_chunk.collect()
-            should_be = chunk.collect()
-            self.assertTrue(np.array_equal(r_data, should_be))
-
-
-    def test_get_slice_dense(self):
-        """ Tests get a dense slice of the Hecuba array """
-        print("hi")
-        config.session.execute("TRUNCATE TABLE hecuba.istorage")
-        config.session.execute("DROP KEYSPACE IF EXISTS hecuba_dislib")
-        bn, bm = 5, 5
-        x = np.random.randint(100, size=(30, 30))
-        ds_data = ds.array(x=x, block_size=(bn, bm))
-        data = ds.array(x=x, block_size=(bn, bm))
-        data.make_persistent(name="hecuba_dislib.test_array")
-        slice_indices = [(7, 22, 7, 22),  # many row-column
-                         (6, 8, 6, 8),  # single block row-column
-                         (6, 8, None, None),  # single-block rows, all columns
-                         (None, None, 6, 8),  # all rows, single-block columns
-                         (15, 16, 15, 16),  # single element
-                         # (-10, -5, -10, -5),  # out-of-bounds (not
-                         # implemented)
-                         # (-10, 5, -10, 5),  # out-of-bounds (not implemented)
-                         (21, 40, 21, 40)]  # out-of-bounds (correct)
-
-        for top, bot, left, right in slice_indices:
-            #print(data[top:bot, left:right])
-            got = data[top:bot, left:right].collect()
-            expected = ds_data[top:bot, left:right].collect()
-            self.assertTrue(equal(got, expected))
-            print("dentro")
-
-        # Try slicing with irregular array
-        x = data[1:, 1:]
-        data = ds_data[1:, 1:]
-        for top, bot, left, right in slice_indices:
-            got = x[top:bot, left:right].collect()
-            print("here")
-            expected = data[top:bot, left:right].collect()
-
-            self.assertTrue(equal(got, expected))
-
-    def test_index_rows_dense(self):
-        """ Tests get a slice of rows from the ds.array using lists as index
-        """
-        config.session.execute("TRUNCATE TABLE hecuba.istorage")
-        config.session.execute("DROP KEYSPACE IF EXISTS hecuba_dislib")
-
-        bn, bm = 5, 5
-        x = np.random.randint(100, size=(10, 10))
-        ds_data = ds.array(x=x, block_size=(bn, bm))
-        data = ds.array(x=x, block_size=(bn, bm))
-        data.make_persistent(name="hecuba_dislib.test_array")
-
-        indices_lists = [([0, 5], [0, 5])]
-
-        for rows, cols in indices_lists:
-            got = data[rows].collect()
-            expected = ds_data[rows].collect()
-            self.assertTrue(equal(got, expected))
-
-        # Try slicing with irregular array
-        x = ds_data[1:, 1:]
-        data_sliced = data[1:, 1:]
-
-        for rows, cols in indices_lists:
-            got = data_sliced[rows].collect()
-            expected = x[rows].collect()
-
-            self.assertTrue(equal(got, expected))
-
-
-    def test_kmeans(self):
-        """ Tests K-means fit_predict and compares the result with
-            regular ds-arrays """
-        config.session.execute("TRUNCATE TABLE hecuba.istorage")
-        config.session.execute("DROP KEYSPACE IF EXISTS hecuba_dislib")
-
-        x, y = make_blobs(n_samples=1500, random_state=170)
-        x_filtered = np.vstack(
-            (x[y == 0][:500], x[y == 1][:100], x[y == 2][:10]))
-
-        block_size = (x_filtered.shape[0] // 10, x_filtered.shape[1])
-
-        x_train = ds.array(x_filtered, block_size=block_size)
-        x_train_hecuba = ds.array(x=x_filtered,
-                                  block_size=block_size)
-        x_train_hecuba.make_persistent(name="hecuba_dislib.test_array")
-
-        print(x_train)
-        kmeans = KMeans(n_clusters=3, random_state=170)
-        labels = kmeans.fit_predict(x_train).collect()
-
-        print(x_train_hecuba)
-
-        kmeans2 = KMeans(n_clusters=3, random_state=170)
-        h_labels = kmeans2.fit_predict(x_train_hecuba).collect()
-        print(h_labels)
-        self.assertTrue(np.allclose(kmeans.centers, kmeans2.centers))
-        self.assertTrue(np.allclose(labels, h_labels))
+    # def test_iterate_rows(self):
+    #     """ Tests iterating through the rows of the Hecuba array """
+    #     config.session.execute("TRUNCATE TABLE hecuba.istorage")
+    #     config.session.execute("DROP KEYSPACE IF EXISTS hecuba_dislib")
+    #     block_size = (2, 10)
+    #     x = np.array([[j for j in range(i * 10, i * 10 + 10)]
+    #                   for i in range(10)])
+    #
+    #     data = ds.array(x=x, block_size=block_size)
+    #     data.make_persistent(name="hecuba_dislib.test_array")
+    #     ds_data = ds.array(x=x, block_size=block_size)
+    #
+    #     print(data)
+    #     for h_chunk, chunk in zip(data._iterator(axis="rows"),
+    #                               ds_data._iterator(axis="rows")):
+    #         r_data = h_chunk.collect()
+    #         should_be = chunk.collect()
+    #         self.assertTrue(np.array_equal(r_data, should_be))
+    #
+    #
+    # def test_iterate_columns(self):
+    #     """
+    #     Tests iterating through the rows of the Hecuba array
+    #     """
+    #     config.session.execute("TRUNCATE TABLE hecuba.istorage")
+    #     config.session.execute("DROP KEYSPACE IF EXISTS hecuba_dislib")
+    #     block_size = (10, 2)
+    #     x = np.array([[j for j in range(i * 10, i * 10 + 10)]
+    #                   for i in range(10)])
+    #
+    #     data = ds.array(x=x, block_size=block_size)
+    #     data.make_persistent(name="hecuba_dislib.test_array")
+    #     ds_data = ds.array(x=x, block_size=block_size)
+    #
+    #     for h_chunk, chunk in zip(data._iterator(axis="columns"),
+    #                               ds_data._iterator(axis="columns")):
+    #         r_data = h_chunk.collect()
+    #         should_be = chunk.collect()
+    #         self.assertTrue(np.array_equal(r_data, should_be))
+    #
+    #
+    # def test_get_slice_dense(self):
+    #     """ Tests get a dense slice of the Hecuba array """
+    #     print("hi")
+    #     config.session.execute("TRUNCATE TABLE hecuba.istorage")
+    #     config.session.execute("DROP KEYSPACE IF EXISTS hecuba_dislib")
+    #     bn, bm = 5, 5
+    #     x = np.random.randint(100, size=(30, 30))
+    #     ds_data = ds.array(x=x, block_size=(bn, bm))
+    #     data = ds.array(x=x, block_size=(bn, bm))
+    #     data.make_persistent(name="hecuba_dislib.test_array")
+    #     slice_indices = [(7, 22, 7, 22),  # many row-column
+    #                      (6, 8, 6, 8),  # single block row-column
+    #                      (6, 8, None, None),  # single-block rows, all columns
+    #                      (None, None, 6, 8),  # all rows, single-block columns
+    #                      (15, 16, 15, 16),  # single element
+    #                      # (-10, -5, -10, -5),  # out-of-bounds (not
+    #                      # implemented)
+    #                      # (-10, 5, -10, 5),  # out-of-bounds (not implemented)
+    #                      (21, 40, 21, 40)]  # out-of-bounds (correct)
+    #
+    #     for top, bot, left, right in slice_indices:
+    #         #print(data[top:bot, left:right])
+    #         got = data[top:bot, left:right].collect()
+    #         expected = ds_data[top:bot, left:right].collect()
+    #         self.assertTrue(equal(got, expected))
+    #         print("dentro")
+    #
+    #     # Try slicing with irregular array
+    #     x = data[1:, 1:]
+    #     data = ds_data[1:, 1:]
+    #     for top, bot, left, right in slice_indices:
+    #         got = x[top:bot, left:right].collect()
+    #         print("here")
+    #         expected = data[top:bot, left:right].collect()
+    #
+    #         self.assertTrue(equal(got, expected))
+    #
+    # def test_index_rows_dense(self):
+    #     """ Tests get a slice of rows from the ds.array using lists as index
+    #     """
+    #     config.session.execute("TRUNCATE TABLE hecuba.istorage")
+    #     config.session.execute("DROP KEYSPACE IF EXISTS hecuba_dislib")
+    #
+    #     bn, bm = 5, 5
+    #     x = np.random.randint(100, size=(10, 10))
+    #     ds_data = ds.array(x=x, block_size=(bn, bm))
+    #     data = ds.array(x=x, block_size=(bn, bm))
+    #     data.make_persistent(name="hecuba_dislib.test_array")
+    #
+    #     indices_lists = [([0, 5], [0, 5])]
+    #
+    #     for rows, cols in indices_lists:
+    #         got = data[rows].collect()
+    #         expected = ds_data[rows].collect()
+    #         self.assertTrue(equal(got, expected))
+    #
+    #     # Try slicing with irregular array
+    #     x = ds_data[1:, 1:]
+    #     data_sliced = data[1:, 1:]
+    #
+    #     for rows, cols in indices_lists:
+    #         got = data_sliced[rows].collect()
+    #         expected = x[rows].collect()
+    #
+    #         self.assertTrue(equal(got, expected))
+    #
+    #
+    # def test_kmeans(self):
+    #     """ Tests K-means fit_predict and compares the result with
+    #         regular ds-arrays """
+    #     config.session.execute("TRUNCATE TABLE hecuba.istorage")
+    #     config.session.execute("DROP KEYSPACE IF EXISTS hecuba_dislib")
+    #
+    #     x, y = make_blobs(n_samples=1500, random_state=170)
+    #     x_filtered = np.vstack(
+    #         (x[y == 0][:500], x[y == 1][:100], x[y == 2][:10]))
+    #
+    #     block_size = (x_filtered.shape[0] // 10, x_filtered.shape[1])
+    #
+    #     x_train = ds.array(x_filtered, block_size=block_size)
+    #     x_train_hecuba = ds.array(x=x_filtered,
+    #                               block_size=block_size)
+    #     x_train_hecuba.make_persistent(name="hecuba_dislib.test_array")
+    #
+    #     print(x_train)
+    #     kmeans = KMeans(n_clusters=3, random_state=170)
+    #     labels = kmeans.fit_predict(x_train).collect()
+    #
+    #     print(x_train_hecuba)
+    #
+    #     kmeans2 = KMeans(n_clusters=3, random_state=170)
+    #     h_labels = kmeans2.fit_predict(x_train_hecuba).collect()
+    #     print(h_labels)
+    #     self.assertTrue(np.allclose(kmeans.centers, kmeans2.centers))
+    #     self.assertTrue(np.allclose(labels, h_labels))
 
     def test_already_persistent(self):
         """ Tests K-means fit_predict and compares the result with regular
