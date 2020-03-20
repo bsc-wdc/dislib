@@ -67,6 +67,11 @@ class KMeans(BaseEstimator):
         self.verbose = verbose
         self.init = init
 
+    class MyObj(StorageObj):
+        '''
+        @ClassField a int
+        '''
+
     def fit(self, x, y=None):
         """ Compute K-means clustering.
         Parameters
@@ -95,7 +100,8 @@ class KMeans(BaseEstimator):
                 print("row blocks")
                 print(row._blocks)
                 #partial = _partial_sum(row._blocks, old_centers)
-                test = np.zeros(10)
+                test = MyObj("test")
+                test.a=10
                 partial = _partial_sum(test, old_centers)
                 partials.append(partial)
 
