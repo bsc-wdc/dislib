@@ -94,7 +94,9 @@ class KMeans(BaseEstimator):
                 print(row)
                 print("row blocks")
                 print(row._blocks)
-                partial = _partial_sum(row._blocks, old_centers)
+                #partial = _partial_sum(row._blocks, old_centers)
+                test = np.zeros(10)
+                partial = _partial_sum(test, old_centers)
                 partials.append(partial)
 
             self._recompute_centers(partials)
@@ -186,18 +188,23 @@ class KMeans(BaseEstimator):
 
 
 #@task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
-#@task(returns=np.array)
+# def _partial_sum(blocks, centers):
+#     partials = np.zeros((centers.shape[0], 2), dtype=object)
+#     arr = Array._merge_blocks(blocks)
+#     print("shape del return")
+#     print(arr.shape)
+#     close_centers = pairwise_distances(arr, centers).argmin(axis=1)
+#
+#     for center_idx, _ in enumerate(centers):
+#         indices = np.argwhere(close_centers == center_idx).flatten()
+#         partials[center_idx][0] = np.sum(arr[indices], axis=0)
+#         partials[center_idx][1] = indices.shape[0]
+#
+#     return partials
+
+@task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
 def _partial_sum(blocks, centers):
     partials = np.zeros((centers.shape[0], 2), dtype=object)
-    arr = Array._merge_blocks(blocks)
-    print("shape del return")
-    print(arr.shape)
-    close_centers = pairwise_distances(arr, centers).argmin(axis=1)
-
-    for center_idx, _ in enumerate(centers):
-        indices = np.argwhere(close_centers == center_idx).flatten()
-        partials[center_idx][0] = np.sum(arr[indices], axis=0)
-        partials[center_idx][1] = indices.shape[0]
 
     return partials
 
@@ -213,7 +220,6 @@ def _merge(*data):
 
 
 #@task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
-#@task(returns=np.array)
 def _predict(blocks, centers):
     arr = Array._merge_blocks(blocks)
     return pairwise_distances(arr, centers).argmin(axis=1).reshape(-1, 1)
