@@ -94,7 +94,9 @@ class KMeans(BaseEstimator):
                 print(row)
                 print("row blocks")
                 print(row._blocks)
-                partial = _partial_sum(row._blocks, old_centers)
+                #partial = _partial_sum(row._blocks, old_centers)
+                value=np.zeros((61,2))
+                partial = _partial_sum(value, old_centers)
                 print("esto es un partial")
                 print(partial)
                 partials.append(partial)
@@ -190,10 +192,11 @@ class KMeans(BaseEstimator):
 
 
 #@task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
-#@task(blocks=INOUT, returns=np.array)
+@task(blocks=INOUT, returns=np.array)
 def _partial_sum(blocks, centers):
     partials = np.zeros((centers.shape[0], 2), dtype=object)
-    arr = Array._merge_blocks(blocks)
+    #arr = Array._merge_blocks(blocks)
+    arr=blocks
     print("shape del return")
     print(arr.shape)
     close_centers = pairwise_distances(arr, centers).argmin(axis=1)
