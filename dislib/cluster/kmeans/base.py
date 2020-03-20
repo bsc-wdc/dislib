@@ -10,14 +10,6 @@ from sklearn.utils import check_random_state, validation
 
 from dislib.data.array import Array
 
-from hecuba import StorageDict, StorageObj
-
-
-class MyObj(StorageObj):
-    '''
-    @ClassField a int
-    '''
-
 class KMeans(BaseEstimator):
     """ Perform K-means clustering.
     Parameters
@@ -96,20 +88,16 @@ class KMeans(BaseEstimator):
             old_centers = self.centers.copy()
             partials = []
 
-            test = MyObj("test")
-            test.a = 10
 
             for row in x._iterator(axis=0):
                 print("row")
                 print(row)
                 print("row blocks")
                 print(row._blocks)
-                #partial = _partial_sum(row._blocks, old_centers)
-
-                partial = _partial_sum(test, old_centers)
+                partial = _partial_sum(row._blocks, old_centers)
                 partials.append(partial)
 
-            #self._recompute_centers(partials)
+            self._recompute_centers(partials)
             iteration += 1
 
         self.n_iter = iteration
@@ -198,26 +186,21 @@ class KMeans(BaseEstimator):
 
 
 #@task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
-# def _partial_sum(blocks, centers):
-#     partials = np.zeros((centers.shape[0], 2), dtype=object)
-#     arr = Array._merge_blocks(blocks)
-#     print("shape del return")
-#     print(arr.shape)
-#     close_centers = pairwise_distances(arr, centers).argmin(axis=1)
-#
-#     for center_idx, _ in enumerate(centers):
-#         indices = np.argwhere(close_centers == center_idx).flatten()
-#         partials[center_idx][0] = np.sum(arr[indices], axis=0)
-#         partials[center_idx][1] = indices.shape[0]
-#
-#     return partials
-
-#@task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
-@task(returns=np.array)
 def _partial_sum(blocks, centers):
     partials = np.zeros((centers.shape[0], 2), dtype=object)
-    print("partial sum" + str(test.a))
+    arr = Array._merge_blocks(blocks)
+    print("shape del return")
+    print(arr.shape)
+    close_centers = pairwise_distances(arr, centers).argmin(axis=1)
+
+    for center_idx, _ in enumerate(centers):
+        indices = np.argwhere(close_centers == center_idx).flatten()
+        partials[center_idx][0] = np.sum(arr[indices], axis=0)
+        partials[center_idx][1] = indices.shape[0]
+
     return partials
+
+
 
 
 @task(returns=dict)
