@@ -1,6 +1,6 @@
 import numpy as np
 from pycompss.api.api import compss_wait_on
-from pycompss.api.parameter import INOUT,COLLECTION_IN, Depth, Type
+from pycompss.api.parameter import INOUT, COLLECTION_IN, Depth, Type
 from pycompss.api.task import task
 from scipy.sparse import csr_matrix
 from sklearn.base import BaseEstimator
@@ -95,8 +95,11 @@ class KMeans(BaseEstimator):
                 print("row blocks")
                 print(row._blocks)
                 partial = _partial_sum(row._blocks, old_centers)
+                print("esto es un partial" + partial)
                 partials.append(partial)
 
+            print("partials")
+            print(partials)
             self._recompute_centers(partials)
             iteration += 1
 
@@ -186,7 +189,7 @@ class KMeans(BaseEstimator):
 
 
 #@task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
-@task(blocks=INOUT, returns=np.array)
+#@task(blocks=INOUT, returns=np.array)
 def _partial_sum(blocks, centers):
     partials = np.zeros((centers.shape[0], 2), dtype=object)
     arr = Array._merge_blocks(blocks)
