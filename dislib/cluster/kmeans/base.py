@@ -89,22 +89,15 @@ class KMeans(BaseEstimator):
             partials = []
 
 
-            # for row in x._iterator(axis=0):
-            #     print("row")
-            #     print(row)
-            #     print("row blocks")
-            #     print(row._blocks)
-            #     partial = _partial_sum(row._blocks, old_centers)
-            #     partials.append(partial)
             for row in x._iterator(axis=0):
                 print("row")
                 print(row)
                 print("row blocks")
                 print(row._blocks)
-                partials.append(row._blocks)
+                partial = _partial_sum(row._blocks, old_centers)
+                partials.append(partial)
 
-            value = _partial_sum(partials, old_centers)
-            self._recompute_centers(value)
+            self._recompute_centers(partials)
             iteration += 1
 
         self.n_iter = iteration
@@ -192,7 +185,8 @@ class KMeans(BaseEstimator):
                              "or an sp.matrix")
 
 
-@task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
+#@task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
+@task(blocks=COLLECTION_IN, returns=np.array)
 def _partial_sum(blocks, centers):
     partials = np.zeros((centers.shape[0], 2), dtype=object)
     arr = Array._merge_blocks(blocks)
