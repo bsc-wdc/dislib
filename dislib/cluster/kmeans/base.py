@@ -96,14 +96,16 @@ class KMeans(BaseEstimator):
             old_centers = self.centers.copy()
             partials = []
 
+            test = MyObj("test")
+            test.a = 10
+
             for row in x._iterator(axis=0):
                 print("row")
                 print(row)
                 print("row blocks")
                 print(row._blocks)
                 #partial = _partial_sum(row._blocks, old_centers)
-                test = MyObj("test")
-                test.a=10
+
                 partial = _partial_sum(test, old_centers)
                 partials.append(partial)
 
