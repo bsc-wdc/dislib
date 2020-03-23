@@ -65,7 +65,7 @@ class HecubaTest(unittest.TestCase):
         # labels = kmeans.fit_predict(x_train).collect()
         print("tipo de dato")
         print(x_train_hecuba)
-        kmeans2 = KMeans(n_clusters=3, random_state=170)
+        #kmeans2 = KMeans(n_clusters=3, random_state=170)
 
         serialize_to_file(x_train_hecuba, "test_ob")
         x_train_hecuba2=deserialize_from_file("test_ob")
