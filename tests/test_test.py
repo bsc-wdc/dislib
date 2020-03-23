@@ -12,7 +12,8 @@ from sklearn.datasets import make_blobs
 from pycompss.api.task import task    # Import @task decorator
 from pycompss.api.parameter import *  # Import parameter metadata for the @task decorator
 
-from pycompss.util.serialization.serializer import serialize_to_file, deserialize_from_file
+from pycompss.util.serialization.serializer import serialize_to_file
+from pycompss.util.serialization.serializer import deserialize_from_file
 
 import dislib as ds
 from dislib.cluster import KMeans
