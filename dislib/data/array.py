@@ -99,6 +99,7 @@ class Array(object):
                 self._top_left_shape[1] != x._top_left_shape[0]:
             raise ValueError("Cannot multiply ds-arrays with incompatible "
                              "number of blocks or different block shapes.")
+
         if self._sparse != x._sparse:
             raise ValueError("Cannot multiply sparse and dense ds-arrays.")
 
