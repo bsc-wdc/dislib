@@ -424,3 +424,25 @@ class ArrayTest(unittest.TestCase):
         self.assertTrue(_equal_arrays(x.max().collect(), max))
         self.assertTrue(_equal_arrays(x.mean().collect(), mean))
         self.assertTrue(_equal_arrays(x.sum().collect(), sum))
+
+    @parameterized.expand([(ds.random_array((20, 30), (5, 6)),
+                            ds.random_array((30, 10), (6, 2))),
+
+                           (ds.random_array((1, 10), (1, 5)),
+                            ds.random_array((10, 7), (5, 2))),
+
+                           (ds.random_array((5, 10), (2, 2)),
+                            ds.random_array((10, 1), (2, 1))),
+
+                           (ds.random_array((17, 13), (3, 3)),
+                            ds.random_array((13, 9), (3, 2))),
+
+                           (ds.array(sp.csr_matrix(np.random.random((10, 12))),
+                                     (5, 2)),
+                            ds.array(sp.csr_matrix(np.random.random((12, 3))),
+                                     (2, 1)))])
+    def test_matmul(self, x1, x2):
+        """ Tests ds-array multiplication """
+        expected = x1.collect() @ x2.collect()
+        computed = x1 @ x2
+        self.assertTrue(_equal_arrays(expected, computed.collect()))
