@@ -1,5 +1,4 @@
 from collections import defaultdict
-from math import ceil
 
 import numpy as np
 from numpy.lib import format
@@ -9,6 +8,8 @@ from pycompss.api.task import task
 from scipy import sparse as sp
 from scipy.sparse import issparse, csr_matrix
 from sklearn.utils import check_random_state
+
+from math import ceil
 
 
 class Array(object):
@@ -93,10 +94,11 @@ class Array(object):
                 "Cannot multiply ds-arrays of shapes %r and %r" % (
                     self.shape, x.shape))
 
-        if self._n_blocks[1] != x._n_blocks[0]:
+        if self._n_blocks[1] != x._n_blocks[0] or \
+                self._reg_shape[1] != x._reg_shape[0] or \
+                self._top_left_shape[1] != x._top_left_shape[0]:
             raise ValueError("Cannot multiply ds-arrays with incompatible "
-                             "number of blocks %r and %r" % (
-                             self._n_blocks, x._n_blocks))
+                             "number of blocks or different block shapes.")
         if self._sparse != x._sparse:
             raise ValueError("Cannot multiply sparse and dense ds-arrays.")
 
@@ -1056,6 +1058,9 @@ def _read_from_buffer(data, dtype, shape, block_size, out_blocks):
 @task(out_blocks=COLLECTION_INOUT)
 def _read_lines(lines, block_size, delimiter, out_blocks):
     samples = np.genfromtxt(lines, delimiter=delimiter)
+
+    if len(samples.shape) == 1:
+        samples = samples.reshape(1, -1)
 
     for i, j in enumerate(range(0, samples.shape[1], block_size)):
         out_blocks[i] = samples[:, j:j + block_size]
