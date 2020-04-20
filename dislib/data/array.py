@@ -1,14 +1,15 @@
 from collections import defaultdict
-from math import ceil
 
 import numpy as np
+from numpy.lib import format
 from pycompss.api.api import compss_wait_on
 from pycompss.api.parameter import Type, COLLECTION_IN, Depth, COLLECTION_INOUT
 from pycompss.api.task import task
 from scipy import sparse as sp
 from scipy.sparse import issparse, csr_matrix
 from sklearn.utils import check_random_state
-from numpy.lib import format
+
+from math import ceil
 
 
 class Array(object):
@@ -708,8 +709,17 @@ def array(x, block_size):
     else:
         x = np.array(x, copy=True)
 
+    if len(x.shape) > 2:
+        raise ValueError("Input data has more than 2 dimensions.")
+
     if len(x.shape) < 2:
-        raise ValueError("Input array must have two dimensions.")
+        if block_size[0] == 1:
+            x = x.reshape(1, -1)
+        elif block_size[1] == 1:
+            x = x.reshape(-1, 1)
+        else:
+            raise ValueError("Input data is one-dimensional but "
+                             "block size is greater than 1.")
 
     bn, bm = block_size
 
