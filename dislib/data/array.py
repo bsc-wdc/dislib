@@ -750,7 +750,7 @@ def array(x, block_size):
         elif block_size[1] == 1:
             x = x.reshape(-1, 1)
         else:
-            raise ValueError("Input data is one-dimensional but "
+            raise ValueError("Input array is one-dimensional but "
                              "block size is greater than 1.")
 
     bn, bm = block_size
