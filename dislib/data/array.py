@@ -183,13 +183,6 @@ class Array(object):
             return x_np ** power
 
     @staticmethod
-    def _sqrt(x_np):
-        if issparse(x_np):
-            return sp.csr_matrix.sqrt(x_np)
-        else:
-            return np.sqrt(x_np)
-
-    @staticmethod
     def _validate_blocks(blocks):
         if len(blocks) == 0 or len(blocks[0]) == 0:
             raise AttributeError('Blocks must a list of lists, with at least'
@@ -745,7 +738,7 @@ class Array(object):
         -------
         x : ds-array
         """
-        return _apply_elementwise(Array._sqrt, self)
+        return _apply_elementwise(np.sqrt, self)
 
     def conj(self):
         """ Returns the complex conjugate, element-wise.
@@ -1100,12 +1093,12 @@ def _multiply_block_groups(hblock, vblock):
     blocks = []
 
     for blocki, blockj in zip(hblock, vblock):
-        blocks.append(_multiply_blocks(blocki, blockj))
+        blocks.append(_combine_blocks(np.matmul, blocki, blockj))
 
     while len(blocks) > 1:
         block1 = blocks.pop(0)
         block2 = blocks.pop(0)
-        blocks.append(_sum_blocks(block1, block2))
+        blocks.append(_combine_blocks(np.add, block1, block2))
 
     return blocks[0]
 
@@ -1333,13 +1326,8 @@ def _block_apply(func, axis, blocks, *args, **kwargs):
 
 
 @task(returns=1)
-def _sum_blocks(block1, block2):
-    return block1 + block2
-
-
-@task(returns=1)
-def _multiply_blocks(block1, block2):
-    return block1 @ block2
+def _combine_blocks(func, block1, block2):
+    return func(block1, block2)
 
 
 @task(returns=1)
