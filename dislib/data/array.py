@@ -158,12 +158,36 @@ class Array(object):
 
         raise IndexError("Invalid indexing information: %s" % str(arg))
 
+    def __pow__(self, power, modulo=None):
+        if not isinstance(power, int) and not isinstance(power, float):
+            raise NotImplementedError("Power is only supported for integers "
+                                      "and floats")
+        return self._apply_elementwise(Array._power, self, power)
+
     @property
     def shape(self):
         """
         Total shape of the ds-array
         """
         return self._shape
+
+    @property
+    def T(self):
+        return self.transpose()
+
+    @staticmethod
+    def _power(x_np, power):
+        if issparse(x_np):
+            return sp.csr_matrix.power(x_np, power)
+        else:
+            return x_np ** power
+
+    @staticmethod
+    def _sqrt(x_np):
+        if issparse(x_np):
+            return sp.csr_matrix.sqrt(x_np)
+        else:
+            return np.sqrt(x_np)
 
     @staticmethod
     def _validate_blocks(blocks):
@@ -697,6 +721,41 @@ class Array(object):
         """
         return apply_along_axis(np.mean, axis, self)
 
+    def norm(self, axis=0):
+        """ Returns the Frobenius norm.
+
+        Parameters
+        ----------
+        axis : int, optional (default=0)
+            Specifies the axis of the array along which to compute the vector
+            norms.
+
+        Returns
+        -------
+        norm : ds-array
+            Norm along axis.
+        """
+        return apply_along_axis(np.linalg.norm, axis, self)
+
+    def sqrt(self):
+        """ Returns the element-wise square root of the elements in the
+        ds-array
+
+        Returns
+        -------
+        x : ds-array
+        """
+        return _apply_elementwise(Array._sqrt, self)
+
+    def conj(self):
+        """ Returns the complex conjugate, element-wise.
+
+        Returns
+        -------
+        x : ds-array
+        """
+        return _apply_elementwise(np.conj, self)
+
     def collect(self):
         """
         Collects the contents of this ds-array and returns the equivalent
@@ -788,33 +847,28 @@ def random_array(shape, block_size, random_state=None):
     dsarray : ds-array
         Distributed array of random floats.
     """
-    if shape[0] < block_size[0] or shape[1] < block_size[1]:
-        raise ValueError("Block size is greater than the array")
-
     r_state = check_random_state(random_state)
+    return _full(shape, block_size, False, _random_block_wrapper, r_state)
 
-    n_blocks = (int(np.ceil(shape[0] / block_size[0])),
-                int(np.ceil(shape[1] / block_size[1])))
 
-    blocks = list()
+def zeros(shape, block_size, dtype=float):
+    """ Returns a ds-array of given shape and block size, filled with zeros.
 
-    for row_idx in range(n_blocks[0]):
-        blocks.append(list())
+    Parameters
+    ----------
+    shape : tuple of two ints
+        Shape of the output ds-array.
+    block_size : tuple of two ints
+        Size of the ds-array blocks.
+    dtype : data type, optional (default=float)
+        The desired type of the array.
 
-        for col_idx in range(n_blocks[1]):
-            b_size0, b_size1 = block_size
-
-            if row_idx == n_blocks[0] - 1:
-                b_size0 = shape[0] - (n_blocks[0] - 1) * block_size[0]
-
-            if col_idx == n_blocks[1] - 1:
-                b_size1 = shape[1] - (n_blocks[1] - 1) * block_size[1]
-
-            seed = r_state.randint(np.iinfo(np.int32).max)
-            blocks[-1].append(_random_block((b_size0, b_size1), seed))
-
-    return Array(blocks, top_left_shape=block_size, reg_shape=block_size,
-                 shape=shape, sparse=False)
+    Returns
+    -------
+    x : ds-array
+        Distributed array filled with zeros.
+    """
+    return _full(shape, block_size, False, _zero_block, dtype)
 
 
 def apply_along_axis(func, axis, x, *args, **kwargs):
@@ -1056,6 +1110,78 @@ def _multiply_block_groups(hblock, vblock):
     return blocks[0]
 
 
+def _full(shape, block_size, sparse, func, *args, **kwargs):
+    """
+    Creates a ds-array with custom contents defined by `func`. `func` must
+    take `block_size` as the first argument, and must return one block of
+    the resulting ds-array.
+
+    Parameters
+    ----------
+    shape : tuple of two ints
+        Shape of the output ds-array.
+    block_size : tuple of two ints
+        Size of the ds-array blocks.
+    sparse : bool
+        Whether `func` generates sparse blocks.
+    func : function
+        Function that generates the blocks of the resulting ds-array. Must
+        take `block_size` as the first argument.
+    args : any
+        Additional arguments to pass to `func`.
+    kwargs : any
+        Additional keyword arguments to pass to `func`.
+
+    Returns
+    -------
+    x : ds-array
+    """
+    if shape[0] < block_size[0] or shape[1] < block_size[1]:
+        raise ValueError("Block size is greater than the array")
+
+    n_blocks = (int(np.ceil(shape[0] / block_size[0])),
+                int(np.ceil(shape[1] / block_size[1])))
+
+    blocks = list()
+
+    for row_idx in range(n_blocks[0]):
+        blocks.append(list())
+
+        for col_idx in range(n_blocks[1]):
+            b_size0, b_size1 = block_size
+
+            if row_idx == n_blocks[0] - 1:
+                b_size0 = shape[0] - (n_blocks[0] - 1) * block_size[0]
+
+            if col_idx == n_blocks[1] - 1:
+                b_size1 = shape[1] - (n_blocks[1] - 1) * block_size[1]
+
+            block = func((b_size0, b_size1), *args, **kwargs)
+            blocks[-1].append(block)
+
+    return Array(blocks, top_left_shape=block_size, reg_shape=block_size,
+                 shape=shape, sparse=sparse)
+
+
+def _apply_elementwise(func, x, *args, **kwargs):
+    """ Applies a function element-wise to each block in parallel"""
+    n_blocks = x._n_blocks
+    blocks = Array._get_out_blocks(n_blocks)
+
+    for i in range(n_blocks[0]):
+        for j in range(n_blocks[1]):
+            blocks[i][j] = _block_apply_elwise(func,
+                                               x._blocks[i][j],
+                                               *args, **kwargs)
+    return Array(blocks, x._top_left_shape, x._reg_shape, x.shape,
+                 x._sparse)
+
+
+def _random_block_wrapper(block_size, r_state):
+    seed = r_state.randint(np.iinfo(np.int32).max)
+    return _random_block(block_size, seed)
+
+
 @task(out_blocks=COLLECTION_INOUT)
 def _read_from_buffer(data, dtype, shape, block_size, out_blocks):
     arr = np.frombuffer(data, dtype=dtype)
@@ -1184,6 +1310,11 @@ def _random_block(shape, seed):
     return np.random.random(shape)
 
 
+@task(returns=np.array)
+def _zero_block(shape, dtype):
+    return np.zeros(shape, dtype=dtype)
+
+
 @task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
 def _block_apply(func, axis, blocks, *args, **kwargs):
     arr = Array._merge_blocks(blocks)
@@ -1209,3 +1340,8 @@ def _sum_blocks(block1, block2):
 @task(returns=1)
 def _multiply_blocks(block1, block2):
     return block1 @ block2
+
+
+@task(returns=1)
+def _block_apply_elwise(func, block, *args, **kwargs):
+    return func(block, *args, **kwargs)
