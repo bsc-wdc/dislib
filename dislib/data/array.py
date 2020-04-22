@@ -157,6 +157,21 @@ class Array(object):
 
         raise IndexError("Invalid indexing information: %s" % str(arg))
 
+    def __setitem__(self, key, value):
+        if not np.isscalar(value):
+            raise ValueError("Can only assign scalar values.")
+
+        if not isinstance(key, tuple):
+            raise IndexError("Need to provide two indexes to assign a value.")
+
+        if key > self.shape:
+            raise IndexError("Index out of bounds.")
+
+        bi, bj = self._get_containing_block(*key)
+        vi, vj = self._coords_in_block(bi, bj, *key)
+
+        _set_value(self._blocks[bi][bj], vi, vj, value)
+
     def __pow__(self, power, modulo=None):
         if not isinstance(power, int) and not isinstance(power, float):
             raise NotImplementedError("Power is only supported for integers "
@@ -1146,3 +1161,8 @@ def _block_apply_axis(func, axis, blocks, *args, **kwargs):
 @task(returns=1)
 def _block_apply(func, block, *args, **kwargs):
     return func(block, *args, **kwargs)
+
+
+@task()
+def _set_value(block, i, j, value):
+    block[i][j] = value

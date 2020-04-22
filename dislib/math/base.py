@@ -48,13 +48,8 @@ def kron(a, b):
             offsetj += block_shape[1]
         offseti += block_shape[0]
 
-    tl_shape = (a._top_left_shape[0] * b._top_left_shape[0],
-                a._top_left_shape[1] * b._top_left_shape[1])
     shape = (a.shape[0] * b.shape[0], a.shape[1] * b.shape[1])
-    r_shape = (a._reg_shape[0] * b._reg_shape[0],
-               a._reg_shape[1] * b._reg_shape[1])
-
-    return Array(blocks, tl_shape, r_shape, shape, False)
+    return Array(blocks, b._top_left_shape, b._reg_shape, shape, False)
 
 
 @task(out_blocks={Type: COLLECTION_INOUT, Depth: 2})
