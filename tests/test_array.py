@@ -163,6 +163,12 @@ class DataLoadingTest(unittest.TestCase):
 
         self.assertTrue(np.array_equal(data.collect(), csv))
 
+        csv_f = "tests/files/csv/4"
+        data = ds.load_txt_file(csv_f, block_size=(1, 2))
+        csv = np.loadtxt(csv_f, delimiter=",")
+
+        self.assertTrue(_equal_arrays(data.collect(), csv))
+
     def test_load_npy_file(self):
         """ Tests loading an npy file """
         path = "tests/files/npy/1.npy"
@@ -447,3 +453,45 @@ class ArrayTest(unittest.TestCase):
         self.assertTrue(_equal_arrays(x.max().collect(), max))
         self.assertTrue(_equal_arrays(x.mean().collect(), mean))
         self.assertTrue(_equal_arrays(x.sum().collect(), sum))
+
+    @parameterized.expand([(ds.random_array((20, 30), (5, 6)),
+                            ds.random_array((30, 10), (6, 2))),
+
+                           (ds.random_array((1, 10), (1, 5)),
+                            ds.random_array((10, 7), (5, 2))),
+
+                           (ds.random_array((5, 10), (2, 2)),
+                            ds.random_array((10, 1), (2, 1))),
+
+                           (ds.random_array((17, 13), (3, 3)),
+                            ds.random_array((13, 9), (3, 2))),
+
+                           (ds.array(sp.csr_matrix(np.random.random((10, 12))),
+                                     (5, 2)),
+                            ds.array(sp.csr_matrix(np.random.random((12, 3))),
+                                     (2, 1))),
+                           (ds.random_array((1, 30), (1, 7)),
+                            ds.random_array((30, 1), (7, 1)))])
+    def test_matmul(self, x1, x2):
+        """ Tests ds-array multiplication """
+        expected = x1.collect() @ x2.collect()
+        computed = x1 @ x2
+        self.assertTrue(_equal_arrays(expected, computed.collect()))
+
+    def test_matmul_error(self):
+        """ Tests matmul not implemented cases """
+
+        with self.assertRaises(ValueError):
+            x1 = ds.random_array((5, 3), (5, 3))
+            x2 = ds.random_array((5, 3), (5, 3))
+            x1 @ x2
+
+        with self.assertRaises(ValueError):
+            x1 = ds.random_array((5, 3), (5, 3))
+            x2 = ds.random_array((3, 5), (2, 5))
+            x1 @ x2
+
+        with self.assertRaises(ValueError):
+            x1 = ds.array([[1, 2, 3], [4, 5, 6]], (2, 3))
+            x2 = ds.array(sp.csr_matrix([[1, 2], [4, 5], [7, 6]]), (3, 2))
+            x1 @ x2

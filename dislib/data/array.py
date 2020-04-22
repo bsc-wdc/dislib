@@ -88,6 +88,37 @@ class Array(object):
                    self._top_left_shape, self._reg_shape, self.shape,
                    self._sparse)
 
+    def __matmul__(self, x):
+        if self.shape[1] != x.shape[0]:
+            raise ValueError(
+                "Cannot multiply ds-arrays of shapes %r and %r" % (
+                    self.shape, x.shape))
+
+        if self._n_blocks[1] != x._n_blocks[0] or \
+                self._reg_shape[1] != x._reg_shape[0] or \
+                self._top_left_shape[1] != x._top_left_shape[0]:
+            raise ValueError("Cannot multiply ds-arrays with incompatible "
+                             "number of blocks or different block shapes.")
+        if self._sparse != x._sparse:
+            raise ValueError("Cannot multiply sparse and dense ds-arrays.")
+
+        n_blocks = (self._n_blocks[0], x._n_blocks[1])
+        blocks = Array._get_out_blocks(n_blocks)
+
+        for i in range(n_blocks[0]):
+            for j in range(n_blocks[1]):
+                hblock = self._blocks[i]
+                vblock = [x._blocks[k][j] for k in range(len(x._blocks))]
+
+                blocks[i][j] = _multiply_block_groups(hblock, vblock)
+
+        shape = (self.shape[0], x.shape[1])
+        tl_shape = (self._top_left_shape[0], x._top_left_shape[1])
+        reg_shape = (self._reg_shape[0], x._reg_shape[1])
+
+        return Array(blocks=blocks, top_left_shape=tl_shape,
+                     reg_shape=reg_shape, shape=shape, sparse=self._sparse)
+
     def __getitem__(self, arg):
 
         # return a single row
@@ -1010,6 +1041,20 @@ def load_npy_file(path, block_size):
         fid.close()
 
 
+def _multiply_block_groups(hblock, vblock):
+    blocks = []
+
+    for blocki, blockj in zip(hblock, vblock):
+        blocks.append(_multiply_blocks(blocki, blockj))
+
+    while len(blocks) > 1:
+        block1 = blocks.pop(0)
+        block2 = blocks.pop(0)
+        blocks.append(_sum_blocks(block1, block2))
+
+    return blocks[0]
+
+
 @task(out_blocks=COLLECTION_INOUT)
 def _read_from_buffer(data, dtype, shape, block_size, out_blocks):
     arr = np.frombuffer(data, dtype=dtype)
@@ -1022,6 +1067,9 @@ def _read_from_buffer(data, dtype, shape, block_size, out_blocks):
 @task(out_blocks=COLLECTION_INOUT)
 def _read_lines(lines, block_size, delimiter, out_blocks):
     samples = np.genfromtxt(lines, delimiter=delimiter)
+
+    if len(samples.shape) == 1:
+        samples = samples.reshape(1, -1)
 
     for i, j in enumerate(range(0, samples.shape[1], block_size)):
         out_blocks[i] = samples[:, j:j + block_size]
@@ -1150,3 +1198,13 @@ def _block_apply(func, axis, blocks, *args, **kwargs):
         return np.asarray(out).reshape(1, -1)
     else:
         return np.asarray(out).reshape(-1, 1)
+
+
+@task(returns=1)
+def _sum_blocks(block1, block2):
+    return block1 + block2
+
+
+@task(returns=1)
+def _multiply_blocks(block1, block2):
+    return block1 @ block2
