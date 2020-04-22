@@ -740,8 +740,17 @@ def array(x, block_size):
     else:
         x = np.array(x, copy=True)
 
+    if len(x.shape) > 2:
+        raise ValueError("Input data has more than 2 dimensions.")
+
     if len(x.shape) < 2:
-        raise ValueError("Input array must have two dimensions.")
+        if block_size[0] == 1:
+            x = x.reshape(1, -1)
+        elif block_size[1] == 1:
+            x = x.reshape(-1, 1)
+        else:
+            raise ValueError("Input data is one-dimensional but "
+                             "block size is greater than 1.")
 
     bn, bm = block_size
 

@@ -100,6 +100,29 @@ class DataLoadingTest(unittest.TestCase):
         self.assertTrue(x._n_blocks, ceil(n / bn) == ceil(m / bm))
         self.assertTrue(_equal_arrays(x.collect(), x_np))
 
+    def test_array_creation(self):
+        """ Tests array creation """
+        data = [[1, 2, 3], [4, 5, 6]]
+
+        x_np = np.array(data)
+        x = ds.array(data, (2, 3))
+        self.assertTrue(_equal_arrays(x.collect(), x_np))
+
+        x = ds.array(x_np, (2, 3))
+        self.assertTrue(_equal_arrays(x.collect(), x_np))
+
+        x_np = np.random.random(10)
+        x = ds.array(x_np, (1, 5))
+        self.assertTrue(_equal_arrays(x.collect(), x_np))
+
+        x_np = np.random.random(10)
+        x = ds.array(x_np, (5, 1))
+        self.assertTrue(_equal_arrays(x.collect(), x_np))
+
+        with self.assertRaises(ValueError):
+            x_np = np.random.random(10)
+            x = ds.array(x_np, (5, 5))
+
     def test_load_svmlight_file(self):
         """ Tests loading a LibSVM file  """
         file_ = "tests/files/libsvm/1"
