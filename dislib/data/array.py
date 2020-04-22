@@ -1,7 +1,6 @@
 from collections import defaultdict
 
 import numpy as np
-from numpy.lib import format
 from pycompss.api.api import compss_wait_on
 from pycompss.api.parameter import Type, COLLECTION_IN, Depth, COLLECTION_INOUT
 from pycompss.api.task import task
@@ -252,6 +251,30 @@ class Array(object):
             self.shape[1] - self._top_left_shape[1] - \
             reg_blocks * self._reg_shape[1]
         return self.shape[0], n_c
+
+    def _get_block_shape(self, i, j):
+        reg_blocks = (max(0, self._n_blocks[0] - 2),
+                      max(0, self._n_blocks[1] - 2))
+        remain_shape = (self.shape[0] - self._top_left_shape[0] -
+                        reg_blocks[0] * self._reg_shape[0],
+                        self.shape[1] - self._top_left_shape[1] -
+                        reg_blocks[1] * self._reg_shape[1])
+
+        if i == 0:
+            shape0 = self._top_left_shape[0]
+        elif i < self._n_blocks[0] - 1:
+            shape0 = self._reg_shape[0]
+        else:
+            shape0 = remain_shape[0]
+
+        if j == 0:
+            shape1 = self._top_left_shape[1]
+        elif j < self._n_blocks[1] - 1:
+            shape1 = self._reg_shape[1]
+        else:
+            shape1 = remain_shape[1]
+
+        return (shape0, shape1)
 
     def _iterator(self, axis=0):
         # iterate through rows
@@ -916,7 +939,7 @@ def apply_along_axis(func, axis, x, *args, **kwargs):
     out_blocks = list()
 
     for block in x._iterator(axis=(not axis)):
-        out = _block_apply(func, axis, block._blocks, *args, **kwargs)
+        out = _block_apply_axis(func, axis, block._blocks, *args, **kwargs)
         out_blocks.append(out)
 
     if axis == 0:
@@ -934,171 +957,14 @@ def apply_along_axis(func, axis, x, *args, **kwargs):
                  shape=out_shape, sparse=False)
 
 
-def load_svmlight_file(path, block_size, n_features, store_sparse):
-    """ Loads a SVMLight file into a distributed array.
-
-    Parameters
-    ----------
-    path : string
-        File path.
-    block_size : tuple (int, int)
-        Size of the blocks for the output ds-array.
-    n_features : int
-        Number of features.
-    store_sparse : boolean
-        Whether to use scipy.sparse data structures to store data. If False,
-        numpy.array is used instead.
-
-    Returns
-    -------
-    x, y : (ds-array, ds-array)
-        A distributed representation (ds-array) of the X and y.
-    """
-    n, m = block_size
-    lines = []
-    x_blocks, y_blocks = [], []
-
-    n_rows = 0
-    with open(path, "r") as f:
-        for line in f:
-            n_rows += 1
-            lines.append(line.encode())
-
-            if len(lines) == n:
-                # line 0 -> X, line 1 -> y
-                out_blocks = Array._get_out_blocks((1, ceil(n_features / m)))
-                out_blocks.append([object()])
-                # out_blocks.append([])
-                _read_svmlight(lines, out_blocks, col_size=m,
-                               n_features=n_features,
-                               store_sparse=store_sparse)
-                # we append only the list forming the row (out_blocks depth=2)
-                x_blocks.append(out_blocks[0])
-                y_blocks.append(out_blocks[1])
-                lines = []
-
-    if lines:
-        out_blocks = Array._get_out_blocks((1, ceil(n_features / m)))
-        out_blocks.append([object()])
-        _read_svmlight(lines, out_blocks, col_size=m,
-                       n_features=n_features, store_sparse=store_sparse)
-        # we append only the list forming the row (out_blocks depth=2)
-        x_blocks.append(out_blocks[0])
-        y_blocks.append(out_blocks[1])
-
-    x = Array(x_blocks, top_left_shape=block_size, reg_shape=block_size,
-              shape=(n_rows, n_features), sparse=store_sparse)
-
-    # y has only a single line but it's treated as a 'column'
-    y = Array(y_blocks, top_left_shape=(n, 1), reg_shape=(n, 1),
-              shape=(n_rows, 1), sparse=False)
-
-    return x, y
-
-
-def load_txt_file(path, block_size, delimiter=","):
-    """ Loads a text file into a distributed array.
-
-    Parameters
-    ----------
-    path : string
-        File path.
-    block_size : tuple (int, int)
-        Size of the blocks of the array.
-    delimiter : string, optional (default=",")
-        String that separates columns in the file.
-
-    Returns
-    -------
-    x : ds-array
-        A distributed representation of the data divided in blocks.
-    """
-
-    with open(path, "r") as f:
-        first_line = f.readline().strip()
-        n_cols = len(first_line.split(delimiter))
-
-    n_blocks = ceil(n_cols / block_size[1])
-    blocks = []
-    lines = []
-    n_lines = 0
-
-    with open(path, "r") as f:
-        for line in f:
-            n_lines += 1
-            lines.append(line.encode())
-
-            if len(lines) == block_size[0]:
-                out_blocks = [object() for _ in range(n_blocks)]
-                _read_lines(lines, block_size[1], delimiter, out_blocks)
-                blocks.append(out_blocks)
-                lines = []
-
-    if lines:
-        out_blocks = [object() for _ in range(n_blocks)]
-        _read_lines(lines, block_size[1], delimiter, out_blocks)
-        blocks.append(out_blocks)
-
-    return Array(blocks, top_left_shape=block_size, reg_shape=block_size,
-                 shape=(n_lines, n_cols), sparse=False)
-
-
-def load_npy_file(path, block_size):
-    """ Loads a file in npy format (must be 2-dimensional).
-
-    Parameters
-    ----------
-    path : str
-        Path to the npy file.
-    block_size : tuple (int, int)
-        Block size of the resulting ds-array.
-
-    Returns
-    -------
-    x : ds-array
-    """
-    try:
-        fid = open(path, "rb")
-        version = format.read_magic(fid)
-        format._check_version(version)
-        shape, fortran_order, dtype = format._read_array_header(fid, version)
-
-        if fortran_order:
-            raise ValueError("Fortran order not supported for npy files")
-
-        if len(shape) != 2:
-            raise ValueError("Array is not 2-dimensional")
-
-        if block_size[0] > shape[0] or block_size[1] > shape[1]:
-            raise ValueError("Block size is larger than the array")
-
-        blocks = []
-        n_blocks = int(ceil(shape[1] / block_size[1]))
-
-        for i in range(0, shape[0], block_size[0]):
-            read_count = min(block_size[0], shape[0] - i)
-            read_size = int(read_count * shape[1] * dtype.itemsize)
-            data = fid.read(read_size)
-            out_blocks = [object() for _ in range(n_blocks)]
-            _read_from_buffer(data, dtype, shape[1], block_size[1], out_blocks)
-            blocks.append(out_blocks)
-
-        return Array(blocks=blocks, top_left_shape=block_size,
-                     reg_shape=block_size, shape=shape, sparse=False)
-    finally:
-        fid.close()
-
-
 def _multiply_block_groups(hblock, vblock):
     blocks = []
 
     for blocki, blockj in zip(hblock, vblock):
-        blocks.append(_combine_blocks(np.matmul, blocki, blockj))
+        blocks.append(_block_apply(np.matmul, blocki, blockj))
 
     while len(blocks) > 1:
-        block1 = blocks.pop(0)
-        block2 = blocks.pop(0)
-        blocks.append(_combine_blocks(np.add, block1, block2))
+        blocks.append(_block_apply(np.add, blocks.pop(0), blocks.pop(0)))
 
     return blocks[0]
 
@@ -1163,62 +1029,14 @@ def _apply_elementwise(func, x, *args, **kwargs):
 
     for i in range(n_blocks[0]):
         for j in range(n_blocks[1]):
-            blocks[i][j] = _block_apply_elwise(func,
-                                               x._blocks[i][j],
-                                               *args, **kwargs)
-    return Array(blocks, x._top_left_shape, x._reg_shape, x.shape,
-                 x._sparse)
+            blocks[i][j] = _block_apply(func, x._blocks[i][j], *args, **kwargs)
+
+    return Array(blocks, x._top_left_shape, x._reg_shape, x.shape, x._sparse)
 
 
 def _random_block_wrapper(block_size, r_state):
     seed = r_state.randint(np.iinfo(np.int32).max)
     return _random_block(block_size, seed)
-
-
-@task(out_blocks=COLLECTION_INOUT)
-def _read_from_buffer(data, dtype, shape, block_size, out_blocks):
-    arr = np.frombuffer(data, dtype=dtype)
-    arr = arr.reshape((-1, shape))
-
-    for i in range(len(out_blocks)):
-        out_blocks[i] = arr[:, i * block_size:(i + 1) * block_size]
-
-
-@task(out_blocks=COLLECTION_INOUT)
-def _read_lines(lines, block_size, delimiter, out_blocks):
-    samples = np.genfromtxt(lines, delimiter=delimiter)
-
-    if len(samples.shape) == 1:
-        samples = samples.reshape(1, -1)
-
-    for i, j in enumerate(range(0, samples.shape[1], block_size)):
-        out_blocks[i] = samples[:, j:j + block_size]
-
-
-@task(out_blocks={Type: COLLECTION_INOUT, Depth: 2})
-def _read_svmlight(lines, out_blocks, col_size, n_features, store_sparse):
-    from tempfile import SpooledTemporaryFile
-    from sklearn.datasets import load_svmlight_file
-
-    # Creating a tmp file to use load_svmlight_file method should be more
-    # efficient than parsing the lines manually
-    tmp_file = SpooledTemporaryFile(mode="wb+", max_size=2e8)
-
-    tmp_file.writelines(lines)
-
-    tmp_file.seek(0)
-
-    x, y = load_svmlight_file(tmp_file, n_features)
-    if not store_sparse:
-        x = x.toarray()
-
-    # tried also converting to csc/ndarray first for faster splitting but it's
-    # not worth. Position 0 contains the X
-    for i in range(ceil(n_features / col_size)):
-        out_blocks[0][i] = x[:, i * col_size:(i + 1) * col_size]
-
-    # Position 1 contains the y block
-    out_blocks[1][0] = y.reshape(-1, 1)
 
 
 @task(returns=1)
@@ -1309,7 +1127,7 @@ def _zero_block(shape, dtype):
 
 
 @task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
-def _block_apply(func, axis, blocks, *args, **kwargs):
+def _block_apply_axis(func, axis, blocks, *args, **kwargs):
     arr = Array._merge_blocks(blocks)
     kwargs['axis'] = axis
     out = func(arr, *args, **kwargs)
@@ -1326,10 +1144,5 @@ def _block_apply(func, axis, blocks, *args, **kwargs):
 
 
 @task(returns=1)
-def _combine_blocks(func, block1, block2):
-    return func(block1, block2)
-
-
-@task(returns=1)
-def _block_apply_elwise(func, block, *args, **kwargs):
+def _block_apply(func, block, *args, **kwargs):
     return func(block, *args, **kwargs)
