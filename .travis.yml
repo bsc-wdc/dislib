@@ -5,7 +5,7 @@ sudo: required
 
 branches:
   only:
-    - master
+    - test_compss
     - /^release-.*/
 
 services:
@@ -18,23 +18,23 @@ env:
 
 before_script:
     - source launch_cassandra.sh
-    - docker build --tag adrianespejo/dislib_hecuba:0.1 .
-    - docker run $(bash <(curl -s https://codecov.io/env)) --network cassandra_bridge -d --name dislib adrianespejo/dislib_hecuba:0.1
+    - docker build --tag emebemb/dislib_hecuba_compss_production:0.2 .
+    - docker run -it --network cassandra_bridge -d --name dislib emebemb/dislib_hecuba_compss_production:0.2
 
 
-script: "docker exec dislib /dislib/run_ci_checks.sh"
+script: "docker exec -e CONTACT_NAMES='cassandra_container' -e NODE_PORT=9042 dislib /dislib/run_tests.sh"
 
-after_script:
-  - docker images
-  - docker exec dislib /dislib/bin/print_tests_logs.sh
-
-before_deploy:
-  - docker login -u "$REGISTRY_USER" -p "$REGISTRY_PASS"
-  - docker tag bscwdc/dislib bscwdc/dislib:latest
-deploy:
-  provider: script
-  script: docker push bscwdc/dislib:latest
-  on:
-    branch: master
+#after_script:
+#  - docker images
+#  - docker exec dislib /dislib/bin/print_tests_logs.sh
+#
+#before_deploy:
+#  - docker login -u "$REGISTRY_USER" -p "$REGISTRY_PASS"
+#  - docker tag bscwdc/dislib bscwdc/dislib:latest
+#deploy:
+#  provider: script
+#  script: docker push bscwdc/dislib:latest
+#  on:
+#    branch: master
 
 
