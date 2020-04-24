@@ -8,7 +8,7 @@ cd ${root_path}
 export PYTHONPATH=$PYTHONPATH:${root_path}
 
 echo "Running flake8 style check"
-./run_style.sh
+#./run_style.sh
 
 echo "Running tests"
 # Run the tests in ./tests with PyCOMPSs

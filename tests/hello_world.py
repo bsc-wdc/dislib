@@ -1,6 +1,6 @@
 from pycompss.api.task import task
 from pycompss.api.api import compss_wait_on
-
+import os
 
 @task(returns=1)
 def create_greeting(message, use_storage):
@@ -14,10 +14,15 @@ def create_greeting(message, use_storage):
         from storage_model.classes import hello
     else:
         from model.classes import hello
-    hi = hello()
-    hi.message = message
+    print("vaaaarsworker")
+    print(os.environ)
     if use_storage:
-        hi.make_persistent("greet")
+        hi = hello("greet")
+        hi.message = message
+        #hi.make_persistent()
+    else:
+        hi = hello()
+        hi.message = message
     return hi
 
 
@@ -57,6 +62,12 @@ def parse_arguments():
 
 
 def main(use_storage):
+    # import sys
+    # sys.path.append("./debug/pydevd-pycharm.egg")
+    # import pydevd_pycharm
+    # pydevd_pycharm.settrace('192.168.1.222', port=12345, stdoutToServer=True, stderrToServer=True)
+    print("vaaaars")
+    print(os.environ)
     message = "Hello world"
     greeting = create_greeting(message, use_storage)
     content = greet(greeting)
