@@ -157,20 +157,28 @@ class Array(object):
         a single ndarray / sparse matrix.
         """
         sparse = None
-        print("merge")
-        print(blocks[0][0].__class__.__name__ )
-        print(blocks)
+        # import sys
+        # sys.path.append("./debug/pydevd-pycharm.egg")
+        # import pydevd_pycharm
+        # pydevd_pycharm.settrace('192.168.1.222', port=12345, stdoutToServer=True, stderrToServer=True)        
+
+        try:
+            if np.array(blocks).shape[0]>1 and blocks[0][0].__class__.__name__=="StorageNumpy":
+                res=[]
+                for block in blocks:
+                    value=list(block)[0]
+                    res.append(value)
+                return np.concatenate(res)
+        except:
+            print("Block size no compatible with np.array.shape")
+
         if blocks[0][0].__class__.__name__ == "StorageNumpy":
-            print("entro")
             b0 = blocks[0][0]
-            print(b0.shape)
-            print(np.array(list(b0)[0]))
             if len(b0.shape) > 2:
                 return np.array(list(b0)[0])
             else:
                 return np.array(list(b0))
 
-        print("no entro")
         b0 = blocks[0][0]
         if sparse is None:
             sparse = issparse(b0)
@@ -179,8 +187,7 @@ class Array(object):
             ret = sp.bmat(blocks, format=b0.getformat(), dtype=b0.dtype)
         else:
             ret = np.block(blocks)
-        print("return")
-        print(ret)
+
         return ret
 
     @staticmethod
@@ -767,7 +774,7 @@ def load_from_hecuba(name, block_size):
 
     blocks = []
     for block in persistent_data.np_split(block_size=(bn, bm)):
-        blocks.append([block])
+        blocks.append(block)
 
     arr = Array(blocks=blocks, top_left_shape=block_size,
                 reg_shape=block_size, shape=persistent_data.shape,

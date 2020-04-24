@@ -90,21 +90,9 @@ class KMeans(BaseEstimator):
 
 
             for row in x._iterator(axis=0):
-                print("row")
-                print(row)
-                print("row blocks")
-                print(row._blocks)
                 partial = _partial_sum(row._blocks, old_centers)
-
-                #value=[[np.zeros((61,2))]]
-                #partial = _partial_sum(value, old_centers)
-
-                print("esto es un partial")
-                print(partial)
                 partials.append(partial)
 
-            print("partials")
-            print(partials)
             self._recompute_centers(partials)
             iteration += 1
 
@@ -140,8 +128,6 @@ class KMeans(BaseEstimator):
         labels : ds-array, shape=(n_samples, 1)
             Index of the cluster each sample belongs to.
         """
-        print("predict")
-        print(x)
         validation.check_is_fitted(self, 'centers')
         blocks = []
 
@@ -198,9 +184,6 @@ class KMeans(BaseEstimator):
 def _partial_sum(blocks, centers):
     partials = np.zeros((centers.shape[0], 2), dtype=object)
     arr = Array._merge_blocks(blocks)
-    #arr=blocks
-    print("shape del return")
-    print(arr.shape)
     close_centers = pairwise_distances(arr, centers).argmin(axis=1)
 
     for center_idx, _ in enumerate(centers):
@@ -223,7 +206,7 @@ def _merge(*data):
     return accum
 
 
-#@task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
+@task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
 def _predict(blocks, centers):
     arr = Array._merge_blocks(blocks)
     return pairwise_distances(arr, centers).argmin(axis=1).reshape(-1, 1)
