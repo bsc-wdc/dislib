@@ -83,13 +83,8 @@ class LinearRegression(BaseEstimator):
             raise NotImplementedError('Sparse data is not supported.')
         ztz = _compute_ztz(x, self.fit_intercept, self.arity)
         zty = _compute_zty(x, y, self.fit_intercept, self.arity)
-        params = compss_wait_on(_compute_model_parameters(ztz, zty))
-        if self.fit_intercept:
-            self._intercept = params[0]
-            self._coef = params[1:]
-        else:
-            self._intercept = 0
-            self._coef = params
+        params = _compute_model_parameters(ztz, zty, self.fit_intercept)
+        self._intercept, self._coef = params
 
     def predict(self, x):
         """
@@ -187,11 +182,15 @@ def _partial_zty(x, y, fit_intercept):
     return (z.T@y).flatten()
 
 
-@task(returns=1)
-def _compute_model_parameters(ztz, zty):
+@task(returns=2)
+def _compute_model_parameters(ztz, zty, fit_intercept):
     """Compute the model parameters, inv(z.T@z)@z.T@y, by solving a linear
     system"""
-    return np.linalg.solve(ztz, zty)
+    params = np.linalg.solve(ztz, zty)
+    if fit_intercept:
+        return params[0], params[1:]
+    else:
+        return 0, params
 
 
 @task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=1)
