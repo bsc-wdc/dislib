@@ -2,7 +2,6 @@ import unittest
 
 import numpy as np
 from scipy.sparse import random as sp_random
-from pycompss.api.api import compss_wait_on
 
 import dislib as ds
 from dislib.regression import LinearRegression
@@ -11,8 +10,8 @@ from dislib.data import random_array
 
 class LinearRegressionTest(unittest.TestCase):
 
-    def test_fit_and_predict(self):
-        """Tests LinearRegression's fit() and predict()"""
+    def test_univariate(self):
+        """Tests fit() and predict(), univariate."""
         x_data = np.array([1, 2, 3, 4, 5]).reshape(-1, 1)
         y_data = np.array([2, 1, 1, 2, 4.5]).reshape(-1, 1)
 
@@ -23,19 +22,101 @@ class LinearRegressionTest(unittest.TestCase):
 
         reg = LinearRegression()
         reg.fit(x, y)
-        # y = 0.6 * x + 0.3
-
-        reg.coef_ = compss_wait_on(reg.coef_)
-        reg.intercept_ = compss_wait_on(reg.intercept_)
-
         self.assertTrue(np.allclose(reg.coef_, 0.6))
         self.assertTrue(np.allclose(reg.intercept_, 0.3))
 
+        # Predict one sample
+        x_test = np.array([3]).reshape(-1, 1)
+        test_data = ds.array(x=x_test, block_size=(bn, bm))
+        pred = reg.predict(test_data).collect()
+        self.assertTrue(np.allclose(pred, 2.1))
+
+        # Predict multiple samples
         x_test = np.array([3, 5]).reshape(-1, 1)
         test_data = ds.array(x=x_test, block_size=(bn, bm))
         pred = reg.predict(test_data).collect()
-
         self.assertTrue(np.allclose(pred, [2.1, 3.3]))
+
+    def test_univariate_no_intercept(self):
+        """Tests fit() and predict(), univariate, fit_intercept=False."""
+        x_data = np.array([1, 2, 3, 4, 5]).reshape(-1, 1)
+        y_data = np.array([2, 1, 1, 2, 4.5]).reshape(-1, 1)
+
+        bn, bm = 2, 2
+
+        x = ds.array(x=x_data, block_size=(bn, bm))
+        y = ds.array(x=y_data, block_size=(bn, bm))
+
+        reg = LinearRegression(fit_intercept=False)
+        reg.fit(x, y)
+        self.assertTrue(np.allclose(reg.coef_, 0.68181818))
+        self.assertTrue(np.allclose(reg.intercept_, 0))
+
+        # Predict one sample
+        x_test = np.array([3]).reshape(-1, 1)
+        test_data = ds.array(x=x_test, block_size=(bn, bm))
+        pred = reg.predict(test_data).collect()
+        self.assertTrue(np.allclose(pred, 2.04545455))
+
+        # Predict multiple samples
+        x_test = np.array([3, 5]).reshape(-1, 1)
+        test_data = ds.array(x=x_test, block_size=(bn, bm))
+        pred = reg.predict(test_data).collect()
+        self.assertTrue(np.allclose(pred, [2.04545455, 3.40909091]))
+
+    def test_multivariate(self):
+        """Tests fit() and predict(), multivariate."""
+        x_data = np.array([[1, 2], [2, 0], [3, 1], [4, 4], [5, 3]])
+        y_data = np.array([2, 1, 1, 2, 4.5]).reshape(-1, 1)
+
+        bn, bm = 2, 2
+
+        x = ds.array(x=x_data, block_size=(bn, bm))
+        y = ds.array(x=y_data, block_size=(bn, bm))
+
+        reg = LinearRegression()
+        reg.fit(x, y)
+        self.assertTrue(np.allclose(reg.coef_, [0.421875, 0.296875]))
+        self.assertTrue(np.allclose(reg.intercept_, 0.240625))
+
+        # Predict one sample
+        x_test = np.array([3, 2]).reshape(1, -1)
+        test_data = ds.array(x=x_test, block_size=(bn, bm))
+        pred = reg.predict(test_data).collect()
+        self.assertTrue(np.allclose(pred, 2.1))
+
+        # Predict multiple samples
+        x_test = np.array([[3, 2], [4, 4]])
+        test_data = ds.array(x=x_test, block_size=(bn, bm))
+        pred = reg.predict(test_data).collect()
+        self.assertTrue(np.allclose(pred, [2.1, 3.115625]))
+
+    def test_multivariate_no_intercept(self):
+        """Tests fit() and predict(), multivariate, fit_intercept=False."""
+        x_data = np.array([[1, 2], [2, 0], [3, 1], [4, 4], [5, 3]])
+        y_data = np.array([2, 1, 1, 2, 4.5]).reshape(-1, 1)
+
+        bn, bm = 2, 2
+
+        x = ds.array(x=x_data, block_size=(bn, bm))
+        y = ds.array(x=y_data, block_size=(bn, bm))
+
+        reg = LinearRegression(fit_intercept=False)
+        reg.fit(x, y)
+        self.assertTrue(np.allclose(reg.coef_, [0.48305085, 0.30367232]))
+        self.assertTrue(np.allclose(reg.intercept_, 0))
+
+        # Predict one sample
+        x_test = np.array([3, 2]).reshape(1, -1)
+        test_data = ds.array(x=x_test, block_size=(bn, bm))
+        pred = reg.predict(test_data).collect()
+        self.assertTrue(np.allclose(pred, [2.05649718]))
+
+        # Predict multiple samples
+        x_test = np.array([[3, 2], [4, 4]])
+        test_data = ds.array(x=x_test, block_size=(bn, bm))
+        pred = reg.predict(test_data).collect()
+        self.assertTrue(np.allclose(pred, [2.05649718, 3.14689266]))
 
     def test_sparse(self):
         """Tests LR raises NotImplementedError for sparse data."""
