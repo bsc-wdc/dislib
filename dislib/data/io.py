@@ -1,4 +1,5 @@
 import numpy as np
+from numpy.lib import format
 from pycompss.api.parameter import COLLECTION_INOUT, Type, Depth
 from pycompss.api.task import task
 

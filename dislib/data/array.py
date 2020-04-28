@@ -1,8 +1,10 @@
+import operator
 from collections import defaultdict
 
 import numpy as np
-from pycompss.api.api import compss_wait_on
-from pycompss.api.parameter import Type, COLLECTION_IN, Depth, COLLECTION_INOUT
+from pycompss.api.api import compss_wait_on, compss_delete_object
+from pycompss.api.parameter import Type, COLLECTION_IN, Depth, \
+    COLLECTION_INOUT, INOUT
 from pycompss.api.task import task
 from scipy import sparse as sp
 from scipy.sparse import issparse, csr_matrix
@@ -234,6 +236,118 @@ class Array(object):
         return [[object() for _ in range(n_blocks[1])]
                 for _ in range(n_blocks[0])]
 
+    @staticmethod
+    def _get_block_shape_static(i, j, x):
+        reg_blocks = (max(0, x._n_blocks[0] - 2),
+                      max(0, x._n_blocks[1] - 2))
+        remain_shape = (x.shape[0] - x._top_left_shape[0] -
+                        reg_blocks[0] * x._reg_shape[0],
+                        x.shape[1] - x._top_left_shape[1] -
+                        reg_blocks[1] * x._reg_shape[1])
+
+        if i == 0:
+            shape0 = x._top_left_shape[0]
+        elif i < x._n_blocks[0] - 1:
+            shape0 = x._reg_shape[0]
+        else:
+            shape0 = remain_shape[0]
+
+        if j == 0:
+            shape1 = x._top_left_shape[1]
+        elif j < x._n_blocks[1] - 1:
+            shape1 = x._reg_shape[1]
+        else:
+            shape1 = remain_shape[1]
+
+        return (shape0, shape1)
+
+    @staticmethod
+    def _rechunk(blocks, shape, block_size, shape_f, *args, **kwargs):
+        """ Re-partitions a set of blocks into a new ds-array of the given
+        block size.
+
+        shape_f is a function that returns the shape of the (i,j) block. It
+        has to take at least two indices as arguments. This function is
+        needed to rechunk an irregular set of blocks such as in the ds.kron
+        operation, where the shape of a block is not trivial to compute.
+        """
+        if shape[0] < block_size[0] or shape[1] < block_size[1]:
+            raise ValueError("Block size is greater than the array")
+
+        cur_element = [0, 0]
+        tl_shape = list(block_size)
+        n_blocks = (ceil(shape[0] / block_size[0]),
+                    ceil(shape[1] / block_size[1]))
+        tmp_blocks = [[[] for _ in range(n_blocks[1])] for _ in
+                      range(n_blocks[0])]
+
+        # iterate over each block, split it if necessary, and place each
+        # part into a new list of blocks to form the output blocks later
+        for i in range(len(blocks)):
+            cur_element[1] = 0
+            tl_shape[1] = block_size[1]
+
+            for j in range(len(blocks[i])):
+                bshape = shape_f(i, j, *args, **kwargs)
+
+                out_n_blocks = (ceil((bshape[0] - tl_shape[0]) /
+                                     block_size[0]) + 1,
+                                ceil((bshape[1] - tl_shape[1]) /
+                                     block_size[1]) + 1)
+
+                out_blocks = Array._get_out_blocks(out_n_blocks)
+
+                if out_n_blocks > (1, 1):
+                    _split_block(blocks[i][j], tl_shape, block_size,
+                                 out_blocks)
+                    compss_delete_object(blocks[i][j])
+                else:
+                    out_blocks[0][0] = blocks[i][j]
+
+                cur_block = (int(cur_element[0] / block_size[0]),
+                             int(cur_element[1] / block_size[1]))
+
+                # distribute each part of the original block into the
+                # corresponding new blocks. cur_block keeps track of the new
+                # block that we are generating, but some parts of the
+                # orignal block might go to neighbouring new blocks
+                for m in range(len(out_blocks)):
+                    for n in range(len(out_blocks[m])):
+                        bi = cur_block[0] + m
+                        bj = cur_block[1] + n
+                        tmp_blocks[bi][bj].append(out_blocks[m][n])
+
+                tl_shape[1] = block_size[1] - \
+                              ((bshape[1] - tl_shape[1]) % block_size[1])
+                cur_element[1] += bshape[1]
+
+            tl_shape[0] = block_size[0] - \
+                          ((bshape[0] - tl_shape[0]) % block_size[0])
+            cur_element[0] += bshape[0]
+
+        final_blocks = Array._get_out_blocks(n_blocks)
+        irr_shape = (shape[0] - (n_blocks[0] - 1) * block_size[0],
+                     shape[1] - (n_blocks[1] - 1) * block_size[1])
+
+        # merges the different parts of each original block into new blocks
+        # of the given block size
+        for i in range(n_blocks[0]):
+            bs0 = block_size[0] if i < n_blocks[0] - 1 else irr_shape[0]
+
+            for j in range(n_blocks[1]):
+                bs1 = block_size[1] if j < n_blocks[1] - 1 else irr_shape[1]
+
+                # if there is more than one part, merge them, otherwise the
+                # block is already of the wanted block size
+                if len(tmp_blocks[i][j]) > 1:
+                    final_blocks[i][j] = _assemble_blocks(tmp_blocks[i][j],
+                                                          (bs0, bs1))
+                    [compss_delete_object(block) for block in tmp_blocks[i][j]]
+                else:
+                    final_blocks[i][j] = tmp_blocks[i][j][0]
+
+        return Array(final_blocks, block_size, block_size, shape, False)
+
     def _get_row_shape(self, row_idx):
         if row_idx == 0:
             return self._top_left_shape[0], self.shape[1]
@@ -268,28 +382,7 @@ class Array(object):
         return self.shape[0], n_c
 
     def _get_block_shape(self, i, j):
-        reg_blocks = (max(0, self._n_blocks[0] - 2),
-                      max(0, self._n_blocks[1] - 2))
-        remain_shape = (self.shape[0] - self._top_left_shape[0] -
-                        reg_blocks[0] * self._reg_shape[0],
-                        self.shape[1] - self._top_left_shape[1] -
-                        reg_blocks[1] * self._reg_shape[1])
-
-        if i == 0:
-            shape0 = self._top_left_shape[0]
-        elif i < self._n_blocks[0] - 1:
-            shape0 = self._reg_shape[0]
-        else:
-            shape0 = remain_shape[0]
-
-        if j == 0:
-            shape1 = self._top_left_shape[1]
-        elif j < self._n_blocks[1] - 1:
-            shape1 = self._reg_shape[1]
-        else:
-            shape1 = remain_shape[1]
-
-        return (shape0, shape1)
+        return Array._get_block_shape_static(i, j, self)
 
     def _iterator(self, axis=0):
         # iterate through rows
@@ -787,7 +880,26 @@ class Array(object):
         """
         return _apply_elementwise(np.conj, self)
 
-    def collect(self):
+    def rechunk(self, block_size):
+        """ Re-partitions the ds-array into blocks of the given block size.
+
+        Parameters
+        ----------
+        block_size : tuple of two ints
+            The desired block size.
+
+        Returns
+        -------
+        x : ds-array
+            Re-partitioned ds-array.
+        """
+        if self._sparse:
+            raise NotImplementedError("Cannot rechunk a sparse ds-array.")
+
+        return Array._rechunk(self._blocks, self.shape, block_size,
+                              Array._get_block_shape_static, self)
+
+    def collect(self, squeeze=True):
         """
         Collects the contents of this ds-array and returns the equivalent
         in-memory array that this ds-array represents. This method creates a
@@ -796,6 +908,12 @@ class Array(object):
         Warning: This method may fail if the ds-array does not fit in
         memory.
 
+        Parameters
+        ----------
+        squeeze : boolean, optional (default=True)
+            Whether to remove single-dimensional entries from the shape of
+            the resulting ndarray.
+
         Returns
         -------
         array : nd-array or spmatrix
@@ -803,7 +921,7 @@ class Array(object):
         """
         self._blocks = compss_wait_on(self._blocks)
         res = self._merge_blocks(self._blocks)
-        if not self._sparse:
+        if not self._sparse and squeeze:
             res = np.squeeze(res)
         return res
 
@@ -842,6 +960,9 @@ def array(x, block_size):
         else:
             raise ValueError("Input array is one-dimensional but "
                              "block size is greater than 1.")
+
+    if x.shape[0] < block_size[0] or x.shape[1] < block_size[1]:
+        raise ValueError("Block size is greater than the array")
 
     bn, bm = block_size
 
@@ -899,7 +1020,29 @@ def zeros(shape, block_size, dtype=float):
     x : ds-array
         Distributed array filled with zeros.
     """
-    return _full(shape, block_size, False, _zero_block, dtype)
+    return _full(shape, block_size, False, _full_block, 0, dtype)
+
+
+def full(shape, block_size, fill_value, dtype=float):
+    """ Returns a ds-array of 'shape' filled with 'fill_value'.
+
+    Parameters
+    ----------
+    shape : tuple of two ints
+        Shape of the output ds-array.
+    block_size : tuple of two ints
+        Size of the ds-array blocks.
+    fill_value : scalar
+        Fill value.
+    dtype : data type, optional (default=float)
+        The desired type of the array.
+
+    Returns
+    -------
+    x : ds-array
+        Distributed array filled with the fill value.
+    """
+    return _full(shape, block_size, False, _full_block, fill_value, dtype)
 
 
 def apply_along_axis(func, axis, x, *args, **kwargs):
@@ -976,10 +1119,10 @@ def _multiply_block_groups(hblock, vblock):
     blocks = []
 
     for blocki, blockj in zip(hblock, vblock):
-        blocks.append(_block_apply(np.matmul, blocki, blockj))
+        blocks.append(_block_apply(operator.matmul, blocki, blockj))
 
     while len(blocks) > 1:
-        blocks.append(_block_apply(np.add, blocks.pop(0), blocks.pop(0)))
+        blocks.append(_block_apply(operator.add, blocks.pop(0), blocks.pop(0)))
 
     return blocks[0]
 
@@ -1137,8 +1280,8 @@ def _random_block(shape, seed):
 
 
 @task(returns=np.array)
-def _zero_block(shape, dtype):
-    return np.zeros(shape, dtype=dtype)
+def _full_block(shape, value, dtype):
+    return np.full(shape, value, dtype)
 
 
 @task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
@@ -1163,6 +1306,37 @@ def _block_apply(func, block, *args, **kwargs):
     return func(block, *args, **kwargs)
 
 
-@task()
+@task(block=INOUT)
 def _set_value(block, i, j, value):
     block[i][j] = value
+
+
+@task(blocks={Type: COLLECTION_IN, Depth: 1}, returns=1)
+def _assemble_blocks(blocks, bshape):
+    """ Generates a block of shape bshape from a list of blocks of arbitrary
+    shapes that can be assembled together into bshape """
+    merged = list()
+    size = 0
+
+    for j, block in enumerate(blocks):
+        size += block.shape[1]
+
+        if size / bshape[1] > len(merged):
+            merged.append([])
+
+        merged[-1].append(block)
+
+    return np.block(merged)
+
+
+@task(out_blocks={Type: COLLECTION_INOUT, Depth: 2})
+def _split_block(block, tl_shape, reg_shape, out_blocks):
+    """ Splits a block into new blocks following the ds-array typical scheme
+    with a top left block, regular blocks in the middle and remainder blocks
+    at the edges """
+    vsplit = range(tl_shape[0], block.shape[0], reg_shape[0])
+    hsplit = range(tl_shape[1], block.shape[1], reg_shape[1])
+
+    for i, rows in enumerate(np.vsplit(block, vsplit)):
+        for j, cols in enumerate(np.hsplit(rows, hsplit)):
+            out_blocks[i][j] = cols

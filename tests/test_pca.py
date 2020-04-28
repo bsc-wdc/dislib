@@ -46,7 +46,7 @@ class PCATest(unittest.TestCase):
     def test_fit_transform(self):
         """Tests PCA.fit_transform()"""
         x, _ = make_blobs(n_samples=10, n_features=4, random_state=0)
-        bn, bm = 25, 5
+        bn, bm = 10, 4
         dataset = ds.array(x=x, block_size=(bn, bm))
 
         pca = PCA(n_components=3)
