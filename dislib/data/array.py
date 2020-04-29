@@ -317,12 +317,12 @@ class Array(object):
                         bj = cur_block[1] + n
                         tmp_blocks[bi][bj].append(out_blocks[m][n])
 
-                tl_shape[1] = block_size[1] - \
-                              ((bshape[1] - tl_shape[1]) % block_size[1])
+                tl_shape[1] = block_size[1] - ((bshape[1] - tl_shape[1])
+                                               % block_size[1])
                 cur_element[1] += bshape[1]
 
-            tl_shape[0] = block_size[0] - \
-                          ((bshape[0] - tl_shape[0]) % block_size[0])
+            tl_shape[0] = block_size[0] - ((bshape[0] - tl_shape[0]) %
+                                           block_size[0])
             cur_element[0] += bshape[0]
 
         final_blocks = Array._get_out_blocks(n_blocks)

@@ -35,8 +35,8 @@ def _validate_array(x):
     br0 = br0 if br0 > 0 else x._top_left_shape[0]
     br1 = br1 if br1 > 0 else x._top_left_shape[1]
 
-    return tl == x._top_left_shape and br == (br0, br1) and \
-           sp.issparse(x._blocks[0][0]) == x._sparse
+    return (tl == x._top_left_shape and br == (br0, br1) and
+            sp.issparse(x._blocks[0][0]) == x._sparse)
 
 
 def _equal_arrays(x1, x2):
