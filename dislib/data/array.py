@@ -298,7 +298,7 @@ class Array(object):
                 out_blocks = Array._get_out_blocks(out_n_blocks)
 
                 if out_n_blocks > (1, 1):
-                    _split_block(blocks[i][j], tl_shape, block_size,
+                    _split_block(blocks[i][j], list(tl_shape), block_size,
                                  out_blocks)
                     compss_delete_object(blocks[i][j])
                 else:
