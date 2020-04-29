@@ -166,8 +166,10 @@ class Array(object):
         if not isinstance(key, tuple):
             raise IndexError("Need to provide two indexes to assign a value.")
 
-        if key > self.shape:
-            raise IndexError("Index out of bounds.")
+        if key[0] >= self.shape[0] or key[1] >= self.shape[1] or \
+                key[0] < 0 or key[1] < 0:
+            raise IndexError("Index %r is out of bounds for ds-array with "
+                             "shape %r." % (key, self.shape))
 
         bi, bj = self._get_containing_block(*key)
         vi, vj = self._coords_in_block(bi, bj, *key)
