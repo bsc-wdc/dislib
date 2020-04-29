@@ -175,10 +175,9 @@ class Array(object):
         _set_value(self._blocks[bi][bj], vi, vj, value)
 
     def __pow__(self, power, modulo=None):
-        if not isinstance(power, int) and not isinstance(power, float):
-            raise NotImplementedError("Power is only supported for integers "
-                                      "and floats")
-        return self._apply_elementwise(Array._power, self, power)
+        if not np.isscalar(power):
+            raise NotImplementedError("Power is only supported for scalars")
+        return _apply_elementwise(Array._power, self, power)
 
     @property
     def shape(self):

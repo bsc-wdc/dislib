@@ -542,6 +542,44 @@ class ArrayTest(unittest.TestCase):
         re = x.rechunk(bsize_out)
         self.assertTrue(_validate_array(re))
 
+    def test_set_item(self):
+        """ Tests setting a single value """
+        x = ds.random_array((10, 10), (3, 3))
+        x[5, 5] = -1
+        x[0, 0] = -2
+        x[9, 9] = -3
+
+        self.assertTrue(_validate_array(x))
+
+        x_np = x.collect()
+
+        self.assertEqual(x_np[5][5], -1)
+        self.assertEqual(x_np[0][0], -2)
+        self.assertEqual(x_np[9][9], -3)
+
+        with self.assertRaises(ValueError):
+            x[0, 0] = [2, 3, 4]
+
+        with self.assertRaises(IndexError):
+            x[10, 2] = 3
+
+        with self.assertRaises(IndexError):
+            x[0] = 3
+
+    def test_power(self):
+        """ Tests ds-array power """
+        x = ds.array([[1, 2, 3], [4, 5, 6]], block_size=(2, 1))
+        xp = x ** 2
+
+        self.assertTrue(_validate_array(xp))
+
+        expected = np.array([[1, 4, 9], [16, 25, 36]])
+
+        self.assertTrue(_equal_arrays(expected, xp.collect()))
+
+        with self.assertRaises(NotImplementedError):
+            x ** x
+
 
 class MathTest(unittest.TestCase):
 
