@@ -51,19 +51,6 @@ class Array(object):
     ----------
     shape : tuple (int, int)
         Total number of elements in the array.
-    _blocks : list
-        List of lists of nd-array or spmatrix.
-    _top_left_shape : tuple
-        A single tuple indicating the shape of the top-left block. This
-        can be different from _reg_shape when slicing arrays.
-    _reg_shape : tuple
-        A single tuple indicating the shape of regular blocks. Top-left and
-        and bot-right blocks might have different shapes (and thus, also the
-        whole first/last blocks of rows/cols).
-    _n_blocks : tuple (int, int)
-        Total number of (horizontal, vertical) blocks.
-    _sparse: boolean
-        True if this array contains sparse data.
     """
 
     def __init__(self, blocks, top_left_shape, reg_shape, shape, sparse):
@@ -190,6 +177,7 @@ class Array(object):
 
     @property
     def T(self):
+        """ Returns the transpose of this ds-array """
         return self.transpose()
 
     @staticmethod
