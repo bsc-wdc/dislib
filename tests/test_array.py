@@ -567,18 +567,55 @@ class ArrayTest(unittest.TestCase):
             x[0] = 3
 
     def test_power(self):
-        """ Tests ds-array power """
-        x = ds.array([[1, 2, 3], [4, 5, 6]], block_size=(2, 1))
+        """ Tests ds-array power and sqrt """
+        orig = np.array([[1, 2, 3], [4, 5, 6]])
+        x = ds.array(orig, block_size=(2, 1))
         xp = x ** 2
+        xs = xp.sqrt()
 
         self.assertTrue(_validate_array(xp))
+        self.assertTrue(_validate_array(xs))
 
         expected = np.array([[1, 4, 9], [16, 25, 36]])
 
         self.assertTrue(_equal_arrays(expected, xp.collect()))
+        self.assertTrue(_equal_arrays(orig, xs.collect()))
+
+        orig = sp.csr_matrix([[1, 2, 3], [4, 5, 6]])
+        x = ds.array(orig, block_size=(2, 1))
+        xp = x ** 2
+        xs = xp.sqrt()
+
+        self.assertTrue(_validate_array(xp))
+        self.assertTrue(_validate_array(xs))
+
+        expected = sp.csr_matrix([[1, 4, 9], [16, 25, 36]])
+
+        self.assertTrue(_equal_arrays(expected, xp.collect()))
+        self.assertTrue(_equal_arrays(orig, xs.collect()))
 
         with self.assertRaises(NotImplementedError):
             x ** x
+
+    def test_norm(self):
+        """ Tests the norm """
+        x_np = np.array([[1, 2, 3], [4, 5, 6]])
+        x = ds.array(x_np, block_size=(2, 1))
+        xn = x.norm()
+
+        self.assertTrue(_validate_array(xn))
+
+        expected = np.linalg.norm(x_np, axis=0)
+
+        self.assertTrue(_equal_arrays(expected, xn.collect()))
+
+        xn = x.norm(axis=1)
+
+        self.assertTrue(_validate_array(xn))
+
+        expected = np.linalg.norm(x_np, axis=1)
+
+        self.assertTrue(_equal_arrays(expected, xn.collect()))
 
 
 class MathTest(unittest.TestCase):

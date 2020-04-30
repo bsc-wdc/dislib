@@ -835,7 +835,7 @@ class Array(object):
         return apply_along_axis(np.mean, axis, self)
 
     def norm(self, axis=0):
-        """ Returns the Frobenius norm.
+        """ Returns the Frobenius norm along an axis.
 
         Parameters
         ----------
@@ -847,7 +847,16 @@ class Array(object):
         -------
         norm : ds-array
             Norm along axis.
+
+        Raises
+        -------
+        NotImplementedError
+            If the ds-array is sparse.
         """
+        if self._sparse:
+            raise NotImplementedError("Cannot compute the norm of sparse "
+                                      "ds-arrays.")
+
         return apply_along_axis(np.linalg.norm, axis, self)
 
     def sqrt(self):
