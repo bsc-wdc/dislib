@@ -471,7 +471,9 @@ class ArrayTest(unittest.TestCase):
         self.assertTrue(_equal_arrays(x.sum().collect(), sum))
 
     @parameterized.expand([(np.full((10, 10), 3, complex),),
-                           (sp.csr_matrix(np.full((10, 10), 5, complex)),)])
+                           (sp.csr_matrix(np.full((10, 10), 5, complex)),),
+                           (np.random.rand(10, 10) +
+                            1j * np.random.rand(10, 10),)])
     def test_conj(self, x_np):
         """ Tests the complex conjugate """
         bs0 = np.random.randint(1, x_np.shape[0] + 1)
@@ -540,7 +542,10 @@ class ArrayTest(unittest.TestCase):
         """ Tests the rechunk function """
         x = ds.random_array(shape, bsize_in)
         re = x.rechunk(bsize_out)
+        self.assertEqual(re._reg_shape, bsize_out)
+        self.assertEqual(re._top_left_shape, bsize_out)
         self.assertTrue(_validate_array(re))
+        self.assertTrue(_equal_arrays(x.collect(), re.collect()))
 
     def test_set_item(self):
         """ Tests setting a single value """

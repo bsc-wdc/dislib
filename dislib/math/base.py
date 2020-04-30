@@ -1,3 +1,4 @@
+from pycompss.api.api import compss_delete_object
 from pycompss.api.parameter import COLLECTION_INOUT, Type, Depth
 from pycompss.api.task import task
 
@@ -55,7 +56,13 @@ def kron(a, b, block_size=None):
 
     shape = (a.shape[0] * b.shape[0], a.shape[1] * b.shape[1])
 
-    return Array._rechunk(k_blocks, shape, block_size, _kron_shape_f, b)
+    out = Array._rechunk(k_blocks, shape, block_size, _kron_shape_f, b)
+
+    for blocks in k_blocks:
+        for block in blocks:
+            compss_delete_object(block)
+
+    return out
 
 
 def _kron_shape_f(i, j, b):

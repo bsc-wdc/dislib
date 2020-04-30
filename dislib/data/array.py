@@ -286,12 +286,8 @@ class Array(object):
 
                 out_blocks = Array._get_out_blocks(out_n_blocks)
 
-                if out_n_blocks > (1, 1):
-                    _split_block(blocks[i][j], list(tl_shape), block_size,
-                                 out_blocks)
-                    compss_delete_object(blocks[i][j])
-                else:
-                    out_blocks[0][0] = blocks[i][j]
+                _split_block(blocks[i][j], list(tl_shape), block_size,
+                             out_blocks)
 
                 cur_block = (int(cur_element[0] / block_size[0]),
                              int(cur_element[1] / block_size[1]))
