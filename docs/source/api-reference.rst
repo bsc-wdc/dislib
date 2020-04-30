@@ -101,7 +101,7 @@ Classes
 .......
 
 :class:`regression.LinearRegression <dislib.regression.linear.base.LinearRegression>`
-- Simple linear regression using ordinary least squares.
+- Multivariate linear regression using ordinary least squares.
 
 
 dislib.neighbors: Neighbor queries
