@@ -1,5 +1,4 @@
 import numpy as np
-from pycompss.api.api import compss_wait_on
 from pycompss.api.parameter import COLLECTION_IN, Depth, Type
 from pycompss.api.task import task
 from sklearn.base import BaseEstimator
@@ -29,9 +28,9 @@ class LinearRegression(BaseEstimator):
 
     Attributes
     ----------
-    coef_ : array, shape (n_features,)
+    coef_ : ds-array, shape (n_features, n_targets)
         Estimated coefficients (beta) in the linear model.
-    intercept_ : float
+    intercept_ : ds-array, shape (1, n_targets)
         Estimated independent term (alpha) in the linear model.
 
     Examples
@@ -41,15 +40,15 @@ class LinearRegression(BaseEstimator):
     >>> from dislib.regression import LinearRegression
     >>> from pycompss.api.api import compss_wait_on
     >>> x_data = np.array([[1, 2], [2, 0], [3, 1], [4, 4], [5, 3]])
-    >>> y_data = np.array([2, 1, 1, 2, 4.5]).reshape(-1, 1)
+    >>> y_data = np.array([2, 1, 1, 2, 4.5])
     >>> bn, bm = 2, 2
     >>> x = ds.array(x=x_data, block_size=(bn, bm))
-    >>> y = ds.array(x=y_data, block_size=(bn, bm))
+    >>> y = ds.array(x=y_data, block_size=(bn, 1))
     >>> reg = LinearRegression()
     >>> reg.fit(x, y)
-    >>> reg.coef_
+    >>> reg.coef_.collect()
     array([0.421875, 0.296875])
-    >>> reg.intercept_
+    >>> reg.intercept_.collect()
     0.240625
     >>> x_test = np.array([[3, 2], [4, 4]])
     >>> test_data = ds.array(x=x_test, block_size=(bn, bm))
@@ -68,10 +67,10 @@ class LinearRegression(BaseEstimator):
 
         Parameters
         ----------
-        x : ds-array
-            Explanatory variables
-        y : ds-array
-            Response variable
+        x : ds-array, shape (n_samples, n_features)
+            Explanatory variables.
+        y : ds-array, shape (n_samples, n_targets)
+            Response variables.
 
         Raises
         ------
@@ -81,10 +80,14 @@ class LinearRegression(BaseEstimator):
         """
         if x._sparse or y._sparse:
             raise NotImplementedError('Sparse data is not supported.')
+        self._n_features = x.shape[1]  # Number of explanatory variables
+        self._n_targets = y.shape[1]  # Number of response variables
         ztz = _compute_ztz(x, self.fit_intercept, self.arity)
         zty = _compute_zty(x, y, self.fit_intercept, self.arity)
         params = _compute_model_parameters(ztz, zty, self.fit_intercept)
-        self._intercept, self._coef = params
+        self._intercept = _to_dsarray(params[0], (1, self._n_targets))
+        self._coef = _to_dsarray(params[1],
+                                 (self._n_features, self._n_targets))
 
     def predict(self, x):
         """
@@ -92,13 +95,13 @@ class LinearRegression(BaseEstimator):
 
         Parameters
         ----------
-        x : ds-array
-            Samples to be predicted: x.shape (n_samples, 1).
+        x : ds-array, shape (n_samples_predict, n_features)
+            Samples to be predicted.
 
         Returns
         -------
-        y : ds-array
-            Predicted values
+        y : ds-array, shape (n_samples_predict, n_targets)
+            Predicted values.
 
         Raises
         ------
@@ -109,26 +112,25 @@ class LinearRegression(BaseEstimator):
         if x._sparse:
             raise NotImplementedError('Sparse data is not supported.')
 
-        blocks = [list()]
+        blocks = []
 
         for r_block in x._iterator(axis='rows'):
-            blocks[0].append(
-                _predict(r_block._blocks, self._coef, self._intercept))
-
-        return Array(blocks=blocks, top_left_shape=(x._top_left_shape[0], 1),
-                     reg_shape=(x._reg_shape[0], 1), shape=(x.shape[0], 1),
-                     sparse=x._sparse)
+            blocks.append([_predict(r_block._blocks,
+                                    self._coef._blocks[0][0],
+                                    self._intercept._blocks[0][0])])
+        return Array(blocks=blocks,
+                     top_left_shape=(x._top_left_shape[0], self._n_targets),
+                     reg_shape=(x._reg_shape[0], self._n_targets),
+                     shape=(x.shape[0], self._n_targets), sparse=x._sparse)
 
     @property
     def coef_(self):
         validation.check_is_fitted(self, '_coef')
-        self._coef = compss_wait_on(self._coef)
         return self._coef
 
     @property
     def intercept_(self):
         validation.check_is_fitted(self, '_intercept')
-        self._intercept = compss_wait_on(self._intercept)
         return self._intercept
 
 
@@ -179,7 +181,7 @@ def _partial_zty(x, y, fit_intercept):
     if fit_intercept:
         z = np.hstack((np.ones((z.shape[0],)).reshape(-1, 1), z))
     y = Array._merge_blocks(y)
-    return (z.T@y).flatten()
+    return z.T@y
 
 
 @task(returns=2)
@@ -190,7 +192,14 @@ def _compute_model_parameters(ztz, zty, fit_intercept):
     if fit_intercept:
         return params[0], params[1:]
     else:
-        return 0, params
+        return np.zeros((1, zty.shape[1])), params
+
+
+def _to_dsarray(np_array, shape):
+    """Takes an unsynchronized numpy 2-d array and its shape, and creates the
+    corresponding dsarray with a single block."""
+    return Array(blocks=[[np_array]], top_left_shape=shape, reg_shape=shape,
+                 shape=shape, sparse=False)
 
 
 @task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=1)
