@@ -111,49 +111,49 @@ class GaussianMixtureTest(unittest.TestCase):
 
     def test_check_n_components(self):
         """Tests GaussianMixture n_components validation"""
-        x = ds.array([[0, 0], [0, 1], [1, 0]], block_size=(10, 2))
+        x = ds.array([[0, 0], [0, 1], [1, 0]], block_size=(3, 2))
         with self.assertRaises(ValueError):
             gm = GaussianMixture(n_components=0)
             gm.fit(x)
 
     def test_check_tol(self):
         """Tests GaussianMixture tol validation"""
-        x = ds.array([[0, 0], [0, 1], [1, 0]], block_size=(10, 2))
+        x = ds.array([[0, 0], [0, 1], [1, 0]], block_size=(3, 2))
         with self.assertRaises(ValueError):
             gm = GaussianMixture(tol=-0.1)
             gm.fit(x)
 
     def test_check_max_iter(self):
         """Tests GaussianMixture max_iter validation"""
-        x = ds.array([[0, 0], [0, 1], [1, 0]], block_size=(10, 2))
+        x = ds.array([[0, 0], [0, 1], [1, 0]], block_size=(3, 2))
         with self.assertRaises(ValueError):
             gm = GaussianMixture(max_iter=0)
             gm.fit(x)
 
     def test_check_reg_covar(self):
         """Tests GaussianMixture reg_covar validation"""
-        x = ds.array([[0, 0], [0, 1], [1, 0]], block_size=(10, 2))
+        x = ds.array([[0, 0], [0, 1], [1, 0]], block_size=(3, 2))
         with self.assertRaises(ValueError):
             gm = GaussianMixture(reg_covar=-0.1)
             gm.fit(x)
 
     def test_check_covariance_type(self):
         """Tests GaussianMixture covariance_type validation"""
-        x = ds.array([[0, 0], [0, 1], [1, 0]], block_size=(10, 2))
+        x = ds.array([[0, 0], [0, 1], [1, 0]], block_size=(3, 2))
         with self.assertRaises(ValueError):
             gm = GaussianMixture(covariance_type='')
             gm.fit(x)
 
     def test_check_init_params(self):
         """Tests GaussianMixture init_params validation"""
-        x = ds.array([[0, 0], [0, 1], [1, 0]], block_size=(10, 2))
+        x = ds.array([[0, 0], [0, 1], [1, 0]], block_size=(3, 2))
         with self.assertRaises(ValueError):
             gm = GaussianMixture(init_params='')
             gm.fit(x)
 
     def test_check_initial_parameters(self):
         """Tests GaussianMixture initial parameters validation"""
-        x = ds.array([[0, 0], [0, 1], [1, 0]], block_size=(10, 2))
+        x = ds.array([[0, 0], [0, 1], [1, 0]], block_size=(3, 2))
         with self.assertRaises(ValueError):
             gm = GaussianMixture(weights_init=[1, 2])
             gm.fit(x)
@@ -321,7 +321,7 @@ class GaussianMixtureTest(unittest.TestCase):
 
     def test_verbose(self):
         """ Tests GaussianMixture verbose mode prints text """
-        x = ds.array([[0, 0], [0, 1], [1, 0]], (10, 2))
+        x = ds.array([[0, 0], [0, 1], [1, 0]], (3, 2))
         gm = GaussianMixture(verbose=True, max_iter=2)
 
         saved_stdout = sys.stdout

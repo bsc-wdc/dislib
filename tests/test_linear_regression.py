@@ -27,7 +27,7 @@ class LinearRegressionTest(unittest.TestCase):
 
         # Predict one sample
         x_test = np.array([3])
-        test_data = ds.array(x=x_test, block_size=(bn, bm))
+        test_data = ds.array(x=x_test, block_size=(1, 1))
         pred = reg.predict(test_data).collect()
         self.assertTrue(np.allclose(pred, 2.1))
 
@@ -54,7 +54,7 @@ class LinearRegressionTest(unittest.TestCase):
 
         # Predict one sample
         x_test = np.array([3])
-        test_data = ds.array(x=x_test, block_size=(bn, bm))
+        test_data = ds.array(x=x_test, block_size=(1, 1))
         pred = reg.predict(test_data).collect()
         self.assertTrue(np.allclose(pred, 2.04545455))
 

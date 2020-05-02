@@ -184,9 +184,9 @@ class RFTest(unittest.TestCase):
         """Tests RandomForestClassifier with a minimal example."""
         x, y = datasets.load_iris(return_X_y=True)
         ds_fit = ds.array(x[::2], block_size=(30, 2))
-        fit_y = ds.array(y[::2].reshape(-1, 1), block_size=(30, 2))
+        fit_y = ds.array(y[::2].reshape(-1, 1), block_size=(30, 1))
         ds_validate = ds.array(x[1::2], block_size=(30, 2))
-        validate_y = ds.array(y[1::2].reshape(-1, 1), block_size=(30, 2))
+        validate_y = ds.array(y[1::2].reshape(-1, 1), block_size=(30, 1))
 
         rf = RandomForestClassifier(n_estimators=1, max_depth=1,
                                     random_state=0)

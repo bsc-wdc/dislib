@@ -1,5 +1,4 @@
 import unittest
-from math import ceil
 
 import numpy as np
 from parameterized import parameterized
@@ -7,13 +6,14 @@ from scipy import sparse as sp
 from sklearn.datasets import load_svmlight_file
 
 import dislib as ds
+from math import ceil
 
 
 def _sum_and_mult(arr, a=0, axis=0, b=1):
     return (np.sum(arr, axis=axis) + a) * b
 
 
-def _check_array_shapes(x):
+def _validate_array(x):
     x.collect()
     tl = x._blocks[0][0].shape
     br = x._blocks[-1][-1].shape
@@ -35,7 +35,8 @@ def _check_array_shapes(x):
     br0 = br0 if br0 > 0 else x._top_left_shape[0]
     br1 = br1 if br1 > 0 else x._top_left_shape[1]
 
-    return tl == x._top_left_shape and br == (br0, br1)
+    return (tl == x._top_left_shape and br == (br0, br1) and
+            sp.issparse(x._blocks[0][0]) == x._sparse)
 
 
 def _equal_arrays(x1, x2):
@@ -92,8 +93,7 @@ class DataLoadingTest(unittest.TestCase):
                            (_gen_random_arrays("sparse", (6, 10), (4, 3))
                             + ((6, 10), (4, 3)))])
     def test_array_constructor(self, x, x_np, shape, block_size):
-        """ Tests load_data
-        """
+        """ Tests array constructor """
         n, m = shape
         bn, bm = block_size
 
@@ -106,22 +106,61 @@ class DataLoadingTest(unittest.TestCase):
 
         x_np = np.array(data)
         x = ds.array(data, (2, 3))
+        self.assertTrue(_validate_array(x))
         self.assertTrue(_equal_arrays(x.collect(), x_np))
 
         x = ds.array(x_np, (2, 3))
+        self.assertTrue(_validate_array(x))
         self.assertTrue(_equal_arrays(x.collect(), x_np))
 
         x_np = np.random.random(10)
         x = ds.array(x_np, (1, 5))
+        self.assertTrue(_validate_array(x))
         self.assertTrue(_equal_arrays(x.collect(), x_np))
 
         x_np = np.random.random(10)
         x = ds.array(x_np, (5, 1))
+        self.assertTrue(_validate_array(x))
         self.assertTrue(_equal_arrays(x.collect(), x_np))
 
         with self.assertRaises(ValueError):
             x_np = np.random.random(10)
-            x = ds.array(x_np, (5, 5))
+            ds.array(x_np, (5, 5))
+
+    def test_random(self):
+        """ Tests random array """
+        arr1 = ds.random_array((93, 177), (43, 31), random_state=88)
+
+        self.assertEqual(arr1.shape, arr1.collect().shape)
+        self.assertEqual(arr1._n_blocks, (3, 6))
+        self.assertEqual(arr1._reg_shape, (43, 31))
+        self.assertEqual(arr1._blocks[2][0].shape, (7, 31))
+        self.assertEqual(arr1._blocks[2][5].shape, (7, 22))
+        self.assertEqual(arr1._blocks[0][5].shape, (43, 22))
+        self.assertEqual(arr1._blocks[0][0].shape, (43, 31))
+        self.assertTrue(_validate_array(arr1))
+
+        arr2 = ds.random_array((93, 177), (43, 31), random_state=88)
+        arr3 = ds.random_array((93, 177), (43, 31), random_state=666)
+
+        arr4 = ds.random_array((193, 77), (21, 51))
+        arr5 = ds.random_array((193, 77), (21, 51))
+
+        self.assertTrue(np.array_equal(arr1.collect(), arr2.collect()))
+        self.assertFalse(np.array_equal(arr1.collect(), arr3.collect()))
+        self.assertFalse(np.array_equal(arr4.collect(), arr5.collect()))
+
+    def test_full(self):
+        """ Tests full functions """
+        x = ds.zeros((10, 10), (3, 7), dtype=int)
+        x_np = np.zeros((10, 10), dtype=int)
+        self.assertTrue(_validate_array(x))
+        self.assertTrue(_equal_arrays(x.collect(), x_np))
+
+        x = ds.full((11, 11), (3, 5), 15, dtype=float)
+        x_np = np.full((11, 11), 15, dtype=float)
+        self.assertTrue(_validate_array(x))
+        self.assertTrue(_equal_arrays(x.collect(), x_np))
 
     def test_load_svmlight_file(self):
         """ Tests loading a LibSVM file  """
@@ -176,7 +215,7 @@ class DataLoadingTest(unittest.TestCase):
         x = ds.load_npy_file(path, block_size=(3, 9))
         x_np = np.load(path)
 
-        self.assertTrue(_check_array_shapes(x))
+        self.assertTrue(_validate_array(x))
         self.assertTrue(np.array_equal(x.collect(), x_np))
 
         with self.assertRaises(ValueError):
@@ -208,7 +247,7 @@ class ArrayTest(unittest.TestCase):
         for i, h_block in enumerate(x._iterator(axis='rows')):
             computed = h_block
             expected = x_np[i * n_rows: (i + 1) * n_rows]
-            self.assertTrue(_check_array_shapes(computed))
+            self.assertTrue(_validate_array(computed))
             self.assertTrue(_equal_arrays(computed.collect(), expected))
 
     @parameterized.expand([_gen_random_arrays("dense"),
@@ -219,7 +258,7 @@ class ArrayTest(unittest.TestCase):
 
         for i, v_block in enumerate(x._iterator(axis='columns')):
             expected = x_np[:, i * n_cols: (i + 1) * n_cols]
-            self.assertTrue(_check_array_shapes(v_block))
+            self.assertTrue(_validate_array(v_block))
             self.assertTrue(_equal_arrays(v_block.collect().reshape(
                 v_block.shape), expected))
 
@@ -249,7 +288,7 @@ class ArrayTest(unittest.TestCase):
         for row in rows:
             ours = x[int(row)]
             expected = x_np[row]
-            self.assertTrue(_check_array_shapes(ours))
+            self.assertTrue(_validate_array(ours))
             self.assertTrue(_equal_arrays(ours.collect(), expected))
 
         # Single element
@@ -259,7 +298,7 @@ class ArrayTest(unittest.TestCase):
         for i in rows:
             for j in cols:
                 element = x[int(i), int(j)]
-                self.assertTrue(_check_array_shapes(element))
+                self.assertTrue(_validate_array(element))
                 self.assertEqual(element.collect(), x_np[int(i), int(j)])
 
         # Set of rows / columns
@@ -269,7 +308,7 @@ class ArrayTest(unittest.TestCase):
         for i, j in zip(frm, to):
             ours = x[int(i):int(j)]
             expected = x_np[i:j]
-            self.assertTrue(_check_array_shapes(ours))
+            self.assertTrue(_validate_array(ours))
             self.assertTrue(_equal_arrays(ours.collect(), expected))
 
         frm = np.random.randint(0, x.shape[1] - 5, size=min(3, x.shape[1]))
@@ -278,7 +317,7 @@ class ArrayTest(unittest.TestCase):
         for i, j in zip(frm, to):
             ours = x[:, int(i):int(j)]
             expected = x_np[:, i:j]
-            self.assertTrue(_check_array_shapes(ours))
+            self.assertTrue(_validate_array(ours))
             self.assertTrue(_equal_arrays(ours.collect(), expected))
 
         # Set of elements
@@ -287,17 +326,17 @@ class ArrayTest(unittest.TestCase):
 
         ours = x[i:i + 1, j:j + 1]
         expected = x_np[i:i + 1, j:j + 1]
-        self.assertTrue(_check_array_shapes(ours))
+        self.assertTrue(_validate_array(ours))
         self.assertTrue(_equal_arrays(ours.collect(), expected))
 
         ours = x[i:i + 100, j:j + 100]
         expected = x_np[i:i + 100, j:j + 100]
-        self.assertTrue(_check_array_shapes(ours))
+        self.assertTrue(_validate_array(ours))
         self.assertTrue(_equal_arrays(ours.collect(), expected))
 
         ours = x[i:i + 4, j:j + 4]
         expected = x_np[i:i + 4, j:j + 4]
-        self.assertTrue(_check_array_shapes(ours))
+        self.assertTrue(_validate_array(ours))
         self.assertTrue(_equal_arrays(ours.collect(), expected))
 
     @parameterized.expand([_gen_random_arrays("dense"),
@@ -326,7 +365,7 @@ class ArrayTest(unittest.TestCase):
 
         ours = x[rows]
         expected = x_np[rows]
-        self.assertTrue(_check_array_shapes(ours))
+        self.assertTrue(_validate_array(ours))
         self.assertTrue(_equal_arrays(ours.collect(), expected))
 
         if not cols:
@@ -335,7 +374,7 @@ class ArrayTest(unittest.TestCase):
 
         ours = x[:, cols]
         expected = x_np[:, cols]
-        self.assertTrue(_check_array_shapes(ours))
+        self.assertTrue(_validate_array(ours))
         self.assertTrue(_equal_arrays(ours.collect(), expected))
 
     @parameterized.expand([_gen_random_arrays("dense"),
@@ -353,45 +392,22 @@ class ArrayTest(unittest.TestCase):
         self.assertTrue(
             _equal_arrays(x_t.collect().reshape(x_t.shape), x_np_t))
         self.assertEqual((b1, b0), x_t._n_blocks)
-        self.assertTrue(_check_array_shapes(x_t))
+        self.assertTrue(_validate_array(x_t))
 
-        x_t = x.transpose(mode="rows")
+        x_t = x.T
         self.assertTrue(
             _equal_arrays(x_t.collect().reshape(x_t.shape), x_np_t))
         self.assertEqual((b1, b0), x_t._n_blocks)
-        self.assertTrue(_check_array_shapes(x_t))
+        self.assertTrue(_validate_array(x_t))
 
         x_t = x.transpose(mode="columns")
         self.assertTrue(
             _equal_arrays(x_t.collect().reshape(x_t.shape), x_np_t))
         self.assertEqual((b1, b0), x_t._n_blocks)
-        self.assertTrue(_check_array_shapes(x_t))
+        self.assertTrue(_validate_array(x_t))
 
         with self.assertRaises(Exception):
             x.transpose(mode="invalid")
-
-    def test_random(self):
-        """ Tests random array """
-        arr1 = ds.random_array((93, 177), (43, 31), random_state=88)
-
-        self.assertEqual(arr1.shape, arr1.collect().shape)
-        self.assertEqual(arr1._n_blocks, (3, 6))
-        self.assertEqual(arr1._reg_shape, (43, 31))
-        self.assertEqual(arr1._blocks[2][0].shape, (7, 31))
-        self.assertEqual(arr1._blocks[2][5].shape, (7, 22))
-        self.assertEqual(arr1._blocks[0][5].shape, (43, 22))
-        self.assertEqual(arr1._blocks[0][0].shape, (43, 31))
-        self.assertTrue(_check_array_shapes(arr1))
-
-        arr2 = ds.random_array((93, 177), (43, 31), random_state=88)
-        arr3 = ds.random_array((93, 177), (43, 31), random_state=666)
-
-        arr4 = ds.random_array((193, 77), (21, 51))
-        arr5 = ds.random_array((193, 77), (21, 51))
-
-        self.assertTrue(np.array_equal(arr1.collect(), arr2.collect()))
-        self.assertFalse(np.array_equal(arr1.collect(), arr3.collect()))
-        self.assertFalse(np.array_equal(arr4.collect(), arr5.collect()))
 
     @parameterized.expand([(ds.array([[1, 2, 3],
                                       [4, 5, 6],
@@ -406,35 +422,35 @@ class ArrayTest(unittest.TestCase):
         self.assertTrue(x1._reg_shape, (1, 2))
         self.assertTrue(
             np.array_equal(x1.collect(), np.array([12, 15, 18])))
-        self.assertTrue(_check_array_shapes(x1))
+        self.assertTrue(_validate_array(x1))
 
         x1 = ds.apply_along_axis(_sum_and_mult, 1, x)
         self.assertTrue(x1.shape, (3, 1))
         self.assertTrue(x1._reg_shape, (2, 1))
         self.assertTrue(
             np.array_equal(x1.collect(), np.array([6, 15, 24])))
-        self.assertTrue(_check_array_shapes(x1))
+        self.assertTrue(_validate_array(x1))
 
         x1 = ds.apply_along_axis(_sum_and_mult, 1, x, 2)
         self.assertTrue(x1.shape, (3, 1))
         self.assertTrue(x1._reg_shape, (2, 1))
         self.assertTrue(
             np.array_equal(x1.collect(), np.array([8, 17, 26])))
-        self.assertTrue(_check_array_shapes(x1))
+        self.assertTrue(_validate_array(x1))
 
         x1 = ds.apply_along_axis(_sum_and_mult, 1, x, b=2)
         self.assertTrue(x1.shape, (3, 1))
         self.assertTrue(x1._reg_shape, (2, 1))
         self.assertTrue(
             np.array_equal(x1.collect(), np.array([12, 30, 48])))
-        self.assertTrue(_check_array_shapes(x1))
+        self.assertTrue(_validate_array(x1))
 
         x1 = ds.apply_along_axis(_sum_and_mult, 1, x, 1, b=2)
         self.assertTrue(x1.shape, (3, 1))
         self.assertTrue(x1._reg_shape, (2, 1))
         self.assertTrue(
             np.array_equal(x1.collect(), np.array([14, 32, 50])))
-        self.assertTrue(_check_array_shapes(x1))
+        self.assertTrue(_validate_array(x1))
 
     @parameterized.expand([(ds.array([[1, 2, 3],
                                       [4, 5, 6],
@@ -454,29 +470,49 @@ class ArrayTest(unittest.TestCase):
         self.assertTrue(_equal_arrays(x.mean().collect(), mean))
         self.assertTrue(_equal_arrays(x.sum().collect(), sum))
 
-    @parameterized.expand([(ds.random_array((20, 30), (5, 6)),
-                            ds.random_array((30, 10), (6, 2))),
+    @parameterized.expand([(np.full((10, 10), 3, complex),),
+                           (sp.csr_matrix(np.full((10, 10), 5, complex)),),
+                           (np.random.rand(10, 10) +
+                            1j * np.random.rand(10, 10),)])
+    def test_conj(self, x_np):
+        """ Tests the complex conjugate """
+        bs0 = np.random.randint(1, x_np.shape[0] + 1)
+        bs1 = np.random.randint(1, x_np.shape[1] + 1)
 
-                           (ds.random_array((1, 10), (1, 5)),
-                            ds.random_array((10, 7), (5, 2))),
+        x = ds.array(x_np, (bs0, bs1))
+        self.assertTrue(_equal_arrays(x.conj().collect(), x_np.conj()))
 
-                           (ds.random_array((5, 10), (2, 2)),
-                            ds.random_array((10, 1), (2, 1))),
-
-                           (ds.random_array((17, 13), (3, 3)),
-                            ds.random_array((13, 9), (3, 2))),
-
-                           (ds.array(sp.csr_matrix(np.random.random((10, 12))),
-                                     (5, 2)),
-                            ds.array(sp.csr_matrix(np.random.random((12, 3))),
-                                     (2, 1))),
-                           (ds.random_array((1, 30), (1, 7)),
-                            ds.random_array((30, 1), (7, 1)))])
-    def test_matmul(self, x1, x2):
+    @parameterized.expand([((20, 30), (30, 10), False),
+                           ((1, 10), (10, 7), False),
+                           ((5, 10), (10, 1), False),
+                           ((17, 13), (13, 9), False),
+                           ((1, 30), (30, 1), False),
+                           ((10, 1), (1, 20), False),
+                           ((20, 30), (30, 10), True),
+                           ((1, 10), (10, 7), True),
+                           ((5, 10), (10, 1), True),
+                           ((17, 13), (13, 9), True),
+                           ((1, 30), (30, 1), True),
+                           ((10, 1), (1, 20), True)])
+    def test_matmul(self, shape_a, shape_b, sparse):
         """ Tests ds-array multiplication """
-        expected = x1.collect() @ x2.collect()
-        computed = x1 @ x2
-        self.assertTrue(_equal_arrays(expected, computed.collect()))
+        a_np = np.random.random(shape_a)
+        b_np = np.random.random(shape_b)
+
+        if sparse:
+            a_np = sp.csr_matrix(a_np)
+            b_np = sp.csr_matrix(b_np)
+
+        b0 = np.random.randint(1, a_np.shape[0] + 1)
+        b1 = np.random.randint(1, a_np.shape[1] + 1)
+        b2 = np.random.randint(1, b_np.shape[1] + 1)
+
+        a = ds.array(a_np, (b0, b1))
+        b = ds.array(b_np, (b1, b2))
+
+        expected = a_np @ b_np
+        computed = a @ b
+        self.assertTrue(_equal_arrays(expected, computed.collect(False)))
 
     def test_matmul_error(self):
         """ Tests matmul not implemented cases """
@@ -495,3 +531,139 @@ class ArrayTest(unittest.TestCase):
             x1 = ds.array([[1, 2, 3], [4, 5, 6]], (2, 3))
             x2 = ds.array(sp.csr_matrix([[1, 2], [4, 5], [7, 6]]), (3, 2))
             x1 @ x2
+
+    @parameterized.expand([((21, 33), (10, 15), (5, 18)),
+                           ((10, 8), (2, 5), (5, 3)),
+                           ((11, 12), (4, 6), (5, 12)),
+                           ((9, 15), (8, 15), (1, 9)),
+                           ((1, 1), (1, 1), (1, 1)),
+                           ((5, 5), (2, 3), (1, 1))])
+    def test_rechunk(self, shape, bsize_in, bsize_out):
+        """ Tests the rechunk function """
+        x = ds.random_array(shape, bsize_in)
+        re = x.rechunk(bsize_out)
+        self.assertEqual(re._reg_shape, bsize_out)
+        self.assertEqual(re._top_left_shape, bsize_out)
+        self.assertTrue(_validate_array(re))
+        self.assertTrue(_equal_arrays(x.collect(), re.collect()))
+
+    def test_set_item(self):
+        """ Tests setting a single value """
+        x = ds.random_array((10, 10), (3, 3))
+        x[5, 5] = -1
+        x[0, 0] = -2
+        x[9, 9] = -3
+
+        self.assertTrue(_validate_array(x))
+
+        x_np = x.collect()
+
+        self.assertEqual(x_np[5][5], -1)
+        self.assertEqual(x_np[0][0], -2)
+        self.assertEqual(x_np[9][9], -3)
+
+        with self.assertRaises(ValueError):
+            x[0, 0] = [2, 3, 4]
+
+        with self.assertRaises(IndexError):
+            x[10, 2] = 3
+
+        with self.assertRaises(IndexError):
+            x[0] = 3
+
+    def test_power(self):
+        """ Tests ds-array power and sqrt """
+        orig = np.array([[1, 2, 3], [4, 5, 6]])
+        x = ds.array(orig, block_size=(2, 1))
+        xp = x ** 2
+        xs = xp.sqrt()
+
+        self.assertTrue(_validate_array(xp))
+        self.assertTrue(_validate_array(xs))
+
+        expected = np.array([[1, 4, 9], [16, 25, 36]])
+
+        self.assertTrue(_equal_arrays(expected, xp.collect()))
+        self.assertTrue(_equal_arrays(orig, xs.collect()))
+
+        orig = sp.csr_matrix([[1, 2, 3], [4, 5, 6]])
+        x = ds.array(orig, block_size=(2, 1))
+        xp = x ** 2
+        xs = xp.sqrt()
+
+        self.assertTrue(_validate_array(xp))
+        self.assertTrue(_validate_array(xs))
+
+        expected = sp.csr_matrix([[1, 4, 9], [16, 25, 36]])
+
+        self.assertTrue(_equal_arrays(expected, xp.collect()))
+        self.assertTrue(_equal_arrays(orig, xs.collect()))
+
+        with self.assertRaises(NotImplementedError):
+            x ** x
+
+    def test_norm(self):
+        """ Tests the norm """
+        x_np = np.array([[1, 2, 3], [4, 5, 6]])
+        x = ds.array(x_np, block_size=(2, 1))
+        xn = x.norm()
+
+        self.assertTrue(_validate_array(xn))
+
+        expected = np.linalg.norm(x_np, axis=0)
+
+        self.assertTrue(_equal_arrays(expected, xn.collect()))
+
+        xn = x.norm(axis=1)
+
+        self.assertTrue(_validate_array(xn))
+
+        expected = np.linalg.norm(x_np, axis=1)
+
+        self.assertTrue(_equal_arrays(expected, xn.collect()))
+
+
+class MathTest(unittest.TestCase):
+
+    @parameterized.expand([((21, 33), (10, 15), False),
+                           ((5, 10), (8, 1), False),
+                           ((17, 13), (1, 9), False),
+                           ((6, 1), (12, 23), False),
+                           ((1, 22), (25, 16), False),
+                           ((1, 12), (1, 3), False),
+                           ((14, 1), (4, 1), False),
+                           ((10, 1), (1, 19), False),
+                           ((1, 30), (12, 1), False)])
+    def test_kron(self, shape_a, shape_b, sparse):
+        """ Tests kronecker product """
+        a_np = np.random.random(shape_a)
+        b_np = np.random.random(shape_b)
+        expected = np.kron(a_np, b_np)
+
+        if sparse:
+            a_np = sp.csr_matrix(a_np)
+            b_np = sp.csr_matrix(b_np)
+
+        b0 = np.random.randint(1, a_np.shape[0] + 1)
+        b1 = np.random.randint(1, a_np.shape[1] + 1)
+        b2 = np.random.randint(1, b_np.shape[0] + 1)
+        b3 = np.random.randint(1, b_np.shape[1] + 1)
+
+        a = ds.array(a_np, (b0, b1))
+        b = ds.array(b_np, (b2, b3))
+
+        b4 = np.random.randint(1, (b0 * b2) + 1)
+        b5 = np.random.randint(1, (b1 * b3) + 1)
+
+        computed = ds.kron(a, b, (b4, b5))
+
+        self.assertTrue(_validate_array(computed))
+
+        computed = computed.collect(False)
+
+        # convert to ndarray because there is no kron for sparse matrices in
+        # scipy
+        if a._sparse:
+            computed = computed.toarray()
+
+        self.assertTrue(_equal_arrays(expected, computed))
