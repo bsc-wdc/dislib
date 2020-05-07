@@ -64,6 +64,34 @@ def kron(a, b, block_size=None):
 
     return out
 
+def qr(a):
+    """ Compute the QR factorization of a square matrix.
+
+    Parameters
+    ----------
+    a : ds-array
+        Input square matrix.
+
+    Returns
+    -------
+    q : ds-array
+        Orthogonal matrix.
+    r : ds-array
+        Upper triangular matrix.
+
+    Raises
+    ------
+    ValueError
+        If the input matrix is not a square matrix.
+    """
+
+    if a.shape[0] != a.shape[1]:
+        raise ValueError("Input ds-array is not a square matrix.")
+
+
+
+
+
 
 def _kron_shape_f(i, j, b):
     return b._get_block_shape(i % b._n_blocks[0], j % b._n_blocks[1])

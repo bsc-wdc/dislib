@@ -997,7 +997,71 @@ def random_array(shape, block_size, random_state=None):
     return _full(shape, block_size, False, _random_block_wrapper, r_state)
 
 
-def zeros(shape, block_size, dtype=float):
+def identity(n, block_size, dtype=None):
+    """ Returns the identity matrix.
+
+    Parameters
+    ----------
+    n : int
+        Size of the matrix.
+    block_size : tuple of two ints
+        Block size.
+    dtype : data type, optional (default=None)
+        The desired type of the array. Defaults to float.
+
+    Returns
+    -------
+    x : ds-array
+        Identity matrix of shape n x n.
+
+    Raises
+    ------
+    ValueError
+        If block_size is greater than n.
+    """
+    if n < block_size[0] or n < block_size[1]:
+        raise ValueError("Block size is greater than the array")
+
+    n_blocks = (int(ceil(n / block_size[0])), int(ceil(n / block_size[1])))
+    blocks = list()
+
+    for row_idx in range(n_blocks[0]):
+        blocks.append(list())
+
+        for col_idx in range(n_blocks[1]):
+            b_size0, b_size1 = block_size
+
+            if row_idx == n_blocks[0] - 1:
+                b_size0 = n - (n_blocks[0] - 1) * block_size[0]
+
+            if col_idx == n_blocks[1] - 1:
+                b_size1 = n - (n_blocks[1] - 1) * block_size[1]
+
+            block = _identity_block((b_size0, b_size1), n, block_size,
+                                    row_idx, col_idx, dtype)
+            blocks[-1].append(block)
+
+    return Array(blocks, top_left_shape=block_size, reg_shape=block_size,
+                 shape=(n, n), sparse=False)
+
+
+@task(returns=1)
+def _identity_block(block_size, n, reg_shape, i, j, dtype):
+    block = np.zeros(block_size, dtype)
+
+    i_values = np.arange(i * reg_shape[0], min(n, (i + 1) * reg_shape[0]))
+    j_values = np.arange(j * reg_shape[1], min(n, (j + 1) * reg_shape[1]))
+
+    indices = np.intersect1d(i_values, j_values)
+
+    i_ones = indices - (i * reg_shape[0])
+    j_ones = indices - (i * reg_shape[1])
+
+    block[i_ones, j_ones] = 1
+    return block
+
+
+def zeros(shape, block_size, dtype=None):
     """ Returns a ds-array of given shape and block size, filled with zeros.
 
     Parameters
@@ -1006,8 +1070,8 @@ def zeros(shape, block_size, dtype=float):
         Shape of the output ds-array.
     block_size : tuple of two ints
         Size of the ds-array blocks.
-    dtype : data type, optional (default=float)
-        The desired type of the array.
+    dtype : data type, optional (default=None)
+        The desired type of the array. Defaults to float.
 
     Returns
     -------
@@ -1017,7 +1081,7 @@ def zeros(shape, block_size, dtype=float):
     return _full(shape, block_size, False, _full_block, 0, dtype)
 
 
-def full(shape, block_size, fill_value, dtype=float):
+def full(shape, block_size, fill_value, dtype=None):
     """ Returns a ds-array of 'shape' filled with 'fill_value'.
 
     Parameters
@@ -1028,8 +1092,8 @@ def full(shape, block_size, fill_value, dtype=float):
         Size of the ds-array blocks.
     fill_value : scalar
         Fill value.
-    dtype : data type, optional (default=float)
-        The desired type of the array.
+    dtype : data type, optional (default=None)
+        The desired type of the array. Defaults to float.
 
     Returns
     -------
