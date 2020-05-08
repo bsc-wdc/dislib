@@ -14,7 +14,7 @@ The term estimator-based interface means that all the machine learning
 models in dislib are provided as `estimator <https://scikit-learn
 .org/stable/glossary.html#term-estimators>`_ objects. An estimator is
 anything that learns from data given certain parameters. dislib estimators
-implement the same API as scikit-learn, which is mainly based in the *fit*
+implement the same API as scikit-learn, which is mainly based on the *fit*
 and *predict* operators.
 
 The typical workflow in dislib consists of the following steps:
@@ -69,8 +69,8 @@ Distributed arrays
 ------------------
 
 Distributed arrays (ds-arrays) are the main data structure used in dislib.
-In essence, a ds-array is a matrix divided in blocks that are typically
-stored remotely. Each block of a ds-array is a `NumPy <https://numpy.org/>`_
+In essence, a ds-array is a matrix divided in blocks that are stored
+remotely. Each block of a ds-array is a `NumPy <https://numpy.org/>`_
 array or a SciPy `CSR matrix <https://docs.scipy
 .org/doc/scipy/reference/generated/scipy.sparse.csr_matrix.html#scipy.sparse
 .csr_matrix>`_, depending on the kind of data used to create the ds-array.
@@ -112,7 +112,7 @@ amount of available memory per processor.
 
 Most estimators in dislib process ds-arrays in blocks of rows (or samples).
 This means that the optimal block size when using these estimators might be
-to have as many *rectangular* blocks as available processors. For example,
+to have as many *horizontal* blocks as available processors. For example,
 in a computer with 4 processors, K-means (and other similar estimators)
 will usually fit a 100x100 ds-array faster using blocks of size 25x100 than
 using blocks of size 50x50, even though the number of blocks is 4 in
@@ -129,12 +129,11 @@ ds-array split in different block sizes.
 
 |
 
-This is because K-means loads a full block of rows on each task.
 Using 4x4 blocks only generates 2 tasks, while using 2x8 blocks generates 4
 tasks and provides more parallelism in a system with 4 processors. Using 2x4
 blocks provides the same parallelism as 2x8 blocks, but has the overhead of
 dealing with five additional blocks. If we were only doing K-means
-clustering, 2x8 blocks would probably be the optimal choice in this case.
+clustering, 2x8 blocks would probably be the optimal choice in this scenario.
 
 However, some estimators like
 :class:`ALS <dislib.recommendation.als.base.ALS>` benefit from having a uniform
@@ -147,10 +146,34 @@ Below you will find more details on the parallelization strategy and data
 access pattern of each estimator. This can help you to define the
 appropriate block size in your application.
 
-Finally, keep in mind that in the example above, each K-means task loads a
-full block of rows into memory. This means that, when using K-means, you
-should choose a block size that ensures that a block of rows is not larger
-than the available memory per processor in your platform.
+Another thing to take into account when choosing block size is task
+granularity. As said before, the number of tasks created by dislib is
+proportional to the number of blocks (and inversely proportional to block
+size). Also, block size is directly proportional to task duration or
+granularity (i.e., smaller blocks result in shorter tasks). This is relevant
+because, in distributed environments, task scheduling requires communicating
+with a remote computer and transferring some data, which has a significant
+cost. Thus, long tasks (big blocks) are typically more efficient than short
+tasks (small blocks).
+
+For example, if the cost of scheduling a task in a remote computer is 5ms
+and the duration of that task is 2ms, running that task in a remotely
+is simply not worth the effort as we would be spending more time
+communicating than computing. Since task duration is directly related to
+block size, it is in general recommended to use big blocks rather than small
+ones.
+
+Summary
+,,,,,,,
+
+To summarize, there is a trade-off between amount of parallelism, scheduling
+overhead and memory usage that highly depends on your platform.
+Nevertheless, these are the main ideas when choosing your block size:
+
+1. Ensure that a block of rows fits in the memory of a single processor.
+2. Define NxN blocks, where N is the number of processors you want to use.
+3. For small ds-arrays, it might be better to use N < number of processors
+   and increase granularity at the cost of reducing parallelism.
 
 Creating arrays
 ...............
