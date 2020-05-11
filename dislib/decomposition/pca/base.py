@@ -238,23 +238,27 @@ def _decompose(covariance_matrix, n_components):
 
 def _transform(x, mean, components):
     new_blocks = []
+    n_components = components.shape[0]
+    reg_cols = x._reg_shape[1]
+    div, mod = divmod(n_components, reg_cols)
+    n_col_blocks = div + (1 if mod else 0)
     for rows in x._iterator('rows'):
-        out_blocks = [object() for _ in range(rows._n_blocks[1])]
-        _subset_transform(rows._blocks, out_blocks, mean, components)
+        out_blocks = [object() for _ in range(n_col_blocks)]
+        _subset_transform(rows._blocks, out_blocks, mean, components, reg_cols)
         new_blocks.append(out_blocks)
 
-    return Array(blocks=new_blocks, top_left_shape=x._top_left_shape,
+    return Array(blocks=new_blocks,
+                 top_left_shape=(x._top_left_shape[0], reg_cols),
                  reg_shape=x._reg_shape,
-                 shape=(x.shape[0], components.shape[1]), sparse=x._sparse)
+                 shape=(x.shape[0], n_components), sparse=x._sparse)
 
 
 @task(blocks={Type: COLLECTION_IN, Depth: 2},
       out_blocks={Type: COLLECTION_INOUT, Depth: 1})
-def _subset_transform(blocks, out_blocks, mean, components):
+def _subset_transform(blocks, out_blocks, mean, components, reg_cols):
     data = Array._merge_blocks(blocks)
-    bn, bm = blocks[0][0].shape
 
     res = (np.matmul(data - mean, components.T))
 
     for j in range(0, len(blocks[0])):
-        out_blocks[j] = res[:, j * bm:(j + 1) * bm]
+        out_blocks[j] = res[:, j * reg_cols:(j + 1) * reg_cols]
