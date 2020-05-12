@@ -1,7 +1,10 @@
+import itertools
+import uuid
 import operator
 from collections import defaultdict
 
 import numpy as np
+import importlib
 from pycompss.api.api import compss_wait_on, compss_delete_object
 from pycompss.api.parameter import Type, COLLECTION_IN, Depth, \
     COLLECTION_INOUT, INOUT
@@ -10,6 +13,12 @@ from scipy import sparse as sp
 from scipy.sparse import issparse, csr_matrix
 from sklearn.utils import check_random_state
 
+if importlib.util.find_spec("hecuba"):
+    try:
+        from hecuba.hnumpy import StorageNumpy
+    except Exception:
+        pass
+from pprint import pprint
 from math import ceil
 
 
@@ -109,6 +118,9 @@ class Array(object):
                      reg_shape=reg_shape, shape=shape, sparse=self._sparse)
 
     def __getitem__(self, arg):
+        if getattr(self, "_base_array", None) is not None:
+            return array(x=list(self._base_array[arg]),
+                         block_size=self._reg_shape)
 
         # return a single row
         if isinstance(arg, int):
@@ -205,6 +217,19 @@ class Array(object):
         a single ndarray / sparse matrix.
         """
         sparse = None
+     
+        try:
+            if blocks[0][0].__class__.__name__=="StorageNumpy":
+                res=[]
+                for block in blocks:
+                    value=list(block)
+                    line=np.concatenate(value,axis=1)
+                    res.append(line)
+                return np.concatenate(res)
+        except:
+            print("Block size no compatible with np.array.shape")
+
+
         b0 = blocks[0][0]
         if sparse is None:
             sparse = issparse(b0)
@@ -919,6 +944,39 @@ class Array(object):
             res = np.squeeze(res)
         return res
 
+    def make_persistent(self, name):
+        """
+        Stores data in Hecuba.
+
+        Parameters
+        ----------
+        name : str
+            Name of the data.
+
+        Returns
+        -------
+        dsarray : ds-array
+            A distributed and persistent representation of the data
+            divided in blocks.
+        """
+        if self._sparse:
+            raise Exception("Data must not be a sparse matrix.")
+
+        x = self.collect()
+        persistent_data = StorageNumpy(input_array=x, name=name)
+        # self._base_array is used for much more efficient slicing.
+        # It does not take up more space since it is a reference to the db.
+        self._base_array = persistent_data
+
+        blocks = []
+        for block in self._blocks:
+            persistent_block = StorageNumpy(input_array=block, name=name,
+                                            storage_id=uuid.uuid4())
+            blocks.append(persistent_block)
+        self._blocks = blocks
+
+        return self
+
 
 def array(x, block_size):
     """
@@ -936,6 +994,8 @@ def array(x, block_size):
     dsarray : ds-array
         A distributed representation of the data divided in blocks.
     """
+    bn, bm = block_size
+
     sparse = issparse(x)
 
     if sparse:
@@ -958,8 +1018,6 @@ def array(x, block_size):
     if x.shape[0] < block_size[0] or x.shape[1] < block_size[1]:
         raise ValueError("Block size is greater than the array")
 
-    bn, bm = block_size
-
     blocks = []
     for i in range(0, x.shape[0], bn):
         row = [x[i: i + bn, j: j + bm] for j in range(0, x.shape[1], bm)]
@@ -969,6 +1027,38 @@ def array(x, block_size):
     arr = Array(blocks=blocks, top_left_shape=block_size,
                 reg_shape=block_size, shape=x.shape, sparse=sparse)
 
+    return arr
+
+
+def load_from_hecuba(name, block_size):
+    """
+    Loads data from Hecuba.
+
+    Parameters
+    ----------
+    name : str
+        Name of the data.
+    block_size : (int, int)
+        Block sizes in number of samples.
+
+    Returns
+    -------
+    storagenumpy : StorageNumpy
+        A distributed and persistent representation of the data
+        divided in blocks.
+    """
+    persistent_data = StorageNumpy(name=name)
+
+    bn, bm = block_size
+
+    blocks = []
+    for block in persistent_data.np_split(block_size=(bn, bm)):
+        blocks.append(block)
+
+    arr = Array(blocks=blocks, top_left_shape=block_size,
+                reg_shape=block_size, shape=persistent_data.shape,
+                sparse=False)
+    arr._base_array = persistent_data
     return arr
 
 
