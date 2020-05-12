@@ -222,8 +222,9 @@ class Array(object):
             if blocks[0][0].__class__.__name__=="StorageNumpy":
                 res=[]
                 for block in blocks:
-                    value=list(block)[0]
-                    res.append(value)
+                    value=list(block)
+                    line=np.concatenate(value,axis=1)
+                    res.append(line)
                 return np.concatenate(res)
         except:
             print("Block size no compatible with np.array.shape")
