@@ -50,7 +50,9 @@ class PCATest(unittest.TestCase):
         dataset = ds.array(x=x, block_size=(bn, bm))
 
         pca = PCA(n_components=3)
-        transformed = pca.fit_transform(dataset).collect()
+        transformed = pca.fit_transform(dataset)
+        self.assertEqual(transformed.shape, (10, 3))
+        transformed = transformed.collect()
         expected = np.array([
             [-6.35473531, -2.7164493, -1.56658989],
             [7.929884, -1.58730182, -0.34880254],
