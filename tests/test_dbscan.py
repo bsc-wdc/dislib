@@ -343,7 +343,7 @@ class DBSCANTest(unittest.TestCase):
         x, y = make_blobs(n_samples=n_samples, n_features=2, random_state=8)
         dbscan = DBSCAN(n_regions=3, eps=.2, max_samples=100)
         x = StandardScaler().fit_transform(x)
-        ds_x = ds.array(x, block_size=(300, 2))
+        ds_x = ds.array(x, block_size=(2, 2))
         dbscan.fit(ds_x)
         self.assertEqual(dbscan.n_clusters, 0)
 

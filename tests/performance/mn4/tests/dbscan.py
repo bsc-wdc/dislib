@@ -10,7 +10,7 @@ def main():
 
     dbscan = DBSCAN(eps=0.19, min_samples=5, max_samples=5000, n_regions=17,
                     dimensions=[0, 1])
-    performance.measure("DBSCAN", "gaia", dbscan, data)
+    performance.measure("DBSCAN", "gaia", dbscan.fit, data)
 
 
 if __name__ == "__main__":

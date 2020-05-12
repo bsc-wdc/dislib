@@ -17,13 +17,22 @@ Array creation routines
 :meth:`dislib.array <dislib.array>` - Build a distributed array
 (ds-array) from an array-like structure, such as a NumPy array, a list, or a SciPy sparse matrix.
 
+:meth:`dislib.random_array <dislib.random_array>` - Build a ds-array with
+random contents.
+
+:meth:`dislib.zeros <dislib.zeros>` - Build a ds-array filled with zeros.
+
+:meth:`dislib.full <dislib.full>` - Build a ds-array filled with a value.
+
 :meth:`dislib.load_svmlight_file <dislib.load_svmlight_file>` - Build a
 ds-array from a file in `SVMlight <http://svmlight.joachims.org/>`_ format.
 
 :meth:`dislib.load_txt_file <dislib.load_txt_file>` - Build a
 ds-array from a text file.
 
-:meth:`dislib.random_array <dislib.random_array>` - Build a random ds-array.
+:meth:`dislib.load_npy_file <dislib.load_npy_file>` - Build a ds-array from
+a binary NumPy file.
+
 
 Other functions
 ---------------
@@ -36,6 +45,12 @@ dislib.utils: Utility functions
 
 :meth:`utils.shuffle <dislib.utils.base.shuffle>` - Randomly shuffles the
 rows of a ds-array.
+
+dislib.math: Mathematical functions
+-----------------------------------
+
+:meth:`dislib.kron <dislib.kron>` - Computes the Kronecker product of two
+ds-arrays.
 
 dislib.preprocessing: Data pre-processing
 -----------------------------------------
@@ -101,7 +116,7 @@ Classes
 .......
 
 :class:`regression.LinearRegression <dislib.regression.linear.base.LinearRegression>`
-- Simple linear regression using ordinary least squares.
+- Multivariate linear regression using ordinary least squares.
 
 
 dislib.neighbors: Neighbor queries
@@ -122,6 +137,9 @@ Classes
 
 :class:`model_selection.GridSearchCV <dislib.model_selection.GridSearchCV>` -
 Exhaustive search over specified parameter values for an estimator.
+
+:class:`model_selection.RandomizedSearchCV <dislib.model_selection.RandomizedSearchCV>` -
+Randomized search over estimator parameters sampled from given distributions.
 
 :class:`model_selection.KFold <dislib.model_selection.KFold>` -
 K-fold splitter for cross-validation.
