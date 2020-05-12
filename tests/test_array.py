@@ -636,6 +636,8 @@ class MathTest(unittest.TestCase):
                            ((1, 30), (12, 1), False)])
     def test_kron(self, shape_a, shape_b, sparse):
         """ Tests kronecker product """
+        np.random.seed()
+
         a_np = np.random.random(shape_a)
         b_np = np.random.random(shape_b)
         expected = np.kron(a_np, b_np)
@@ -667,3 +669,19 @@ class MathTest(unittest.TestCase):
             computed = computed.toarray()
 
         self.assertTrue(_equal_arrays(expected, computed))
+
+    @parameterized.expand([((15, 13), (3, 6), (9, 6), (3, 2)),
+                           ((7, 8), (2, 3), (1, 15), (1, 15))])
+    def test_kron_regular(self, a_shape, a_bsize, b_shape, b_bsize):
+        """ Tests kron when blocks of b are all equal """
+        a = ds.random_array(a_shape, a_bsize)
+        b = ds.random_array(b_shape, b_bsize)
+
+        computed = ds.kron(a, b)
+        expected = np.kron(a.collect(), b.collect())
+
+        self.assertTrue(_validate_array(computed))
+        self.assertTrue(_equal_arrays(computed.collect(), expected))
+
+
+

@@ -53,7 +53,8 @@ class Array(object):
         Total number of elements in the array.
     """
 
-    def __init__(self, blocks, top_left_shape, reg_shape, shape, sparse):
+    def __init__(self, blocks, top_left_shape, reg_shape, shape, sparse,
+                 delete=True):
         self._validate_blocks(blocks)
 
         self._blocks = blocks
@@ -63,6 +64,13 @@ class Array(object):
         self._n_blocks = (len(blocks), len(blocks[0]))
         self._shape = shape
         self._sparse = sparse
+
+        self._delete = delete
+
+    def __del__(self):
+        if self._delete:
+            [compss_delete_object(b) for r_block in self._blocks for b in
+             r_block]
 
     def __str__(self):
         return "ds-array(blocks=(...), top_left_shape=%r, reg_shape=%r, " \
@@ -333,6 +341,9 @@ class Array(object):
 
         return Array(final_blocks, block_size, block_size, shape, False)
 
+    def _is_regular(self):
+        return self._reg_shape == self._top_left_shape
+
     def _get_row_shape(self, row_idx):
         if row_idx == 0:
             return self._top_left_shape[0], self.shape[1]
@@ -369,30 +380,30 @@ class Array(object):
     def _get_block_shape(self, i, j):
         return Array._get_block_shape_static(i, j, self)
 
+    def _get_row_block(self, i):
+        row_shape = self._get_row_shape(i)
+        return Array(blocks=[self._blocks[i]],
+                     top_left_shape=(row_shape[0], self._top_left_shape[1]),
+                     reg_shape=self._reg_shape, shape=row_shape,
+                     sparse=self._sparse, delete=False)
+
+    def _get_col_block(self, i):
+        col_shape = self._get_col_shape(i)
+        col_blocks = [[self._blocks[j][i]] for j in range(self._n_blocks[0])]
+        return Array(blocks=col_blocks,
+                     top_left_shape=(self._top_left_shape[0], col_shape[1]),
+                     reg_shape=self._reg_shape, shape=col_shape,
+                     sparse=self._sparse, delete=False)
+
     def _iterator(self, axis=0):
         # iterate through rows
         if axis == 0 or axis == 'rows':
-            for i, row in enumerate(self._blocks):
-                row_shape = self._get_row_shape(i)
-
-                yield Array(blocks=[row],
-                            top_left_shape=(row_shape[0],
-                                            self._top_left_shape[1]),
-                            reg_shape=self._reg_shape, shape=row_shape,
-                            sparse=self._sparse)
-
+            for i in range(self._n_blocks[0]):
+                yield self._get_row_block(i)
         # iterate through columns
         elif axis == 1 or axis == 'columns':
             for j in range(self._n_blocks[1]):
-                col_shape = self._get_col_shape(j)
-                col_blocks = [[self._blocks[i][j]] for i in
-                              range(self._n_blocks[0])]
-                yield Array(blocks=col_blocks,
-                            top_left_shape=(self._top_left_shape[0],
-                                            col_shape[1]),
-                            reg_shape=self._reg_shape,
-                            shape=col_shape, sparse=self._sparse)
-
+                yield self._get_col_block(j)
         else:
             raise Exception(
                 "Axis must be [0|'rows'] or [1|'columns']. Got: %s" % axis)
@@ -577,7 +588,8 @@ class Array(object):
         out_shape = n_rows, n_cols
 
         res = Array(blocks=out_blocks, top_left_shape=(bi0, bj0),
-                    reg_shape=(bn, bm), shape=out_shape, sparse=self._sparse)
+                    reg_shape=(bn, bm), shape=out_shape,
+                    sparse=self._sparse, delete=False)
         return res
 
     def _get_by_lst_rows(self, rows):
@@ -1180,7 +1192,12 @@ def _multiply_block_groups(hblock, vblock):
         blocks.append(_block_apply(operator.matmul, blocki, blockj))
 
     while len(blocks) > 1:
-        blocks.append(_block_apply(operator.add, blocks.pop(0), blocks.pop(0)))
+        block1 = blocks.pop(0)
+        block2 = blocks.pop(0)
+        blocks.append(_block_apply(operator.add, block1, block2))
+
+        compss_delete_object(block1)
+        compss_delete_object(block2)
 
     return blocks[0]
 
