@@ -157,13 +157,9 @@ class Array(object):
         a single ndarray / sparse matrix.
         """
         sparse = None
-        # import sys
-        # sys.path.append("./debug/pydevd-pycharm.egg")
-        # import pydevd_pycharm
-        # pydevd_pycharm.settrace('192.168.1.222', port=12345, stdoutToServer=True, stderrToServer=True)        
-
+     
         try:
-            if np.array(blocks).shape[0]>1 and blocks[0][0].__class__.__name__=="StorageNumpy":
+            if blocks[0][0].__class__.__name__=="StorageNumpy":
                 res=[]
                 for block in blocks:
                     value=list(block)[0]
@@ -172,12 +168,6 @@ class Array(object):
         except:
             print("Block size no compatible with np.array.shape")
 
-        if blocks[0][0].__class__.__name__ == "StorageNumpy":
-            b0 = blocks[0][0]
-            if len(b0.shape) > 2:
-                return np.array(list(b0)[0])
-            else:
-                return np.array(list(b0))
 
         b0 = blocks[0][0]
         if sparse is None:
