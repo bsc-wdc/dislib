@@ -231,6 +231,24 @@ Other operations
 
 Classification
 --------------
+The module :mod:`dislib.classification <dislib.classification>` includes estimators that can be used for predicting the
+classes of unlabeled data, after being fitted with data labeled with classes from a finite set. Each estimator
+implements the fit method to build the model and the predict method to classify new data.
+
+The input of the ``fit`` method are two ds-arrays: a ds-array ``X``, of shape ``[n_samples, n_features]`` holding the
+training samples, and a ds-array ``Y`` of integer values, shape ``[n_samples]``, holding the class labels for the
+training samples. The ``predict`` method takes a single ds-array with the samples to be classified. These ds-arrays can
+be loaded using one of the ``dislib.data`` methods.
+
+Comparision of classification methods:
+
+|
+
+.. image:: ./_static/img/classification.png
+    :align: center
+    :width: 700px
+
+|
 
 Cascade SVM
 ...........
@@ -242,19 +260,19 @@ ensemble of decision trees and aggregates their predictions. The process of buil
 randomization in order to make them different. The accuracy of the joint prediction can be greater than that of
 individual decision trees. One advantage of Random Forests is that you cannot overfit by increasing the number of
 trees. Several variations of random forests have been proposed and implemented. A fundamental paper that has been cited
-extensively is Breiman 2001, which describes the following method for classification problems:
+extensively is [Bre01]_, which describes the following method for classification problems:
 
-"For building each tree, the original sample set is replaced by a set of the same size, obtained by drawing with
-replacement (this method is called bootstrap aggregating or bagging). At each tree node, a certain number of random
-features is selected (random feature selection). The sample set is splitted in two according to the values of these
-features, and a metric called 'Gini impurity' is computed for every split. The Gini impurity measures how heterogeneous
-is one sample set with respect to the target variable. The split with the lowest 'Gini impurity' is selected, and the
-subsamples are propagated to the children nodes. The trees grown are not pruned."
+    For building each tree, the original sample set is replaced by a set of the same size, obtained by drawing with
+    replacement (this method is called bootstrap aggregating or bagging). At each tree node, a certain number of random
+    features is selected (random feature selection). The sample set is splitted in two according to the values of these
+    features, and a metric called 'Gini impurity' is computed for every split. The Gini impurity measures how
+    heterogeneous is one sample set with respect to the target variable. The split with the lowest 'Gini impurity' is
+    selected, and the subsamples are propagated to the children nodes. The trees grown are not pruned.
 
 Ensemble estimators can be implemented in an embarrassingly parallel pattern. You can do this with scikit-learn's
-RandomForestClassifier using a joblib.parallel_backend and setting the n_jobs parameter. However, you need to be able
-to load your data into memory for each processor or to use memory mapped arrays, which can be tricky specially with a
-distributed backend.
+RandomForestClassifier using a ``joblib.parallel_backend`` and setting the ``n_jobs`` parameter. However, you need to
+be able to load your data into memory for each processor or to use memory mapped arrays, which can be tricky specially
+with a distributed backend.
 
 In our implementation, the samples as a whole are written into a binary file and accessed using memory maps (the COMPSs
 runtime manages the transfers to other nodes when needed). We used this approach because the performance penalty of
@@ -264,33 +282,62 @@ reducing the number of trees or reducing their size by setting the max_depth par
 consider reducing the samples.
 
 In order to get further parallelism, each decision tree is not necessarily built in a single task: there are tasks for
-building just a subtree, just a node or even just part of a node. You can use the distr_depth parameter to control the
-number of tasks used for each tree. However, be aware that the number of tasks grows exponentially when you increase
-distr_depth, and that the task loads become very unbalanced. The fitted decision trees are not synchronized, so the
-prediction is equally distributed.
+building just a subtree, just a node or even just part of a node. You can use the ``distr_depth`` parameter to control
+the number of tasks used for each tree. However, be aware that the number of tasks grows exponentially when you
+increase ``distr_depth``, and that the task loads become very unbalanced. The fitted decision trees are not
+synchronized, so the prediction is equally distributed.
 
 The results of the RandomForestClassifier can vary in every execution, due to its random nature. To get reproducible
 results, a RandomState (pseudorandom number generator) or an int can be provided to the random_state parameter of the
 constructor. This works by passing a seed (generated by the master's RandomState) to each task that uses randomness,
 and creating a new RandomState inside the task.
 
+.. topic:: References:
+
+  .. [Bre01] `Random Forests
+     <https://www.stat.berkeley.edu/~breiman/randomforest2001.pdf>`_
+     L. Breiman, 2001
+
 
 Clustering
 ----------
+The module :mod:`dislib.cluster <dislib.cluster>` includes estimators that can be used to perform clustering of
+unlabeled data. Each estimator implements the ``fit`` and the ``fit_predict`` methods. The former fits the model, and
+the latter additionally returns a ds-array of integer labels corresponding to the different clusters over the training
+data.
+
+Usually, the input is an array of shape ``[n_samples, n_features]``, representing your data, that can be loaded using one
+of the dislib.data methods. For the future Daura algorithm, the input will be a ds-array of pair-wise distances of
+shape ``[n_samples, n_samples]``.
+
+Comparision of clustering methods:
+
+|
+
+.. image:: ./_static/img/clustering.png
+    :align: center
+    :width: 700px
+
+|
 
 K-means
 .......
 
 DBSCAN
 ......
-:class:`DBSCAN <dislib.cluster.gm.base.DBSCAN>` is a clustering algorithm that uses the neighbouring relations of the
-samples for determining the clusters. It requires two parameters: the neighbouring distance ε (eps), and the minimum
-number of samples in a neighbourhood min_samples, which define the clusters according to some rules.
+:class:`DBSCAN <dislib.cluster.dbscan.base.DBSCAN>` is a clustering algorithm that uses the neighbouring relations of
+the samples for determining the clusters. It requires two parameters: the neighbouring distance ``eps``, and the
+minimum number of samples in a neighbourhood ``min_samples``, which define the clusters according to some rules.
 
-An advantage of DBSCAN over other clustering algorithms is that it can find regions of arbitrary shapes, including
-non-convex regions. Another advantage is that you don't have to specify the number of clusters: it will depend on the
-data. A disadvantage is that you need to find the values for eps and min_samples that work for your problem, and
-sometimes these global parameters may not cluster all of your data satisfactorily.
+A detailed explanation of this algorithm is out of the scope of this guide. However, it is important to know that it is
+not completely deterministic, as some border samples can be assigned to different clusters. There is also the notion of
+noise, for samples that don't belong to any cluster; in this implementation, "noise" samples are given the special
+label value ``-1``.
+
+Many advantages and disadvantages can be suggested for DBSCAN. On the good side, it can find regions of varied shapes,
+including non-convex regions, and the number of regions is not fixed by the parameters. On the other side, finding
+appropriate ``eps`` and ``min_samples`` can be challenging, and there may be no pair that works well globally for all
+the clusters on your data.
 
 In our implementation, the samples are partitioned according to the regions of a multidimensional grid of the feature
 space. Then, for each region, the neighbours of each sample are computed, taking into account that there may be
@@ -299,17 +346,17 @@ contain many samples. A partial DBSCAN is performed for each region, and finally
 regions are merged to create the final clusters. Some synchronizations are necessary, and the dependency graph of the
 generated tasks is complex, but enough parallelism is achieved to speed up some executions.
 
-The parameters n_regions, dimensions and max_samples define the workflow of the distributed execution, and it is
-very important to understand them for working with large datasets. The first two define your multidimensional grid. The
-regions of the grid shouldn't be thinner than eps, because that would mean having to compare to many regions to find
-the samples neighbours, creating many data dependencies that slow down the execution. For the same reason, you don't
-want to partition along more than a few dimensions either. On the other hand, you want a big number of regions to
-achieve greater parallelism. Additionally, your data shouldn't be partitioned very unevenly, as it could cause strong
-load imbalances among the tasks.
+The parameters ``n_regions``, ``dimensions`` and ``max_samples`` define the workflow of the distributed execution, and
+it is very important to understand them for working with large datasets. The first two define your multidimensional
+grid. The regions of the grid shouldn't be thinner than ``eps``, because that would mean having to compare to many
+regions to find the samples neighbours, creating many data dependencies that slow down the execution. For the same
+reason, you don't want to partition along more than a few dimensions either. On the other hand, you want a big number
+of regions to achieve greater parallelism. Additionally, your data shouldn't be partitioned very unevenly, as it could
+cause strong load imbalances among the tasks.
 
 For some problems, it's not possible to carry out all of the previous recommendations at the same time, specially if
-your eps is not small or the number of features is big, and it may mean that this implementation is not the most
-appropriate. But if epsilon is relatively small and even partitions can be made, this implementation can have a good
+your ``eps`` is not small or the number of features is big, and it may mean that this implementation is not the most
+appropriate. But if ``eps`` is relatively small and even partitions can be made, this implementation can have a good
 scalability for big numbers of samples.
 
 Gaussian mixture
@@ -320,10 +367,10 @@ obtained model describes the observed data. A fitted gaussian mixture model can 
 follow the same distribution. It can also be used for clustering, by assigning to each individual the component with
 highest probability density at that point.
 
-Our implementation is based on the sequential implementation in scikit-learn,
-[https://scikit-learn.org/stable/modules/generated/sklearn.mixture.GaussianMixture.html]
-which uses an iterative expectation–maximization (EM) algorithm.
-[https://www.ics.uci.edu/~smyth/courses/cs274/notes/EMnotes.pdf]
+Our implementation is based on the sequential `implementation in scikit-learn <https://scikit-learn
+.org/stable/modules/generated/sklearn.mixture.GaussianMixture.html>`_,
+which uses an iterative `expectation–maximization (EM) algorithm <https://en
+.wikipedia.org/wiki/Expectation%E2%80%93maximization_algorithm>`_.
 In the expectation step, given the gaussian components, membership weights to each component are computed for each
 element in the sample. In the maximization step, these memberships are used to compute the parameters of the gaussian
 components that maximize the likelihood. These iterations are repeated until a termination criteria is met: either the
@@ -335,21 +382,22 @@ does not block the maximization step. The maximization step has two parts, the f
 the centers of the components, and the second one for updating their covariances. These parts are computed in
 successive map-reduce patterns, and this completes the iteration.
 
-With the parameter covariance_type you can define the shape of the gaussian components (see image). Internally,
-this is represented by a covariances array whose shape depends on the covariance_type:
+With the parameter ``covariance_type`` you can define the shape of the gaussian components (see image). Internally,
+this is represented by a covariances array whose shape depends on the ``covariance_type``::
+
             (n_components,)                        if 'spherical',
             (n_features, n_features)               if 'tied',
             (n_components, n_features)             if 'diag',
             (n_components, n_features, n_features) if 'full'.
-If the number of features of your data is big, the 'full' and 'tied' option can be computationally more expensive.
-Moreover, the covariances array is loaded into memory and processed as a single piece, so you could run into memory
-problems. Our implementation is designed to scale on the number of samples, but not on the number of features.
+
+If the number of features of your data is big, the ``'full'`` and ``'tied'`` options can be computationally more
+expensive. Moreover, the covariances array is loaded into memory and processed as a single piece, so you could run into
+memory problems. Our implementation is designed to scale on the number of samples, but not on the number of features.
 
 The EM algorithm can converge to a local optimum, and the results are sensible to the initialization. By default, this
 estimator uses KMeans to initialize the centers, which accelerates the execution. You can also provide your own
 parameters or use random initialization. It is a good idea to run the algorithm multiple times with different starting
 conditions, because it can converge to different local optima.
-
 
 Regression
 ----------
@@ -357,21 +405,22 @@ Regression
 Linear regression
 .................
 :class:`LinearRegression <dislib.regression.linear.base.LinearRegression>` performs multivariate linear regression with
-ordinary least squares. The model is: y = alpha + beta*x + err, where alpha is the intercept and beta is a vector of
-coefficients. The goal is to choose alpha and beta that minimize the sum of the squared errors. These optimal
-parameters can be computed using linear algebra. First, if we want to have an intercept term, x is extended with an
-additional ones column. Then, the coefficients are given by inv(x.T@x)@x.T@y.
+ordinary least squares. The model is: ``y = alpha + beta*x + err``, where alpha is the intercept and beta is a vector
+of coefficients. The goal is to choose alpha and beta that minimize the sum of the squared errors. These optimal
+parameters can be computed using linear algebra. First, if we want to have an intercept term, ``x`` is extended with an
+additional ones column. Then, the coefficients are given by ``inv(x.T@x)@x.T@y``.
 
-In our implementation, we compute x.T@x and x.T@y separately with map-reduce patterns, partitioning the samples only
-by row blocks. Each rows block of x is extended with the ones columns, if necessary, in the same tasks that do the
-products. As we are using row blocks as a whole, without vertical partitioning, the resulting x.T@x and x.T@y
-consist of a single block each. Finally, the coefficients are computed in a single task by solving a linear system with
-np.linalg.solve, avoiding the unneeded computation of the inverse matrix.
+In our implementation, we compute ``x.T@x`` and ``x.T@y`` separately with map-reduce patterns, partitioning the samples
+only by row blocks. Each rows block of ``x`` is extended with the ones columns, if necessary, in the same tasks that do
+the products. As we are using row blocks as a whole, without vertical partitioning, the resulting ``x.T@x`` and
+``x.T@y`` consist of a single block each. Finally, the coefficients are computed in a single task by solving a linear
+system with ``np.linalg.solve``, avoiding the unnecessary computation of the inverse matrix.
 
 This implementation is designed for a good scalability for big numbers of samples. However, it cannot give any
-additional scalability with respect to the number of features, because we hold in memory the x.T@x matrix, of shape
-(n_features, n_features) and process it as a single block. (To have scalability for big numbers of features, we would
-need to integrate this with a distributed implementation of a method for solving a system of linear equations.)
+additional scalability with respect to the number of features, because we hold in memory the ``x.T@x`` matrix, of
+shape ``(n_features, n_features)`` and process it as a single block. (To have scalability for big numbers of features,
+we would need to integrate this with a distributed implementation of a method for solving a system of linear
+equations.)
 
 Decomposition
 -------------
@@ -379,26 +428,26 @@ Decomposition
 Principal component analysis
 ............................
 :class:`PCA <dislib.decomposition.pca.base.PCA>` performs principal component analysis using the covariance method.
-First, in the covariance method, features are centered (the mean is substracted for each feature) but not standarized
+First, in the covariance method, features are centered (the mean is subtracted for each feature) but not standardized
 (not divided by the standard deviation, which would be the correlation method). Then, the covariance matrix is
-estimated as x.T@x / (n_samples - 1). Finally, the eigendecomposition of this matrix is computed, yielding the
+estimated as ``x.T@x / (n_samples - 1)``. Finally, the eigendecomposition of this matrix is computed, yielding the
 principal components (eigenvectors) and the explained variance (eigenvalues).
 
 In our implementation, centering the features and estimating the covariance matrix are computed in two succesive
 map-reduce phases, partitioning the samples only by row blocks. Hence, we obtain an unpartitioned covariance matrix, of
-shape (n_features, n_features). This matrix is processed by a single task which computes the eigendecomposition
-using the numpy.linalg.eigh method. We can use this method, which is faster than the generic numpy.linalg.eig, because
-we know that the estimated covariance matrix is symmetric.
+shape ``(n_features, n_features)``. This matrix is processed by a single task which computes the eigendecomposition
+using the ``numpy.linalg.eigh`` method. We can use this method, which is faster than the generic ``numpy.linalg.eig``,
+because we know that the estimated covariance matrix is symmetric.
 
 Our distributed implementation offers a good scalability for big numbers of samples. However, it cannot give any
 additional scalability with respect to the number of features, because we hold the covariance matrix in memory and
 process it as a single block. (To have scalability for big numbers of features, we would need to integrate this with a
-distributed implementation of the eigendecomposition or to use a covariance-free algorithm.) If you have n_features >>
-n_samples and your data fits in memory, it may make sense to try centering the data and then calling np.linalg.svd for
-equivalent results.
+distributed implementation of the eigendecomposition or to use a covariance-free algorithm.) If you have ``n_features >>
+n_samples`` and your data fits in memory, it may make sense to try centering the data and then calling
+``np.linalg.svd`` for equivalent results.
 
-Lastly, bear in mind that even if you are specifying a small value for the parameter n_components (<< n_features), we
-are still computing the full eigendecomposition, so the fit() method will not run faster.
+Lastly, bear in mind that even if you are specifying a small value for the parameter ``n_components`` (smaller than
+``n_features``), we are still computing the full eigendecomposition, so the ``fit`` method will not run faster.
 
 
 Pre-processing
@@ -415,9 +464,57 @@ K-nearest neighbors
 
 Model selection
 ---------------
+Model selection is the task of choosing an appropriate model for your problem. This can be done by evaluating your
+candidate models with cross-validation, which is a technique for obtaining performance metrics with only the training
+data. It works by splitting your data into multiple train/validate partitions, evaluating the model obtained in each
+partition and aggregating the results. Model selection includes hyper-parameter optimization: selecting the best
+hyper-parameters (hyper-parameters are parameters that are not optimized during fitting) for your model.
+
+The module :mod:`dislib.model_selection <dislib.model_selection>` includes 2 classes for performing hyper-parameter
+optimization on estimators: GridSearchCV and RandomSearchCV. Both are very similar and use cross-validation, differing
+only on how the candidate hyper-parameters are given.
+
 
 Grid search
 ...........
+:class:`GridSearchCV <dislib.model_selection.GridSearchCV>` (grid search with cross-validation) is a method to
+explore different combinations of parameters for an estimator. It takes a grid or collection of combinations of
+parameters (``param_grid``), and it assigns a score to each combination, so it can be used for choosing the best set of
+parameters for a model (hyper-parameter optimization). We use cross-validation, so the score is obtained as an average
+of training and scoring with different train/validation splits.
+
+This object is very versatile: the cross-validation splitter (``cv``) and the scoring method (``scoring``) are
+customizable, and multiple scorers can be used at the same time. The results are presented in a table including, for
+each combination of parameters and scorer, the scores of every split along with the average and the standard deviation.
+
+The splitter (``cv``) is an object that creates partitions of the ds-array. This is different than in scikit-learn,
+where splitters partition only the indices. We need to split the whole dataset to be able to distribute the data. We
+implemented a k-fold splitter with pre-shuffling, which is the default (with k=5).
+
+The ``scoring`` defaults to the estimator's ``score`` method. If the estimator doesn't have a ``score`` method (for
+example, for clustering estimators), the user is required to provide a custom ``scoring``.
+
+If you use GridSearchCV with a dislib estimator, the ``fit`` and ``score`` of all the instances will be called
+sequentially, so the parallelism is achieved only through the tasks of the estimator. This limits the parallelism if
+the estimator has synchronizations in its implementation (like DBSCAN), because then each instance will not be fitted
+until the previous one has finished synchronizing. This limitation can be circumvented using COMPSs nested tasks to add
+another level of parallelism: having a task for fitting and scoring each instance of the estimator. You can find an
+implementation of GridSearchCV with nesting in the branch ``nested_search``.
+
+If you use GridSearchCV with a scikit-learn estimator, tasks are created for fitting and scoring each instance of the
+estimator. This can be a solution if the tasks of dislib estimators tasks are too fine-grained for your data. Be aware
+that the data of each split is loaded to memory before calling the ``fit`` method on scikit-learn estimators.
+
 
 Randomized search
 .................
+:class:`RandomizedSearchCV <dislib.model_selection.RandomizedSearchCV>` (randomized search with
+cross-validation) is a method to explore different combinations of parameters for an estimator. A given number of
+combinations of parameters are sampled from distributions provided by the user (``param_distributions``), and
+cross-validation is performed to each of them to obtain a score.
+
+Except for how the combinations of parameters are obtained,
+:class:`RandomizedSearchCV <dislib.model_selection.RandomizedSearchCV>`  works exactly in the same way as
+:class:`GridSearchCV <dislib.model_selection.GridSearchCV>`, so the previous section of the user guide applies.
+Randomized search has the advantage that it may require less combinations of parameters to find an equally good result,
+specially if you have some parameters that do not have a real influence on the resulting score of predictions.
