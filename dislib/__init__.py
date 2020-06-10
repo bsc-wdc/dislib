@@ -1,9 +1,9 @@
 import os
 
 from dislib.data.array import random_array, apply_along_axis, array, zeros, \
-    full
+    full, identity
 from dislib.data.io import load_svmlight_file, load_npy_file, load_txt_file
-from dislib.math import kron
+from dislib.math import kron, svd, hessenberg
 
 name = "dislib"
 version_file = os.path.join(os.path.dirname(os.path.abspath(__file__)),
@@ -28,4 +28,4 @@ else:
 
 __all__ = ['load_txt_file', 'load_svmlight_file', 'random_array',
            'apply_along_axis', 'array', 'load_npy_file', 'zeros', 'kron',
-           'full']
+           'full', 'identity', 'svd', 'hessenberg']

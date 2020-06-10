@@ -46,6 +46,9 @@ class Array(object):
         Total number of elements in the array.
     sparse : boolean, optional (default=False)
         Whether this array stores sparse data.
+    delete : boolean, optional (default=True)
+        Whether to call compss_delete_object on the blocks when the garbage
+        collector deletes this ds-array.
 
     Attributes
     ----------
@@ -905,6 +908,22 @@ class Array(object):
         return Array._rechunk(self._blocks, self.shape, block_size,
                               Array._get_block_shape_static, self)
 
+    def copy(self):
+        """ Creates a copy of this ds-array.
+
+        Returns
+        -------
+        x_copy : ds-array
+        """
+        blocks = Array._get_out_blocks(self._n_blocks)
+
+        for i in range(self._n_blocks[0]):
+            for j in range(self._n_blocks[1]):
+                blocks[i][j] = _copy_block(self._blocks[i][j])
+
+        return Array(blocks, self._top_left_shape, self._reg_shape,
+                     self.shape, self._sparse, self._delete)
+
     def collect(self, squeeze=True):
         """
         Collects the contents of this ds-array and returns the equivalent
@@ -1019,7 +1038,7 @@ def identity(n, block_size, dtype=None):
     block_size : tuple of two ints
         Block size.
     dtype : data type, optional (default=None)
-        The desired type of the array. Defaults to float.
+        The desired type of the ds-array. Defaults to float.
 
     Returns
     -------
@@ -1055,22 +1074,6 @@ def identity(n, block_size, dtype=None):
 
     return Array(blocks, top_left_shape=block_size, reg_shape=block_size,
                  shape=(n, n), sparse=False)
-
-
-@task(returns=1)
-def _identity_block(block_size, n, reg_shape, i, j, dtype):
-    block = np.zeros(block_size, dtype)
-
-    i_values = np.arange(i * reg_shape[0], min(n, (i + 1) * reg_shape[0]))
-    j_values = np.arange(j * reg_shape[1], min(n, (j + 1) * reg_shape[1]))
-
-    indices = np.intersect1d(i_values, j_values)
-
-    i_ones = indices - (i * reg_shape[0])
-    j_ones = indices - (i * reg_shape[1])
-
-    block[i_ones, j_ones] = 1
-    return block
 
 
 def zeros(shape, block_size, dtype=None):
@@ -1354,6 +1357,22 @@ def _random_block(shape, seed):
     return np.random.random(shape)
 
 
+@task(returns=1)
+def _identity_block(block_size, n, reg_shape, i, j, dtype):
+    block = np.zeros(block_size, dtype)
+
+    i_values = np.arange(i * reg_shape[0], min(n, (i + 1) * reg_shape[0]))
+    j_values = np.arange(j * reg_shape[1], min(n, (j + 1) * reg_shape[1]))
+
+    indices = np.intersect1d(i_values, j_values)
+
+    i_ones = indices - (i * reg_shape[0])
+    j_ones = indices - (j * reg_shape[1])
+
+    block[i_ones, j_ones] = 1
+    return block
+
+
 @task(returns=np.array)
 def _full_block(shape, value, dtype):
     return np.full(shape, value, dtype)
@@ -1415,3 +1434,8 @@ def _split_block(block, tl_shape, reg_shape, out_blocks):
     for i, rows in enumerate(np.vsplit(block, vsplit)):
         for j, cols in enumerate(np.hsplit(rows, hsplit)):
             out_blocks[i][j] = cols
+
+
+@task(returns=1)
+def _copy_block(block):
+    return block.copy()
