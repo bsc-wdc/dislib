@@ -179,6 +179,46 @@ class Array(object):
             raise NotImplementedError("Power is only supported for scalars")
         return _apply_elementwise(Array._power, self, power)
 
+    def __sub__(self, other):
+        if self.shape[1] != other.shape[1] or other.shape[0] != 1:
+            raise NotImplementedError("Substraction not implemented for the "
+                                      "given arrays")
+
+        # matrix - vector
+        blocks = []
+
+        for hblock in self._iterator("rows"):
+            out_blocks = [object() for _ in range(hblock._n_blocks[1])]
+            _combine_blocks(hblock._blocks, other._blocks,
+                            operator.sub, out_blocks)
+            blocks.append(out_blocks)
+
+        return Array(blocks, self._top_left_shape, self._reg_shape,
+                     self.shape, self._sparse)
+
+    def __truediv__(self, other):
+        if not np.isscalar(other):
+            raise NotImplementedError("Non scalar division not supported")
+
+        return _apply_elementwise(operator.truediv, self, other)
+
+    def __mul__(self, other):
+        if self.shape[1] != other.shape[1] or other.shape[0] != 1:
+            raise NotImplementedError("Substraction not implemented for the "
+                                      "given arrays")
+
+        # matrix * vector
+        blocks = []
+
+        for hblock in self._iterator("rows"):
+            out_blocks = [object() for _ in range(hblock._n_blocks[1])]
+            _combine_blocks(hblock._blocks, other._blocks,
+                            operator.mul, out_blocks)
+            blocks.append(out_blocks)
+
+        return Array(blocks, self._top_left_shape, self._reg_shape,
+                     self.shape, self._sparse)
+
     @property
     def shape(self):
         """
@@ -1439,3 +1479,18 @@ def _split_block(block, tl_shape, reg_shape, out_blocks):
 @task(returns=1)
 def _copy_block(block):
     return block.copy()
+
+
+@task(blocks={Type: COLLECTION_IN, Depth: 2},
+      other={Type: COLLECTION_IN, Depth: 2},
+      out_blocks={Type: COLLECTION_INOUT, Depth: 1})
+def _combine_blocks(blocks, other, func, out_blocks):
+    x = Array._merge_blocks(blocks)
+    y = Array._merge_blocks(other)
+
+    sub = func(x, y)
+    bsize = int(ceil(x.shape[1] / len(out_blocks)))
+
+    for i in range(len(out_blocks)):
+        out_blocks[i] = sub[:, i * bsize: (i + 1) * bsize]
+

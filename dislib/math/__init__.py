@@ -1,3 +1,3 @@
-from dislib.math.base import kron, svd, hessenberg
+from dislib.math.base import kron, svd
 
-__all__ = ['kron', 'svd', 'hessenberg']
+__all__ = ['kron', 'svd']
