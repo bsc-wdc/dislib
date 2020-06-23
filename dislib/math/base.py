@@ -93,7 +93,7 @@ def svd(a, compute_uv=True, copy=True, eps=1e-16):
     Parameters
     ----------
     a : ds-array, shape=(n, m)
-        Input matrix.
+        Input matrix. Needs to be partitioned in two column blocks at least.
     compute_uv : boolean, optional (default=True)
         Whether or not to compute u and v in addition to s.
     copy : boolean, optional (default=True)
@@ -142,11 +142,13 @@ def svd(a, compute_uv=True, copy=True, eps=1e-16):
     if compute_uv:
         v = identity(x.shape[1], (x._reg_shape[1], x._reg_shape[1]))
 
-    pairings = itertools.product(range(x._n_blocks[1]), range(x._n_blocks[1]))
     checks = True
 
     while not _check_convergence_svd(checks):
         checks = []
+
+        pairings = itertools.product(range(x._n_blocks[1]),
+                                     range(x._n_blocks[1]))
 
         for i, j in pairings:
             if i >= j:
@@ -166,15 +168,32 @@ def svd(a, compute_uv=True, copy=True, eps=1e-16):
                 _rotate(coli_v._blocks, colj_v._blocks, rot)
 
     s = x.norm(axis=0)
+    sorting = _sort_s(s._blocks)
 
     if compute_uv:
-        u = _compute_u(x)
+        u = _compute_u(x, sorting)
         return u, s, v
     else:
         return s
 
 
-def _compute_u(a):
+
+
+@task(s_blocks={Type: COLLECTION_INOUT, Depth: 2}, returns=1)
+def _sort_s(s_blocks):
+    s = Array._merge_blocks(s_blocks)
+
+    sorting = np.argsort(s)[::-1]
+    sorted = s[sorting]
+    bsize = s_blocks[0][0].shape[1]
+
+    for i in range(len(s_blocks)):
+        s_blocks[i] = sorted[:, i * bsize:(i + 1) * bsize]
+
+    return sorting
+
+
+def _compute_u(a, sorting):
     u_blocks = [[] for _ in range(a._n_blocks[0])]
 
     for vblock in a._iterator("columns"):

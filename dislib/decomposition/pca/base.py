@@ -16,7 +16,7 @@ class PCA(BaseEstimator):
     n_components : int or None, optional (default=None)
         Number of components to keep. If None, all components are kept.
     arity : int, optional (default=50)
-        Arity of the reductions.
+        Arity of the reductions. Only if method='eig'.
     method : str, optional (default='eig')
         Method to use in the decomposition. Can be 'svd' for singular value
         decomposition and 'eig' for eigendecomposition of the covariance
@@ -25,18 +25,18 @@ class PCA(BaseEstimator):
 
     Attributes
     ----------
-    components_ : array, shape (n_components, n_features)
+    components_ : ds-array, shape (n_components, n_features)
         Principal axes in feature space, representing the directions of maximum
         variance in the data. The components are sorted by explained_variance_.
 
         Equal to the n_components eigenvectors of the covariance matrix with
         greater eigenvalues.
-    explained_variance_ : array, shape (n_components,)
+    explained_variance_ : ds-array, shape (1, n_components)
         The amount of variance explained by each of the selected components.
 
         Equal to the first n_components largest eigenvalues of the covariance
         matrix.
-    mean_ : array, shape (n_features,)
+    mean_ : ds-array, shape (1, n_features)
         Per-feature empirical mean, estimated from the training set.
 
     Examples
@@ -50,8 +50,8 @@ class PCA(BaseEstimator):
     >>> pca = PCA()
     >>> transformed_data = pca.fit_transform(data)
     >>> print(transformed_data)
-    >>> print(pca.components_)
-    >>> print(pca.explained_variance_)
+    >>> print(pca.components_.collect())
+    >>> print(pca.explained_variance_.collect())
     """
 
     def __init__(self, n_components=None, arity=50, method="eig"):
@@ -224,7 +224,7 @@ def _decompose(covariance_matrix, n_components, bsize, val_blocks, vec_blocks):
     eig_vec *= signs[:, np.newaxis]
 
     for i in range(len(vec_blocks)):
-        val_blocks[i] = eig_val[i * bsize:(i + 1) * bsize]
+        val_blocks[0][i] = eig_val[i * bsize:(i + 1) * bsize]
 
         for j in range(len(vec_blocks[i])):
             vec_blocks[i][j] = eig_vec[i * bsize:(i + 1) * bsize,
