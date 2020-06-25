@@ -83,19 +83,24 @@ def kron(a, b, block_size=None):
         return out
 
 
-def svd(a, compute_uv=True, copy=True, eps=1e-16):
-    """ Performs singular value decomposition of a via the block Jacobi
-    algorithm described in Arbenz and Slapnicar [1]_ and Dongarra et al. [2]_.
+def svd(a, compute_uv=True, sort=True, copy=True, eps=1e-16):
+    """ Performs singular value decomposition of a via the one-sided block
+    Jacobi algorithm described in Arbenz and Slapnicar [1]_ and
+    Dongarra et al. [2]_.
 
     Singular value decomposition is a factorization of the form A = USV',
     where U and V are unitary matrices and S is a rectangular diagonal matrix.
 
     Parameters
     ----------
-    a : ds-array, shape=(n, m)
-        Input matrix. Needs to be partitioned in two column blocks at least.
+    a : ds-array, shape=(m, n)
+        Input matrix (m >= n). Needs to be partitioned in two column blocks at
+        least due to the design of the block Jacobi algorithm.
     compute_uv : boolean, optional (default=True)
         Whether or not to compute u and v in addition to s.
+    sort : boolean, optional (default=True)
+        Whether to return sorted u, s and v. Sorting requires a significant
+        amount of additional computation.
     copy : boolean, optional (default=True)
         Whether to create a copy of a or to apply transformations on a
         directly. Only valid if a is regular (i.e., top left block is of
@@ -105,21 +110,20 @@ def svd(a, compute_uv=True, copy=True, eps=1e-16):
 
     Returns
     -------
-    u : ds-array, shape=(n, m)
+    u : ds-array, shape=(m, n)
         U matrix. Only returned if compute_uv is True.
-    s : ds-array, shape=(1, m)
+    s : ds-array, shape=(1, n)
         Diagonal entries of S.
-    v : ds-array, shape=(m, m)
+    v : ds-array, shape=(n, n)
         V matrix. Only returned if compute_uv is True.
 
     Raises
     ------
     ValueError
-        If a has less than 2 column blocks.
+        If a has less than 2 column blocks or m < n.
 
     References
     ----------
-
     .. [1] Arbenz, P. and Slapnicar, A. (1995). An Analysis of Parallel
         Implementations of the Block-Jacobi Algorithm for Computing the SVD. In
         Proceedings of the 17th International Conference on Information
@@ -128,9 +132,24 @@ def svd(a, compute_uv=True, copy=True, eps=1e-16):
     .. [2] Dongarra, J., Gates, M., Haidar, A. et al. (2018). The singular
         value decomposition: Anatomy of optimizing an algorithm for extreme
         scale. In SIAM review, 60(4) (pp. 808-865).
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> import dislib as ds
+    >>> x = ds.random_array((10, 6), (2, 2), random_state=7)
+    >>> u, s, v = ds.svd(x)
+    >>> u = u.collect()
+    >>> s = np.diag(s.collect())
+    >>> v = v.collect()
+    >>> print(np.allclose(a, u @ s @ v.T))
     """
     if a._n_blocks[1] < 2:
         raise ValueError("Not enough column blocks to compute SVD.")
+
+    if a.shape[0] < a.shape[1]:
+        raise ValueError("The number of rows of the input matrix is lower "
+                         "than the number of columns")
 
     if not a._is_regular():
         x = a.rechunk(a._reg_shape)
@@ -168,32 +187,28 @@ def svd(a, compute_uv=True, copy=True, eps=1e-16):
                 _rotate(coli_v._blocks, colj_v._blocks, rot)
 
     s = x.norm(axis=0)
-    sorting = _sort_s(s._blocks)
+
+    if sort:
+        sorting = _sort_s(s._blocks)
 
     if compute_uv:
-        u = _compute_u(x, sorting)
+        if sort:
+            u = _compute_u_sorted(x, sorting)
+            v = _sort_v(v, sorting)
+        else:
+            u = _compute_u(x)
+
         return u, s, v
     else:
         return s
 
 
+def _check_convergence_svd(checks):
+    checks = compss_wait_on(checks)
+    return not np.array(checks).any()
 
 
-@task(s_blocks={Type: COLLECTION_INOUT, Depth: 2}, returns=1)
-def _sort_s(s_blocks):
-    s = Array._merge_blocks(s_blocks)
-
-    sorting = np.argsort(s)[::-1]
-    sorted = s[sorting]
-    bsize = s_blocks[0][0].shape[1]
-
-    for i in range(len(s_blocks)):
-        s_blocks[i] = sorted[:, i * bsize:(i + 1) * bsize]
-
-    return sorting
-
-
-def _compute_u(a, sorting):
+def _compute_u(a):
     u_blocks = [[] for _ in range(a._n_blocks[0])]
 
     for vblock in a._iterator("columns"):
@@ -206,9 +221,74 @@ def _compute_u(a, sorting):
     return Array(u_blocks, a._top_left_shape, a._reg_shape, a.shape, a._sparse)
 
 
-def _check_convergence_svd(checks):
-    checks = compss_wait_on(checks)
-    return not np.array(checks).any()
+def _compute_u_sorted(a, sorting):
+    u_blocks = [[] for _ in range(a._n_blocks[1])]
+    hbsize = a._reg_shape[1]
+
+    for i, vblock in enumerate(a._iterator("columns")):
+        u_block = [object() for _ in range(a._n_blocks[1])]
+        _compute_u_block_sorted(vblock._blocks, i, hbsize, sorting, u_block)
+
+        for j in range(len(u_block)):
+            u_blocks[j].append(u_block[j])
+
+    vbsize = a._reg_shape[0]
+    final_blocks = Array._get_out_blocks(a._n_blocks)
+
+    for i, u_block in enumerate(u_blocks):
+        new_block = [object() for _ in range(a._n_blocks[0])]
+        _merge_svd_block(u_block, i, hbsize, vbsize, sorting, new_block)
+
+        for j in range(len(new_block)):
+            final_blocks[j][i] = new_block[j]
+
+        for elem in u_block:
+            compss_delete_object(elem)
+
+    return Array(final_blocks, a._top_left_shape, a._reg_shape, a.shape,
+                 a._sparse)
+
+
+def _sort_v(v, sorting):
+    v_blocks = [[] for _ in range(v._n_blocks[1])]
+    hbsize = v._reg_shape[1]
+
+    for i, vblock in enumerate(v._iterator("columns")):
+        out_blocks = [[] for _ in range(v._n_blocks[1])]
+        _sort_v_block(vblock._blocks, i, hbsize, sorting, out_blocks)
+
+        for j in range(len(out_blocks)):
+            v_blocks[j].append(out_blocks[j])
+
+    vbsize = v._reg_shape[0]
+    final_blocks = Array._get_out_blocks(v._n_blocks)
+
+    for i, v_block in enumerate(v_blocks):
+        new_block = [object() for _ in range(v._n_blocks[0])]
+        _merge_svd_block(v_block, i, hbsize, vbsize, sorting, new_block)
+
+        for j in range(len(new_block)):
+            final_blocks[j][i] = new_block[j]
+
+        for elem in v_block:
+            compss_delete_object(elem)
+
+    return Array(final_blocks, v._top_left_shape, v._reg_shape, v.shape,
+                 v._sparse)
+
+
+@task(s_blocks={Type: COLLECTION_INOUT, Depth: 2}, returns=1)
+def _sort_s(s_blocks):
+    s = Array._merge_blocks(s_blocks)
+
+    sorting = np.argsort(s[0])[::-1]
+    s_sorted = s[0][sorting]
+    bsize = s_blocks[0][0].shape[1]
+
+    for i in range(len(s_blocks[0])):
+        s_blocks[0][i] = s_sorted[i * bsize:(i + 1) * bsize]
+
+    return sorting
 
 
 @task(a_block={Type: COLLECTION_IN, Depth: 2},
@@ -216,12 +296,77 @@ def _check_convergence_svd(checks):
 def _compute_u_block(a_block, u_block):
     a_col = Array._merge_blocks(a_block)
     norm = np.linalg.norm(a_col, axis=0)
+
+    # replace zero norm columns of a with an arbitrary unitary vector
+    zero_idx = np.where(norm == 0)
+    a_col[0, zero_idx] = 1
+    norm[zero_idx] = 1
+
     u_col = a_col / norm
 
     block_size = a_block[0][0].shape[0]
 
     for i in range(len(u_block)):
         u_block[i] = u_col[i * block_size: (i + 1) * block_size]
+
+
+@task(a_block={Type: COLLECTION_IN, Depth: 2},
+      u_block={Type: COLLECTION_INOUT, Depth: 1})
+def _compute_u_block_sorted(a_block, index, bsize, sorting, u_block):
+    a_col = Array._merge_blocks(a_block)
+    norm = np.linalg.norm(a_col, axis=0)
+
+    # replace zero norm columns of a with an arbitrary unitary vector
+    zero_idx = np.where(norm == 0)
+    a_col[0, zero_idx] = 1
+    norm[zero_idx] = 1
+
+    u_col = a_col / norm
+
+    for i in range(len(u_block)):
+        u_block[i] = []
+
+    # place each column of U in the target block according to sorting
+    for i in range(u_col.shape[1]):
+        dest_i = np.where(sorting == (index * bsize + i))[0][0]
+        block_i = dest_i // bsize
+        u_block[block_i].append(u_col[:, i])
+
+    for i in range(len(u_block)):
+        if u_block[i]:
+            u_block[i] = np.vstack(u_block[i])
+
+
+@task(block={Type: COLLECTION_IN, Depth: 1},
+      out_blocks={Type: COLLECTION_INOUT, Depth: 1})
+def _merge_svd_block(block, index, hbsize, vbsize, sorting, out_blocks):
+    block = list(filter(lambda a: a != [], block))  # remove empty lists
+    col = np.vstack(block).T
+    local_sorting = []
+
+    for i in range(col.shape[1]):
+        dest_i = np.where(sorting == (index * hbsize + i))[0][0] % hbsize
+        local_sorting.append(dest_i)
+
+    col = col[:, local_sorting]
+
+    for i in range(len(out_blocks)):
+        out_blocks[i] = col[i * vbsize: (i + 1) * vbsize]
+
+
+@task(v_block={Type: COLLECTION_IN, Depth: 2},
+      out_blocks={Type: COLLECTION_INOUT, Depth: 1})
+def _sort_v_block(v_block, index, bsize, sorting, out_blocks):
+    v_col = Array._merge_blocks(v_block)
+
+    for i in range(v_col.shape[1]):
+        dest_i = np.where(sorting == (index * bsize + i))[0][0]
+        block_i = dest_i // bsize
+        out_blocks[block_i].append(v_col[:, i])
+
+    for i in range(len(out_blocks)):
+        if out_blocks[i]:
+            out_blocks[i] = np.vstack(out_blocks[i])
 
 
 @task(coli_blocks={Type: COLLECTION_IN, Depth: 2},
