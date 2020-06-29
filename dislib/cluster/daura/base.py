@@ -1,6 +1,5 @@
 from itertools import chain
 
-from dislib.data.array import Array
 from pycompss.api.api import compss_wait_on
 from pycompss.api.parameter import COLLECTION_IN, INOUT
 from pycompss.api.task import task
@@ -24,7 +23,7 @@ class Daura(BaseEstimator):
         """
         self.cutoff = cutoff
 
-    def fit_predict(self, distances: Array):
+    def fit_predict(self, distances):
         """ Compute Daura clustering.
 
         Parameters
