@@ -1,6 +1,7 @@
 import numpy as np
 from pycompss.api.parameter import COLLECTION_IN, Depth, Type, COLLECTION_INOUT
 from pycompss.api.task import task
+from scipy.sparse import issparse, csr_matrix
 from sklearn.base import BaseEstimator
 
 from dislib.data.array import Array
@@ -22,6 +23,8 @@ class PCA(BaseEstimator):
         decomposition and 'eig' for eigendecomposition of the covariance
         matrix. 'svd' is recommended when having a large number of
         features. Falls back to 'eig' if the method is not recognized.
+    eps : float, optional (default=1e-9)
+        Tolerance for the convergence criterion when method='svd'.
 
     Attributes
     ----------
@@ -54,10 +57,11 @@ class PCA(BaseEstimator):
     >>> print(pca.explained_variance_.collect())
     """
 
-    def __init__(self, n_components=None, arity=50, method="eig"):
+    def __init__(self, n_components=None, arity=50, method="eig", eps=1e-9):
         self.n_components = n_components
         self.arity = arity
         self.method = method
+        self.eps = eps
 
     def fit(self, x, y=None):
         """ Fit the model with the dataset.
@@ -73,6 +77,10 @@ class PCA(BaseEstimator):
         -------
         self : PCA
         """
+        if self.method == 'svd' and x._sparse:
+            raise NotImplementedError(
+                "SVD method not supported for sparse arrays.")
+
         self.mean_ = x.mean(axis=0)
         norm_x = x - self.mean_
 
@@ -133,7 +141,8 @@ class PCA(BaseEstimator):
         val_blocks = Array._get_out_blocks((1, n_blocks))
         vec_blocks = Array._get_out_blocks((n_blocks, x._n_blocks[1]))
 
-        _decompose(cov_matrix, self.n_components, x._reg_shape[1], val_blocks,
+        _decompose(cov_matrix, self.n_components, x._reg_shape[1],
+                   val_blocks,
                    vec_blocks)
 
         bshape = (x._reg_shape[1], x._reg_shape[1])
@@ -146,7 +155,7 @@ class PCA(BaseEstimator):
         return self
 
     def _fit_svd(self, x):
-        self._u, self._s, v = svd(x, copy=False)
+        self._u, self._s, v = svd(x, copy=False, eps=self.eps)
 
         if self.n_components:
             self._u = self._u[:, :self.n_components]
@@ -183,6 +192,10 @@ def _scatter_matrix(x, arity):
 @task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=1)
 def _subset_scatter_matrix(blocks):
     data = Array._merge_blocks(blocks)
+
+    if issparse(data):
+        data = data.toarray()
+
     return np.dot(data.T, data)
 
 
@@ -240,7 +253,14 @@ def _subset_transform(blocks, u_blocks, c_blocks, reg_shape, out_blocks):
     mean = Array._merge_blocks(u_blocks)
     components = Array._merge_blocks(c_blocks)
 
+    if issparse(data):
+        data = data.toarray()
+        mean = mean.toarray()
+
     res = (np.matmul(data - mean, components.T))
+
+    if issparse(data):
+        res = csr_matrix(res)
 
     for j in range(0, len(blocks[0])):
         out_blocks[j] = res[:, j * reg_shape:(j + 1) * reg_shape]

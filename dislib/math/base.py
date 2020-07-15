@@ -83,7 +83,7 @@ def kron(a, b, block_size=None):
         return out
 
 
-def svd(a, compute_uv=True, sort=True, copy=True, eps=1e-16):
+def svd(a, compute_uv=True, sort=True, copy=True, eps=1e-9):
     """ Performs singular value decomposition of a via the one-sided block
     Jacobi algorithm described in Arbenz and Slapnicar [1]_ and
     Dongarra et al. [2]_.
@@ -105,7 +105,7 @@ def svd(a, compute_uv=True, sort=True, copy=True, eps=1e-16):
         Whether to create a copy of a or to apply transformations on a
         directly. Only valid if a is regular (i.e., top left block is of
         regular shape).
-    eps : float, optional (default=1e-16)
+    eps : float, optional (default=1e-9)
         Tolerance for the convergence criterion.
 
     Returns
@@ -286,7 +286,7 @@ def _sort_s(s_blocks):
     bsize = s_blocks[0][0].shape[1]
 
     for i in range(len(s_blocks[0])):
-        s_blocks[0][i] = s_sorted[i * bsize:(i + 1) * bsize]
+        s_blocks[0][i] = s_sorted[i * bsize:(i + 1) * bsize].reshape(1, -1)
 
     return sorting
 

@@ -181,7 +181,7 @@ class Array(object):
 
     def __sub__(self, other):
         if self.shape[1] != other.shape[1] or other.shape[0] != 1:
-            raise NotImplementedError("Substraction not implemented for the "
+            raise NotImplementedError("Subtraction not implemented for the "
                                       "given arrays")
 
         # matrix - vector
@@ -190,7 +190,7 @@ class Array(object):
         for hblock in self._iterator("rows"):
             out_blocks = [object() for _ in range(hblock._n_blocks[1])]
             _combine_blocks(hblock._blocks, other._blocks,
-                            operator.sub, out_blocks)
+                            Array._subtract, out_blocks)
             blocks.append(out_blocks)
 
         return Array(blocks, self._top_left_shape, self._reg_shape,
@@ -204,7 +204,7 @@ class Array(object):
 
     def __mul__(self, other):
         if self.shape[1] != other.shape[1] or other.shape[0] != 1:
-            raise NotImplementedError("Substraction not implemented for the "
+            raise NotImplementedError("Multiplication not implemented for the "
                                       "given arrays")
 
         # matrix * vector
@@ -230,6 +230,22 @@ class Array(object):
     def T(self):
         """ Returns the transpose of this ds-array """
         return self.transpose()
+
+    @staticmethod
+    def _subtract(a, b):
+        sparse = issparse(a)
+
+        # needed because subtract with scipy.sparse does not support
+        # broadcasting
+        if sparse:
+            a = a.toarray()
+        if issparse(b):
+            b = b.toarray()
+
+        if sparse:
+            return csr_matrix(a - b)
+        else:
+            return a - b
 
     @staticmethod
     def _power(x_np, power):
@@ -985,7 +1001,7 @@ class Array(object):
             The actual contents of the ds-array.
         """
         self._blocks = compss_wait_on(self._blocks)
-        res = self._merge_blocks(self._blocks)
+        res = Array._merge_blocks(self._blocks)
         if not self._sparse and squeeze:
             res = np.squeeze(res)
         return res
@@ -1225,7 +1241,7 @@ def apply_along_axis(func, axis, x, *args, **kwargs):
         out_shape = (shape[0], 1)
 
     return Array(blocks, top_left_shape=out_tlbshape, reg_shape=out_bshape,
-                 shape=out_shape, sparse=False)
+                 shape=out_shape, sparse=x._sparse)
 
 
 def _multiply_block_groups(hblock, vblock):
@@ -1424,16 +1440,19 @@ def _block_apply_axis(func, axis, blocks, *args, **kwargs):
     kwargs['axis'] = axis
     out = func(arr, *args, **kwargs)
 
-    if issparse(out):
-        out = out.toarray()
-
-    # We convert to array for consistency (otherwise the output of this
-    # task is of unknown type)
-    if axis == 0:
-        return np.asarray(out).reshape(1, -1)
+    # We don't know the data type that func returns (could be dense for a
+    # sparse input). Therefore, we force the output to be of the same type
+    # of the input. Otherwise, the result of apply_along_axis would be of
+    # unknown type.
+    if not issparse(arr):
+        out = np.asarray(out)
     else:
-        return np.asarray(out).reshape(-1, 1)
+        out = csr_matrix(out)
 
+    if axis == 0:
+        return out.reshape(1, -1)
+    else:
+        return out.reshape(-1, 1)
 
 @task(returns=1)
 def _block_apply(func, block, *args, **kwargs):
@@ -1473,7 +1492,10 @@ def _split_block(block, tl_shape, reg_shape, out_blocks):
 
     for i, rows in enumerate(np.vsplit(block, vsplit)):
         for j, cols in enumerate(np.hsplit(rows, hsplit)):
-            out_blocks[i][j] = cols
+            # copy is only necessary when executing with regular Python.
+            # When using PyCOMPSs the reference to the original block is broken
+            # because this is executed in a task.
+            out_blocks[i][j] = cols.copy()
 
 
 @task(returns=1)
@@ -1488,9 +1510,9 @@ def _combine_blocks(blocks, other, func, out_blocks):
     x = Array._merge_blocks(blocks)
     y = Array._merge_blocks(other)
 
-    sub = func(x, y)
-    bsize = int(ceil(x.shape[1] / len(out_blocks)))
+    res = func(x, y)
+
+    bsize = blocks[0][0].shape[1]
 
     for i in range(len(out_blocks)):
-        out_blocks[i] = sub[:, i * bsize: (i + 1) * bsize]
-
+        out_blocks[i] = res[:, i * bsize: (i + 1) * bsize]
