@@ -243,7 +243,7 @@ def _transform(x, mean, components):
 
     return Array(blocks=new_blocks, top_left_shape=x._top_left_shape,
                  reg_shape=x._reg_shape,
-                 shape=(x.shape[0], components.shape[1]), sparse=x._sparse)
+                 shape=(x.shape[0], components.shape[0]), sparse=x._sparse)
 
 
 @task(blocks={Type: COLLECTION_IN, Depth: 2},
