@@ -169,16 +169,19 @@ class PCA(BaseEstimator):
 
     def _transform_eig(self, x):
         new_blocks = []
+        n_components = self.components_.shape[0]
+        reg_shape = x._reg_shape[1]
+        div, mod = divmod(n_components, reg_shape)
+        n_col_blocks = div + (1 if mod else 0)
+
         for rows in x._iterator('rows'):
-            out_blocks = [object() for _ in range(rows._n_blocks[1])]
+            out_blocks = [object() for _ in range(n_col_blocks)]
             _subset_transform(rows._blocks, self.mean_._blocks,
-                              self.components_._blocks, x._reg_shape[1],
-                              out_blocks)
+                              self.components_._blocks, reg_shape, out_blocks)
             new_blocks.append(out_blocks)
 
         return Array(blocks=new_blocks, top_left_shape=x._top_left_shape,
-                     reg_shape=x._reg_shape,
-                     shape=(x.shape[0], self.components_.shape[1]),
+                     reg_shape=x._reg_shape, shape=(x.shape[0], n_components),
                      sparse=x._sparse)
 
 
