@@ -1454,6 +1454,7 @@ def _block_apply_axis(func, axis, blocks, *args, **kwargs):
     else:
         return out.reshape(-1, 1)
 
+
 @task(returns=1)
 def _block_apply(func, block, *args, **kwargs):
     return func(block, *args, **kwargs)

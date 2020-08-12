@@ -92,16 +92,13 @@ class PCATest(unittest.TestCase):
 
         pca = PCA()
         transform_dense = pca.fit_transform(x_ds).collect()
-        dense_components = pca.components_.collect()
         dense_variance = pca.explained_variance_.collect()
 
         pca = PCA()
         transform_sparse = pca.fit_transform(x_sp).collect()
-        sparse_components = pca.components_.collect()
         sparse_variance = pca.explained_variance_.collect()
 
         self.assertTrue(np.allclose(transform_sparse, transform_dense))
-        #self.assertTrue(np.allclose(sparse_components, dense_components))
         self.assertTrue(np.allclose(sparse_variance, dense_variance))
 
         # Test error for sparse data and method=svd

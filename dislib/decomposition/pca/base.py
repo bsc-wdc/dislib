@@ -243,8 +243,8 @@ def _decompose(covariance_matrix, n_components, bsize, val_blocks, vec_blocks):
         val_blocks[0][i] = eig_val[i * bsize:(i + 1) * bsize]
 
         for j in range(len(vec_blocks[i])):
-            vec_blocks[i][j] = eig_vec[i * bsize:(i + 1) * bsize,
-                               j * bsize:(j + 1) * bsize]
+            vec_blocks[i][j] = \
+                eig_vec[i * bsize:(i + 1) * bsize, j * bsize:(j + 1) * bsize]
 
 
 @task(blocks={Type: COLLECTION_IN, Depth: 2},
