@@ -7,11 +7,7 @@ import numpy as np
 import importlib
 from pycompss.api.api import compss_wait_on, compss_delete_object
 from pycompss.api.parameter import Type, COLLECTION_IN, Depth, \
-<<<<<<< HEAD
     COLLECTION_INOUT, INOUT, COLLECTION_OUT, Direction, COLLECTION
-=======
-    COLLECTION_INOUT, INOUT
->>>>>>> origin/test_compss
 from pycompss.api.task import task
 from scipy import sparse as sp
 from scipy.sparse import issparse, csr_matrix
@@ -26,7 +22,6 @@ if importlib.util.find_spec("hecuba"):
 from pprint import pprint
 from math import ceil
 
-<<<<<<< HEAD
 import sys
 
 
@@ -36,8 +31,6 @@ class MiSD (StorageDict):
     '''                                                                                                                                 
     pass
 
-=======
->>>>>>> origin/test_compss
 
 class Array(object):
     """ A distributed 2-dimensional array divided in blocks.
@@ -181,11 +174,6 @@ class Array(object):
         raise IndexError("Invalid indexing information: %s" % str(arg))
 
     def __setitem__(self, key, value):
-<<<<<<< HEAD
-        # import pydevd_pycharm
-        # pydevd_pycharm.settrace('192.168.1.222', port=1454, stdoutToServer=True, stderrToServer=True)
-=======
->>>>>>> origin/test_compss
         if not np.isscalar(value):
             raise ValueError("Can only assign scalar values.")
 
@@ -244,7 +232,6 @@ class Array(object):
         a single ndarray / sparse matrix.
         """
         sparse = None
-<<<<<<< HEAD
 
         try:
             if blocks[0][0].__class__.__name__=="StorageNumpy":
@@ -253,16 +240,6 @@ class Array(object):
                     value=list(block)
                     line=np.concatenate(value,axis=1)
                     res.append(line)                
-=======
-     
-        try:
-            if blocks[0][0].__class__.__name__=="StorageNumpy":
-                res=[]
-                for block in blocks:
-                    value=list(block)
-                    line=np.concatenate(value,axis=1)
-                    res.append(line)
->>>>>>> origin/test_compss
                 return np.concatenate(res)
         except:
             print("Block size no compatible with np.array.shape")
@@ -316,8 +293,6 @@ class Array(object):
         return (shape0, shape1)
 
     @staticmethod
-<<<<<<< HEAD
-=======
     def _get_block_shape_static(i, j, x):
         reg_blocks = (max(0, x._n_blocks[0] - 2),
                       max(0, x._n_blocks[1] - 2))
@@ -343,7 +318,6 @@ class Array(object):
         return (shape0, shape1)
 
     @staticmethod
->>>>>>> origin/test_compss
     def _rechunk(blocks, shape, block_size, shape_f, *args, **kwargs):
         """ Re-partitions a set of blocks into a new ds-array of the given
         block size.
@@ -646,7 +620,6 @@ class Array(object):
 
             if b0 == 0:
                 b0 = self._reg_shape[0]
-<<<<<<< HEAD
 
         if j_0 == 0:
             # block is leftmost
@@ -658,19 +631,6 @@ class Array(object):
             if b1 == 0:
                 b1 = self._reg_shape[1]
 
-=======
-
-        if j_0 == 0:
-            # block is leftmost
-            b1 = self._top_left_shape[1]
-        elif j_0 == self._n_blocks[1] - 1:
-            # block is rightmost (can be regular or irregular)
-            b1 = (self.shape[1] - self._top_left_shape[1]) % self._reg_shape[1]
-
-            if b1 == 0:
-                b1 = self._reg_shape[1]
-
->>>>>>> origin/test_compss
         block_shape = (b0, b1)
 
         top, left = self._coords_in_block(i_0, j_0, r_start, c_start)
@@ -1149,13 +1109,8 @@ def array(x, block_size):
             raise ValueError("Input array is one-dimensional but "
                              "block size is greater than 1.")
 
-<<<<<<< HEAD
     # if x.shape[0] < block_size[0] or x.shape[1] < block_size[1]:
     #     raise ValueError("Block size is greater than the array")
-=======
-    if x.shape[0] < block_size[0] or x.shape[1] < block_size[1]:
-        raise ValueError("Block size is greater than the array")
->>>>>>> origin/test_compss
 
     blocks = []
     for i in range(0, x.shape[0], bn):
@@ -1568,18 +1523,9 @@ def _block_apply(func, block, *args, **kwargs):
     return func(block, *args, **kwargs)
 
 
-<<<<<<< HEAD
-
-@task(block=INOUT)
-def _set_value(block, i, j, value):
-
-    block[i][j] = value
-    
-=======
 @task(block=INOUT)
 def _set_value(block, i, j, value):
     block[i][j] = value
->>>>>>> origin/test_compss
 
 
 @task(blocks={Type: COLLECTION_IN, Depth: 1}, returns=1)

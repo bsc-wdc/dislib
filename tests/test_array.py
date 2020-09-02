@@ -94,6 +94,7 @@ class DataLoadingTest(unittest.TestCase):
                             + ((6, 10), (4, 3)))])
     def test_array_constructor(self, x, x_np, shape, block_size):
         """ Tests array constructor """
+        print("HI")
         n, m = shape
         bn, bm = block_size
 
@@ -667,3 +668,12 @@ class MathTest(unittest.TestCase):
             computed = computed.toarray()
 
         self.assertTrue(_equal_arrays(expected, computed))
+
+
+def main():
+    unittest.main(verbosity=2)
+    
+
+
+if __name__ == '__main__':
+    main()
