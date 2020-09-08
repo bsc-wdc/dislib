@@ -182,7 +182,7 @@ class Array(object):
     def __sub__(self, other):
         if self.shape[1] != other.shape[1] or other.shape[0] != 1:
             raise NotImplementedError("Subtraction not implemented for the "
-                                      "given arrays")
+                                      "given objects")
 
         # matrix - vector
         blocks = []
