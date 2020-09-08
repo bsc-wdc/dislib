@@ -41,9 +41,12 @@ def _validate_array(x):
 
 def _equal_arrays(x1, x2):
     if sp.issparse(x1):
-        return np.allclose(x1.toarray(), x2.toarray())
-    else:
-        return np.allclose(x1, x2)
+        x1 = x1.toarray()
+
+    if sp.issparse(x2):
+        x2 = x2.toarray()
+
+    return np.allclose(x1, x2)
 
 
 def _gen_random_arrays(fmt, shape=None, block_size=None):
@@ -420,36 +423,35 @@ class ArrayTest(unittest.TestCase):
         x1 = ds.apply_along_axis(_sum_and_mult, 0, x)
         self.assertTrue(x1.shape, (1, 3))
         self.assertTrue(x1._reg_shape, (1, 2))
-        self.assertTrue(
-            np.array_equal(x1.collect(), np.array([12, 15, 18])))
+        self.assertTrue(_equal_arrays(x1.collect(), np.array([12, 15, 18])))
         self.assertTrue(_validate_array(x1))
 
         x1 = ds.apply_along_axis(_sum_and_mult, 1, x)
         self.assertTrue(x1.shape, (3, 1))
         self.assertTrue(x1._reg_shape, (2, 1))
-        self.assertTrue(
-            np.array_equal(x1.collect(), np.array([6, 15, 24])))
+        self.assertTrue(_equal_arrays(x1.collect(False),
+                                      np.array([[6], [15], [24]])))
         self.assertTrue(_validate_array(x1))
 
         x1 = ds.apply_along_axis(_sum_and_mult, 1, x, 2)
         self.assertTrue(x1.shape, (3, 1))
         self.assertTrue(x1._reg_shape, (2, 1))
-        self.assertTrue(
-            np.array_equal(x1.collect(), np.array([8, 17, 26])))
+        self.assertTrue(_equal_arrays(x1.collect(False),
+                                      np.array([[8], [17], [26]])))
         self.assertTrue(_validate_array(x1))
 
         x1 = ds.apply_along_axis(_sum_and_mult, 1, x, b=2)
         self.assertTrue(x1.shape, (3, 1))
         self.assertTrue(x1._reg_shape, (2, 1))
-        self.assertTrue(
-            np.array_equal(x1.collect(), np.array([12, 30, 48])))
+        self.assertTrue(_equal_arrays(x1.collect(False),
+                                      np.array([[12], [30], [48]])))
         self.assertTrue(_validate_array(x1))
 
         x1 = ds.apply_along_axis(_sum_and_mult, 1, x, 1, b=2)
         self.assertTrue(x1.shape, (3, 1))
         self.assertTrue(x1._reg_shape, (2, 1))
-        self.assertTrue(
-            np.array_equal(x1.collect(), np.array([14, 32, 50])))
+        self.assertTrue(_equal_arrays(x1.collect(False),
+                                      np.array([[14], [32], [50]])))
         self.assertTrue(_validate_array(x1))
 
     @parameterized.expand([(ds.array([[1, 2, 3],
@@ -636,6 +638,8 @@ class MathTest(unittest.TestCase):
                            ((1, 30), (12, 1), False)])
     def test_kron(self, shape_a, shape_b, sparse):
         """ Tests kronecker product """
+        np.random.seed()
+
         a_np = np.random.random(shape_a)
         b_np = np.random.random(shape_b)
         expected = np.kron(a_np, b_np)
@@ -667,3 +671,77 @@ class MathTest(unittest.TestCase):
             computed = computed.toarray()
 
         self.assertTrue(_equal_arrays(expected, computed))
+
+    @parameterized.expand([((15, 13), (3, 6), (9, 6), (3, 2)),
+                           ((7, 8), (2, 3), (1, 15), (1, 15))])
+    def test_kron_regular(self, a_shape, a_bsize, b_shape, b_bsize):
+        """ Tests kron when blocks of b are all equal """
+        a = ds.random_array(a_shape, a_bsize)
+        b = ds.random_array(b_shape, b_bsize)
+
+        computed = ds.kron(a, b)
+        expected = np.kron(a.collect(), b.collect())
+
+        self.assertTrue(_validate_array(computed))
+        self.assertTrue(_equal_arrays(computed.collect(), expected))
+
+    @parameterized.expand([(ds.array([[1, 0, 0, 0],
+                                      [0, 0, 0, 2],
+                                      [0, 3, 0, 0],
+                                      [2, 0, 0, 0]], (2, 2)),),
+                           (ds.random_array((17, 5), (1, 1)),),
+                           (ds.random_array((9, 7), (9, 6)),),
+                           (ds.random_array((10, 10), (2, 2))[1:, 1:],)])
+    def test_svd(self, x):
+        """ Tests SVD """
+        x_np = x.collect()
+        u, s, v = ds.svd(x)
+        u = u.collect()
+        s = np.diag(s.collect())
+        v = v.collect()
+
+        self.assertTrue(np.allclose(x_np, u @ s @ v.T))
+        self.assertTrue(
+            np.allclose(np.linalg.norm(u, axis=0), np.ones(u.shape[1])))
+        self.assertTrue(
+            np.allclose(np.linalg.norm(v, axis=0), np.ones(v.shape[1])))
+
+        u, s, v = ds.svd(x, sort=False)
+        u = u.collect()
+        s = np.diag(s.collect())
+        v = v.collect()
+
+        self.assertTrue(np.allclose(x_np, u @ s @ v.T))
+        self.assertTrue(
+            np.allclose(np.linalg.norm(u, axis=0), np.ones(u.shape[1])))
+        self.assertTrue(
+            np.allclose(np.linalg.norm(v, axis=0), np.ones(v.shape[1])))
+
+        s = ds.svd(x, compute_uv=False, sort=False)
+        s = np.diag(s.collect())
+
+        # use U and V from previous decomposition
+        self.assertTrue(np.allclose(x_np, u @ s @ v.T))
+        self.assertTrue(
+            np.allclose(np.linalg.norm(u, axis=0), np.ones(u.shape[1])))
+        self.assertTrue(
+            np.allclose(np.linalg.norm(v, axis=0), np.ones(v.shape[1])))
+
+        u, s, v = ds.svd(x, copy=False)
+        u = u.collect()
+        s = np.diag(s.collect())
+        v = v.collect()
+
+        self.assertTrue(np.allclose(x_np, u @ s @ v.T))
+        self.assertTrue(
+            np.allclose(np.linalg.norm(u, axis=0), np.ones(u.shape[1])))
+        self.assertTrue(
+            np.allclose(np.linalg.norm(v, axis=0), np.ones(v.shape[1])))
+
+    def test_svd_errors(self):
+        """ Tests SVD raises """
+        with self.assertRaises(ValueError):
+            ds.svd(ds.random_array((3, 9), (2, 2)))
+
+        with self.assertRaises(ValueError):
+            ds.svd(ds.random_array((3, 3), (3, 3)))

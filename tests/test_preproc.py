@@ -59,14 +59,14 @@ class StandardScalerTest(unittest.TestCase):
 
         self.assertTrue(issparse(csr_scaled))
         self.assertTrue(sparse_scaled._sparse)
-        self.assertFalse(sc.var_._sparse)
-        self.assertFalse(sc.mean_._sparse)
-        self.assertFalse(issparse(sparse_mean))
-        self.assertFalse(issparse(sparse_var))
+        self.assertTrue(sc.var_._sparse)
+        self.assertTrue(sc.mean_._sparse)
+        self.assertTrue(issparse(sparse_mean))
+        self.assertTrue(issparse(sparse_var))
 
         self.assertTrue(np.allclose(csr_scaled.toarray(), arr_scaled))
-        self.assertTrue(np.allclose(sparse_mean, dense_mean))
-        self.assertTrue(np.allclose(sparse_var, dense_var))
+        self.assertTrue(np.allclose(sparse_mean.toarray(), dense_mean))
+        self.assertTrue(np.allclose(sparse_var.toarray(), dense_var))
 
     def test_irregular(self):
         """ Test with an irregular array """
