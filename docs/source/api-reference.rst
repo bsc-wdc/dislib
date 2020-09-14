@@ -55,26 +55,17 @@ ds-arrays.
 dislib.preprocessing: Data pre-processing
 -----------------------------------------
 
-Classes
-.......
-
 :class:`preprocessing.StandardScaler <dislib.preprocessing.classes.StandardScaler>` -
 Scale a ds-array to zero mean and unit variance.
 
 dislib.decomposition: Matrix Decomposition
 ------------------------------------------
 
-Classes
-.......
-
 :class:`decomposition.PCA <dislib.decomposition.pca.base.PCA>` - Principal
 component analysis (PCA).
 
 dislib.cluster: Clustering
 --------------------------
-
-Classes
-.......
 
 :class:`cluster.DBSCAN <dislib.cluster.dbscan.base.DBSCAN>` - Perform DBSCAN
 clustering.
@@ -89,9 +80,6 @@ Fit a gaussian mixture model.
 dislib.classification: Classification
 -------------------------------------
 
-Classes
-.......
-
 :class:`classification.CascadeSVM <dislib.classification.csvm.base.CascadeSVM>`
 - Distributed support vector classification using a cascade of classifiers.
 
@@ -102,18 +90,12 @@ Build a random forest for classification.
 dislib.recommendation: Recommendation
 -------------------------------------
 
-Classes
-.......
-
 :class:`recommendation.ALS <dislib.recommendation.als.base.ALS>`
 - Distributed alternating least squares for collaborative filtering.
 
 
 dislib.regression: Regression
 -----------------------------
-
-Classes
-.......
 
 :class:`regression.LinearRegression <dislib.regression.linear.base.LinearRegression>`
 - Multivariate linear regression using ordinary least squares.
@@ -122,18 +104,12 @@ Classes
 dislib.neighbors: Neighbor queries
 ----------------------------------
 
-Classes
-.......
-
 :class:`cluster.NearestNeighbors <dislib.neighbors.base.NearestNeighbors>` -
 Perform k-nearest neighbors queries.
 
 
 dislib.model_selection: Model selection
 ---------------------------------------
-
-Classes
-.......
 
 :class:`model_selection.GridSearchCV <dislib.model_selection.GridSearchCV>` -
 Exhaustive search over specified parameter values for an estimator.
