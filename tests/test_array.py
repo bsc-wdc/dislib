@@ -464,6 +464,28 @@ class ArrayTest(unittest.TestCase):
         self.assertTrue((x.mean().collect() == [4, 5, 6]).all())
         self.assertTrue((x.sum().collect() == [12, 15, 18]).all())
 
+        x_np = np.random.random((100, 150))
+        x = ds.array(x_np, (10, 10))
+
+        # Test norm
+        expected = np.linalg.norm(x_np, axis=0)
+        self.assertTrue(np.array_equal(expected, x.norm(axis=0).collect()))
+        expected = np.linalg.norm(x_np, axis=1)
+        self.assertTrue(np.array_equal(expected, x.norm(axis=1).collect()))
+
+    def test_elementwise_functions(self):
+        x_np = np.random.random((100, 150))
+        x_sp = ds.array(csr_matrix(x_np), (10, 10))
+        x = ds.array(x_np, (10, 10))
+
+        self.assertTrue(np.array_equal(x_np ** 2, (x ** 2).collect()))
+        sp = (x_sp ** 2).collect().toarray()
+        self.assertTrue(np.array_equal(x_np ** 2, sp))
+
+        self.assertTrue(np.array_equal(np.sqrt(x_np), x.sqrt().collect()))
+        sp = x_sp.sqrt().collect().toarray()
+        self.assertTrue(np.array_equal(np.sqrt(x_np), sp))
+
     def test_fancy_indexing(self):
         """ Tests fancy indexing """
         arr = ds.array([[1, 2, 3, 4],

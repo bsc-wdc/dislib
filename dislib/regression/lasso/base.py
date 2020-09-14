@@ -9,110 +9,90 @@ Commission under Grant Agreement No. 780787.
 """
 import cvxpy as cp
 import numpy as np
-from pycompss.api.api import compss_wait_on
-from pycompss.api.parameter import FILE_IN
-from pycompss.api.task import task
 from sklearn.base import BaseEstimator
+
+from dislib.optimization import ADMM
 
 
 class Lasso(BaseEstimator):
-    """Lasso represents the Least Absolute Shrinkage and Selection Operator
-    (Lasso) for
-    regression analysis, solved in a distributed manner. 
+    """ Lasso represents the Least Absolute Shrinkage and Selection Operator
+    (Lasso) for regression analysis, solved in a distributed manner with ADMM.
 
-    :param n: The number of agents used to solve the problem
-    :param max_iter: The maximum number of iterations before the algorithm
-    stops automatically
-    :param lmbd: The regularization parameter for Lasso regression
+    Parameters
+    ----------
+    lmbd : float, optional (default=1e-3)
+        The regularization parameter for Lasso regression.
+    rho : float, optional (default=1)
+        The penalty parameter for constraint violation.
+    max_iter : int, optional (default=100)
+        The maximum number of iterations of ADMM.
+    atol : float, optional (default=1e-4)
+        The absolute tolerance used to calculate the early stop criterion
+        for ADMM.
+    rtol : float, optional (default=1e-2)
+        The relative tolerance used to calculate the early stop criterion
+        for ADMM.
+    verbose : boolean, optional (default=False)
+        Whether to print information about the optimization process.
 
+    Attributes
+    ----------
+    coef_ : ds-array, shape=(1, n_features)
+        Parameter vector.
+    n_iter_ : int
+        Number of iterations run by ADMM.
+    converged_ : boolean
+        Whether ADMM converged.
+
+    See also
+    --------
+    ADMM
     """
 
-    def __init__(self, n, max_iter=500, lmbd=1e-3, optimizer=None):
-        self.N = n
+    def __init__(self, lmbd=1e-3, rho=1, max_iter=100, atol=1e-4, rtol=1e-2,
+                 verbose=False):
         self.max_iter = max_iter
         self.lmbd = lmbd
-        self.optimizer = optimizer
+        self.rho = rho
+        self.atol = atol
+        self.rtol = rtol
+        self.verbose = verbose
+
+    @staticmethod
+    def _loss_fn(x, y, w):
+        return 1 / 2 * cp.norm(cp.matmul(x, w) - y, p=2) ** 2
 
     def fit(self, x, y):
+        """ Fits the model with training data. Optimization is carried out
+        using ADMM.
 
-        # file names
-        rng = np.asarray(range(self.N))
-        str_a = ["A" + str(i + 1) + ".dat" for i in rng]
-        str_b = ["b" + str(i + 1) + ".dat" for i in rng]
+        Parameters
+        ----------
+        x : ds-array, shape=(n_samples, n_features)
+            Training samples.
+        y : ds-array, shape=(n_samples, 1)
+            Class labels of x.
 
-        # reading the data
-        data_chunk = list(map(self.read_a_data, str_a))
-        data_chunk = compss_wait_on(data_chunk)
-        target_chunk = list(map(self.read_b_data, str_b))
-        target_chunk = compss_wait_on(target_chunk)
+        Returns
+        -------
+        self :  Lasso
+        """
+        k = self.lmbd / self.rho
 
-        # get the dimensions
-        (part, n) = data_chunk[0].shape
-        m = part * self.N
+        admm = ADMM(Lasso._loss_fn, k, self.rho, max_iter=self.max_iter,
+                    rtol=self.rtol, atol=self.atol, verbose=self.verbose)
+        admm.fit(x, y)
 
-        # initialization
-        x = [np.zeros(n) for i in range(self.N)]
-        z = np.zeros(n)
-        z_old = np.zeros(n)
-        u = [np.zeros(n) for _ in range(self.N)]
+        self.n_iter_ = admm.n_iter_
+        self.converged_ = admm.converged_
+        self.coef_ = admm.z_
 
-        req_iter = self.max_iter
-        frac = self.lmbd / self.optimizer.rho
-
-        for i in range(self.max_iter):
-            x, z, u, should_stop = \
-                self.optimizer.step(z, data_chunk, target_chunk, u, frac,
-                                    z_old, i, n, self.N)
-
-            if should_stop:
-                break
-
-            z_old = z
-
-        self.z = z
-        return z
+        return self
 
     def predict(self, x):
-        return np.dot(x, self.z)
+        # TODO ds-array dot product
+        return np.dot(x.collect(), self.coef_.collect())
 
     def fit_predict(self, x):
         self.fit()
         return self.predict(x)
-
-    def loss_fn(self, a, b, x):
-        return 1 / 2 * cp.norm(cp.matmul(a, x) - b, p=2) ** 2
-
-    def regularizer_x(self, x, z, u):
-        return cp.norm(x - z + u, p=2) ** 2
-
-    def objective_x(self, a, b, x, z, u, rho):
-        return self.loss_fn(a, b, x) + rho / 2 * self.regularizer_x(x, z, u)
-
-    @task(fileName=FILE_IN, returns=np.array)
-    def read_a_data(self, file_name):
-        # read matrix A, fileName="A"+str(i+1)+".dat"
-        f = open(file_name, 'r')
-        line1 = f.readline()
-        dims = list(map(int, line1.split()))
-        res = np.asarray(dims)
-        m = res[0]
-        n = res[1]
-        rest = f.read()
-        vecl = list(map(float, rest.split()))
-        vec = np.asarray(vecl)
-
-        return vec.reshape(n, m).T
-
-    @task(fileName=FILE_IN, returns=np.array)
-    def read_b_data(self, file_name):
-        # read vector b, fileName="b"+str(i+1)+".dat"
-        f = open(file_name, 'r')
-        line1 = f.readline()
-        dims = list(map(int, line1.split()))
-        res = np.asarray(dims)
-        m = res[0]
-        n = res[1]
-        rest = f.read()
-        vecl = list(map(float, rest.split()))
-        vec = np.asarray(vecl)
-        return vec
