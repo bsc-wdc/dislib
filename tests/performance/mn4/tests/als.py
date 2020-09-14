@@ -22,7 +22,7 @@ def main():
     als = ALS(tol=0.0001, random_state=676, n_f=n_factors, max_iter=10,
               verbose=False)
 
-    performance.measure("ALS", "Netflix", als, x)
+    performance.measure("ALS", "Netflix", als.fit, x)
 
 
 if __name__ == '__main__':

@@ -3,10 +3,10 @@ import time
 from pycompss.api.api import compss_barrier
 
 
-def measure(name, dataset_name, model, x, y=None):
-    print("==== STARTING ====", name)
+def measure(name, dataset_name, func, *args, **kwargs):
+    print("==== STARTING ====", name, dataset_name)
     compss_barrier()
     s_time = time.time()
-    model.fit(x, y)
+    func(*args, **kwargs)
     compss_barrier()
-    print("==== OUTPUT ==== ", dataset_name, time.time() - s_time)
+    print("==== TIME ==== ", name, dataset_name, time.time() - s_time)

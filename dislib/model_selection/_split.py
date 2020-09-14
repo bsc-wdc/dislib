@@ -61,7 +61,7 @@ class KFold:
         by `np.random`. Used when ``shuffle`` == True.
     """
 
-    def __init__(self, n_splits=5, shuffle=True, random_state=None):
+    def __init__(self, n_splits=5, shuffle=False, random_state=None):
         if not isinstance(n_splits, numbers.Integral):
             raise ValueError('The number of folds must be of Integral type. '
                              '%s of type %s was passed.'
@@ -178,8 +178,10 @@ def merge_slices(s1, s2):
 
     # Add the regular row blocks to the list all_blocks
     all_blocks = []
-    all_blocks.extend(reg_s1._blocks)
-    all_blocks.extend(reg_s2._blocks)
+    if reg_s1.shape[0]:
+        all_blocks.extend(reg_s1._blocks)
+    if reg_s2.shape[0]:
+        all_blocks.extend(reg_s2._blocks)
 
     # If there are remaining rows on the top or bottom of s1 and s2, add them
     # to the list extras. These are row blocks with less than reg_rows.

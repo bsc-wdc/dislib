@@ -17,10 +17,10 @@ def main():
         block_size=(5000, 780), n_features=780, store_sparse=False)
 
     rf = RandomForestClassifier(n_estimators=100, distr_depth=2)
-    performance.measure("RF", "KDD99", rf, x_kdd, y_kdd)
+    performance.measure("RF", "KDD99", rf.fit, x_kdd, y_kdd)
 
     rf = RandomForestClassifier(n_estimators=100, distr_depth=2)
-    performance.measure("RF", "mnist", rf, x_mn, y_mn)
+    performance.measure("RF", "mnist", rf.fit, x_mn, y_mn)
 
 
 if __name__ == "__main__":
