@@ -48,7 +48,7 @@ Follow these steps when drafting a new release:
        docker build -t bscwdc/dislib:vX.Y.Z .
        
        # Create also new 'latest' tag using newly created image
-       docker tag bscwdc/dislib:VERSION bscwdc/dislib:latest
+       docker tag bscwdc/dislib:vX.Y.Z bscwdc/dislib:latest
    
     - Log in and push it to dockerhub
    

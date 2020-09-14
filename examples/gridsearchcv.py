@@ -7,14 +7,15 @@ from dislib.model_selection import GridSearchCV
 
 
 def main():
-    x, y = datasets.load_iris(return_X_y=True)
-    x_dsarray = ds.array(x, (30, 4))
-    y_dsarray = ds.array(y[:, np.newaxis], (30, 1))
+    x_np, y_np = datasets.load_iris(return_X_y=True)
+    x = ds.array(x_np, (30, 4))
+    y = ds.array(y_np[:, np.newaxis], (30, 1))
     parameters = {'n_estimators': (1, 2, 4, 8, 16, 32),
                   'max_depth': range(3, 5)}
     rf = RandomForestClassifier()
     searcher = GridSearchCV(rf, parameters, cv=5)
-    searcher.fit(x_dsarray, y_dsarray)
+    np.random.seed(0)
+    searcher.fit(x, y)
     print(searcher.cv_results_['params'])
     print(searcher.cv_results_['mean_test_score'])
     pd_df = pd.DataFrame.from_dict(searcher.cv_results_)

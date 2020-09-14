@@ -47,7 +47,7 @@ class StandardScaler(object):
         self.var_ = Array(var_blocks,
                           top_left_shape=self.mean_._top_left_shape,
                           reg_shape=self.mean_._reg_shape,
-                          shape=self.mean_.shape, sparse=False)
+                          shape=self.mean_.shape, sparse=x._sparse)
 
         return self
 
@@ -102,7 +102,18 @@ class StandardScaler(object):
 def _compute_var(blocks, m_blocks):
     x = Array._merge_blocks(blocks)
     mean = Array._merge_blocks(m_blocks)
-    return np.mean(np.array(x - mean) ** 2, axis=0)
+    sparse = issparse(x)
+
+    if sparse:
+        x = x.toarray()
+        mean = mean.toarray()
+
+    var = np.mean(np.array(x - mean) ** 2, axis=0)
+
+    if sparse:
+        return csr_matrix(var)
+    else:
+        return var
 
 
 @task(blocks={Type: COLLECTION_IN, Depth: 2},
@@ -113,9 +124,16 @@ def _transform(blocks, m_blocks, v_blocks, out_blocks):
     x = Array._merge_blocks(blocks)
     mean = Array._merge_blocks(m_blocks)
     var = Array._merge_blocks(v_blocks)
+    sparse = issparse(x)
+
+    if sparse:
+        x = x.toarray()
+        mean = mean.toarray()
+        var = var.toarray()
+
     scaled_x = (x - mean) / np.sqrt(var)
 
-    constructor_func = np.array if not issparse(x) else csr_matrix
+    constructor_func = np.array if not sparse else csr_matrix
     start, end = 0, 0
 
     for i, block in enumerate(blocks[0]):

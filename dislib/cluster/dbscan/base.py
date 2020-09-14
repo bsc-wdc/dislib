@@ -197,6 +197,11 @@ class DBSCAN(BaseEstimator):
     def _compute_region_widths(self, x):
         mn = x.min().collect()
         mx = x.max().collect()
+
+        if issparse(mn):
+            mn = mn.toarray()
+            mx = mx.toarray()
+
         return ((mx - mn) / self.n_regions).reshape(-1, )
 
 
@@ -313,6 +318,10 @@ def _generate_bins(mn, mx, dimensions, n_regions):
     bins = []
     mn_arr = Array._merge_blocks(mn)[0]
     mx_arr = Array._merge_blocks(mx)[0]
+
+    if issparse(mn_arr):
+        mn_arr = mn_arr.toarray()[0]
+        mx_arr = mx_arr.toarray()[0]
 
     # create bins for the different regions in the grid in every dimension
     for dim in dimensions:

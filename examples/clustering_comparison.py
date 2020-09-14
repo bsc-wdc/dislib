@@ -102,8 +102,7 @@ def main():
                 algorithm.fit(data)
 
             t1 = time.time()
-            if hasattr(algorithm, 'predict'):
-                y_pred = algorithm.predict(data).collect()
+            y_pred = algorithm.fit_predict(data).collect()
 
             plt.subplot(len(datasets), len(clustering_algorithms), plot_num)
             if i_dataset == 0:

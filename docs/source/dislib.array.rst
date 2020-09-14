@@ -6,16 +6,24 @@ dislib.array
     :undoc-members:
     :show-inheritance:
 
+.. _array-creation:
+
 Array creation routines
 -----------------------
 
 .. autofunction:: dislib.array
 
+.. autofunction:: dislib.random_array
+
+.. autofunction:: dislib.zeros
+
+.. autofunction:: dislib.full
+
 .. autofunction:: dislib.load_txt_file
 
 .. autofunction:: dislib.load_svmlight_file
 
-.. autofunction:: dislib.random_array
+.. autofunction:: dislib.load_npy_file
 
 
 Other functions

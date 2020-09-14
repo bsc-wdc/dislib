@@ -46,6 +46,8 @@ The Distributed Computing Library (dislib) provides distributed algorithms ready
 - [Quickstart](#quickstart)
 - [Availability](#availability)
 - [Contributing](#contributing)
+- [Citing dislib](#citing-dislib)
+- [Acknowledgements](#acknowledgements)
 - [License](#license)
 
 
@@ -76,6 +78,29 @@ Supported architectures:
 Contributions are **welcome and very much appreciated**. We are also open to starting research collaborations or mentoring if you are interested in or need assistance implementing new algorithms.
 Please refer [to our Contribution Guide](CONTRIBUTING.md) for more details.
 
+## Citing dislib
+
+If you use dislib in a scientific publication, we would appreciate you citing the following paper:
+
+J. Álvarez Cid-Fuentes, S. Solà, P. Álvarez, A. Castro-Ginard, and R. M. Badia, "dislib: Large Scale High Performance Machine Learning in Python," in *Proceedings of the 15th International Conference on eScience*, 2019, pp. 96-105
+
+### Bibtex:
+
+```latex
+@inproceedings{dislib,
+            title       = {{dislib: Large Scale High Performance Machine Learning in Python}},
+            author      = {Javier Álvarez Cid-Fuentes and Salvi Solà and Pol Álvarez and Alfred Castro-Ginard and Rosa M. Badia},
+            booktitle   = {Proceedings of the 15th International Conference on eScience},
+            pages       = {96-105},
+            year        = {2019},
+ }            
+```
+
+## Acknowledgements
+
+This work has received funding from the European Union’s Horizon 2020 research and innovation programme under the Marie Skłodowska-Curie grant agreement H2020-MSCA-COFUND-2016-754433.
+
+This work has also received funding from the collaboration project between the Barcelona Supercomputing Center (BSC) and Fujitsu Ltd.
 
 ## License
 

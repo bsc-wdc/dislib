@@ -29,13 +29,14 @@ and Distributed Computing <https://www.bsc
 -computing>`_ group of the `Barcelona Supercomputing Center <http://www.bsc
 .es>`_.
 
-
-Contents
---------
+Documentation
+-------------
 
 * :doc:`Quickstart <quickstart>`
+* :doc:`User guide <user-guide>`
 * :doc:`API Reference <api-reference>`
 * :doc:`Development <development>`
+* :doc:`Glossary <glossary>`
 
 Performance
 -----------
@@ -44,7 +45,7 @@ The following plot shows fit time of some dislib models on the
 `MareNostrum 4 <https://www.bsc.es/marenostrum/marenostrum>`_ supercomputer
 (using 8 worker nodes):
 
-.. image:: ./performance.png
+.. image:: ./_static/img/performance.png
     :align: center
     :width: 500px
 
@@ -84,6 +85,25 @@ If you have questions or issues about the dislib you can join us in `Slack
 Alternatively, you can send us an e-mail to `support-compss@bsc.es
 <mailto:support-compss@bsc.es>`_.
 
+Citing dislib
+-------------
+
+If you use dislib in a scientific publication, we would appreciate citations to the following paper:
+
+\J. Álvarez Cid-Fuentes, S. Solà, P. Álvarez, A. Castro-Ginard, and R. M. Badia, "dislib: Large Scale High Performance Machine Learning in Python," in *Proceedings of the 15th International Conference on eScience*, 2019, pp. 96-105
+
+Bibtex:
+.......
+
+.. code:: latex
+
+   @inproceedings{dislib,
+               title       = {{dislib: Large Scale High Performance Machine Learning in Python}},
+               author      = {Javier Álvarez Cid-Fuentes and Salvi Solà and Pol Álvarez and Alfred Castro-Ginard and Rosa M. Badia},
+               booktitle   = {Proceedings of the 15th International Conference on eScience},
+               pages       = {96-105},
+               year        = {2019},
+    } 
 
 Indices and tables
 ==================
