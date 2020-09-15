@@ -100,6 +100,7 @@ dislib.regression: Regression
 :class:`regression.LinearRegression <dislib.regression.linear.base.LinearRegression>`
 - Multivariate linear regression using ordinary least squares.
 
+
 :class:`regression.Lasso <dislib.regression.lasso.base.Lasso>`
 - Linear Model trained with L1 prior as regularizer.
 
