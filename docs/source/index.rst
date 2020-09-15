@@ -29,13 +29,14 @@ and Distributed Computing <https://www.bsc
 -computing>`_ group of the `Barcelona Supercomputing Center <http://www.bsc
 .es>`_.
 
-
-Contents
---------
+Documentation
+-------------
 
 * :doc:`Quickstart <quickstart>`
+* :doc:`User guide <user-guide>`
 * :doc:`API Reference <api-reference>`
 * :doc:`Development <development>`
+* :doc:`Glossary <glossary>`
 
 Performance
 -----------
@@ -44,7 +45,7 @@ The following plot shows fit time of some dislib models on the
 `MareNostrum 4 <https://www.bsc.es/marenostrum/marenostrum>`_ supercomputer
 (using 8 worker nodes):
 
-.. image:: ./performance.png
+.. image:: ./_static/img/performance.png
     :align: center
     :width: 500px
 

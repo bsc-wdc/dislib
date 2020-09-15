@@ -120,6 +120,7 @@ class Array(object):
 
                 blocks[i][j] = _multiply_block_groups(hblock, vblock)
 
+
         shape = (self.shape[0], x.shape[1])
         tl_shape = (self._top_left_shape[0], x._top_left_shape[1])
         reg_shape = (self._reg_shape[0], x._reg_shape[1])
@@ -174,6 +175,8 @@ class Array(object):
         raise IndexError("Invalid indexing information: %s" % str(arg))
 
     def __setitem__(self, key, value):
+        # import pydevd_pycharm
+        # pydevd_pycharm.settrace('192.168.1.222', port=1454, stdoutToServer=True, stderrToServer=True)
         if not np.isscalar(value):
             raise ValueError("Can only assign scalar values.")
 
@@ -266,31 +269,6 @@ class Array(object):
         return [[object() for _ in range(n_blocks[1])]
                 for _ in range(n_blocks[0])]        
 
-
-    @staticmethod
-    def _get_block_shape_static(i, j, x):
-        reg_blocks = (max(0, x._n_blocks[0] - 2),
-                      max(0, x._n_blocks[1] - 2))
-        remain_shape = (x.shape[0] - x._top_left_shape[0] -
-                        reg_blocks[0] * x._reg_shape[0],
-                        x.shape[1] - x._top_left_shape[1] -
-                        reg_blocks[1] * x._reg_shape[1])
-
-        if i == 0:
-            shape0 = x._top_left_shape[0]
-        elif i < x._n_blocks[0] - 1:
-            shape0 = x._reg_shape[0]
-        else:
-            shape0 = remain_shape[0]
-
-        if j == 0:
-            shape1 = x._top_left_shape[1]
-        elif j < x._n_blocks[1] - 1:
-            shape1 = x._reg_shape[1]
-        else:
-            shape1 = remain_shape[1]
-
-        return (shape0, shape1)
 
     @staticmethod
     def _get_block_shape_static(i, j, x):
@@ -984,6 +962,8 @@ class Array(object):
         array : nd-array or spmatrix
             The actual contents of the ds-array.
         """
+        # if not self._blocks[0][0].__class__.__name__=="StorageNumpy":
+        #     self._blocks = compss_wait_on(self._blocks)
         self._blocks = compss_wait_on(self._blocks)
         res = self._merge_blocks(self._blocks)
         if not self._sparse and squeeze:
@@ -1334,13 +1314,20 @@ def apply_along_axis(func, axis, x, *args, **kwargs):
 
 def _multiply_block_groups(hblock, vblock):
     blocks = []
-
     for blocki, blockj in zip(hblock, vblock):
-        blocks.append(_block_apply(operator.matmul, blocki, blockj))
+        if sp.issparse(blocki)==False and sp.issparse(blockj)==False:
+            blocks.append(_block_apply(operator.matmul, blocki, blockj))
+        else:
+            blocks.append(_block_apply_sparse(operator.matmul, blocki, blockj))
 
     while len(blocks) > 1:
-        blocks.append(_block_apply(operator.add, blocks.pop(0), blocks.pop(0)))
-
+        blocks=compss_wait_on(blocks)
+        if sp.issparse(blocki)==False and sp.issparse(blockj)==False:
+            blocks.append(_block_apply(operator.add, blocks.pop(0), blocks.pop(0)))
+        else:
+            blocks.append(_block_apply_sparse(operator.add, blocks.pop(0), blocks.pop(0)))
+        
+    
     return blocks[0]
 
 
@@ -1404,7 +1391,11 @@ def _apply_elementwise(func, x, *args, **kwargs):
 
     for i in range(n_blocks[0]):
         for j in range(n_blocks[1]):
-            blocks[i][j] = _block_apply(func, x._blocks[i][j], *args, **kwargs)
+            # blocks[i][j] = _block_apply(func, x._blocks[i][j], *args, **kwargs)
+            if sp.issparse(x._blocks[i][j])==False:
+                blocks[i][j] = _block_apply(func, x._blocks[i][j], *args, **kwargs)
+            else:
+                blocks[i][j] = _block_apply_sparse(func, x._blocks[i][j], *args, **kwargs)
 
     return Array(blocks, x._top_left_shape, x._reg_shape, x.shape, x._sparse)
 
@@ -1487,7 +1478,6 @@ def _filter_block(block, boundaries):
 def _transpose(blocks, out_blocks):   
     for i in range(len(blocks)):
         for j in range(len(blocks[i])):
-            #print(blocks[i][j])
             out_blocks[i][j] = blocks[i][j].transpose()   
 
 
@@ -1519,14 +1509,24 @@ def _block_apply_axis(func, axis, blocks, *args, **kwargs):
         return np.asarray(out).reshape(-1, 1)
 
 
-@task(returns=1)
+@task(block={Type: COLLECTION_IN, Depth: 2},
+      returns={Type: COLLECTION_OUT, Depth: 2})
 def _block_apply(func, block, *args, **kwargs):
-    return func(block, *args, **kwargs)
+    res = func(block, *args, **kwargs)
+    return res
+
+@task(returns=1)
+def _block_apply_sparse(func, block, *args, **kwargs):
+    res = func(block, *args, **kwargs)
+
+    return res
 
 
 @task(block=INOUT)
 def _set_value(block, i, j, value):
+
     block[i][j] = value
+    
 
 
 @task(blocks={Type: COLLECTION_IN, Depth: 1}, returns=1)

@@ -6,6 +6,8 @@ dislib.array
     :undoc-members:
     :show-inheritance:
 
+.. _array-creation:
+
 Array creation routines
 -----------------------
 
