@@ -1,6 +1,5 @@
 import operator
 from collections import defaultdict
-from math import ceil
 
 import numpy as np
 from pycompss.api.api import compss_wait_on, compss_delete_object
@@ -10,6 +9,8 @@ from pycompss.api.task import task
 from scipy import sparse as sp
 from scipy.sparse import issparse, csr_matrix
 from sklearn.utils import check_random_state
+
+from math import ceil
 
 
 class Array(object):
