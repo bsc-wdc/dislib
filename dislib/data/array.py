@@ -1521,6 +1521,11 @@ def _block_apply_sparse(func, block, *args, **kwargs):
 
     return res
 
+@task(returns=1)
+def _block_apply_sparsee(func, block, *args, **kwargs):
+    res = func(block, *args, **kwargs)
+
+    return res
 
 @task(block=INOUT)
 def _set_value(block, i, j, value):
