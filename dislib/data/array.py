@@ -1487,6 +1487,7 @@ def _filter_block(block, boundaries):
 def _transpose(blocks, out_blocks):   
     for i in range(len(blocks)):
         for j in range(len(blocks[i])):
+            #print(blocks[i][j])
             out_blocks[i][j] = blocks[i][j].transpose()   
 
 
