@@ -8,14 +8,14 @@ This work is supported by the I-BiDaaS project, funded by the European
 Commission under Grant Agreement No. 780787.
 """
 
+try:
+    import cvxpy as cp
+except ImportError:
+    pass
+
 from sklearn.base import BaseEstimator
 
 from dislib.optimization import ADMM
-
-try:
-    import cvxpy as cp
-except:
-    pass
 
 
 class Lasso(BaseEstimator):
