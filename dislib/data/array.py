@@ -254,34 +254,6 @@ class Array(object):
             return x_np ** power
 
     @staticmethod
-    def _apply_elementwise(func, x, *args, **kwargs):
-        """ Applies a function element-wise to each block in parallel"""
-        n_blocks = x._n_blocks
-        blocks = Array._get_out_blocks(n_blocks)
-
-        for i in range(n_blocks[0]):
-            for j in range(n_blocks[1]):
-                blocks[i][j] = _block_apply_elwise(func,
-                                                   x._blocks[i][j],
-                                                   *args, **kwargs)
-        return Array(blocks, x._top_left_shape, x._reg_shape, x.shape,
-                     x._sparse)
-
-    @staticmethod
-    def _power(x_np, power):
-        if issparse(x_np):
-            return sp.csr_matrix.power(x_np, power)
-        else:
-            return x_np ** power
-
-    @staticmethod
-    def _sqrt(x_np):
-        if issparse(x_np):
-            return sp.csr_matrix.sqrt(x_np)
-        else:
-            return np.sqrt(x_np)
-
-    @staticmethod
     def _validate_blocks(blocks):
         if len(blocks) == 0 or len(blocks[0]) == 0:
             raise AttributeError('Blocks must a list of lists, with at least'
@@ -930,7 +902,6 @@ class Array(object):
 
     def norm(self, axis=0):
         """ Returns the Frobenius norm along an axis.
-
 
         Parameters
         ----------
