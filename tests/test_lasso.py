@@ -1,8 +1,11 @@
 import unittest
+
 import numpy as np
-from dislib.regression import Lasso
 from sklearn.metrics import r2_score
+
 import dislib as ds
+from dislib.regression import Lasso
+
 
 class LassoTest(unittest.TestCase):
 
@@ -34,4 +37,3 @@ class LassoTest(unittest.TestCase):
         r2_score_lasso = r2_score(y_test, y_pred_lasso.collect())
 
         self.assertEqual(r2_score_lasso, 0.9481746925431124)
-

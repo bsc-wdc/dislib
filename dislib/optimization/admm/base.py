@@ -20,7 +20,7 @@ from dislib.utils.base import _paired_partition
 
 try:
     import cvxpy as cp
-except:
+except ImportError:
     pass
 
 
