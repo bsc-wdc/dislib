@@ -36,7 +36,7 @@ lasso = Lasso(lmbd=alpha, max_iter=50)
 y_pred_lasso = lasso.fit(ds.array(X_train, (5, 100)),
                          ds.array(y_train.reshape(-1, 1), (5, 1))).predict(
     ds.array(X_test, (25, 100)))
-r2_score_lasso = r2_score(y_test, y_pred_lasso)
+r2_score_lasso = r2_score(y_test, y_pred_lasso.collect())
 print(lasso)
 print("r^2 on test data : %f" % r2_score_lasso)
 

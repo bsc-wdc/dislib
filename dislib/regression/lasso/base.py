@@ -7,11 +7,15 @@ ADMM Lasso
 This work is supported by the I-BiDaaS project, funded by the European
 Commission under Grant Agreement No. 780787.
 """
-import cvxpy as cp
-import numpy as np
+
 from sklearn.base import BaseEstimator
 
 from dislib.optimization import ADMM
+
+try:
+    import cvxpy as cp
+except:
+    pass
 
 
 class Lasso(BaseEstimator):
@@ -90,9 +94,38 @@ class Lasso(BaseEstimator):
         return self
 
     def predict(self, x):
-        # TODO ds-array dot product
-        return np.dot(x.collect(), self.coef_.collect())
+        """ Predict using the linear model.
+
+        Parameters
+        ----------
+        x : ds-array, shape=(n_samples, n_features)
+            Samples.
+
+        Returns
+        -------
+        y : ds-array, shape=(n_samples, 1)
+            Predicted values.
+        """
+        coef = self.coef_.T
+
+        # this rechunk can be removed as soon as matmul supports multiplying
+        # ds-arrays with different block shapes
+        if coef._reg_shape[0] != x._reg_shape[1]:
+            coef = coef.rechunk(x._reg_shape)
+
+        return x @ coef
 
     def fit_predict(self, x):
-        self.fit()
-        return self.predict(x)
+        """ Fits the model and predicts using the same data.
+
+        Parameters
+        ----------
+        x : ds-array, shape=(n_samples, n_features)
+            Training samples.
+
+        Returns
+        -------
+        y : ds-array, shape=(n_samples, 1)
+            Predicted values.
+        """
+        return self.fit(x).predict(x)
