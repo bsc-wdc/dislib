@@ -8,7 +8,6 @@ This work is supported by the I-BiDaaS project, funded by the European
 Commission under Grant Agreement No. 780787.
 """
 
-import cvxpy as cp
 import numpy as np
 from pycompss.api.api import compss_wait_on
 from pycompss.api.parameter import Type, Depth, COLLECTION_IN, COLLECTION_INOUT
@@ -18,6 +17,11 @@ from sklearn.base import BaseEstimator
 import dislib as ds
 from dislib.data.array import Array
 from dislib.utils.base import _paired_partition
+
+try:
+    import cvxpy as cp
+except:
+    pass
 
 
 class ADMM(BaseEstimator):
@@ -80,19 +84,21 @@ class ADMM(BaseEstimator):
         -------
         self : ADMM
         """
-        if x._reg_shape != x._top_left_shape:
-            raise ValueError("x must be a regular ds-array")
+        if not x._is_regular():
+            x_reg = x.rechunk(x._reg_shape)
+        else:
+            x_reg = x
 
-        self._init_model(x)
+        self._init_model(x_reg)
 
         while not self.converged_ and self.n_iter_ < self.max_iter:
-            self._step(x, y)
+            self._step(x_reg, y)
             self.n_iter_ += 1
 
             if self.verbose:
                 print("Iteration ", self.n_iter_)
 
-        z_blocks = [object() for _ in range(x._reg_shape[1])]
+        z_blocks = [object() for _ in range(x_reg._n_blocks[1])]
         _split_z(self._z, x._reg_shape[1], z_blocks)
         self.z_ = Array([z_blocks], (1, x._reg_shape[1]), (1, x._reg_shape[1]),
                         (1, x.shape[1]), False)
