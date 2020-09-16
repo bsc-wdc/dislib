@@ -1242,7 +1242,6 @@ def apply_along_axis(func, axis, x, *args, **kwargs):
     return Array(blocks, top_left_shape=out_tlbshape, reg_shape=out_bshape,
                  shape=out_shape, sparse=x._sparse)
 
-
 def _multiply_block_groups(hblock, vblock):
     blocks = []
 

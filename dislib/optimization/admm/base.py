@@ -8,6 +8,7 @@ This work is supported by the I-BiDaaS project, funded by the European
 Commission under Grant Agreement No. 780787.
 """
 
+import cvxpy as cp
 import numpy as np
 from pycompss.api.api import compss_wait_on
 from pycompss.api.parameter import Type, Depth, COLLECTION_IN, COLLECTION_INOUT
@@ -18,15 +19,10 @@ import dislib as ds
 from dislib.data.array import Array
 from dislib.utils.base import _paired_partition
 
-try:
-    import cvxpy as cp
-except ImportError:
-    pass
-
 
 class ADMM(BaseEstimator):
     """ Alternating Direction Method of Multipliers (ADMM) solver. ADMM is
-    renowned for being well suited to the distributed settings, for its
+    renowned for being well suited to the distributed settings [1]_, for its
     guaranteed convergence and general robustness with respect
     to the parameters. Additionally, the algorithm has a generic form that
     can be easily adapted to a wide range of machine learning problems with
@@ -57,6 +53,13 @@ class ADMM(BaseEstimator):
         Number of iterations performed.
     converged_ : boolean
         Whether the optimization converged.
+
+    References
+    ----------
+    .. [1] S. Boyd, N. Parikh, E. Chu, B. Peleato, and J. Eckstein (2011).
+        Distributed Optimization and Statistical Learning via the Alternating
+        Direction Method of Multipliers. In Foundations and Trends in Machine
+        Learning, 3(1):1–122.
     """
 
     def __init__(self, loss_fn, k, rho=1, max_iter=100, rtol=1e-2, atol=1e-4,
@@ -116,20 +119,50 @@ class ADMM(BaseEstimator):
 
     def _step(self, x, y):
         # update w
-        self._w_step(x, y)
+        w_blocks = []
+
+        for xy_hblock, u_hblock in zip(_paired_partition(x, y),
+                                       self._u._iterator()):
+            x_hblock, y_hblock = xy_hblock
+            w_hblock = [object() for _ in range(x._n_blocks[1])]
+            x_blocks = x_hblock._blocks
+            y_blocks = y_hblock._blocks
+            u_blocks = u_hblock._blocks
+
+            _update_w(x_blocks, y_blocks, self._z, u_blocks, self.rho,
+                      self.loss_fn, w_hblock)
+            w_blocks.append(w_hblock)
+
+        r_shape = self._u._reg_shape
+        self._w = Array(w_blocks, r_shape, r_shape, self._u.shape, x._sparse)
 
         z_old = self._z
 
         # update z
-        self._z_step()
+        w_mean = self._w.mean(axis=0)
+        u_mean = self._u.mean(axis=0)
+
+        # w_blocks = self._w.mean(axis=0)._blocks
+        # u_blocks = self._u.mean(axis=0)._blocks
+        self._z = _soft_thresholding(w_mean._blocks, u_mean._blocks, self.k)
 
         # update u
-        self._u_step()
+        u_blocks = []
+
+        for u_hblock, w_hblock in zip(self._u._iterator(),
+                                      self._w._iterator()):
+            out_blocks = [object() for _ in range(self._u._n_blocks[1])]
+            _update_u(self._z, u_hblock._blocks, w_hblock._blocks, out_blocks)
+            u_blocks.append(out_blocks)
+
+        r_shape = self._u._reg_shape
+        shape = self._u.shape
+        self._u = Array(u_blocks, r_shape, r_shape, shape, self._u._sparse)
 
         # after norm in axis=1 and sum in axis=0, these should be ds-arrays
         # of a single element, so we keep the only block
-        nxstack = (self._w.norm(axis=1) ** 2).sum().sqrt()._blocks[0][0]
-        nystack = (self._u.norm(axis=1) ** 2).sum().sqrt()._blocks[0][0]
+        nxstack = (self._w.norm(axis=1) ** 2).sum().sqrt()
+        nystack = (self._u.norm(axis=1) ** 2).sum().sqrt()
 
         # termination check
         n_samples, n_features = self._u.shape
@@ -137,8 +170,10 @@ class ADMM(BaseEstimator):
         prires = self._compute_primal_res(z_old)
         n_total = n_samples * n_features
 
-        self.converged_ = _check_convergence(prires, dualres, n_samples,
-                                             n_total, nxstack, nystack,
+        self.converged_ = _check_convergence(prires._blocks[0][0], dualres,
+                                             n_samples, n_total,
+                                             nxstack._blocks[0][0],
+                                             nystack._blocks[0][0],
                                              self.atol, self.rtol, self._z)
         self.converged_ = compss_wait_on(self.converged_)
 
@@ -155,7 +190,7 @@ class ADMM(BaseEstimator):
 
         # this should be a ds-array of a single element. We return only the
         # block
-        return (prires.norm(axis=1) ** 2).sum().sqrt()._blocks[0][0]
+        return (prires.norm(axis=1) ** 2).sum().sqrt()
 
     def _u_step(self):
         u_blocks = []
