@@ -14,6 +14,7 @@ dislib currently requires:
 * Scikit-learn >= 0.19.1
 * Scipy >= 1.0.0
 * NumPy >= 1.15.4
+* cvxpy >= 1.1.5
 
 Some of the examples also require matplotlib >= 2.0.0 and pandas >= 0.20.1. 
 numpydoc >= 0.8.0 is requried to build the documentation.
