@@ -1,5 +1,6 @@
 import operator
 from collections import defaultdict
+from math import ceil
 
 import numpy as np
 from pycompss.api.api import compss_wait_on, compss_delete_object
@@ -9,8 +10,6 @@ from pycompss.api.task import task
 from scipy import sparse as sp
 from scipy.sparse import issparse, csr_matrix
 from sklearn.utils import check_random_state
-
-from math import ceil
 
 
 class Array(object):
@@ -1241,6 +1240,7 @@ def apply_along_axis(func, axis, x, *args, **kwargs):
 
     return Array(blocks, top_left_shape=out_tlbshape, reg_shape=out_bshape,
                  shape=out_shape, sparse=x._sparse)
+
 
 def _multiply_block_groups(hblock, vblock):
     blocks = []
