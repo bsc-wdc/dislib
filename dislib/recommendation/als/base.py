@@ -120,8 +120,8 @@ class ALS(BaseEstimator):
     def _has_converged(self, last_rmse, rmse):
         return abs(last_rmse - rmse) < self.tol
 
-    def _compute_rmse(self, dataset, U, I):
-        rmses = [_get_rmse(sb._blocks, U, I) for sb in
+    def _compute_rmse(self, dataset, u, i):
+        rmses = [_get_rmse(sb._blocks, u, i) for sb in
                  dataset._iterator(axis=0)]
         rmses = np.array(compss_wait_on(rmses))
         # remove NaN errors that come from empty chunks
