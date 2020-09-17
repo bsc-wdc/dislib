@@ -119,45 +119,15 @@ class ADMM(BaseEstimator):
 
     def _step(self, x, y):
         # update w
-        w_blocks = []
-
-        for xy_hblock, u_hblock in zip(_paired_partition(x, y),
-                                       self._u._iterator()):
-            x_hblock, y_hblock = xy_hblock
-            w_hblock = [object() for _ in range(x._n_blocks[1])]
-            x_blocks = x_hblock._blocks
-            y_blocks = y_hblock._blocks
-            u_blocks = u_hblock._blocks
-
-            _update_w(x_blocks, y_blocks, self._z, u_blocks, self.rho,
-                      self.loss_fn, w_hblock)
-            w_blocks.append(w_hblock)
-
-        r_shape = self._u._reg_shape
-        self._w = Array(w_blocks, r_shape, r_shape, self._u.shape, x._sparse)
+        self._w_step(x, y)
 
         z_old = self._z
 
         # update z
-        w_mean = self._w.mean(axis=0)
-        u_mean = self._u.mean(axis=0)
-
-        # w_blocks = self._w.mean(axis=0)._blocks
-        # u_blocks = self._u.mean(axis=0)._blocks
-        self._z = _soft_thresholding(w_mean._blocks, u_mean._blocks, self.k)
+        self._z_step()
 
         # update u
-        u_blocks = []
-
-        for u_hblock, w_hblock in zip(self._u._iterator(),
-                                      self._w._iterator()):
-            out_blocks = [object() for _ in range(self._u._n_blocks[1])]
-            _update_u(self._z, u_hblock._blocks, w_hblock._blocks, out_blocks)
-            u_blocks.append(out_blocks)
-
-        r_shape = self._u._reg_shape
-        shape = self._u.shape
-        self._u = Array(u_blocks, r_shape, r_shape, shape, self._u._sparse)
+        self._u_step()
 
         # after norm in axis=1 and sum in axis=0, these should be ds-arrays
         # of a single element, so we keep the only block
@@ -206,9 +176,9 @@ class ADMM(BaseEstimator):
         self._u = Array(u_blocks, r_shape, r_shape, shape, self._u._sparse)
 
     def _z_step(self):
-        w_blocks = self._w.mean(axis=0)._blocks
-        u_blocks = self._u.mean(axis=0)._blocks
-        self._z = _soft_thresholding(w_blocks, u_blocks, self.k)
+        w_mean = self._w.mean(axis=0)
+        u_mean = self._u.mean(axis=0)
+        self._z = _soft_thresholding(w_mean._blocks, u_mean._blocks, self.k)
 
     def _w_step(self, x, y):
         w_blocks = []
