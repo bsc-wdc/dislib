@@ -1,4 +1,4 @@
-FROM ubuntu:16.04
+FROM ubuntu:18.04
 MAINTAINER COMPSs Support <support-compss@bsc.es>
 
 # =============================================================================
@@ -61,7 +61,7 @@ RUN apt-get update && \
     cd /framework && \
     ./submodules_get.sh && \
     ./submodules_patch.sh && \
-    sudo -E /framework/builders/buildlocal -Np /opt/COMPSs && \
+    sudo -E /framework/builders/buildlocal -NpAKT /opt/COMPSs && \
     rm -rf /framework /root/.m2 /root/.cache /home/jenkins/.COMPSs /tmp/* && \
     rm -rf /var/lib/apt/lists/*
 
