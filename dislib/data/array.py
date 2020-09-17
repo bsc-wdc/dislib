@@ -1,5 +1,6 @@
 import operator
 from collections import defaultdict
+from math import ceil
 
 import numpy as np
 from pycompss.api.api import compss_wait_on, compss_delete_object
@@ -9,8 +10,6 @@ from pycompss.api.task import task
 from scipy import sparse as sp
 from scipy.sparse import issparse, csr_matrix
 from sklearn.utils import check_random_state
-
-from math import ceil
 
 
 class Array(object):
@@ -1060,8 +1059,7 @@ def array(x, block_size):
 
 
 def random_array(shape, block_size, random_state=None):
-    """
-    Returns a distributed array of random floats in the open interval [0.0,
+    """ Returns a distributed array of random floats in the open interval [0.0,
     1.0). Values are from the "continuous uniform" distribution over the
     stated interval.
 
@@ -1077,7 +1075,7 @@ def random_array(shape, block_size, random_state=None):
 
     Returns
     -------
-    dsarray : ds-array
+    x : ds-array
         Distributed array of random floats.
     """
     r_state = check_random_state(random_state)

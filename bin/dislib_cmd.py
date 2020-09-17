@@ -112,7 +112,7 @@ def _generate_project_cfg(curr_cfg: str = '', ips: list = (), cpus: int = 4,
     exit_code, output = master.exec_run(cmd=cmd)
     if exit_code != 0:
         print("Exit code: %s" % exit_code)
-        for line in [l for l in output.decode().split('\n')]:
+        for line in [i for i in output.decode().split('\n')]:
             print(line)
         sys.exit(exit_code)
     return proj_arg
@@ -130,7 +130,7 @@ def _generate_resources_cfg(curr_cfg: str = '', ips: list = (), cpus: int = 4):
     exit_code, output = master.exec_run(cmd=cmd)
     if exit_code != 0:
         print("Exit code: %s" % exit_code)
-        for line in [l for l in output.decode().split('\n')]:
+        for line in [i for i in output.decode().split('\n')]:
             print(line)
         sys.exit(exit_code)
     return res_arg

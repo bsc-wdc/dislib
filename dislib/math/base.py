@@ -46,14 +46,14 @@ def kron(a, b, block_size=None):
             bshape_a = a._get_block_shape(i, j)
 
             for k in range(b._n_blocks[0]):
-                for l in range(b._n_blocks[1]):
+                for q in range(b._n_blocks[1]):
                     out_blocks = Array._get_out_blocks(bshape_a)
-                    _kron(a._blocks[i][j], b._blocks[k][l], out_blocks)
+                    _kron(a._blocks[i][j], b._blocks[k][q], out_blocks)
 
                     for m in range(bshape_a[0]):
                         for n in range(bshape_a[1]):
                             bi = (offseti + m) * b._n_blocks[0] + k
-                            bj = (offsetj + n) * b._n_blocks[1] + l
+                            bj = (offsetj + n) * b._n_blocks[1] + q
                             k_blocks[bi][bj] = out_blocks[m][n]
 
             offsetj += bshape_a[1]
