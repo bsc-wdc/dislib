@@ -25,7 +25,7 @@ from math import ceil
 import sys
 
 
-class MiSD (StorageDict):                                                                                                           
+class MiSD(StorageDict):                                                                                                           
     '''                                                                                                                                 
     @TypeSpec dict <<x:int, y:int>, bloque:numpy.ndarray>                                                                       
     '''                                                                                                                                 
@@ -65,14 +65,17 @@ class Array(object):
         Total number of elements in the array.
     sparse : boolean, optional (default=False)
         Whether this array stores sparse data.
-
+    delete : boolean, optional (default=True)
+        Whether to call compss_delete_object on the blocks when the garbage
+        collector deletes this ds-array.
     Attributes
     ----------
     shape : tuple (int, int)
         Total number of elements in the array.
     """
 
-    def __init__(self, blocks, top_left_shape, reg_shape, shape, sparse):
+    def __init__(self, blocks, top_left_shape, reg_shape, shape, sparse,
+                 delete=True):
         self._validate_blocks(blocks)
 
         self._blocks = blocks
@@ -82,6 +85,12 @@ class Array(object):
         self._n_blocks = (len(blocks), len(blocks[0]))
         self._shape = shape
         self._sparse = sparse
+        self._delete = delete
+
+    def __del__(self):
+        if self._delete:
+            [compss_delete_object(b) for r_block in self._blocks for b in
+             r_block]
 
     def __str__(self):
         return "ds-array(blocks=(...), top_left_shape=%r, reg_shape=%r, " \
@@ -175,8 +184,6 @@ class Array(object):
         raise IndexError("Invalid indexing information: %s" % str(arg))
 
     def __setitem__(self, key, value):
-        # import pydevd_pycharm
-        # pydevd_pycharm.settrace('192.168.1.222', port=1454, stdoutToServer=True, stderrToServer=True)
         if not np.isscalar(value):
             raise ValueError("Can only assign scalar values.")
 
@@ -198,6 +205,46 @@ class Array(object):
             raise NotImplementedError("Power is only supported for scalars")
         return _apply_elementwise(Array._power, self, power)
 
+    def __sub__(self, other):
+        if self.shape[1] != other.shape[1] or other.shape[0] != 1:
+            raise NotImplementedError("Subtraction not implemented for the "
+                                      "given objects")
+
+        # matrix - vector
+        blocks = []
+
+        for hblock in self._iterator("rows"):
+            out_blocks = [object() for _ in range(hblock._n_blocks[1])]
+            _combine_blocks(hblock._blocks, other._blocks,
+                            Array._subtract, out_blocks)
+            blocks.append(out_blocks)
+
+        return Array(blocks, self._top_left_shape, self._reg_shape,
+                     self.shape, self._sparse)
+
+    def __truediv__(self, other):
+        if not np.isscalar(other):
+            raise NotImplementedError("Non scalar division not supported")
+
+        return _apply_elementwise(operator.truediv, self, other)
+
+    def __mul__(self, other):
+        if self.shape[1] != other.shape[1] or other.shape[0] != 1:
+            raise NotImplementedError("Multiplication not implemented for the "
+                                      "given arrays")
+
+        # matrix * vector
+        blocks = []
+
+        for hblock in self._iterator("rows"):
+            out_blocks = [object() for _ in range(hblock._n_blocks[1])]
+            _combine_blocks(hblock._blocks, other._blocks,
+                            operator.mul, out_blocks)
+            blocks.append(out_blocks)
+
+        return Array(blocks, self._top_left_shape, self._reg_shape,
+                     self.shape, self._sparse)
+
     @property
     def shape(self):
         """
@@ -209,6 +256,22 @@ class Array(object):
     def T(self):
         """ Returns the transpose of this ds-array """
         return self.transpose()
+
+    @staticmethod
+    def _subtract(a, b):
+        sparse = issparse(a)
+
+        # needed because subtract with scipy.sparse does not support
+        # broadcasting
+        if sparse:
+            a = a.toarray()
+        if issparse(b):
+            b = b.toarray()
+
+        if sparse:
+            return csr_matrix(a - b)
+        else:
+            return a - b
 
     @staticmethod
     def _power(x_np, power):
@@ -378,6 +441,9 @@ class Array(object):
 
         return Array(final_blocks, block_size, block_size, shape, False)
 
+    def _is_regular(self):
+        return self._reg_shape == self._top_left_shape
+
     def _get_row_shape(self, row_idx):
         if row_idx == 0:
             return self._top_left_shape[0], self.shape[1]
@@ -414,29 +480,30 @@ class Array(object):
     def _get_block_shape(self, i, j):
         return Array._get_block_shape_static(i, j, self)
 
+    def _get_row_block(self, i):
+        row_shape = self._get_row_shape(i)
+        return Array(blocks=[self._blocks[i]],
+                     top_left_shape=(row_shape[0], self._top_left_shape[1]),
+                     reg_shape=self._reg_shape, shape=row_shape,
+                     sparse=self._sparse, delete=False)
+
+    def _get_col_block(self, i):
+        col_shape = self._get_col_shape(i)
+        col_blocks = [[self._blocks[j][i]] for j in range(self._n_blocks[0])]
+        return Array(blocks=col_blocks,
+                     top_left_shape=(self._top_left_shape[0], col_shape[1]),
+                     reg_shape=self._reg_shape, shape=col_shape,
+                     sparse=self._sparse, delete=False)
+
     def _iterator(self, axis=0):
         # iterate through rows
         if axis == 0 or axis == 'rows':
-            for i, row in enumerate(self._blocks):
-                row_shape = self._get_row_shape(i)
-
-                yield Array(blocks=[row],
-                            top_left_shape=(row_shape[0],
-                                            self._top_left_shape[1]),
-                            reg_shape=self._reg_shape, shape=row_shape,
-                            sparse=self._sparse)
-
+            for i in range(self._n_blocks[0]):
+                yield self._get_row_block(i)
         # iterate through columns
         elif axis == 1 or axis == 'columns':
             for j in range(self._n_blocks[1]):
-                col_shape = self._get_col_shape(j)
-                col_blocks = [[self._blocks[i][j]] for i in
-                              range(self._n_blocks[0])]
-                yield Array(blocks=col_blocks,
-                            top_left_shape=(self._top_left_shape[0],
-                                            col_shape[1]),
-                            reg_shape=self._reg_shape,
-                            shape=col_shape, sparse=self._sparse)
+                yield self._get_col_block(j)
 
         else:
             raise Exception(
@@ -622,7 +689,8 @@ class Array(object):
         out_shape = n_rows, n_cols
 
         res = Array(blocks=out_blocks, top_left_shape=(bi0, bj0),
-                    reg_shape=(bn, bm), shape=out_shape, sparse=self._sparse)
+                    reg_shape=(bn, bm), shape=out_shape,
+                    sparse=self._sparse, delete=False)
         return res
 
     def _get_by_lst_rows(self, rows):
@@ -942,6 +1010,22 @@ class Array(object):
         return Array._rechunk(self._blocks, self.shape, block_size,
                               Array._get_block_shape_static, self)
 
+    def copy(self):
+        """ Creates a copy of this ds-array.
+
+        Returns
+        -------
+        x_copy : ds-array
+        """
+        blocks = Array._get_out_blocks(self._n_blocks)
+
+        for i in range(self._n_blocks[0]):
+            for j in range(self._n_blocks[1]):
+                blocks[i][j] = _copy_block(self._blocks[i][j])
+
+        return Array(blocks, self._top_left_shape, self._reg_shape,
+                     self.shape, self._sparse, self._delete)
+
     def collect(self, squeeze=True):
         """
         Collects the contents of this ds-array and returns the equivalent
@@ -962,8 +1046,6 @@ class Array(object):
         array : nd-array or spmatrix
             The actual contents of the ds-array.
         """
-        # if not self._blocks[0][0].__class__.__name__=="StorageNumpy":
-        #     self._blocks = compss_wait_on(self._blocks)
         self._blocks = compss_wait_on(self._blocks)
         res = self._merge_blocks(self._blocks)
         if not self._sparse and squeeze:
@@ -1007,6 +1089,47 @@ class Array(object):
 
     #     return self
 
+    # def make_persistent(self, name):
+    #     """
+    #     Stores data in Hecuba.
+
+    #     Parameters
+    #     ----------
+    #     name : str
+    #         Name of the data.
+
+    #     Returns
+    #     -------
+    #     dsarray : ds-array
+    #         A distributed and persistent representation of the data
+    #         divided in blocks.
+    #     """
+
+    #     if self._sparse:
+    #         raise Exception("Data must not be a sparse matrix.")
+    #     self._blocks=compss_wait_on(self._blocks)
+    #     persistent=MiSD()
+
+    #     blocks=[]
+    #     for x,block in enumerate(self._blocks):
+    #         lines=[]
+    #         for y,subblock in enumerate(block):
+    #             persistent[x,y]=StorageNumpy(subblock.copy('C'))
+    #             lines.append((x,y))
+    #         blocks.append(lines)
+
+    #     persistent.make_persistent(name)
+
+    #     for rows in range(len(blocks)):
+    #         for columns in range(len(blocks[rows])):
+    #             blocks[rows][columns]=persistent[rows,columns]
+
+    #     self._base_array = self.collect()
+
+    #     self._blocks = blocks
+
+    #     return self
+    
     def make_persistent(self, name):
         """
         Stores data in Hecuba.
@@ -1028,19 +1151,18 @@ class Array(object):
         self._blocks=compss_wait_on(self._blocks)
         persistent=MiSD()
 
-        blocks=[]
         for x,block in enumerate(self._blocks):
-            lines=[]
             for y,subblock in enumerate(block):
                 persistent[x,y]=StorageNumpy(subblock.copy('C'))
-                lines.append((x,y))
-            blocks.append(lines)
 
         persistent.make_persistent(name)
 
-        for rows in range(len(blocks)):
-            for columns in range(len(blocks[rows])):
-                blocks[rows][columns]=persistent[rows,columns]
+        blocks=[]
+        for rows in range(len(self._blocks)):
+            lines=[]
+            for columns in range(len(self._blocks[rows])):
+                lines.append(persistent[rows,columns])
+            blocks.append(lines)
 
         self._base_array = self.collect()
 
@@ -1199,8 +1321,54 @@ def random_array(shape, block_size, random_state=None):
     r_state = check_random_state(random_state)
     return _full(shape, block_size, False, _random_block_wrapper, r_state)
 
+def identity(n, block_size, dtype=None):
+    """ Returns the identity matrix.
 
-def zeros(shape, block_size, dtype=float):
+    Parameters
+    ----------
+    n : int
+        Size of the matrix.
+    block_size : tuple of two ints
+        Block size.
+    dtype : data type, optional (default=None)
+        The desired type of the ds-array. Defaults to float.
+
+    Returns
+    -------
+    x : ds-array
+        Identity matrix of shape n x n.
+
+    Raises
+    ------
+    ValueError
+        If block_size is greater than n.
+    """
+    if n < block_size[0] or n < block_size[1]:
+        raise ValueError("Block size is greater than the array")
+
+    n_blocks = (int(ceil(n / block_size[0])), int(ceil(n / block_size[1])))
+    blocks = list()
+
+    for row_idx in range(n_blocks[0]):
+        blocks.append(list())
+
+        for col_idx in range(n_blocks[1]):
+            b_size0, b_size1 = block_size
+
+            if row_idx == n_blocks[0] - 1:
+                b_size0 = n - (n_blocks[0] - 1) * block_size[0]
+
+            if col_idx == n_blocks[1] - 1:
+                b_size1 = n - (n_blocks[1] - 1) * block_size[1]
+
+            block = _identity_block((b_size0, b_size1), n, block_size,
+                                    row_idx, col_idx, dtype)
+            blocks[-1].append(block)
+
+    return Array(blocks, top_left_shape=block_size, reg_shape=block_size,
+                 shape=(n, n), sparse=False)
+
+def zeros(shape, block_size, dtype=None):
     """ Returns a ds-array of given shape and block size, filled with zeros.
 
     Parameters
@@ -1209,8 +1377,8 @@ def zeros(shape, block_size, dtype=float):
         Shape of the output ds-array.
     block_size : tuple of two ints
         Size of the ds-array blocks.
-    dtype : data type, optional (default=float)
-        The desired type of the array.
+    dtype : data type, optional (default=None)
+        The desired type of the array. Defaults to float.
 
     Returns
     -------
@@ -1220,7 +1388,7 @@ def zeros(shape, block_size, dtype=float):
     return _full(shape, block_size, False, _full_block, 0, dtype)
 
 
-def full(shape, block_size, fill_value, dtype=float):
+def full(shape, block_size, fill_value, dtype=None):
     """ Returns a ds-array of 'shape' filled with 'fill_value'.
 
     Parameters
@@ -1231,8 +1399,8 @@ def full(shape, block_size, fill_value, dtype=float):
         Size of the ds-array blocks.
     fill_value : scalar
         Fill value.
-    dtype : data type, optional (default=float)
-        The desired type of the array.
+    dtype : data type, optional (default=None)
+        The desired type of the array. Defaults to float.
 
     Returns
     -------
@@ -1309,7 +1477,7 @@ def apply_along_axis(func, axis, x, *args, **kwargs):
         out_shape = (shape[0], 1)
 
     return Array(blocks, top_left_shape=out_tlbshape, reg_shape=out_bshape,
-                 shape=out_shape, sparse=False)
+                 shape=out_shape, sparse=x._sparse)
 
 
 def _multiply_block_groups(hblock, vblock):
@@ -1322,10 +1490,14 @@ def _multiply_block_groups(hblock, vblock):
 
     while len(blocks) > 1:
         blocks=compss_wait_on(blocks)
-        if sp.issparse(blocki)==False and sp.issparse(blockj)==False:
-            blocks.append(_block_apply(operator.add, blocks.pop(0), blocks.pop(0)))
+        block1 = blocks.pop(0)
+        block2 = blocks.pop(0)
+        if sp.issparse(block1)==False and sp.issparse(block2)==False:
+            blocks.append(_block_apply(operator.add, block1, block2))
         else:
-            blocks.append(_block_apply_sparse(operator.add, blocks.pop(0), blocks.pop(0)))
+            blocks.append(_block_apply_sparse(operator.add, block1, block2))
+        compss_delete_object(block1)
+        compss_delete_object(block2)
         
     
     return blocks[0]
@@ -1391,11 +1563,7 @@ def _apply_elementwise(func, x, *args, **kwargs):
 
     for i in range(n_blocks[0]):
         for j in range(n_blocks[1]):
-            # blocks[i][j] = _block_apply(func, x._blocks[i][j], *args, **kwargs)
-            if sp.issparse(x._blocks[i][j])==False:
-                blocks[i][j] = _block_apply(func, x._blocks[i][j], *args, **kwargs)
-            else:
-                blocks[i][j] = _block_apply_sparse(func, x._blocks[i][j], *args, **kwargs)
+            blocks[i][j] = _block_apply_sparse(func, x._blocks[i][j], *args, **kwargs)
 
     return Array(blocks, x._top_left_shape, x._reg_shape, x.shape, x._sparse)
 
@@ -1486,6 +1654,20 @@ def _random_block(shape, seed):
     np.random.seed(seed)
     return np.random.random(shape)
 
+@task(returns=1)
+def _identity_block(block_size, n, reg_shape, i, j, dtype):
+    block = np.zeros(block_size, dtype)
+
+    i_values = np.arange(i * reg_shape[0], min(n, (i + 1) * reg_shape[0]))
+    j_values = np.arange(j * reg_shape[1], min(n, (j + 1) * reg_shape[1]))
+
+    indices = np.intersect1d(i_values, j_values)
+
+    i_ones = indices - (i * reg_shape[0])
+    j_ones = indices - (j * reg_shape[1])
+
+    block[i_ones, j_ones] = 1
+    return block
 
 @task(returns=np.array)
 def _full_block(shape, value, dtype):
@@ -1498,16 +1680,19 @@ def _block_apply_axis(func, axis, blocks, *args, **kwargs):
     kwargs['axis'] = axis
     out = func(arr, *args, **kwargs)
 
-    if issparse(out):
-        out = out.toarray()
-
-    # We convert to array for consistency (otherwise the output of this
-    # task is of unknown type)
-    if axis == 0:
-        return np.asarray(out).reshape(1, -1)
+    # We don't know the data type that func returns (could be dense for a
+    # sparse input). Therefore, we force the output to be of the same type
+    # of the input. Otherwise, the result of apply_along_axis would be of
+    # unknown type.
+    if not issparse(arr):
+        out = np.asarray(out)
     else:
-        return np.asarray(out).reshape(-1, 1)
+        out = csr_matrix(out)
 
+    if axis == 0:
+        return out.reshape(1, -1)
+    else:
+        return out.reshape(-1, 1)
 
 @task(block={Type: COLLECTION_IN, Depth: 2},
       returns={Type: COLLECTION_OUT, Depth: 2})
@@ -1521,11 +1706,6 @@ def _block_apply_sparse(func, block, *args, **kwargs):
 
     return res
 
-@task(returns=1)
-def _block_apply_sparsee(func, block, *args, **kwargs):
-    res = func(block, *args, **kwargs)
-
-    return res
 
 @task(block=INOUT)
 def _set_value(block, i, j, value):
@@ -1562,4 +1742,28 @@ def _split_block(block, tl_shape, reg_shape, out_blocks):
 
     for i, rows in enumerate(np.vsplit(block, vsplit)):
         for j, cols in enumerate(np.hsplit(rows, hsplit)):
-            out_blocks[i][j] = cols
+            # copy is only necessary when executing with regular Python.
+            # When using PyCOMPSs the reference to the original block is broken
+            # because this is executed in a task.
+            out_blocks[i][j] = cols.copy()
+
+
+@task(returns=1)
+def _copy_block(block):
+    return block.copy()
+
+
+@task(blocks={Type: COLLECTION_IN, Depth: 2},
+      other={Type: COLLECTION_IN, Depth: 2},
+      out_blocks={Type: COLLECTION_INOUT, Depth: 1})
+def _combine_blocks(blocks, other, func, out_blocks):
+    x = Array._merge_blocks(blocks)
+    y = Array._merge_blocks(other)
+
+    res = func(x, y)
+
+    bsize = blocks[0][0].shape[1]
+
+    for i in range(len(out_blocks)):
+        out_blocks[i] = res[:, i * bsize: (i + 1) * bsize]
+

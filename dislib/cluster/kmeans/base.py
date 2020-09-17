@@ -113,7 +113,6 @@ class KMeans(BaseEstimator):
         labels : ds-array, shape=(n_samples, 1)
             Index of the cluster each sample belongs to.
         """
-
         self.fit(x)
         return self.predict(x)
 
@@ -180,10 +179,8 @@ class KMeans(BaseEstimator):
 
 
 @task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
-#@task(blocks=INOUT, returns=np.array)
 def _partial_sum(blocks, centers):
     partials = np.zeros((centers.shape[0], 2), dtype=object)
-    # print(blocks)
     arr = Array._merge_blocks(blocks)
     close_centers = pairwise_distances(arr, centers).argmin(axis=1)
 
@@ -209,6 +206,5 @@ def _merge(*data):
 
 @task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
 def _predict(blocks, centers):
-    # print(blocks)
     arr = Array._merge_blocks(blocks)
     return pairwise_distances(arr, centers).argmin(axis=1).reshape(-1, 1)

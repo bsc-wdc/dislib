@@ -222,11 +222,11 @@ class HecubaTest(unittest.TestCase):
         reg = LinearRegression()
         reg.fit(x, y)
         # y = 0.6 * x + 0.3
-    
-        reg.coef_ = compss_wait_on(reg.coef_)
-        reg.intercept_ = compss_wait_on(reg.intercept_)
-        self.assertTrue(np.allclose(reg.coef_, 0.6))
-        self.assertTrue(np.allclose(reg.intercept_, 0.3))
+
+        reg.coef_._blocks = compss_wait_on(reg.coef_._blocks)
+        reg.intercept_._blocks = compss_wait_on(reg.intercept_._blocks)
+        self.assertTrue(np.allclose(reg.coef_._blocks, 0.6))
+        self.assertTrue(np.allclose(reg.intercept_._blocks, 0.3))
     
         x_test = np.array([3, 5]).reshape(-1, 1)
         test_data = ds.array(x=x_test, block_size=block_size)
