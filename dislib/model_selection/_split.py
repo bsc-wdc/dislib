@@ -1,7 +1,7 @@
 import numbers
 
 import numpy as np
-from pycompss.api.parameter import Type, COLLECTION_IN, Depth, COLLECTION_INOUT
+from pycompss.api.parameter import Type, COLLECTION_IN, Depth, COLLECTION_OUT
 from pycompss.api.task import task
 
 from dislib import utils
@@ -230,7 +230,7 @@ def merge_slices(s1, s2):
 
 
 @task(blocks={Type: COLLECTION_IN, Depth: 2},
-      out_blocks={Type: COLLECTION_INOUT, Depth: 1})
+      out_blocks={Type: COLLECTION_OUT, Depth: 1})
 def _merge_rows_keeping_cols(blocks, out_blocks):
     """
     Merges the blocks vertically, into a single list of blocks (the number of

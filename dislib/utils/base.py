@@ -1,6 +1,6 @@
 import numpy as np
 from pycompss.api.api import compss_delete_object
-from pycompss.api.parameter import COLLECTION_INOUT, Type, COLLECTION_IN, Depth
+from pycompss.api.parameter import COLLECTION_OUT, Type, COLLECTION_IN, Depth
 from pycompss.api.task import task
 from scipy.sparse import issparse, vstack
 
@@ -119,7 +119,7 @@ def _partition_arrays(part_in, sizes_out):
 
 
 @task(part_out_subsamples=COLLECTION_IN,
-      part_out_x_blocks=COLLECTION_INOUT,
+      part_out_x_blocks=COLLECTION_OUT,
       returns=1)
 def _merge_shuffle_x(seed, part_out_subsamples, part_out_x_blocks,
                      blocks_width):
@@ -138,8 +138,8 @@ def _merge_shuffle_x(seed, part_out_subsamples, part_out_x_blocks,
 
 
 @task(part_out_subsamples=COLLECTION_IN,
-      part_out_x_blocks=COLLECTION_INOUT,
-      part_out_y_blocks=COLLECTION_INOUT,
+      part_out_x_blocks=COLLECTION_OUT,
+      part_out_y_blocks=COLLECTION_OUT,
       returns=1)
 def _merge_shuffle_xy(seed, part_out_subsamples, part_out_x_blocks,
                       part_out_y_blocks, x_blocks_width, y_blocks_width):
@@ -169,7 +169,7 @@ def _merge_shuffle_xy(seed, part_out_subsamples, part_out_x_blocks,
     part_out_y_blocks[:] = blocks_y
 
 
-@task(x={Type: COLLECTION_IN, Depth: 2}, subsamples=COLLECTION_INOUT)
+@task(x={Type: COLLECTION_IN, Depth: 2}, subsamples=COLLECTION_OUT)
 def _choose_and_assign_rows_x(x, subsamples_sizes, subsamples, seed):
     np.random.seed(seed)
     x = Array._merge_blocks(x)
@@ -182,7 +182,7 @@ def _choose_and_assign_rows_x(x, subsamples_sizes, subsamples, seed):
 
 
 @task(x={Type: COLLECTION_IN, Depth: 2}, y={Type: COLLECTION_IN, Depth: 2},
-      subsamples=COLLECTION_INOUT)
+      subsamples=COLLECTION_OUT)
 def _choose_and_assign_rows_xy(x, y, subsamples_sizes, subsamples, seed):
     np.random.seed(seed)
     x = Array._merge_blocks(x)

@@ -1,6 +1,6 @@
 import numpy as np
 from pycompss.api.api import compss_wait_on
-from pycompss.api.parameter import COLLECTION_IN, COLLECTION_INOUT, \
+from pycompss.api.parameter import COLLECTION_IN, COLLECTION_OUT, \
     Type, Depth
 from pycompss.api.task import task
 from scipy.sparse import issparse
@@ -332,8 +332,8 @@ def _generate_bins(mn, mx, dimensions, n_regions):
 
 
 @task(blocks={Type: COLLECTION_IN, Depth: 2},
-      samples_list={Type: COLLECTION_INOUT},
-      indices={Type: COLLECTION_INOUT})
+      samples_list={Type: COLLECTION_OUT},
+      indices={Type: COLLECTION_OUT})
 def _arrange_block(blocks, bins, dimensions, shape, samples_list, indices):
     x = Array._merge_blocks(blocks)
     n_bins = shape[0]
@@ -373,7 +373,7 @@ def _arrange_block(blocks, bins, dimensions, shape, samples_list, indices):
 
 
 @task(indices=COLLECTION_IN,
-      blocks=COLLECTION_INOUT)
+      blocks=COLLECTION_OUT)
 def _rearrange_region(labels, indices, blocks):
     """
     indices[i] contains the label/sample indices of row block i (in the

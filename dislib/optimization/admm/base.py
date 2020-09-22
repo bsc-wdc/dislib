@@ -11,7 +11,7 @@ Commission under Grant Agreement No. 780787.
 import cvxpy as cp
 import numpy as np
 from pycompss.api.api import compss_wait_on
-from pycompss.api.parameter import Type, Depth, COLLECTION_IN, COLLECTION_INOUT
+from pycompss.api.parameter import Type, Depth, COLLECTION_IN, COLLECTION_OUT
 from pycompss.api.task import task
 from sklearn.base import BaseEstimator
 
@@ -199,7 +199,7 @@ class ADMM(BaseEstimator):
         self._w = Array(w_blocks, r_shape, r_shape, self._u.shape, x._sparse)
 
 
-@task(z_blocks={Type: COLLECTION_INOUT, Depth: 1})
+@task(z_blocks={Type: COLLECTION_OUT, Depth: 1})
 def _split_z(z, block_size, z_blocks):
     for i in range(len(z_blocks)):
         z_blocks[i] = z[i * block_size: (i + 1) * block_size]
@@ -208,7 +208,7 @@ def _split_z(z, block_size, z_blocks):
 @task(x_blocks={Type: COLLECTION_IN, Depth: 2},
       y_blocks={Type: COLLECTION_IN, Depth: 2},
       u_blocks={Type: COLLECTION_IN, Depth: 2},
-      w_blocks={Type: COLLECTION_INOUT, Depth: 1})
+      w_blocks={Type: COLLECTION_OUT, Depth: 1})
 def _update_w(x_blocks, y_blocks, z, u_blocks, rho, loss, w_blocks):
     x_np = Array._merge_blocks(x_blocks)
     y_np = np.squeeze(Array._merge_blocks(y_blocks))
@@ -258,7 +258,7 @@ def _soft_thresholding(w_blocks, u_blocks, k):
 
 @task(u_blocks={Type: COLLECTION_IN, Depth: 2},
       w_blocks={Type: COLLECTION_IN, Depth: 2},
-      out_blocks={Type: COLLECTION_INOUT, Depth: 1})
+      out_blocks={Type: COLLECTION_OUT, Depth: 1})
 def _update_u(z, u_blocks, w_blocks, out_blocks):
     u_np = np.squeeze(Array._merge_blocks(u_blocks))
     w_np = np.squeeze(Array._merge_blocks(w_blocks))
@@ -275,7 +275,7 @@ def _compute_dual_res(n_samples, rho, z, z_old):
 
 
 @task(blocks={Type: COLLECTION_IN, Depth: 2},
-      out_blocks={Type: COLLECTION_INOUT, Depth: 1})
+      out_blocks={Type: COLLECTION_OUT, Depth: 1})
 def _substract(blocks, z, out_blocks):
     w_np = Array._merge_blocks(blocks) - z
     n_cols = blocks[0][0].shape[1]

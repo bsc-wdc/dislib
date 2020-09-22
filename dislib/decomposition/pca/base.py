@@ -1,5 +1,5 @@
 import numpy as np
-from pycompss.api.parameter import COLLECTION_IN, Depth, Type, COLLECTION_INOUT
+from pycompss.api.parameter import COLLECTION_IN, Depth, Type, COLLECTION_OUT
 from pycompss.api.task import task
 from scipy.sparse import issparse, csr_matrix
 from sklearn.base import BaseEstimator
@@ -220,8 +220,8 @@ def _estimate_covariance(scatter_matrix, n_samples):
     return scatter_matrix / (n_samples - 1)
 
 
-@task(val_blocks={Type: COLLECTION_INOUT, Depth: 2},
-      vec_blocks={Type: COLLECTION_INOUT, Depth: 2})
+@task(val_blocks={Type: COLLECTION_OUT, Depth: 2},
+      vec_blocks={Type: COLLECTION_OUT, Depth: 2})
 def _decompose(covariance_matrix, n_components, bsize, val_blocks, vec_blocks):
     eig_val, eig_vec = np.linalg.eigh(covariance_matrix)
 
@@ -250,7 +250,7 @@ def _decompose(covariance_matrix, n_components, bsize, val_blocks, vec_blocks):
 @task(blocks={Type: COLLECTION_IN, Depth: 2},
       u_blocks={Type: COLLECTION_IN, Depth: 2},
       c_blocks={Type: COLLECTION_IN, Depth: 2},
-      out_blocks={Type: COLLECTION_INOUT, Depth: 1})
+      out_blocks={Type: COLLECTION_OUT, Depth: 1})
 def _subset_transform(blocks, u_blocks, c_blocks, reg_shape, out_blocks):
     data = Array._merge_blocks(blocks)
     mean = Array._merge_blocks(u_blocks)
