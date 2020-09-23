@@ -2,6 +2,7 @@ import itertools
 import uuid
 import operator
 from collections import defaultdict
+from math import ceil
 
 import numpy as np
 import importlib
@@ -1188,8 +1189,7 @@ def load_from_hecuba(name, block_size):
 
 
 def random_array(shape, block_size, random_state=None):
-    """
-    Returns a distributed array of random floats in the open interval [0.0,
+    """ Returns a distributed array of random floats in the open interval [0.0,
     1.0). Values are from the "continuous uniform" distribution over the
     stated interval.
 
@@ -1205,7 +1205,7 @@ def random_array(shape, block_size, random_state=None):
 
     Returns
     -------
-    dsarray : ds-array
+    x : ds-array
         Distributed array of random floats.
     """
     r_state = check_random_state(random_state)

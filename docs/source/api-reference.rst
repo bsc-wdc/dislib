@@ -101,6 +101,17 @@ dislib.regression: Regression
 - Multivariate linear regression using ordinary least squares.
 
 
+:class:`regression.Lasso <dislib.regression.lasso.base.Lasso>`
+- Linear Model trained with L1 prior as regularizer.
+
+
+dislib.optimization: Optimization
+---------------------------------
+
+:class:`optimization.ADMM <dislib.optimization.admm.base.ADMM>` - Alternating
+Direction Method of Multipliers (ADMM) solver.
+
+
 dislib.neighbors: Neighbor queries
 ----------------------------------
 

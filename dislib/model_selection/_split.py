@@ -1,12 +1,10 @@
 import numbers
 
+import numpy as np
 from pycompss.api.parameter import Type, COLLECTION_IN, Depth, COLLECTION_INOUT
 from pycompss.api.task import task
 
 from dislib import utils
-
-import numpy as np
-
 from dislib.data.array import Array
 
 
@@ -229,6 +227,7 @@ def merge_slices(s1, s2):
     return Array(blocks=all_blocks, top_left_shape=reg_shape,
                  reg_shape=reg_shape, shape=(len_s1 + len_s2, s1.shape[1]),
                  sparse=s1._sparse)
+
 
 @task(blocks={Type: COLLECTION_IN, Depth: 2},
       out_blocks={Type: COLLECTION_INOUT, Depth: 1})
