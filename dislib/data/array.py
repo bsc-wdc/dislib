@@ -1150,7 +1150,6 @@ def array(x, block_size):
     return arr
 
 
-<<<<<<< HEAD
 def load_from_hecuba(name, block_size):
     """
     Loads data from Hecuba.
@@ -1189,8 +1188,6 @@ def load_from_hecuba(name, block_size):
     return arr
 
 
-=======
->>>>>>> 2bea2ab325e3cf7d53f0d38be6276d7e65dbfb57
 def random_array(shape, block_size, random_state=None):
     """ Returns a distributed array of random floats in the open interval [0.0,
     1.0). Values are from the "continuous uniform" distribution over the
