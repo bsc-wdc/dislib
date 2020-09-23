@@ -8,14 +8,9 @@ from hecuba import config
 import dislib as ds
 from math import ceil
 
-
-
 from pycompss.api.api import compss_wait_on , compss_barrier
 import time
 from tests.func_sum_and_mult import _sum_and_mult
-
-# def _sum_and_mult(arr, a=0, axis=0, b=1):
-#     return (np.sum(arr, axis=axis) + a) * b
 
 
 def _validate_array(x):
@@ -108,8 +103,6 @@ class DataLoadingTest(unittest.TestCase):
         n, m = shape
         bn, bm = block_size       
         if persistent!= None:
-            # config.session.execute("TRUNCATE TABLE hecuba.istorage")
-            # config.session.execute("DROP KEYSPACE IF EXISTS hecuba_dislib")
             x.make_persistent(name="hecuba_dislib.test_array_constructor")
 
         self.assertTrue(x._n_blocks, ceil(n / bn) == ceil(m / bm))
@@ -119,9 +112,6 @@ class DataLoadingTest(unittest.TestCase):
 
     def test_array_creation_persistent(self):
         """ Tests array creation """
-        # config.session.execute("TRUNCATE TABLE hecuba.istorage")
-        # config.session.execute("DROP KEYSPACE IF EXISTS hecuba_dislib")
- 
         data = [[1, 2, 3], [4, 5, 6]]
 
         x_np = np.array(data)
@@ -161,8 +151,6 @@ class ArrayTest(unittest.TestCase):
     def test_sizes(self, x, x_np, persistent):
         """ Tests sizes consistency. """
         if persistent!= None:
-            # config.session.execute("TRUNCATE TABLE hecuba.istorage")
-            # config.session.execute("DROP KEYSPACE IF EXISTS hecuba_dislib")
             x.make_persistent(name="hecuba_dislib.test_sizes")
         bshape = x._reg_shape
         shape = x_np.shape
@@ -177,8 +165,6 @@ class ArrayTest(unittest.TestCase):
     def test_iterate_rows(self, x, x_np, persistent):
         """ Testing the row _iterator of the ds.array """
         if persistent!= None:
-            # config.session.execute("TRUNCATE TABLE hecuba.istorage")
-            # config.session.execute("DROP KEYSPACE IF EXISTS hecuba_dislib")
             x.make_persistent(name="hecuba_dislib.ite"+persistent)
 
         n_rows = x._reg_shape[0]
@@ -194,8 +180,6 @@ class ArrayTest(unittest.TestCase):
                            _gen_random_arrays(fmt = "dense", persistent = "t2")])
     def test_iterate_cols(self, x, x_np, persistent):
         if persistent!= None:
-            # config.session.execute("TRUNCATE TABLE hecuba.istorage")
-            # config.session.execute("DROP KEYSPACE IF EXISTS hecuba_dislib")
             x.make_persistent(name="hecuba_dislib.test_ite"+persistent)
 
         """ Testing the row _iterator of the ds.array """
@@ -209,13 +193,6 @@ class ArrayTest(unittest.TestCase):
 
     
 
-    # @parameterized.expand([_gen_random_arrays(fmt = "dense", persistent = "test12"),
-    #                        _gen_random_arrays(fmt = "dense", persistent = "test12"),
-    #                        _gen_random_arrays(fmt = "dense", shape=(33, 34), block_size= (2, 33), persistent = "test21"),
-    #                        _gen_random_arrays(fmt= "sparse"),
-    #                        _gen_irregular_arrays(fmt = "dense", persistent="test22"),
-    #                        _gen_irregular_arrays(fmt= "dense"),
-    #                        _gen_irregular_arrays(fmt= "sparse")])
     @parameterized.expand([_gen_random_arrays(fmt = "dense", persistent = "test12"),
                            _gen_random_arrays(fmt = "dense", persistent = "test12"),
                            _gen_random_arrays(fmt = "dense", shape=(33, 34), block_size= (2, 33), persistent = "test21"),
@@ -224,8 +201,6 @@ class ArrayTest(unittest.TestCase):
         """ Tests indexing """
         # Single row
         if persistent!= None:
-            config.session.execute("TRUNCATE TABLE hecuba.istorage")
-            # config.session.execute("DROP KEYSPACE IF EXISTS hecuba_dislib")
             x.make_persistent(name="hecuba_dislib.test_indexing"+persistent)
 
         rows = np.random.randint(0, x.shape[0] - 1, size=min(3, x.shape[0]))
@@ -286,33 +261,6 @@ class ArrayTest(unittest.TestCase):
         self.assertTrue(_equal_arrays(ours.collect(), expected))
 
 
-    # @parameterized.expand([_gen_random_arrays("dense"),
-    #                        _gen_random_arrays("dense", persistent="test22"),
-    #                        _gen_random_arrays("dense", persistent="test25"),
-    #                        _gen_random_arrays("sparse"),
-    #                        _gen_irregular_arrays("dense"),
-    #                        _gen_irregular_arrays("dense", persistent="test24"),
-    #                        _gen_irregular_arrays("sparse"),
-    #                        _gen_irregular_arrays("sparse", (98, 10), (85, 2)) +
-    #                        (None, [0, 1, 2, 5]),
-    #                        _gen_irregular_arrays("sparse", (10, 98), (2, 85)) +
-    #                        ([0, 1, 2, 5], None),
-    #                        _gen_irregular_arrays("dense", (22, 49), (3, 1)) +
-    #                        (None, [18, 20, 41, 44]),
-    #                        _gen_irregular_arrays("dense", (22, 49), (3, 1), persistent="test28") +
-    #                        (None, [18, 20, 41, 44]),
-    #                        _gen_irregular_arrays("dense", (49, 22), (1, 3)) +
-    #                        ([18, 20, 41, 44], None),
-    #                        _gen_irregular_arrays("dense", (49, 22), (1, 3), persistent="test29") +
-    #                        ([18, 20, 41, 44], None),
-    #                        _gen_random_arrays("dense", (5, 4), (3, 3)) +
-    #                        ([0, 1, 3, 4], None),
-    #                        _gen_random_arrays("dense", (5, 4), (3, 3), persistent="test30") +
-    #                        ([0, 1, 3, 4], None),
-    #                        _gen_random_arrays("dense", (4, 5), (3, 3)) +
-    #                        (None, [0, 1, 3, 4]),
-    #                        _gen_random_arrays("dense", (4, 5), (3, 3), persistent="test31") +
-    #                        (None, [0, 1, 3, 4])])
     @parameterized.expand([_gen_random_arrays("dense", persistent="test22"),
                            _gen_random_arrays("dense", persistent="test25"),
                            _gen_irregular_arrays("dense", persistent="test24"),
@@ -327,8 +275,6 @@ class ArrayTest(unittest.TestCase):
     def test_fancy_indexing(self, x, x_np, persistent=None, rows=None, cols=None):
         """ Tests fancy indexing """
         if persistent!= None:
-            # config.session.execute("TRUNCATE TABLE hecuba.istorage")
-            # config.session.execute("DROP KEYSPACE IF EXISTS hecuba_dislib")
             x.make_persistent(name="hecuba_dislib.test_indexing"+persistent)
         # Non-consecutive rows / cols
         if not rows:
@@ -350,16 +296,6 @@ class ArrayTest(unittest.TestCase):
         self.assertTrue(_equal_arrays(ours.collect(), expected))
 
 
-    # @parameterized.expand([_gen_random_arrays("dense"),
-    #                        _gen_random_arrays("dense", persistent="t1"),
-    #                        _gen_random_arrays("dense", (1, 10), (1, 2)),
-    #                        _gen_random_arrays("dense", (1, 10), (1, 2), persistent="t2"),
-    #                        _gen_random_arrays("dense", (10, 1), (3, 1)),
-    #                        _gen_random_arrays("dense", (10, 1), (3, 1), persistent="t3"),
-    #                        _gen_random_arrays("sparse"),
-    #                        _gen_irregular_arrays("dense"),
-    #                        _gen_irregular_arrays("dense", persistent="t4"),
-    #                        _gen_irregular_arrays("sparse")])  
     @parameterized.expand([_gen_random_arrays("dense", persistent="t1"),
                            _gen_random_arrays("dense", (1, 10), (1, 2), persistent="t2"),
                            _gen_random_arrays("dense", (10, 1), (3, 1), persistent="t3"),
@@ -367,8 +303,6 @@ class ArrayTest(unittest.TestCase):
     def test_transpose(self, x, x_np, persistent):
         """ Tests array transpose."""
         if persistent!= None:
-            # config.session.execute("TRUNCATE TABLE hecuba.istorage")
-            #config.session.execute("DROP KEYSPACE IF EXISTS hecuba_dislib")
             x.make_persistent(name="hecuba_dislib.test_transpose"+persistent)
         
         b0, b1 = x._n_blocks
@@ -473,13 +407,12 @@ class ArrayTest(unittest.TestCase):
         expected = a_np @ b_np
 
         if persistent != None:
-            # config.session.execute("TRUNCATE TABLE hecuba.istorage")
-            # config.session.execute("DROP KEYSPACE IF EXISTS hecuba_dislib")
             a.make_persistent(name="hecuba_dislib.test_matmul_a_"+persistent)
             b.make_persistent(name="hecuba_dislib.test_matmul_b_"+persistent)
         
 
         computed = a @ b
+        computed._blocks=compss_wait_on(computed._blocks)
         self.assertTrue(_equal_arrays(expected, computed.collect(False)))
 
 
@@ -488,8 +421,6 @@ class ArrayTest(unittest.TestCase):
     def test_set_item_persistent(self):
         """ Tests setting a single value """
         x = ds.random_array((10, 10), (3, 3))
-        # config.session.execute("TRUNCATE TABLE hecuba.istorage")
-        # config.session.execute("DROP KEYSPACE IF EXISTS hecuba_dislib")
         x.make_persistent(name="hecuba_dislib.test_set_item_persistent")
 
         x[5, 5] = -1

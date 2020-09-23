@@ -1052,83 +1052,6 @@ class Array(object):
             res = np.squeeze(res)
         return res
 
-    # def make_persistent(self, name):
-    #     """
-    #     Stores data in Hecuba.
-
-    #     Parameters
-    #     ----------
-    #     name : str
-    #         Name of the data.
-
-    #     Returns
-    #     -------
-    #     dsarray : ds-array
-    #         A distributed and persistent representation of the data
-    #         divided in blocks.
-    #     """
-    #     if self._sparse:
-    #         raise Exception("Data must not be a sparse matrix.")
-    #     self._blocks=compss_wait_on(self._blocks)
-    #     x = self.collect()
-    #     persistent_data = StorageNumpy(input_array=x, name=name)
-    #     # self._base_array is used for much more efficient slicing.
-    #     # It does not take up more space since it is a reference to the db.
-    #     self._base_array = persistent_data
-
-    #     blocks = []
-        
-    #     for block in self._blocks:
-    #         lines=[]
-    #         for subblock in block:
-    #             a=subblock.copy('C')
-    #             persistent_block = StorageNumpy(input_array=a, name=name,storage_id=uuid.uuid4())
-    #             lines.append(persistent_block)
-    #         blocks.append(lines)
-    #     self._blocks = blocks
-
-    #     return self
-
-    # def make_persistent(self, name):
-    #     """
-    #     Stores data in Hecuba.
-
-    #     Parameters
-    #     ----------
-    #     name : str
-    #         Name of the data.
-
-    #     Returns
-    #     -------
-    #     dsarray : ds-array
-    #         A distributed and persistent representation of the data
-    #         divided in blocks.
-    #     """
-
-    #     if self._sparse:
-    #         raise Exception("Data must not be a sparse matrix.")
-    #     self._blocks=compss_wait_on(self._blocks)
-    #     persistent=MiSD()
-
-    #     blocks=[]
-    #     for x,block in enumerate(self._blocks):
-    #         lines=[]
-    #         for y,subblock in enumerate(block):
-    #             persistent[x,y]=StorageNumpy(subblock.copy('C'))
-    #             lines.append((x,y))
-    #         blocks.append(lines)
-
-    #     persistent.make_persistent(name)
-
-    #     for rows in range(len(blocks)):
-    #         for columns in range(len(blocks[rows])):
-    #             blocks[rows][columns]=persistent[rows,columns]
-
-    #     self._base_array = self.collect()
-
-    #     self._blocks = blocks
-
-    #     return self
     
     def make_persistent(self, name):
         """
@@ -1225,39 +1148,6 @@ def array(x, block_size):
 
     return arr
 
-
-# def load_from_hecuba(name, block_size):
-#     """
-#     Loads data from Hecuba.
-
-#     Parameters
-#     ----------
-#     name : str
-#         Name of the data.
-#     block_size : (int, int)
-#         Block sizes in number of samples.
-
-#     Returns
-#     -------
-#     storagenumpy : StorageNumpy
-#         A distributed and persistent representation of the data
-#         divided in blocks.
-#     """
-#     # import pydevd_pycharm
-#     # pydevd_pycharm.settrace('192.168.1.222', port=1454, stdoutToServer=True, stderrToServer=True)
-#     persistent_data = StorageNumpy(name=name)
-
-#     bn, bm = block_size
-#     # if block_size != persistent_data.
-#     blocks = []
-#     for block in persistent_data.np_split(block_size=(bn, bm)):
-#         blocks.append(block)
-
-#     arr = Array(blocks=blocks, top_left_shape=block_size,
-#                 reg_shape=block_size, shape=persistent_data.shape,
-#                 sparse=False)
-#     arr._base_array = persistent_data
-#     return arr
 
 def load_from_hecuba(name, block_size):
     """
