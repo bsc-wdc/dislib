@@ -13,6 +13,7 @@ Subpackages
     dislib.cluster.gm
     dislib.neighbors
     dislib.cluster.dbscan
+    dislib.cluster.daura
     dislib.recommendation.als
     dislib.decomposition.pca
     dislib.regression.linear
