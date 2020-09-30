@@ -9,18 +9,20 @@ import numpy as np
 
 
 class Daura(BaseEstimator):
+    """Daura clustering.
+
+    | Distributed implementation of the distances-based Daura clustering. A
+      description of the algorithm can be found on:
+    | `<http://lockhartlab.squarespace.com/blog/2018/1/14/
+      clustering-with-daura-et-al>`_.
+
+    Parameters
+    ----------
+    cutoff : float
+        Distance to determine the neighbors of a sample.
+    """
 
     def __init__(self, cutoff):
-        """ Perform Daura clustering.
-
-        See:
-        lockhartlab.squarespace.com/blog/2018/1/14/clustering-with-daura-et-al
-
-        Parameters
-        ----------
-        cutoff : float
-            Distance to determine the neighbors of a sample.
-        """
         self.cutoff = cutoff
 
     def fit_predict(self, distances):

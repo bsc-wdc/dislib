@@ -76,8 +76,8 @@ clustering.
 :class:`cluster.GaussianMixture <dislib.cluster.gm.base.GaussianMixture>` -
 Fit a gaussian mixture model.
 
-:class:`cluster.Daura <dislib.cluster.daura.base.Daura>` -
-Fit a gaussian mixture model.
+:class:`cluster.Daura <dislib.cluster.daura.base.Daura>` - Perform Daura
+clustering.
 
 
 dislib.classification: Classification
