@@ -11,8 +11,9 @@ import numpy as np
 class Daura(BaseEstimator):
     """Daura clustering.
 
-    | Distributed implementation of the distances-based Daura clustering. A
-      description of the algorithm can be found on:
+    | Distributed implementation of the distances-based Daura clustering,
+      introduced on Daura et al. [1]_. A description of the algorithm can be
+      found on:
     | `<http://lockhartlab.squarespace.com/blog/2018/1/14/
       clustering-with-daura-et-al>`_.
 
@@ -20,6 +21,14 @@ class Daura(BaseEstimator):
     ----------
     cutoff : float
         Distance to determine the neighbors of a sample.
+
+    References
+    ----------
+
+    .. [1] Daura, X., Gademann, K., Jaun, B., Seebach, D., van Gunsteren, W.F.
+        and Mark, A.E. (1999). Peptide Folding: When Simulation Meets
+        Experiment. In Angewandte Chemie International Edition, 38
+        (pp. 236-240).
     """
 
     def __init__(self, cutoff):
