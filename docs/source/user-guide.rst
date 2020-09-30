@@ -511,6 +511,29 @@ parameters or use random initialization. It is a good idea to run the algorithm
 multiple times with different starting conditions, because it can converge
 to different local optima.
 
+Daura
+.....
+
+:class:`Daura <dislib.cluster.daura.base.Daura>` is a clustering algorithm
+that uses the distances between the samples and a cutoff value to find clusters
+centered in one of the samples such that all of the members of the cluster are
+within a cutoff radius from the center. Clusters are taken by size, from larger
+to smaller, in a sequential and greedy way.
+
+The fit method takes a ds-array of distances as input, which makes it different
+than other clustering estimators. Bear in mind that, although this ds-array is
+passed as a single parameter, it does not need to exist as a whole at once: it
+can be computed in PyCOMPSs tasks and processed by Daura block by block, and
+internally Daura only looks for the neighbouring relations and saves them.
+
+This algorithm is inherently sequential, i.e., one cluster has to be found
+before you can start looking for the next one. Finding one cluster at a time is
+what has been parallelized. For this reason, this algorithm may not improve the
+performance of a sequential approach for small datasets. On the other hand,
+it can improve the memory management and the performance for larger datasets,
+or when there are few clusters.
+
+
 Regression
 ----------
 
