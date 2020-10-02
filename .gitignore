@@ -153,6 +153,7 @@ target/
 *.su
 *.idb
 *.pdb
+!/examples/daura/md.dry.pdb
 
 # Kernel Module Compile Results
 *.mod*
