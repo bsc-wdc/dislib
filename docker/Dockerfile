@@ -56,7 +56,7 @@ RUN apt-get update && \
     echo "LD_LIBRARY_PATH=/usr/lib/openmpi/lib" >> /etc/environment && \
     mkdir /run/sshd && \
 # Clone framework files for installation
-    git clone --depth=1 --branch 2.6 https://github.com/bsc-wdc/compss.git framework && \
+    git clone --depth=1 --branch 2.7 https://github.com/bsc-wdc/compss.git framework && \
 # Install COMPSs
     cd /framework && \
     ./submodules_get.sh && \
