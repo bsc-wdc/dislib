@@ -246,6 +246,22 @@ def _decompose(covariance_matrix, n_components, bsize, val_blocks, vec_blocks):
             vec_blocks[i][j] = \
                 eig_vec[i * bsize:(i + 1) * bsize, j * bsize:(j + 1) * bsize]
 
+def _transform(x, mean, components):
+    new_blocks = []
+    n_components = components.shape[0]
+    reg_cols = x._reg_shape[1]
+    div, mod = divmod(n_components, reg_cols)
+    n_col_blocks = div + (1 if mod else 0)
+    for rows in x._iterator('rows'):
+        out_blocks = [object() for _ in range(n_col_blocks)]
+        _subset_transform(rows._blocks, out_blocks, mean, components, reg_cols)
+        new_blocks.append(out_blocks)
+
+    return Array(blocks=new_blocks,
+                 top_left_shape=(x._top_left_shape[0], reg_cols),
+                 reg_shape=x._reg_shape,
+                 shape=(x.shape[0], components.shape[0]), sparse=x._sparse)
+
 
 @task(blocks={Type: COLLECTION_IN, Depth: 2},
       u_blocks={Type: COLLECTION_IN, Depth: 2},

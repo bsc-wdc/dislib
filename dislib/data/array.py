@@ -1,15 +1,36 @@
+import itertools
+import uuid
 import operator
 from collections import defaultdict
 from math import ceil
 
 import numpy as np
+import importlib
 from pycompss.api.api import compss_wait_on, compss_delete_object
 from pycompss.api.parameter import Type, COLLECTION_IN, Depth, \
-    COLLECTION_INOUT, INOUT
+    COLLECTION_INOUT, INOUT, COLLECTION_OUT, Direction, COLLECTION
 from pycompss.api.task import task
 from scipy import sparse as sp
 from scipy.sparse import issparse, csr_matrix
 from sklearn.utils import check_random_state
+
+if importlib.util.find_spec("hecuba"):
+    try:
+        from hecuba.hnumpy import StorageNumpy
+        from hecuba.hdict import StorageDict
+    except Exception:
+        pass
+from pprint import pprint
+from math import ceil
+
+import sys
+
+
+class MiSD(StorageDict):                                                                                                           
+    '''                                                                                                                                 
+    @TypeSpec dict <<x:int, y:int>, bloque:numpy.ndarray>                                                                       
+    '''                                                                                                                                 
+    pass
 
 
 class Array(object):
@@ -48,7 +69,6 @@ class Array(object):
     delete : boolean, optional (default=True)
         Whether to call compss_delete_object on the blocks when the garbage
         collector deletes this ds-array.
-
     Attributes
     ----------
     shape : tuple (int, int)
@@ -66,7 +86,6 @@ class Array(object):
         self._n_blocks = (len(blocks), len(blocks[0]))
         self._shape = shape
         self._sparse = sparse
-
         self._delete = delete
 
     def __del__(self):
@@ -111,6 +130,7 @@ class Array(object):
 
                 blocks[i][j] = _multiply_block_groups(hblock, vblock)
 
+
         shape = (self.shape[0], x.shape[1])
         tl_shape = (self._top_left_shape[0], x._top_left_shape[1])
         reg_shape = (self._reg_shape[0], x._reg_shape[1])
@@ -119,7 +139,15 @@ class Array(object):
                      reg_shape=reg_shape, shape=shape, sparse=self._sparse)
 
     def __getitem__(self, arg):
-
+        # if getattr(self, "_base_array", None) is not None:
+        #     return array(x=list(self._base_array[arg]),
+        #                  block_size=self._reg_shape)
+        if getattr(self, "_base_array", None) is not None:
+            if isinstance(arg, list) or isinstance(arg, np.ndarray):
+                return array(x=np.array(self._base_array[list(arg)]), block_size=self._reg_shape)
+            else:
+                return array(x=np.matrix(self._base_array[arg]), block_size=self._reg_shape)
+                
         # return a single row
         if isinstance(arg, int):
             return self._get_by_lst_rows(rows=[arg])
@@ -271,6 +299,19 @@ class Array(object):
         a single ndarray / sparse matrix.
         """
         sparse = None
+
+        try:
+            if blocks[0][0].__class__.__name__=="StorageNumpy":
+                res=[]
+                for block in blocks:                    
+                    value=list(block)
+                    line=np.concatenate(value,axis=1)
+                    res.append(line)                
+                return np.concatenate(res)
+        except:
+            print("Block size no compatible with np.array.shape")
+
+
         b0 = blocks[0][0]
         if sparse is None:
             sparse = issparse(b0)
@@ -282,6 +323,7 @@ class Array(object):
 
         return ret
 
+
     @staticmethod
     def _get_out_blocks(n_blocks):
         """
@@ -289,7 +331,8 @@ class Array(object):
         parameter of type COLLECTION_INOUT
         """
         return [[object() for _ in range(n_blocks[1])]
-                for _ in range(n_blocks[0])]
+                for _ in range(n_blocks[0])]        
+
 
     @staticmethod
     def _get_block_shape_static(i, j, x):
@@ -462,6 +505,7 @@ class Array(object):
         elif axis == 1 or axis == 'columns':
             for j in range(self._n_blocks[1]):
                 yield self._get_col_block(j)
+
         else:
             raise Exception(
                 "Axis must be [0|'rows'] or [1|'columns']. Got: %s" % axis)
@@ -804,15 +848,19 @@ class Array(object):
         dsarray : ds-array
             A transposed ds-array.
         """
+
         if mode == 'all':
             n, m = self._n_blocks[0], self._n_blocks[1]
             out_blocks = self._get_out_blocks((n, m))
+
             _transpose(self._blocks, out_blocks)
+            
+
         elif mode == 'rows':
+
             out_blocks = []
             for r in self._iterator(axis=0):
                 _blocks = self._get_out_blocks(r._n_blocks)
-
                 _transpose(r._blocks, _blocks)
 
                 out_blocks.append(_blocks[0])
@@ -820,7 +868,6 @@ class Array(object):
             out_blocks = [[] for _ in range(self._n_blocks[0])]
             for i, c in enumerate(self._iterator(axis=1)):
                 _blocks = self._get_out_blocks(c._n_blocks)
-
                 _transpose(c._blocks, _blocks)
 
                 for i2 in range(len(_blocks)):
@@ -839,6 +886,7 @@ class Array(object):
         # notice blocks shapes are transposed
         return Array(blocks_t, top_left_shape=(bj0, bi0), reg_shape=(bm, bn),
                      shape=new_shape, sparse=self._sparse)
+        # return array(blocks_t, (bm, bn))
 
     def min(self, axis=0):
         """
@@ -1000,10 +1048,51 @@ class Array(object):
             The actual contents of the ds-array.
         """
         self._blocks = compss_wait_on(self._blocks)
-        res = Array._merge_blocks(self._blocks)
+        res = self._merge_blocks(self._blocks)
         if not self._sparse and squeeze:
             res = np.squeeze(res)
         return res
+
+    
+    def make_persistent(self, name):
+        """
+        Stores data in Hecuba.
+
+        Parameters
+        ----------
+        name : str
+            Name of the data.
+
+        Returns
+        -------
+        dsarray : ds-array
+            A distributed and persistent representation of the data
+            divided in blocks.
+        """
+
+        if self._sparse:
+            raise Exception("Data must not be a sparse matrix.")
+        self._blocks=compss_wait_on(self._blocks)
+        persistent=MiSD()
+
+        for x,block in enumerate(self._blocks):
+            for y,subblock in enumerate(block):
+                persistent[x,y]=StorageNumpy(subblock.copy('C'))
+
+        persistent.make_persistent(name)
+
+        blocks=[]
+        for rows in range(len(self._blocks)):
+            lines=[]
+            for columns in range(len(self._blocks[rows])):
+                lines.append(persistent[rows,columns])
+            blocks.append(lines)
+
+        self._base_array = self.collect()
+
+        self._blocks = blocks
+
+        return self
 
 
 def array(x, block_size):
@@ -1022,6 +1111,11 @@ def array(x, block_size):
     dsarray : ds-array
         A distributed representation of the data divided in blocks.
     """
+    try:
+        bn, bm = (min(block_size[0],x.shape[0]) , min(block_size[1],x.shape[1]))
+    except:
+        bn, bm = (1,1)
+
     sparse = issparse(x)
 
     if sparse:
@@ -1041,10 +1135,8 @@ def array(x, block_size):
             raise ValueError("Input array is one-dimensional but "
                              "block size is greater than 1.")
 
-    if x.shape[0] < block_size[0] or x.shape[1] < block_size[1]:
-        raise ValueError("Block size is greater than the array")
-
-    bn, bm = block_size
+    # if x.shape[0] < block_size[0] or x.shape[1] < block_size[1]:
+    #     raise ValueError("Block size is greater than the array")
 
     blocks = []
     for i in range(0, x.shape[0], bn):
@@ -1052,9 +1144,47 @@ def array(x, block_size):
         blocks.append(row)
 
     sparse = issparse(x)
-    arr = Array(blocks=blocks, top_left_shape=block_size,
+    arr = Array(blocks=blocks, top_left_shape=(bn,bm),
                 reg_shape=block_size, shape=x.shape, sparse=sparse)
 
+    return arr
+
+
+def load_from_hecuba(name, block_size):
+    """
+    Loads data from Hecuba.
+
+    Parameters
+    ----------
+    name : str
+        Name of the data.
+    block_size : (int, int)
+        Block sizes in number of samples.
+
+    Returns
+    -------
+    storagenumpy : StorageNumpy
+        A distributed and persistent representation of the data
+        divided in blocks.
+    """
+    persistent=MiSD(name)
+    pos= max(persistent.keys())
+    x_pos , y_pos = pos[0]+1 , pos[1]+1
+    
+    blocks=[]
+    for x in range(x_pos):
+        lines=[]
+        for y in range(y_pos):
+            lines.append(persistent[x,y])
+        blocks.append(lines)
+
+
+    block_size=persistent[0,0].shape
+    persistent_data = Array._merge_blocks(blocks)
+    arr = Array(blocks=blocks, top_left_shape=block_size,
+                reg_shape=block_size, shape=persistent_data.shape,
+                sparse=False)
+    arr._base_array = persistent_data
     return arr
 
 
@@ -1080,7 +1210,6 @@ def random_array(shape, block_size, random_state=None):
     """
     r_state = check_random_state(random_state)
     return _full(shape, block_size, False, _random_block_wrapper, r_state)
-
 
 def identity(n, block_size, dtype=None):
     """ Returns the identity matrix.
@@ -1128,7 +1257,6 @@ def identity(n, block_size, dtype=None):
 
     return Array(blocks, top_left_shape=block_size, reg_shape=block_size,
                  shape=(n, n), sparse=False)
-
 
 def zeros(shape, block_size, dtype=None):
     """ Returns a ds-array of given shape and block size, filled with zeros.
@@ -1244,18 +1372,24 @@ def apply_along_axis(func, axis, x, *args, **kwargs):
 
 def _multiply_block_groups(hblock, vblock):
     blocks = []
-
     for blocki, blockj in zip(hblock, vblock):
-        blocks.append(_block_apply(operator.matmul, blocki, blockj))
+        if sp.issparse(blocki)==False and sp.issparse(blockj)==False:
+            blocks.append(_block_apply(operator.matmul, blocki, blockj))
+        else:
+            blocks.append(_block_apply_sparse(operator.matmul, blocki, blockj))
 
     while len(blocks) > 1:
+        blocks=compss_wait_on(blocks)
         block1 = blocks.pop(0)
         block2 = blocks.pop(0)
-        blocks.append(_block_apply(operator.add, block1, block2))
-
+        if sp.issparse(block1)==False and sp.issparse(block2)==False:
+            blocks.append(_block_apply(operator.add, block1, block2))
+        else:
+            blocks.append(_block_apply_sparse(operator.add, block1, block2))
         compss_delete_object(block1)
         compss_delete_object(block2)
-
+        
+    
     return blocks[0]
 
 
@@ -1319,7 +1453,7 @@ def _apply_elementwise(func, x, *args, **kwargs):
 
     for i in range(n_blocks[0]):
         for j in range(n_blocks[1]):
-            blocks[i][j] = _block_apply(func, x._blocks[i][j], *args, **kwargs)
+            blocks[i][j] = _block_apply_sparse(func, x._blocks[i][j], *args, **kwargs)
 
     return Array(blocks, x._top_left_shape, x._reg_shape, x.shape, x._sparse)
 
@@ -1399,17 +1533,16 @@ def _filter_block(block, boundaries):
 
 @task(blocks={Type: COLLECTION_IN, Depth: 2},
       out_blocks={Type: COLLECTION_INOUT, Depth: 2})
-def _transpose(blocks, out_blocks):
+def _transpose(blocks, out_blocks):   
     for i in range(len(blocks)):
         for j in range(len(blocks[i])):
-            out_blocks[i][j] = blocks[i][j].transpose()
+            out_blocks[i][j] = blocks[i][j].transpose()   
 
 
 @task(returns=np.array)
 def _random_block(shape, seed):
     np.random.seed(seed)
     return np.random.random(shape)
-
 
 @task(returns=1)
 def _identity_block(block_size, n, reg_shape, i, j, dtype):
@@ -1425,7 +1558,6 @@ def _identity_block(block_size, n, reg_shape, i, j, dtype):
 
     block[i_ones, j_ones] = 1
     return block
-
 
 @task(returns=np.array)
 def _full_block(shape, value, dtype):
@@ -1452,15 +1584,24 @@ def _block_apply_axis(func, axis, blocks, *args, **kwargs):
     else:
         return out.reshape(-1, 1)
 
+@task(block={Type: COLLECTION_IN, Depth: 2},
+      returns={Type: COLLECTION_OUT, Depth: 2})
+def _block_apply(func, block, *args, **kwargs):
+    res = func(block, *args, **kwargs)
+    return res
 
 @task(returns=1)
-def _block_apply(func, block, *args, **kwargs):
-    return func(block, *args, **kwargs)
+def _block_apply_sparse(func, block, *args, **kwargs):
+    res = func(block, *args, **kwargs)
+
+    return res
 
 
 @task(block=INOUT)
 def _set_value(block, i, j, value):
+
     block[i][j] = value
+    
 
 
 @task(blocks={Type: COLLECTION_IN, Depth: 1}, returns=1)
@@ -1515,3 +1656,4 @@ def _combine_blocks(blocks, other, func, out_blocks):
 
     for i in range(len(out_blocks)):
         out_blocks[i] = res[:, i * bsize: (i + 1) * bsize]
+

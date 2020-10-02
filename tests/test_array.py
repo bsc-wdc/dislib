@@ -7,10 +7,11 @@ from sklearn.datasets import load_svmlight_file
 
 import dislib as ds
 from math import ceil
+from tests.func_sum_and_mult import _sum_and_mult
 
 
-def _sum_and_mult(arr, a=0, axis=0, b=1):
-    return (np.sum(arr, axis=axis) + a) * b
+# def _sum_and_mult(arr, a=0, axis=0, b=1):
+#     return (np.sum(arr, axis=axis) + a) * b
 
 
 def _validate_array(x):
@@ -165,67 +166,67 @@ class DataLoadingTest(unittest.TestCase):
         self.assertTrue(_validate_array(x))
         self.assertTrue(_equal_arrays(x.collect(), x_np))
 
-    def test_load_svmlight_file(self):
-        """ Tests loading a LibSVM file  """
-        file_ = "tests/files/libsvm/1"
+    # def test_load_svmlight_file(self):
+    #     """ Tests loading a LibSVM file  """
+    #     file_ = "tests/files/libsvm/1"
 
-        x_np, y_np = load_svmlight_file(file_, n_features=780)
+    #     x_np, y_np = load_svmlight_file(file_, n_features=780)
 
-        # Load SVM and store in sparse
-        x, y = ds.load_svmlight_file(file_, (25, 100), n_features=780,
-                                     store_sparse=True)
+    #     # Load SVM and store in sparse
+    #     x, y = ds.load_svmlight_file(file_, (25, 100), n_features=780,
+    #                                  store_sparse=True)
 
-        self.assertTrue(_equal_arrays(x.collect(), x_np))
-        self.assertTrue(_equal_arrays(y.collect(), y_np))
+    #     self.assertTrue(_equal_arrays(x.collect(), x_np))
+    #     self.assertTrue(_equal_arrays(y.collect(), y_np))
 
-        # Load SVM and store in dense
-        x, y = ds.load_svmlight_file(file_, (25, 100), n_features=780,
-                                     store_sparse=False)
+    #     # Load SVM and store in dense
+    #     x, y = ds.load_svmlight_file(file_, (25, 100), n_features=780,
+    #                                  store_sparse=False)
 
-        self.assertTrue(_equal_arrays(x.collect(), x_np.toarray()))
-        self.assertTrue(_equal_arrays(y.collect(), y_np))
+    #     self.assertTrue(_equal_arrays(x.collect(), x_np.toarray()))
+    #     self.assertTrue(_equal_arrays(y.collect(), y_np))
 
-    def test_load_csv_file(self):
-        """ Tests loading a CSV file. """
-        csv_f = "tests/files/csv/1"
+    # def test_load_csv_file(self):
+    #     """ Tests loading a CSV file. """
+    #     csv_f = "tests/files/csv/1"
 
-        data = ds.load_txt_file(csv_f, block_size=(300, 50))
-        csv = np.loadtxt(csv_f, delimiter=",")
+    #     data = ds.load_txt_file(csv_f, block_size=(300, 50))
+    #     csv = np.loadtxt(csv_f, delimiter=",")
 
-        self.assertEqual(data._top_left_shape, (300, 50))
-        self.assertEqual(data._reg_shape, (300, 50))
-        self.assertEqual(data.shape, (4235, 122))
-        self.assertEqual(data._n_blocks, (15, 3))
+    #     self.assertEqual(data._top_left_shape, (300, 50))
+    #     self.assertEqual(data._reg_shape, (300, 50))
+    #     self.assertEqual(data.shape, (4235, 122))
+    #     self.assertEqual(data._n_blocks, (15, 3))
 
-        self.assertTrue(np.array_equal(data.collect(), csv))
+    #     self.assertTrue(np.array_equal(data.collect(), csv))
 
-        csv_f = "tests/files/other/4"
-        data = ds.load_txt_file(csv_f, block_size=(1000, 122), delimiter=" ")
-        csv = np.loadtxt(csv_f, delimiter=" ")
+    #     csv_f = "tests/files/other/4"
+    #     data = ds.load_txt_file(csv_f, block_size=(1000, 122), delimiter=" ")
+    #     csv = np.loadtxt(csv_f, delimiter=" ")
 
-        self.assertTrue(np.array_equal(data.collect(), csv))
+    #     self.assertTrue(np.array_equal(data.collect(), csv))
 
-        csv_f = "tests/files/csv/4"
-        data = ds.load_txt_file(csv_f, block_size=(1, 2))
-        csv = np.loadtxt(csv_f, delimiter=",")
+    #     csv_f = "tests/files/csv/4"
+    #     data = ds.load_txt_file(csv_f, block_size=(1, 2))
+    #     csv = np.loadtxt(csv_f, delimiter=",")
 
-        self.assertTrue(_equal_arrays(data.collect(), csv))
+    #     self.assertTrue(_equal_arrays(data.collect(), csv))
 
-    def test_load_npy_file(self):
-        """ Tests loading an npy file """
-        path = "tests/files/npy/1.npy"
+    # def test_load_npy_file(self):
+    #     """ Tests loading an npy file """
+    #     path = "tests/files/npy/1.npy"
 
-        x = ds.load_npy_file(path, block_size=(3, 9))
-        x_np = np.load(path)
+    #     x = ds.load_npy_file(path, block_size=(3, 9))
+    #     x_np = np.load(path)
 
-        self.assertTrue(_validate_array(x))
-        self.assertTrue(np.array_equal(x.collect(), x_np))
+    #     self.assertTrue(_validate_array(x))
+    #     self.assertTrue(np.array_equal(x.collect(), x_np))
 
-        with self.assertRaises(ValueError):
-            ds.load_npy_file(path, block_size=(1000, 1000))
+    #     with self.assertRaises(ValueError):
+    #         ds.load_npy_file(path, block_size=(1000, 1000))
 
-        with self.assertRaises(ValueError):
-            ds.load_npy_file("tests/files/npy/3d.npy", block_size=(3, 3))
+    #     with self.assertRaises(ValueError):
+    #         ds.load_npy_file("tests/files/npy/3d.npy", block_size=(3, 3))
 
 
 class ArrayTest(unittest.TestCase):
@@ -685,10 +686,10 @@ class MathTest(unittest.TestCase):
         self.assertTrue(_validate_array(computed))
         self.assertTrue(_equal_arrays(computed.collect(), expected))
 
-    @parameterized.expand([(ds.array([[1, 0, 0, 0],
+    @parameterized.expand([(ds.array(np.array([[1, 0, 0, 0],
                                       [0, 0, 0, 2],
                                       [0, 3, 0, 0],
-                                      [2, 0, 0, 0]], (2, 2)),),
+                                      [2, 0, 0, 0]]), (2, 2)),),
                            (ds.random_array((17, 5), (1, 1)),),
                            (ds.random_array((9, 7), (9, 6)),),
                            (ds.random_array((10, 10), (2, 2))[1:, 1:],)])
@@ -745,3 +746,12 @@ class MathTest(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             ds.svd(ds.random_array((3, 3), (3, 3)))
+
+
+def main():
+    unittest.main(verbosity=2)
+    
+
+
+if __name__ == '__main__':
+    main()

@@ -1,7 +1,7 @@
 import os
 
 from dislib.data.array import random_array, apply_along_axis, array, zeros, \
-    full, identity
+    full, load_from_hecuba, identity
 from dislib.data.io import load_svmlight_file, load_npy_file, load_txt_file
 from dislib.math import kron, svd
 
