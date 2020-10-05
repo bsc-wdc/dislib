@@ -42,9 +42,9 @@ def main():
         x_train, x_test, y_train, y_test = \
             train_test_split(x, y, test_size=.4, random_state=42)
         ds_x_train = ds.array(x_train, block_size=(20, 2))
-        ds_y_train = ds.array(y_train.reshape(-1, 1), block_size=(20, 2))
+        ds_y_train = ds.array(y_train.reshape(-1, 1), block_size=(20, 1))
         ds_x_test = ds.array(x_test, block_size=(20, 2))
-        ds_y_test = ds.array(y_test.reshape(-1, 1), block_size=(20, 2))
+        ds_y_test = ds.array(y_test.reshape(-1, 1), block_size=(20, 1))
 
         x_min, x_max = x[:, 0].min() - .5, x[:, 0].max() + .5
         y_min, y_max = x[:, 1].min() - .5, x[:, 1].max() + .5
