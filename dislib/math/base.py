@@ -2,7 +2,8 @@ import itertools
 
 import numpy as np
 from pycompss.api.api import compss_delete_object, compss_wait_on
-from pycompss.api.parameter import COLLECTION_INOUT, Type, Depth, COLLECTION_IN
+from pycompss.api.parameter import COLLECTION_OUT, Type, Depth, \
+    COLLECTION_INOUT, COLLECTION_IN
 from pycompss.api.task import task
 
 from dislib.data.array import Array, identity
@@ -292,7 +293,7 @@ def _sort_s(s_blocks):
 
 
 @task(a_block={Type: COLLECTION_IN, Depth: 2},
-      u_block={Type: COLLECTION_INOUT, Depth: 1})
+      u_block={Type: COLLECTION_OUT, Depth: 1})
 def _compute_u_block(a_block, u_block):
     a_col = Array._merge_blocks(a_block)
     norm = np.linalg.norm(a_col, axis=0)
@@ -311,7 +312,7 @@ def _compute_u_block(a_block, u_block):
 
 
 @task(a_block={Type: COLLECTION_IN, Depth: 2},
-      u_block={Type: COLLECTION_INOUT, Depth: 1})
+      u_block={Type: COLLECTION_OUT, Depth: 1})
 def _compute_u_block_sorted(a_block, index, bsize, sorting, u_block):
     a_col = Array._merge_blocks(a_block)
     norm = np.linalg.norm(a_col, axis=0)
@@ -338,7 +339,7 @@ def _compute_u_block_sorted(a_block, index, bsize, sorting, u_block):
 
 
 @task(block={Type: COLLECTION_IN, Depth: 1},
-      out_blocks={Type: COLLECTION_INOUT, Depth: 1})
+      out_blocks={Type: COLLECTION_OUT, Depth: 1})
 def _merge_svd_block(block, index, hbsize, vbsize, sorting, out_blocks):
     block = list(filter(lambda a: a != [], block))  # remove empty lists
     col = np.vstack(block).T
@@ -355,7 +356,7 @@ def _merge_svd_block(block, index, hbsize, vbsize, sorting, out_blocks):
 
 
 @task(v_block={Type: COLLECTION_IN, Depth: 2},
-      out_blocks={Type: COLLECTION_INOUT, Depth: 1})
+      out_blocks={Type: COLLECTION_OUT, Depth: 1})
 def _sort_v_block(v_block, index, bsize, sorting, out_blocks):
     v_col = Array._merge_blocks(v_block)
 
@@ -419,7 +420,7 @@ def _kron_shape_f(i, j, b):
     return b._get_block_shape(i % b._n_blocks[0], j % b._n_blocks[1])
 
 
-@task(out_blocks={Type: COLLECTION_INOUT, Depth: 2})
+@task(out_blocks={Type: COLLECTION_OUT, Depth: 2})
 def _kron(block1, block2, out_blocks):
     """ Computes the kronecker product of two blocks and returns one ndarray
     per (element-in-block1, block2) pair."""

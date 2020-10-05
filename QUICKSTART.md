@@ -10,7 +10,7 @@ ready-to-use [docker image](#using-docker).
 
 dislib currently requires:
 
-* PyCOMPSs >= 2.5
+* PyCOMPSs >= 2.7
 * Scikit-learn >= 0.19.1
 * Scipy >= 1.0.0
 * NumPy >= 1.15.4

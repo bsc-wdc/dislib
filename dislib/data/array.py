@@ -5,7 +5,7 @@ from math import ceil
 import numpy as np
 from pycompss.api.api import compss_wait_on, compss_delete_object
 from pycompss.api.parameter import Type, COLLECTION_IN, Depth, \
-    COLLECTION_INOUT, INOUT
+    COLLECTION_OUT, INOUT
 from pycompss.api.task import task
 from scipy import sparse as sp
 from scipy.sparse import issparse, csr_matrix
@@ -286,7 +286,7 @@ class Array(object):
     def _get_out_blocks(n_blocks):
         """
         Helper function that builds empty lists of lists to be filled as
-        parameter of type COLLECTION_INOUT
+        parameter of type COLLECTION_OUT
         """
         return [[object() for _ in range(n_blocks[1])]
                 for _ in range(n_blocks[0])]
@@ -1356,7 +1356,7 @@ def _filter_cols(blocks, cols):
 
 
 @task(blocks={Type: COLLECTION_IN, Depth: 2},
-      out_blocks={Type: COLLECTION_INOUT, Depth: 1})
+      out_blocks={Type: COLLECTION_OUT, Depth: 1})
 def _merge_rows(blocks, out_blocks, blocks_shape, skip):
     """
     Merges the blocks into a single list of blocks where each block has bn
@@ -1370,7 +1370,7 @@ def _merge_rows(blocks, out_blocks, blocks_shape, skip):
 
 
 @task(blocks={Type: COLLECTION_IN, Depth: 2},
-      out_blocks={Type: COLLECTION_INOUT, Depth: 1})
+      out_blocks={Type: COLLECTION_OUT, Depth: 1})
 def _merge_cols(blocks, out_blocks, blocks_shape, skip):
     """
     Merges the blocks into a single list of blocks where each block has bn
@@ -1398,7 +1398,7 @@ def _filter_block(block, boundaries):
 
 
 @task(blocks={Type: COLLECTION_IN, Depth: 2},
-      out_blocks={Type: COLLECTION_INOUT, Depth: 2})
+      out_blocks={Type: COLLECTION_OUT, Depth: 2})
 def _transpose(blocks, out_blocks):
     for i in range(len(blocks)):
         for j in range(len(blocks[i])):
@@ -1481,7 +1481,7 @@ def _assemble_blocks(blocks, bshape):
     return np.block(merged)
 
 
-@task(out_blocks={Type: COLLECTION_INOUT, Depth: 2})
+@task(out_blocks={Type: COLLECTION_OUT, Depth: 2})
 def _split_block(block, tl_shape, reg_shape, out_blocks):
     """ Splits a block into new blocks following the ds-array typical scheme
     with a top left block, regular blocks in the middle and remainder blocks
@@ -1504,7 +1504,7 @@ def _copy_block(block):
 
 @task(blocks={Type: COLLECTION_IN, Depth: 2},
       other={Type: COLLECTION_IN, Depth: 2},
-      out_blocks={Type: COLLECTION_INOUT, Depth: 1})
+      out_blocks={Type: COLLECTION_OUT, Depth: 1})
 def _combine_blocks(blocks, other, func, out_blocks):
     x = Array._merge_blocks(blocks)
     y = Array._merge_blocks(other)

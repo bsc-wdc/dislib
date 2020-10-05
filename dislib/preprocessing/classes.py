@@ -1,5 +1,5 @@
 import numpy as np
-from pycompss.api.parameter import Depth, Type, COLLECTION_IN, COLLECTION_INOUT
+from pycompss.api.parameter import Depth, Type, COLLECTION_IN, COLLECTION_OUT
 from pycompss.api.task import task
 from scipy.sparse import csr_matrix, issparse
 
@@ -119,7 +119,7 @@ def _compute_var(blocks, m_blocks):
 @task(blocks={Type: COLLECTION_IN, Depth: 2},
       m_blocks={Type: COLLECTION_IN, Depth: 2},
       v_blocks={Type: COLLECTION_IN, Depth: 2},
-      out_blocks=COLLECTION_INOUT)
+      out_blocks=COLLECTION_OUT)
 def _transform(blocks, m_blocks, v_blocks, out_blocks):
     x = Array._merge_blocks(blocks)
     mean = Array._merge_blocks(m_blocks)
