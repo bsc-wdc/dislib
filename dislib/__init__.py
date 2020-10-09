@@ -22,7 +22,7 @@ else:
 
         __version__ = pkg_resources.require("dislib")[0].version
     except Exception as e:
-        print("Could not get installed dislib version. "
+        print("This dislib installation does not have a version number. "
               "Probably it was not installed with setup.py.\n%s" % e)
         __version__ = 'unknown'
 

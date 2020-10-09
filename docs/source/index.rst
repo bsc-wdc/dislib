@@ -54,20 +54,24 @@ Labels on the horizontal axis represent algorithm-dataset, where:
 - ALS = AlternatingLeastSquares
 - CSVM = CascadeSVM
 - GMM = GaussianMixture
+- Load = :meth:`load_svmlight_file <dislib.load_svmlight_file>`
 - RF = RandomForestClassifier
+- Shuf = :meth:`shuffle <dislib.utils.base.shuffle>`
+- TR = :meth:`Array.transpose <dislib.data.array.Array.transpose>`
 
 and:
 
 - Netflix = The Netflix Prize `dataset <https://www.kaggle
   .com/netflix-inc/netflix-prize-data>`_.
-- ijcnn1 = The `ijcnn1 <https://www.csie.ntu.edu
-  .tw/~cjlin/libsvmtools/datasets/binary.html#ijcnn1>`_ dataset.
 - KDD99 = The `KDDCUP 1999 <http://kdd.ics.uci.edu/databases
   /kddcup99/kddcup99.html>`_ dataset.
+- ijcnn1 = The `ijcnn1 <https://www.csie.ntu.edu
+  .tw/~cjlin/libsvmtools/datasets/binary.html#ijcnn1>`_ dataset.
 - gaia = The Tycho-Gaia Astrometric Solution dataset [1]_.
-- 1M and 3M = 1 and 3 million random samples.
+- 100M and 300M = 100 and 300 million random samples, with 100 features each.
 - mnist = The `mnist <https://www.csie.ntu.edu
   .tw/~cjlin/libsvmtools/datasets/multiclass.html#mnist>`_ dataset.
+- 20K = Square matrix of 20 thousand rows and 20 thousand columns, with random values.
 
 
 Source code
