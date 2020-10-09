@@ -22,7 +22,7 @@ numpydoc >= 0.8.0 is requried to build the documentation.
 #### Installation steps 
 
 1. Check which PyCOMPSs version to install. 
-    * Latest dislib release requires **PyCOMPSs 2.5** or greater (check [here](https://github.com/bsc-wdc/dislib/releases) for information about other releases).
+    * Latest dislib release requires **PyCOMPSs 2.7** or greater (check [here](https://github.com/bsc-wdc/dislib/releases) for information about other releases).
     
 2. Install PyCOMPSs following these [instructions](https://compss-doc.readthedocs.io/en/2.7/Sections/01_Installation.html).
 
