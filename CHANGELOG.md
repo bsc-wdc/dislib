@@ -4,6 +4,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2020-10-09
+### Added
+- User guide and glossary
+- Method to read from npy files
+- Support for one-dimensional data in ds-array
+- Parametrized ds-array tests
+- identity, full and zeros methods that generate ds-arrays filled with a value
+- ds-array operators: subtraction, division, conjugate, transpose, item setting, etc.
+- matmul, kronecker product and rechunk methods for of ds-arrays
+- Automatic deletion of ds-arrays when the GC is called
+- Multivariate linear regression
+- SVD (Singular Value Decomposition)
+- PCA using SVD
+- ADMM Lasso algorithm
+- Daura clustering algorithm
+
+### Changed
+- Improved performance testing scripts and added new tests
+- Allow executing applications with params using dislib exec
+- Extended and improved the tutorial notebook
+- Moved data loading routines to a different file as array.py was getting too big
+- apply_along_axis for sparse data now returns sparse ds-arrays
+- Updated dislib-base docker image
+- Replaced COLLECTION_INOUT parameters with COLLECTION_OUT when possible for improving performance
+- Updated requirement PyCOMPSs >= 2.7
+
+### Fixed
+- Some bugs in the ds-array
+- Internal inconsistencies in transformed_array of PCA
+
 ## [0.5.0] - 2019-11-25
 ### Added
 - Grid search and randomized search with cross-validation
@@ -116,7 +146,8 @@ process.
 - Moved the quickstart guide to a separate file and included it in the documentation
 - Fixed several bugs
 
-[Unreleased]: https://github.com/bsc-wdc/dislib/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/bsc-wdc/dislib/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/bsc-wdc/dislib/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/bsc-wdc/dislib/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/bsc-wdc/dislib/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/bsc-wdc/dislib/compare/v0.2.0...v0.3.0
