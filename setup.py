@@ -5,7 +5,7 @@ setuptools.setup(
     name="dislib",
     version=open('VERSION').read().strip(),
     author="Barcelona Supercomputing Center",
-    author_email="javier.alvarez@bsc.es",
+    author_email="compss@bsc.es",
     description="The distributed computing library on top of PyCOMPSs",
     url="http://dislib.bsc.es",
     packages=setuptools.find_packages(),
@@ -22,7 +22,8 @@ setuptools.setup(
     install_requires=[
         "scikit-learn",
         "numpy",
-        "scipy"
+        "scipy",
+        "cvxpy"
     ],
     scripts=["bin/dislib", "bin/dislib_cmd.py"],
 )

@@ -19,6 +19,8 @@ Array creation routines
 
 .. autofunction:: dislib.full
 
+.. autofunction:: dislib.identity
+
 .. autofunction:: dislib.load_txt_file
 
 .. autofunction:: dislib.load_svmlight_file

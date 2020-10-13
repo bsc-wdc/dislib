@@ -26,6 +26,6 @@ else:
               "Probably it was not installed with setup.py.\n%s" % e)
         __version__ = 'unknown'
 
-__all__ = ['load_txt_file', 'load_svmlight_file', 'random_array',
-           'apply_along_axis', 'array', 'load_npy_file', 'zeros', 'kron',
-           'full', 'identity', 'svd']
+__all__ = ['array', 'random_array', 'zeros', 'full', 'identity',
+           'load_txt_file', 'load_svmlight_file', 'load_npy_file',
+           'apply_along_axis', 'kron', 'svd']

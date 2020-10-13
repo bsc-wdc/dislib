@@ -55,7 +55,7 @@ Follow these steps when drafting a new release:
       .. code:: bash
 
        docker login -u DOCKERHUB_USER -p DOCKERHUB_PASSWORD
-       docker push bscwdc/dislib:v.X.Y.Z
+       docker push bscwdc/dislib:vX.Y.Z
        docker push bscwdc/dislib:latest
 
 12. Create a pip package and upload it to PyPi:
