@@ -24,6 +24,8 @@ random contents.
 
 :meth:`dislib.full <dislib.full>` - Build a ds-array filled with a value.
 
+:meth:`dislib.identity <dislib.identity>` - Build an identity ds-array.
+
 :meth:`dislib.load_svmlight_file <dislib.load_svmlight_file>` - Build a
 ds-array from a file in `SVMlight <http://svmlight.joachims.org/>`_ format.
 
@@ -51,6 +53,8 @@ dislib.math: Mathematical functions
 
 :meth:`dislib.kron <dislib.kron>` - Computes the Kronecker product of two
 ds-arrays.
+
+:meth:`dislib.svd <dislib.svd>` - Singular value decomposition of a ds-array.
 
 dislib.preprocessing: Data pre-processing
 -----------------------------------------

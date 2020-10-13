@@ -11,14 +11,17 @@ Subpackages
     dislib.classification.rf
     dislib.cluster.kmeans
     dislib.cluster.gm
-    dislib.neighbors
     dislib.cluster.dbscan
     dislib.cluster.daura
+    dislib.neighbors
     dislib.recommendation.als
     dislib.decomposition.pca
     dislib.regression.linear
-    dislib.model_selection.gridsearchcv
-    dislib.model_selection.kfold
+    dislib.regression.lasso
+    dislib.model_selection
+    dislib.optimization.admm
+    dislib.preprocessing
+    dislib.utils
 
 .. automodule:: dislib
     :members:

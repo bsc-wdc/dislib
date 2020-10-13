@@ -85,8 +85,8 @@ def kron(a, b, block_size=None):
 
 
 def svd(a, compute_uv=True, sort=True, copy=True, eps=1e-9):
-    """ Performs singular value decomposition of a via the one-sided block
-    Jacobi algorithm described in Arbenz and Slapnicar [1]_ and
+    """ Performs singular value decomposition of a ds-array via the one-sided
+    block Jacobi algorithm described in Arbenz and Slapnicar [1]_ and
     Dongarra et al. [2]_.
 
     Singular value decomposition is a factorization of the form A = USV',

@@ -1173,9 +1173,9 @@ def full(shape, block_size, fill_value, dtype=None):
 
 
 def apply_along_axis(func, axis, x, *args, **kwargs):
-    """ Apply a function to slices along the given axis.
+    r""" Apply a function to slices along the given axis.
 
-    Execute func(a, *args, **kwargs) where func operates on nd-arrays and a
+    Execute func(a, \*args, \*\*kwargs) where func operates on nd-arrays and a
     is a slice of arr along axis. The size of the slices is determined
     by the blocks shape of x.
 
