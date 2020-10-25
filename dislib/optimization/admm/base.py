@@ -8,7 +8,11 @@ This work is supported by the I-BiDaaS project, funded by the European
 Commission under Grant Agreement No. 780787.
 """
 
-import cvxpy as cp
+try:
+    import cvxpy as cp
+except ImportError:
+    import warnings
+    warnings.warn('Cannot import cvxpy module. ADMM estimator will not work.')
 import numpy as np
 from pycompss.api.api import compss_wait_on
 from pycompss.api.parameter import Type, Depth, COLLECTION_IN, COLLECTION_OUT

@@ -1,6 +1,10 @@
 Developer's guide
 =================
 
+Contributing
+------------
+See the `Contributing Guide <https://github.com/bsc-wdc/dislib/blob/master/CONTRIBUTING.md>`_.
+
 Drafting new releases
 ---------------------
 

@@ -143,7 +143,7 @@ def svd(a, compute_uv=True, sort=True, copy=True, eps=1e-9):
     >>> u = u.collect()
     >>> s = np.diag(s.collect())
     >>> v = v.collect()
-    >>> print(np.allclose(a, u @ s @ v.T))
+    >>> print(np.allclose(x.collect(), u @ s @ v.T))
     """
     if a._n_blocks[1] < 2:
         raise ValueError("Not enough column blocks to compute SVD.")

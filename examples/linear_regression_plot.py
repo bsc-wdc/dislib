@@ -1,5 +1,4 @@
 import numpy as np
-from pycompss.api.api import compss_wait_on
 from pylab import scatter, plot, show
 
 import dislib as ds
@@ -20,14 +19,14 @@ def main():
     y_ds = ds.array(y[:, np.newaxis], (4, 1))
     reg = LinearRegression()
     reg.fit(x_ds, y_ds)
-    reg.coef_ = compss_wait_on(reg.coef_)
-    reg.intercept_ = compss_wait_on(reg.intercept_)
-    print(reg.coef_, reg.intercept_)
+    coef = reg.coef_.collect()
+    intercept = reg.intercept_.collect()
+    print(coef, intercept)
 
     # plot_result:
     scatter(x, y, marker='x')
     x_mesh = np.linspace(min(x), max(x), 1000)
-    plot(x_mesh, [reg.coef_*x + reg.intercept_ for x in x_mesh])
+    plot(x_mesh, [coef*x + intercept for x in x_mesh])
     show()
 
 
