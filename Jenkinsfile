@@ -8,8 +8,8 @@ pipeline {
     stages {
         stage('before_script') {
             steps {
-                sh """docker build --tag bscwdc/dislib ."""
-                sh """docker run $(bash <(curl -s https://codecov.io/env)) -d --name dislib bscwdc/dislib"""
+                bash 'docker build --tag bscwdc/dislib .'
+                bash 'docker run $(bash <(curl -s https://codecov.io/env)) -d --name dislib bscwdc/dislib'
             }
         }
         stage('script') {
