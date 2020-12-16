@@ -6,22 +6,14 @@ pipeline {
     }
 
     stages {
-        stage('before_script') {
+        stage('tests') {
             steps {
                 sh '''#!/bin/bash
                 docker build --tag bscwdc/dislib .
-                docker run $(bash <(curl -s https://codecov.io/env)) -d --name dislib bscwdc/dislib'''
-            }
-        }
-        stage('script') {
-            steps {
-                sh 'docker exec dislib /dislib/run_ci_checks.sh'
-            }
-        }
-        stage('after_script') {
-            steps {
-            sh 'docker images'
-            sh 'docker exec dislib /dislib/bin/print_tests_logs.sh'
+                docker run $(bash <(curl -s https://codecov.io/env)) -d --name dislib bscwdc/dislib
+                docker exec dislib /dislib/run_ci_checks.sh
+                docker images
+                docker exec dislib /dislib/bin/print_tests_logs.sh'''
             }
         }
         stage('deploy') {
