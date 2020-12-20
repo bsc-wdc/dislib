@@ -9,7 +9,8 @@ pipeline {
         stage('tests') {
             steps {
                 sh '''#!/bin/bash
-                docker rmi $(docker images --format '{{.Repository}}:{{.Tag}}' | grep 'dislib')
+                docker stop dislib
+                docker rm dislib
                 docker build --tag bscwdc/dislib .
                 docker run $(bash <(curl -s https://codecov.io/env)) -d --name dislib bscwdc/dislib
                 docker exec dislib /dislib/run_ci_checks.sh
