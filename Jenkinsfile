@@ -30,5 +30,9 @@ pipeline {
                 sh 'docker push bscwdc/dislib:latest'
             }
         }
+        stage('clean') {
+            sh 'docker stop dislib'
+            sh 'docker rm dislib'
+        }
     }
 }
