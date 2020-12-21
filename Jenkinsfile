@@ -9,7 +9,6 @@ pipeline {
         stage('tests') {
             steps {
                 sh '''#!/bin/bash
-                git lfs install
                 git lfs pull origin
                 docker stop dislib
                 docker rm dislib
