@@ -32,8 +32,9 @@ pipeline {
         }
         stage('clean') {
             steps {
-                sh 'docker stop dislib'
-                sh 'docker rm dislib'
+                sh '''#!/bin/bash
+                docker stop dislib
+                docker rm dislib'''
             }
         }
     }
