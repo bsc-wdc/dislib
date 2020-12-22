@@ -47,12 +47,12 @@ pipeline {
         }
         success {
             withCredentials([string(credentialsId: 'ded95f1b-c18f-4a17-adb1-c6bd53933dc3', variable: 'GITHUB_TOKEN')]) {
-                sh 'curl -H "Authorization: token $GITHUB_TOKEN" -X POST --data  "{\\"state\\": \\"success\\", \\"description\\": \\"Build Successful \\", \\"target_url\\": \\"$BUILD_URL\\", \\"context\\": \\"$BUILD_TAG\\" }" --url ${env.GIT_URL}/statuses/$GIT_COMMIT'
+                sh 'curl -H "Authorization: token $GITHUB_TOKEN" -X POST --data  "{\\"state\\": \\"success\\", \\"description\\": \\"Build Successful \\", \\"target_url\\": \\"${BUILD_URL}\\", \\"context\\": \\"${BUILD_TAG}\\" }" --url ${GIT_URL}/statuses/${GIT_COMMIT}'
             }
         }
         failure {
             withCredentials([string(credentialsId: 'ded95f1b-c18f-4a17-adb1-c6bd53933dc3', variable: 'GITHUB_TOKEN')]) {
-                sh 'curl -H "Authorization: token $GITHUB_TOKEN" -X POST --data  "{\\"state\\": \\"failure\\", \\"description\\": \\"Build Failure \\", \\"target_url\\": \\"$BUILD_URL\\", \\"context\\": \\"$BUILD_TAG\\" }" --url ${env.GIT_URL}/statuses/$GIT_COMMIT'
+                sh 'curl -H "Authorization: token $GITHUB_TOKEN" -X POST --data  "{\\"state\\": \\"failure\\", \\"description\\": \\"Build Failure \\", \\"target_url\\": \\"${BUILD_URL}\\", \\"context\\": \\"${BUILD_TAG}\\" }" --url ${GIT_URL}/statuses/${GIT_COMMIT}'
             }
         }
     }
