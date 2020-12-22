@@ -43,7 +43,7 @@ pipeline {
             sh 'echo ${env.BUILD_TAG}'
             sh 'echo ${env.GIT_URL}'
             sh 'echo ${env.GIT_COMMIT}'
-            sh 'echo ${env.BRANCH_NAME}
+            sh 'echo ${env.BRANCH_NAME}''
             sh "printenv"
 
             withCredentials([string(credentialsId: 'ded95f1b-c18f-4a17-adb1-c6bd53933dc3', variable: 'GITHUB_TOKEN')]) {
