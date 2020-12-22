@@ -37,15 +37,15 @@ pipeline {
             sh '''#!/bin/bash
             docker stop dislib
             docker rm dislib'''
-        }
-        success {
-            sh 'echo ${env.BUILD_URL}'
+            sh "printenv"
+            sh 'echo ${BUILD_URL}'
             sh 'echo ${env.BUILD_TAG}'
             sh 'echo ${env.GIT_URL}'
             sh 'echo ${env.GIT_COMMIT}'
             sh 'echo ${env.BRANCH_NAME}'
-            sh "printenv"
 
+        }
+        success {
             withCredentials([string(credentialsId: 'ded95f1b-c18f-4a17-adb1-c6bd53933dc3', variable: 'GITHUB_TOKEN')]) {
                 sh 'curl -H "Authorization: token $GITHUB_TOKEN" -X POST --data  "{\\"state\\": \\"success\\", \\"description\\": \\"Build Successful \\", \\"target_url\\": \\"$BUILD_URL\\", \\"context\\": \\"$BUILD_TAG\\" }" --url ${env.GIT_URL}/statuses/$GIT_COMMIT'
             }
