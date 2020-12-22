@@ -14,7 +14,7 @@ pipeline {
                 docker rm dislib
                 docker build --tag bscwdc/dislib .
                 docker run $(bash <(curl -s https://codecov.io/env)) -d --name dislib bscwdc/dislib
-                #   docker exec dislib /dislib/run_ci_checks.sh
+                # docker exec dislib /dislib/run_ci_checks.sh
                 docker images
                 docker exec dislib /dislib/bin/print_tests_logs.sh'''
             }
@@ -31,12 +31,12 @@ pipeline {
                 sh 'docker push bscwdc/dislib:latest'
             }
         }
-        stage('clean') {
-            steps {
-                sh '''#!/bin/bash
-                docker stop dislib
-                docker rm dislib'''
-            }
+    }
+    post{
+        always {
+            sh '''#!/bin/bash
+            docker stop dislib
+            docker rm dislib'''
         }
     }
 }
