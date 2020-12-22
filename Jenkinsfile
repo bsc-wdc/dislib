@@ -38,11 +38,11 @@ pipeline {
             docker stop dislib
             docker rm dislib'''
             sh "printenv"
-            sh 'echo ${env.BUILD_URL}'
-            sh 'echo ${env.GIT_URL}'
-            sh 'echo ${env.GIT_COMMIT}'
-            sh 'echo ${env.BRANCH_NAME}'
-            sh 'echo ${env.BUILD_TAG}'
+            sh 'echo ${BUILD_URL}'
+            sh 'echo ${GIT_URL}'
+            sh 'echo ${GIT_COMMIT}'
+            sh 'echo ${BRANCH_NAME}'
+            sh 'echo ${BUILD_TAG}'
 
         }
         success {
