@@ -10,7 +10,7 @@ pipeline {
             steps {
                 withCredentials([string(credentialsId: 'ded95f1b-c18f-4a17-adb1-c6bd53933dc3', variable: 'GITHUB_TOKEN')]) {
                     sh 'curl -H "Authorization: token $GITHUB_TOKEN" -X POST \
-                    --data  "{\\"state\\": \\"pending\\", \\"description\\": \\"Build Pending \\", \
+                    --data  "{\\"state\\": \\"pending\\", \\"description\\": \\"The Jenkins build is in progress\\", \
                     \\"target_url\\": \\"${BUILD_URL}\\", \\"context\\": \\"continuous-integration/jenkins\\" }" \
                     --url https://api.github.com/repos/bsc-wdc/dislib/statuses/${GIT_COMMIT}'
                 }

@@ -64,11 +64,11 @@ class KFoldTest(unittest.TestCase):
         for train_ds, test_ds in cv.split(x, y):
             len_x_train = train_ds[0].shape[0]
             len_y_train = train_ds[1].shape[0]
-            self.assertEquals(len_x_train, len_y_train)
+            self.assertEqual(len_x_train, len_y_train)
             len_x_test = test_ds[0].shape[0]
             len_y_test = test_ds[1].shape[0]
-            self.assertEquals(len_x_test, len_y_test)
-            self.assertEquals(len_x_train + len_x_test, 1000)
+            self.assertEqual(len_x_test, len_y_test)
+            self.assertEqual(len_x_train + len_x_test, 1000)
             self.assertTrue(len_x_test == 166 or len_x_test == 167,
                             'Fold size is ' + str(len_x_test) +
                             ' but should be 166 or 167.')
