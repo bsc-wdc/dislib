@@ -1,4 +1,20 @@
+def setGithubStatus(state, description) {
+    withEnv(["STATE=$state", "DESCRIPTION=$description"]) {
+         withCredentials([string(credentialsId: 'ded95f1b-c18f-4a17-adb1-c6bd53933dc3', variable: 'GITHUB_TOKEN')]) {
+            sh 'curl -H "Authorization: token $GITHUB_TOKEN" -X POST \
+            --data  "{\\"state\\": \\"$STATE\\", \\"description\\": \\"$DESCRIPTION\\", \
+            \\"target_url\\": \\"${BUILD_URL}\\", \\"context\\": \\"continuous-integration/jenkins\\" }" \
+            --url https://api.github.com/repos/bsc-wdc/dislib/statuses/${GIT_COMMIT}'
+        }
+    }
+}
+
 pipeline {
+
+    options {
+        timeout(time: 10, unit: 'MINUTES')
+    }
+
     agent {
         node {
             label 'Docker'
@@ -8,29 +24,28 @@ pipeline {
     stages {
         stage('build') {
             steps {
-                withCredentials([string(credentialsId: 'ded95f1b-c18f-4a17-adb1-c6bd53933dc3', variable: 'GITHUB_TOKEN')]) {
+                /*withCredentials([string(credentialsId: 'ded95f1b-c18f-4a17-adb1-c6bd53933dc3', variable: 'GITHUB_TOKEN')]) {
                     sh 'curl -H "Authorization: token $GITHUB_TOKEN" -X POST \
                     --data  "{\\"state\\": \\"pending\\", \\"description\\": \\"The Jenkins build is in progress\\", \
                     \\"target_url\\": \\"${BUILD_URL}\\", \\"context\\": \\"continuous-integration/jenkins\\" }" \
                     --url https://api.github.com/repos/bsc-wdc/dislib/statuses/${GIT_COMMIT}'
-                }
-                sh "git lfs pull origin"
-                sh "docker stop dislib || true"
-                sh "docker rm dislib || true"
-                sh "docker build --tag bscwdc/dislib ."
-                sh '''#!/bin/bash
-                docker run $(bash <(curl -s https://codecov.io/env)) -d --name dislib bscwdc/dislib
-                '''
+                }*/
+                setGithubStatus('pending', 'The Jenkins build is in progress')
+                sh 'git lfs pull origin'
+                sh 'docker stop dislib || true'
+                sh 'docker rm dislib || true'
+                sh 'docker build --tag bscwdc/dislib .'
+                sh 'docker run $(bash <(curl -s https://codecov.io/env)) -d --name dislib bscwdc/dislib'
             }
         }
         stage('test') {
             steps {
-                sh "docker exec dislib /dislib/run_ci_checks.sh"
+                sh 'docker exec dislib /dislib/run_ci_checks.sh'
             }
         }
         stage('deploy') {
             when {
-                branch "master"
+                branch 'master'
             }
             steps {
                 withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId:'dockerhub_compss', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD']]) {
@@ -43,12 +58,12 @@ pipeline {
     }
     post{
         always {
-            sh "docker exec dislib /dislib/bin/print_tests_logs.sh"
-            sh "docker images"
-            sh "docker stop dislib || true"
-            sh "docker rm dislib || true"
+            sh 'docker exec dislib /dislib/bin/print_tests_logs.sh'
+            sh 'docker images'
+            sh 'docker stop dislib || true'
+            sh 'docker rm dislib || true'
             /*
-            sh "printenv"
+            sh 'printenv'
             sh 'echo ${BUILD_URL}'
             sh 'echo ${GIT_URL}'
             sh 'echo ${GIT_COMMIT}'
@@ -58,10 +73,10 @@ pipeline {
         }
         success {
             withCredentials([string(credentialsId: 'ded95f1b-c18f-4a17-adb1-c6bd53933dc3', variable: 'GITHUB_TOKEN')]) {
-                sh '''curl -H "Authorization: token $GITHUB_TOKEN" -X POST \
+                sh 'curl -H "Authorization: token $GITHUB_TOKEN" -X POST \
                 --data  "{\\"state\\": \\"success\\", \\"description\\": \\"Build Successful \\", \
                 \\"target_url\\": \\"${BUILD_URL}\\", \\"context\\": \\"continuous-integration/jenkins\\" }" \
-                --url https://api.github.com/repos/bsc-wdc/dislib/statuses/${GIT_COMMIT}'''
+                --url https://api.github.com/repos/bsc-wdc/dislib/statuses/${GIT_COMMIT}'
             }
         }
         failure {

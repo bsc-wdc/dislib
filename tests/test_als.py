@@ -65,7 +65,6 @@ class ALSTest(unittest.TestCase):
         self.assertEqual(als.arity, arity)
 
     def test_fit(self):
-        self.assertTrue(False)
         train, test = load_movielens()
 
         als = ALS(tol=0.01, random_state=666, n_f=100, verbose=False,
