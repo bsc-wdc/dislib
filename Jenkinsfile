@@ -10,17 +10,14 @@ def setGithubCommitStatus(state, description) {
 }
 
 pipeline {
-
     options {
-        timeout(time: 10, unit: 'MINUTES')
+        timeout(time: 2, unit: 'HOURS')
     }
-
     agent {
         node {
             label 'Docker'
         }
     }
-
     stages {
         stage('build') {
             steps {
@@ -57,9 +54,6 @@ pipeline {
             sh 'docker images'
             sh 'docker stop dislib || true'
             sh 'docker rm dislib || true'
-            /*
-            sh 'printenv'
-            */
         }
         success {
             setGithubCommitStatus('success', 'Build Successful')
