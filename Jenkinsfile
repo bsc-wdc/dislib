@@ -36,6 +36,7 @@ pipeline {
                 sh 'docker rm dislib || true'
                 sh 'docker build --tag bscwdc/dislib .'
                 sh 'echo $SHELL'
+                sh 'curl -s https://codecov.io/env'
                 sh 'echo ONE'
                 sh 'echo "$(bash <(curl -s https://codecov.io/env))"'
                 sh 'echo TWO'
