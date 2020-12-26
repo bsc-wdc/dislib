@@ -24,17 +24,20 @@ pipeline {
     stages {
         stage('build') {
             steps {
-                withCredentials([string(credentialsId: 'ded95f1b-c18f-4a17-adb1-c6bd53933dc3', variable: 'GITHUB_TOKEN')]) {
+                /*withCredentials([string(credentialsId: 'ded95f1b-c18f-4a17-adb1-c6bd53933dc3', variable: 'GITHUB_TOKEN')]) {
                     sh 'curl -H "Authorization: token $GITHUB_TOKEN" -X POST \
                     --data  "{\\"state\\": \\"pending\\", \\"description\\": \\"The Jenkins build is in progress\\", \
                     \\"target_url\\": \\"${BUILD_URL}\\", \\"context\\": \\"continuous-integration/jenkins\\" }" \
                     --url https://api.github.com/repos/bsc-wdc/dislib/statuses/${GIT_COMMIT}'
-                }
-                /*setGithubStatus('pending', 'The Jenkins build is in progress')*/
+                }*/
+                setGithubStatus('pending', 'The Jenkins build is in progress')
                 sh 'git lfs pull origin'
                 sh 'docker stop dislib || true'
                 sh 'docker rm dislib || true'
                 sh 'docker build --tag bscwdc/dislib .'
+                sh 'echo ONE'
+                sh 'bash <(curl -s https://codecov.io/env)'
+                sh 'echo TWO'
                 sh 'docker run $(bash <(curl -s https://codecov.io/env)) -d --name dislib bscwdc/dislib'
             }
         }
