@@ -23,9 +23,11 @@ pipeline {
             steps {
                 setGithubCommitStatus('pending', 'The Jenkins build is in progress')
                 sh 'git lfs pull origin'
-                sh 'docker stop dislib || true'
-                sh 'docker rm dislib || true'
-                sh 'docker build --tag bscwdc/dislib .'
+                sh 'docker rm -f dislib &> /dev/null || true'
+                sh 'docker rmi -f bscwdc/dislib &> /dev/null || true'
+                sh 'docker image prune -f'
+                sh 'exit 1'
+                sh 'docker build --no-cache --tag bscwdc/dislib .'
                 sh '''#!/bin/bash
                 docker run $(bash <(curl -s https://codecov.io/env)) -d --name dislib bscwdc/dislib'''
             }
@@ -52,8 +54,8 @@ pipeline {
         always {
             sh 'docker exec dislib /dislib/bin/print_tests_logs.sh'
             sh 'docker images'
-            sh 'docker stop dislib || true'
-            sh 'docker rm dislib || true'
+            sh 'docker rm -f dislib &> /dev/null || true'
+            sh 'docker rmi -f bscwdc/dislib &> /dev/null || true'
         }
         success {
             setGithubCommitStatus('success', 'Build Successful')
