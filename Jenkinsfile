@@ -55,7 +55,6 @@ pipeline {
             sh 'docker images'
             sh 'docker rm -f dislib &> /dev/null || true'
             sh 'docker rmi -f bscwdc/dislib &> /dev/null || true'
-            sh 'docker images'
         }
         success {
             setGithubCommitStatus('success', 'Build Successful')
