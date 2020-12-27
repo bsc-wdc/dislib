@@ -25,11 +25,10 @@ pipeline {
                 sh 'git lfs pull origin'
                 sh 'docker rm -f dislib &> /dev/null || true'
                 sh 'docker rmi -f bscwdc/dislib &> /dev/null || true'
-                sh 'docker image prune -f'
-                sh 'exit 1'
                 sh 'docker build --no-cache --tag bscwdc/dislib .'
                 sh '''#!/bin/bash
                 docker run $(bash <(curl -s https://codecov.io/env)) -d --name dislib bscwdc/dislib'''
+                sh 'exit 1'
             }
         }
         stage('test') {
@@ -56,6 +55,7 @@ pipeline {
             sh 'docker images'
             sh 'docker rm -f dislib &> /dev/null || true'
             sh 'docker rmi -f bscwdc/dislib &> /dev/null || true'
+            sh 'docker images'
         }
         success {
             setGithubCommitStatus('success', 'Build Successful')
