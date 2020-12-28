@@ -36,4 +36,4 @@ class LassoTest(unittest.TestCase):
         y_pred_lasso = lasso.predict(ds.array(X_test, (25, 100)))
         r2_score_lasso = r2_score(y_test, y_pred_lasso.collect())
 
-        self.assertEqual(r2_score_lasso, 0.9481746925431124)
+        self.assertAlmostEqual(r2_score_lasso, 0.9481746925431124)

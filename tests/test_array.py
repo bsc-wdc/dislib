@@ -638,6 +638,8 @@ class MathTest(unittest.TestCase):
                            ((1, 30), (12, 1), False)])
     def test_kron(self, shape_a, shape_b, sparse):
         """ Tests kronecker product """
+        import time
+        t0 = time.time()
         np.random.seed()
 
         a_np = np.random.random(shape_a)
@@ -659,6 +661,8 @@ class MathTest(unittest.TestCase):
         b4 = np.random.randint(1, (b0 * b2) + 1)
         b5 = np.random.randint(1, (b1 * b3) + 1)
 
+        print(b0, b1, b2, b3, b4, b5)
+        print(time.time() - t0)
         computed = ds.kron(a, b, (b4, b5))
 
         self.assertTrue(_validate_array(computed))
@@ -671,6 +675,7 @@ class MathTest(unittest.TestCase):
             computed = computed.toarray()
 
         self.assertTrue(_equal_arrays(expected, computed))
+        print(time.time() - t0)
 
     @parameterized.expand([((15, 13), (3, 6), (9, 6), (3, 2)),
                            ((7, 8), (2, 3), (1, 15), (1, 15))])
