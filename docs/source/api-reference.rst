@@ -35,6 +35,9 @@ ds-array from a text file.
 :meth:`dislib.load_npy_file <dislib.load_npy_file>` - Build a ds-array from
 a binary NumPy file.
 
+:meth:`dislib.load_mdcrd_file <dislib.load_mdcrd_file>` - Build a ds-array
+from a mdcrd trajectory file.
+
 
 Other functions
 ---------------
