@@ -27,6 +27,8 @@ Array creation routines
 
 .. autofunction:: dislib.load_npy_file
 
+.. autofunction:: dislib.load_mdcrd_file
+
 
 Other functions
 ---------------

@@ -227,6 +227,16 @@ class DataLoadingTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             ds.load_npy_file("tests/files/npy/3d.npy", block_size=(3, 3))
 
+    def test_load_mdcrd_file(self):
+        """ Tests loading an mdcrd file """
+        path = "tests/files/traj10samples_12atoms.mdcrd"
+
+        x = ds.load_mdcrd_file(path, block_size=(4, 5), n_atoms=12)
+        self.assertTrue(_validate_array(x))
+
+        x = ds.load_mdcrd_file(path, block_size=(5, 4), n_atoms=12, copy=True)
+        self.assertTrue(_validate_array(x))
+
 
 class ArrayTest(unittest.TestCase):
 

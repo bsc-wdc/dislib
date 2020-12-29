@@ -2,7 +2,8 @@ import os
 
 from dislib.data.array import random_array, apply_along_axis, array, zeros, \
     full, identity
-from dislib.data.io import load_svmlight_file, load_npy_file, load_txt_file
+from dislib.data.io import load_svmlight_file, load_npy_file, load_txt_file, \
+    load_mdcrd_file
 from dislib.math import kron, svd
 
 name = "dislib"
@@ -28,4 +29,4 @@ else:
 
 __all__ = ['array', 'random_array', 'zeros', 'full', 'identity',
            'load_txt_file', 'load_svmlight_file', 'load_npy_file',
-           'apply_along_axis', 'kron', 'svd']
+           'load_mdcrd_file', 'apply_along_axis', 'kron', 'svd']
