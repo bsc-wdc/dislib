@@ -41,11 +41,14 @@ RUN apt-get update && \
     libxml2 gfortran libpapi-dev papi-tools \
 # Misc. dependencies
     openmpi-bin openmpi-doc libopenmpi-dev uuid-runtime curl bc \
-# Python-binding dependencies
+# Python-binding and dislib dependencies
     python3-dev python3-pip python3-setuptools && \
     pip3 install wheel dill decorator coverage numpy==1.15.4 ipython==7.9.0 \
     scipy==1.3.0 jupyter==1.0.0 scikit-learn==0.19.1 pandas==0.23.1 \
-    matplotlib==2.2.3 cvxpy==1.1.5 flake8 codecov parameterized && \
+    matplotlib==2.2.3 flake8 codecov parameterized && \
+# cvxpy dependency
+    pip3 install --no-deps scs && \
+    pip3 install cvxpy==1.1.5 && \
 # Configure user environment
 # =============================================================================
 # System configuration
@@ -56,7 +59,7 @@ RUN apt-get update && \
     echo "LD_LIBRARY_PATH=/usr/lib/openmpi/lib" >> /etc/environment && \
     mkdir /run/sshd && \
 # Clone framework files for installation
-    git clone --depth=1 --branch 2.7 https://github.com/bsc-wdc/compss.git framework && \
+    git clone --depth=1 --branch 2.8 https://github.com/bsc-wdc/compss.git framework && \
 # Install COMPSs
     cd /framework && \
     ./submodules_get.sh && \
