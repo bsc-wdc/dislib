@@ -1,6 +1,6 @@
 import numpy as np
 from numpy.lib import format
-from pycompss.api.api import compss_delete_object
+from pycompss.api.api import compss_delete_object, compss_wait_on
 from pycompss.api.parameter import COLLECTION_INOUT, COLLECTION_OUT, Type,\
     Depth, FILE_IN
 from pycompss.api.task import task
@@ -210,6 +210,33 @@ def load_mdcrd_file(path, block_size, n_atoms, copy=False):
     else:
         return _load_mdcrd_copy(path, block_size, n_cols, n_hblocks,
                                 bytes_per_snap, bytes_per_block)
+
+
+def save_txt(arr, dir, merge_rows=False):
+    """
+    Save a ds-array by blocks to a directory in txt format.
+
+    Parameters
+    ----------
+    arr : ds-array
+        Array data to be saved.
+    dir : str
+        Directory into which the data is saved.
+    merge_rows : boolean, default=False
+        Merge blocks along rows before saving.
+    """
+    os.makedirs(dir, exist_ok=True)
+    if merge_rows:
+        for i, h_block in enumerate(arr._iterator(0)):
+            path = os.path.join(dir, str(i))
+            np.savetxt(path, h_block.collect())
+    else:
+        for i, blocks_row in enumerate(arr._blocks):
+            for j, block in enumerate(blocks_row):
+                fname = '{}_{}'.format(i, j)
+                path = os.path.join(dir, fname)
+                block = compss_wait_on(block)
+                np.savetxt(path, block)
 
 
 @task(out_blocks=COLLECTION_OUT)

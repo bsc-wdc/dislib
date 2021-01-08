@@ -1,4 +1,6 @@
 import unittest
+import os
+import shutil
 
 import numpy as np
 from parameterized import parameterized
@@ -236,6 +238,42 @@ class DataLoadingTest(unittest.TestCase):
 
         x = ds.load_mdcrd_file(path, block_size=(5, 4), n_atoms=12, copy=True)
         self.assertTrue(_validate_array(x))
+
+
+class SaveTxtTest(unittest.TestCase):
+    folder = 'save_txt_test_folder'
+
+    def tearDown(self):
+        shutil.rmtree(self.folder)
+
+    @parameterized.expand([_gen_random_arrays('dense'),
+                           _gen_irregular_arrays('dense')])
+    def test_save_txt(self, x, x_np):
+        """Tests saving chunk by chunk into a folder"""
+        folder = self.folder
+        ds.data.save_txt(x, folder)
+        blocks = []
+        for i in range(x._n_blocks[0]):
+            blocks.append([])
+            for j in range(x._n_blocks[1]):
+                fname = '{}_{}'.format(i, j)
+                path = os.path.join(folder, fname)
+                blocks[-1].append(np.loadtxt(path))
+
+        self.assertTrue(_equal_arrays(np.block(blocks), x_np))
+
+    @parameterized.expand([_gen_random_arrays('dense'),
+                           _gen_irregular_arrays('dense')])
+    def test_save_txt_merge_rows(self, x, x_np):
+        """Tests saving chunk by chunk into a folder"""
+        folder = self.folder
+        ds.data.save_txt(x, folder, merge_rows=True)
+        h_blocks = []
+        for i in range(x._n_blocks[0]):
+            path = os.path.join(folder, str(i))
+            h_blocks.append(np.loadtxt(path))
+
+        self.assertTrue(_equal_arrays(np.vstack(h_blocks), x_np))
 
 
 class ArrayTest(unittest.TestCase):
