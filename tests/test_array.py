@@ -258,7 +258,7 @@ class SaveTxtTest(unittest.TestCase):
             for j in range(x._n_blocks[1]):
                 fname = '{}_{}'.format(i, j)
                 path = os.path.join(folder, fname)
-                blocks[-1].append(np.loadtxt(path))
+                blocks[-1].append(np.loadtxt(path, ndmin=2))
 
         self.assertTrue(_equal_arrays(np.block(blocks), x_np))
 
