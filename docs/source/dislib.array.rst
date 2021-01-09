@@ -29,6 +29,8 @@ Array creation routines
 
 .. autofunction:: dislib.load_mdcrd_file
 
+.. autofunction:: dislib.save_txt
+
 
 Other functions
 ---------------
