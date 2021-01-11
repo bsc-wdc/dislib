@@ -1,6 +1,6 @@
 def setGithubCommitStatus(state, description) {
     withEnv(["STATE=$state", "DESCRIPTION=$description"]) {
-         withCredentials([string(credentialsId: 'ded95f1b-c18f-4a17-adb1-c6bd53933dc3', variable: 'GITHUB_TOKEN')]) {
+         withCredentials([string(credentialsId: 'Compsupescalar Github secret token', variable: 'GITHUB_TOKEN')]) {
             sh 'curl -H "Authorization: token $GITHUB_TOKEN" -X POST \
             --data  "{\\"state\\": \\"$STATE\\", \\"description\\": \\"$DESCRIPTION\\", \
             \\"target_url\\": \\"${BUILD_URL}\\", \\"context\\": \\"continuous-integration/jenkins\\" }" \
