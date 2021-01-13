@@ -1,8 +1,8 @@
 import numpy as np
 from numpy.lib import format
-from pycompss.api.api import compss_delete_object, compss_wait_on
-from pycompss.api.parameter import COLLECTION_INOUT, COLLECTION_OUT, Type,\
-    Depth, FILE_IN
+from pycompss.api.api import compss_wait_on
+from pycompss.api.parameter import COLLECTION_INOUT, COLLECTION_OUT, Type, \
+    Depth, FILE_IN, IN_DELETE
 from pycompss.api.task import task
 import os
 
@@ -314,7 +314,6 @@ def _load_mdcrd(path, block_size, n_cols, n_blocks, bytes_per_snap,
             data = fid.read(bytes_per_block)
             out_blocks = [object() for _ in range(n_blocks)]
             _read_crd_bytes(data, block_size[1], n_cols, out_blocks)
-            compss_delete_object(data)
             blocks.append(out_blocks)
     finally:
         fid.close()
@@ -325,7 +324,7 @@ def _load_mdcrd(path, block_size, n_cols, n_blocks, bytes_per_snap,
                  shape=(n_samples, n_cols), sparse=False)
 
 
-@task(out_blocks=COLLECTION_INOUT)
+@task(data=IN_DELETE, out_blocks=COLLECTION_INOUT)
 def _read_crd_bytes(data, hblock_size, n_cols, out_blocks):
     arr = np.fromstring(data.decode(), sep=" ")
     arr = arr.reshape((-1, n_cols))
