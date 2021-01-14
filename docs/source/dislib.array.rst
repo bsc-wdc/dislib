@@ -29,10 +29,10 @@ Array creation routines
 
 .. autofunction:: dislib.load_mdcrd_file
 
-.. autofunction:: dislib.save_txt
-
 
 Other functions
 ---------------
+
+.. autofunction:: dislib.save_txt
 
 .. autofunction:: dislib.data.array.apply_along_axis
