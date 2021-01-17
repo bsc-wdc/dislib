@@ -212,7 +212,7 @@ def _compute_cp_labels(core_points, *in_cp_neighs):
     core_idx = 0
     for idx, neighbours in zip(core_points.nonzero()[0], in_cp_neighs_iter):
         neighbours = core_ids[neighbours[core_points[neighbours]]]
-        adj_matrix.rows[core_idx] = neighbours
+        adj_matrix.rows[core_idx] = neighbours.tolist()
         adj_matrix.data[core_idx] = [1] * len(neighbours)
         core_idx += 1
 
