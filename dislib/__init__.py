@@ -29,4 +29,5 @@ else:
 
 __all__ = ['array', 'random_array', 'zeros', 'full', 'identity',
            'load_txt_file', 'load_svmlight_file', 'load_npy_file',
-           'load_mdcrd_file', 'save_txt', 'apply_along_axis', 'kron', 'svd']
+           'load_mdcrd_file', 'save_txt',
+           'apply_along_axis', 'kron', 'svd']

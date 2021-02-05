@@ -38,6 +38,9 @@ a binary NumPy file.
 :meth:`dislib.load_mdcrd_file <dislib.load_mdcrd_file>` - Build a ds-array
 from a mdcrd trajectory file.
 
+:meth:`dislib.data.load_hstack_npy_files <dislib.data.load_hstack_npy_files>` - Build a ds-array
+from .npy files, concatenating them side-by-side.
+
 :meth:`dislib.save_txt <dislib.save_txt>` - Save a ds-array by blocks to a
 directory in txt format.
 

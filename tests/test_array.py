@@ -240,6 +240,25 @@ class DataLoadingTest(unittest.TestCase):
         self.assertTrue(_validate_array(x))
 
 
+class LoadHStackNpyFilesTest(unittest.TestCase):
+    folder = 'load_hstack_npy_files_test_folder'
+    arrays = [np.random.rand(3, 2) for _ in range(5)]
+
+    def setUp(self):
+        os.mkdir(self.folder)
+        for i, arr in enumerate(self.arrays):
+            np.save(os.path.join(self.folder, str(i)), arr)
+
+    def tearDown(self):
+        shutil.rmtree(self.folder)
+
+    def test_load_hstack_npy_files(self):
+        """ Tests load_hstack_npy_files """
+        x = ds.data.load_hstack_npy_files(self.folder)
+        self.assertTrue(_validate_array(x))
+        self.assertTrue(np.allclose(x.collect(), np.hstack(self.arrays)))
+
+
 class SaveTxtTest(unittest.TestCase):
     folder = 'save_txt_test_folder'
 
