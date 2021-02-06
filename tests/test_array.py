@@ -242,7 +242,7 @@ class DataLoadingTest(unittest.TestCase):
 
 class LoadHStackNpyFilesTest(unittest.TestCase):
     folder = 'load_hstack_npy_files_test_folder'
-    arrays = [np.random.rand(3, 2) for _ in range(5)]
+    arrays = [np.random.rand(3, 4) for _ in range(5)]
 
     def setUp(self):
         os.mkdir(self.folder)
@@ -255,6 +255,12 @@ class LoadHStackNpyFilesTest(unittest.TestCase):
     def test_load_hstack_npy_files(self):
         """ Tests load_hstack_npy_files """
         x = ds.data.load_hstack_npy_files(self.folder)
+        self.assertTrue(_validate_array(x))
+        self.assertTrue(np.allclose(x.collect(), np.hstack(self.arrays)))
+
+    def test_load_hstack_npy_files_2(self):
+        """ Tests load_hstack_npy_files with cols_per_block parameter"""
+        x = ds.data.load_hstack_npy_files(self.folder, cols_per_block=3)
         self.assertTrue(_validate_array(x))
         self.assertTrue(np.allclose(x.collect(), np.hstack(self.arrays)))
 
