@@ -260,7 +260,7 @@ class LoadHStackNpyFilesTest(unittest.TestCase):
 
     def test_load_hstack_npy_files_2(self):
         """ Tests load_hstack_npy_files with cols_per_block parameter"""
-        x = ds.data.load_hstack_npy_files(self.folder, cols_per_block=3)
+        x = ds.data.load_hstack_npy_files(self.folder, cols_per_block=9)
         self.assertTrue(_validate_array(x))
         self.assertTrue(np.allclose(x.collect(), np.hstack(self.arrays)))
 
