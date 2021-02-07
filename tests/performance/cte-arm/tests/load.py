@@ -6,7 +6,8 @@ import dislib as ds
 
 
 def main():
-    data = "/fefs/scratch/bsc19/bsc19029/PERFORMANCE/datasets/netflix_data_libsvm.txt"
+    data = "/fefs/scratch/bsc19/bsc19029/PERFORMANCE/datasets/" \
+           "netflix_data_libsvm.txt"
     n_blocks = 384
     n_features = 480189
     n_samples = 17770

@@ -5,7 +5,8 @@ from dislib.cluster import DBSCAN
 
 
 def main():
-    data = ds.load_txt_file("/fefs/scratch/bsc19/bsc19029/PERFORMANCE/datasets/data_scaled.csv", block_size=(10000, 5))
+    file = "/fefs/scratch/bsc19/bsc19029/PERFORMANCE/datasets/data_scaled.csv"
+    data = ds.load_txt_file(file, block_size=(10000, 5))
 
     dbscan = DBSCAN(eps=0.19, min_samples=5, max_samples=5000, n_regions=17,
                     dimensions=[0, 1])

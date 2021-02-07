@@ -16,6 +16,5 @@ def main():
     performance.measure("RF", "KDD99", rf.fit, x_kdd, y_kdd)
 
 
-
 if __name__ == "__main__":
     main()

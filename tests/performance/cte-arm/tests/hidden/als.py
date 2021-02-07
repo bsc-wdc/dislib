@@ -8,7 +8,8 @@ from dislib.recommendation import ALS
 
 def main():
     n_blocks = 384
-    data = "/fefs/scratch/bsc19/bsc19029/PERFORMANCE/datasets/netflix_data_libsvm.txt"
+    data = "/fefs/scratch/bsc19/bsc19029/PERFORMANCE/datasets/" \
+           "netflix_data_libsvm.txt"
     n_factors = 100
     n_features = 480189
 

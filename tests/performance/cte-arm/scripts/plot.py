@@ -10,7 +10,7 @@ matplotlib.use("pdf")
 
 def main():
     import matplotlib.pyplot as plt
-    
+
     base_dir = "/fefs/scratch/bsc19/bsc19029/PERFORMANCE/dislib"
     plot_path = os.path.join(base_dir, "plots")
     res_path = os.path.join(base_dir, "results")
