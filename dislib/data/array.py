@@ -1460,7 +1460,7 @@ def _block_apply(func, block, *args, **kwargs):
 
 @task(block=INOUT)
 def _set_value(block, i, j, value):
-    block[i][j] = value
+    block[i,j] = value
 
 
 @task(blocks={Type: COLLECTION_IN, Depth: 1}, returns=1)
