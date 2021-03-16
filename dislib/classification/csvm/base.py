@@ -121,7 +121,7 @@ class CascadeSVM(BaseEstimator):
         self._set_kernel()
         self._hstack_f = hstack_sp if x._sparse else np.hstack
 
-        ids_list = [[_gen_ids(row._blocks)] for row in x._iterator(axis=0)]
+        ids_list = [[_gen_ids(row.shape[0])] for row in x._iterator(axis=0)]
 
         while not self._check_finished():
             self._do_iteration(x, y, ids_list)
@@ -379,10 +379,9 @@ class CascadeSVM(BaseEstimator):
         return np.dot(x, x.T)
 
 
-@task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=1)
-def _gen_ids(blocks):
-    samples = Array._merge_blocks(blocks)
-    idx = [[uuid4().int] for _ in range(samples.shape[0])]
+@task(returns=1)
+def _gen_ids(n_samples):
+    idx = [[uuid4().int] for _ in range(n_samples)]
     return np.array(idx)
 
 
