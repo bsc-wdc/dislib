@@ -1,14 +1,9 @@
 import unittest
 
 import numpy as np
-from parameterized import parameterized
-from pycompss.api.api import compss_barrier
+from pycompss.api.api import compss_barrier, compss_wait_on
 from pycompss.api.constraint import constraint
 from pycompss.api.task import task
-from sklearn.datasets import make_blobs
-
-import dislib as ds
-from dislib.decomposition import PCA
 from dislib.math import qr_blocked
 
 
@@ -33,10 +28,29 @@ class QRTest(unittest.TestCase):
 
         (Q, R) = qr_blocked(m2b, mkl_threads, m_size, b_size)
 
-        q, r = np.linalg.qr(self._join_matrix(m2b, b_size))
+        Q = compss_wait_on(Q)
+        R = compss_wait_on(R)
+        m2b = compss_wait_on(m2b)
 
-        self.assertTrue(np.equal(self._join_matrix(Q, b_size), q))
-        self.assertTrue(np.equal(self._join_matrix(R, b_size), r))
+        print("Matriu entrada")
+        print(self._join_matrix(m2b, b_size))
+        print("Q*R")
+        print(self._join_matrix(Q, b_size))
+        print(R)
+        print(self._join_matrix(R, b_size))
+        print(self._join_matrix(Q, b_size) * self._join_matrix(R, b_size))
+        print("R generada")
+        print(self._join_matrix(R, b_size))
+        q, r = np.linalg.qr(self._join_matrix(m2b, b_size))
+        print("R numpy")
+        print(r)
+        print("Q generada")
+        print(self._join_matrix(Q, b_size))
+        print("Q numpy")
+        print(q)
+
+        self.assertTrue(np.array_equal(self._join_matrix(Q, b_size), q))
+        self.assertTrue(np.array_equal(self._join_matrix(R, b_size), r))
 
     def _join_matrix(self, A, BSIZE):
         joinMat = np.matrix([[]])
@@ -62,8 +76,8 @@ class QRTest(unittest.TestCase):
         import os
         os.environ["MKL_NUM_THREADS"] = str(mkl_proc)
 
-    @constraint(ComputingUnits="${ComputingUnits}")
-    @task(returns=list)
+    #@constraint(ComputingUnits="${ComputingUnits}")
+    #@task(returns=list)
     def _create_block_task(self, BSIZE, MKLProc):
         self._set_mkl_num_threads(MKLProc)
         return np.matrix(np.random.random((BSIZE, BSIZE)), dtype=np.double, copy=False)
