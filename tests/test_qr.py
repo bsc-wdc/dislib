@@ -4,6 +4,8 @@ import numpy as np
 from pycompss.api.api import compss_barrier, compss_wait_on
 from pycompss.api.constraint import constraint
 from pycompss.api.task import task
+
+from dislib.data.array import Array, random_array
 from dislib.math import qr_blocked
 
 
@@ -13,11 +15,15 @@ class QRTest(unittest.TestCase):
         """Tests qr_blocked"""
         np.random.seed(8)
 
-        m_size = 1
+        m_size = 4
         b_size = 4
         mkl_threads = 512
+        shape = (m_size * b_size, m_size * b_size)
 
-        m2b = self._gen_matrix(mkl_threads, m_size, b_size)
+        #m2b = self._gen_matrix(mkl_threads, m_size, b_size)
+        m2b = np.random.random(shape)
+        #m2b_ds = Array(m2b, (b_size, b_size), (b_size, b_size), shape, sparse=False)
+        m2b_ds = random_array(shape, (b_size, b_size))
 
         compss_barrier()
 
@@ -26,11 +32,11 @@ class QRTest(unittest.TestCase):
         #       [['random', np.matrix(np.array([[0.18, 0.46, 0.33], [0.92, 0.25, 0.75], [0.29, 0.23, 0.95]]))],
         #        ['random', np.matrix(np.array([[0.99, 0.68, 0.87], [0.16, 0.48, 0.45], [0.41, 0.4, 0.07]]))]]]
 
-        (Q, R) = qr_blocked(m2b, mkl_threads, m_size, b_size)
+        (Q, R) = qr_blocked(m2b_ds, mkl_threads)
 
         Q = compss_wait_on(Q)
         R = compss_wait_on(R)
-        m2b = compss_wait_on(m2b)
+        m2b_ds = compss_wait_on(m2b_ds)
 
         print("Matriu entrada")
         print(self._join_matrix(m2b, b_size))

@@ -1,9 +1,16 @@
 import numpy as np
+from pycompss.api.api import compss_wait_on
 from pycompss.api.constraint import constraint
 from pycompss.api.task import task
 
+from dislib.data.array import Array, identity, full
 
-def qr_blocked(A, mkl_proc, m_size, b_size, overwrite_a=False):
+ZEROS = 0
+IDENTITY = 1
+OTHER = 2
+
+
+def qr_blocked(a: Array, mkl_proc, overwrite_a=False):
     """ QR Decomposition (blocked / save memory).
 
     Parameters
@@ -20,44 +27,68 @@ def qr_blocked(A, mkl_proc, m_size, b_size, overwrite_a=False):
     NotImplementedError
         If a or b are sparse.
     """
+    assert(a._n_blocks[0] == a._n_blocks[1])
 
-    # matrix types are not that easy to handle
-    # they are stored in A[0], and the matrix is stored in A[1]
+    b_size = a._reg_shape  # size of each block
+    m_size = a._n_blocks[0]
+    n = a.shape[0] * a.shape[1]  # number of elements in the matrix
+    print("b_size = ", b_size)
+    print("m_size = ", m_size)
+    print("n = ", n)
 
-    Q = _gen_identity(m_size, b_size, mkl_proc)
+    # create an identity matrix together with an auxiliary matrix
+    # (one block of the auxiliary matrix per one block of the original matrix) that:
+    # - has zeros when the block is filled with zeros
+    # - has ones when the block is an identity matrix
+    q, q_type = _gen_identity(n, b_size, m_size)
+
+    print("identity generated")
 
     if not overwrite_a:
-        R = _copy_blocked(A)
+        r = a.copy()
     else:
-        R = A
+        r = a
+
+    # create an identity matrix together with an auxiliary matrix
+    # (one block of the auxiliary matrix per one block of the original matrix) that:
+    # is full of values of 2 in order to indicate that it is a normal matrix
+    r_type = full((m_size, m_size), (1, 1), OTHER)
 
     for i in range(m_size):
-
-        actQ, R[i][i] = _qr(R[i][i], mkl_proc, b_size, transpose=True)
-
+        print("step1")
+        print("r.shape", r.shape)
+        print("r._n_blocks", r._n_blocks)
+        print("all blocks", compss_wait_on(r._blocks))
+        print("i blocks", compss_wait_on(r._blocks[i]))
+        print("ii blocks", compss_wait_on(r._blocks[i][i]))
+        [actQ_type, actQ], [r_type[i][i], r[i][i]] = _qr([r_type._blocks[i][i], r._blocks[i][i]], mkl_proc, b_size, transpose=True)
+        print("step2")
         for j in range(m_size):
-            Q[j][i] = _dot(Q[j][i], actQ, mkl_proc, transposeB=True)
+            q_type._blocks[j][i], q._blocks[j][i] = _dot([q_type._blocks[j][i], q._blocks[j][i]], [actQ_type, actQ], mkl_proc, transposeB=True)
             # Q[i][j] = dot(actQ, Q[i][j])
-
+        print("step3")
         for j in range(i + 1, m_size):
-            R[i][j] = _dot(actQ, R[i][j], mkl_proc)
+            r_type._blocks[i][j], r._blocks[i][j] = _dot([actQ_type, actQ], [r_type._blocks[i][j], r._blocks[i][j]], mkl_proc)
 
+        '''
         # Update values of the respective column
         for j in range(i + 1, m_size):
             subQ = [[np.matrix(np.array([0])), np.matrix(np.array([0]))],
                     [np.matrix(np.array([0])), np.matrix(np.array([0]))]]
-            subQ[0][0], subQ[0][1], subQ[1][0], subQ[1][1], R[i][i], R[j][i] = _little_qr(R[i][i], R[j][i], mkl_proc,
-                                                                                        b_size, transpose=True)
+            subQ[0][0], subQ[0][1], subQ[1][0], subQ[1][1], (r_type._blocks[i][i], r._blocks[i][i]), (r_type._blocks[j][i], r._blocks[j][i]) = _little_qr(
+                (r_type._blocks[i][i], r._blocks[i][i]), (r_type._blocks[j][i], r._blocks[j][i]), mkl_proc,
+                b_size, transpose=True)
             # subQ = blockedTranspose(subQ, mkl_proc)
             # Update values of the row for the value updated in the column
             for k in range(i + 1, m_size):
-                [[R[i][k]], [R[j][k]]] = _multiply_blocked(subQ, [[R[i][k]], [R[j][k]]], b_size, mkl_proc)
+                [[r._blocks[i][k]], [r._blocks[j][k]]] = _multiply_blocked((OTHER, subQ), [[r._blocks[i][k]], [r._blocks[j][k]]], b_size, mkl_proc)
 
             for k in range(m_size):
-                [[Q[k][i], Q[k][j]]] = _multiply_blocked([[Q[k][i], Q[k][j]]], subQ, b_size, mkl_proc, transposeB=True)
+                [[q._blocks[k][i], q._blocks[k][j]]] = _multiply_blocked([[q._blocks[k][i], q._blocks[k][j]]], subQ, b_size, mkl_proc, transposeB=True)
                 # [[Q[k][i], Q[k][j]]] = multiplyBlocked([[Q[k][i], Q[k][j]]], blockedTranspose(subQ, mkl_proc), BSIZE, mkl_proc)
+        '''
     # Q = blockedTranspose(Q,mkl_proc)
-    return Q, R
+    return q, r
 
 
 def _set_mkl_num_threads(mkl_proc):
@@ -82,7 +113,14 @@ def _create_block(b_size, mkl_proc, type='random'):
     return [type, block]
 
 
-def _gen_identity(m_size, b_size, mkl_proc):
+def _gen_identity(n, b_size, m_size):
+    a = identity(n, b_size, dtype=None)
+    print("identity1 ready")
+    print("generating identity2 for", m_size)
+    aux_a = identity(m_size, (1, 1), dtype=np.uint8)
+    print("identity2 ready")
+    return a, aux_a
+    '''
     A = []
     for i in range(m_size):
         A.append([])
@@ -92,27 +130,31 @@ def _gen_identity(m_size, b_size, mkl_proc):
         for j in range(i + 1, m_size):
             A[i].append(_create_block(b_size, mkl_proc, type='zeros'))
     return A
+    '''
 
 
 @constraint(ComputingUnits="${ComputingUnits}")
 @task(returns=(list, list))
 def _qr_task(A, mkl_proc, b_size, type, mode='reduced', transpose=False):
+    #A = compss_wait_on(A)
+    #type = compss_wait_on(type)
+    print("QR A = ", A, " type = ", type)
     from numpy.linalg import qr
     _set_mkl_num_threads(mkl_proc)
-    if type == 'random':
-        Q, R = qr(A, mode=mode)
-    elif type == 'zeros':
-        Q, R = qr(np.matrix(np.zeros((b_size, b_size))), mode=mode)
+    if type == OTHER:
+        q, r = qr(A, mode=mode)
+    elif type == ZEROS:
+        q, r = qr(np.matrix(np.zeros((b_size, b_size))), mode=mode)
     else:
-        Q, R = qr(np.matrix(np.identity(b_size)), mode=mode)
+        q, r = qr(np.matrix(np.identity(b_size)), mode=mode)
     if transpose:
-        Q = np.transpose(Q)
-    return Q, R
+        q = np.transpose(q)
+    return q, r
 
 
 def _qr(A, mkl_proc, b_size, mode='reduced', transpose=False):
     Qaux, Raux = _qr_task(A[1], mkl_proc, b_size, A[0], mode=mode, transpose=transpose)
-    return ['random', Qaux], ['random', Raux]
+    return [OTHER, Qaux], [OTHER, Raux]
 
 
 @constraint(ComputingUnits="${ComputingUnits}")
@@ -121,22 +163,24 @@ def _transpose_block_task(A):
     return np.transpose(A)
 
 
+@constraint(ComputingUnits="${ComputingUnits}")
+@task(returns=list)
 def _dot(A, B, mkl_proc, transposeResult=False, transposeB=False):
-    if A[0] == 'zeros':
-        return ['zeros', []]
-    if A[0] == 'identity':
+    if A[0] == ZEROS:
+        return ZEROS, []
+    if A[0] == IDENTITY:
         if transposeB and transposeResult:
             return B
         if transposeB or transposeResult:
-            return _transpose_block(B)
+            return _transpose_block(A[1], A[0])
         return B
-    if B[0] == 'zeros':
-        return ['zeros', []]
-    if B[0] == 'identity':
+    if B[0] == ZEROS:
+        return (ZEROS, [])
+    if B[0] == IDENTITY:
         if transposeResult:
-            return _transpose_block(A)
+            return _transpose_block(A[1], A[0])
         return A
-    return ['random', _dot_task(A[1], B[1], mkl_proc, transposeResult=transposeResult, transposeB=transposeB)]
+    return [OTHER, _dot_task(A[1], B[1], mkl_proc, transposeResult=transposeResult, transposeB=transposeB)]
 
 
 @constraint(ComputingUnits="${ComputingUnits}")
@@ -157,9 +201,9 @@ def _little_qr_task(A, typeA, B, typeB, mkl_proc, b_size, transpose=False):
     entA = [typeA, A]
     entB = [typeB, B]
     for mat in [entA, entB]:
-        if mat[0] == 'zeros':
+        if mat[0] == ZEROS:
             mat[1] = np.matrix(np.zeros((b_size, b_size)))
-        elif mat[1] == 'identity':
+        elif mat[1] == IDENTITY:
             mat[1] = np.matrix(np.identity(b_size))
     currA = np.bmat([[entA[1]], [entB[1]]])
     (subQ, subR) = np.linalg.qr(currA, mode='complete')
@@ -175,8 +219,7 @@ def _little_qr_task(A, typeA, B, typeB, mkl_proc, b_size, transpose=False):
 
 def _little_qr(A, B, mkl_proc, BSIZE, transpose=False):
     subQ00, subQ01, subQ10, subQ11, AA, BB = _little_qr_task(A[1], A[0], B[1], B[0], mkl_proc, BSIZE, transpose)
-    return ['random', subQ00], ['random', subQ01], ['random', subQ10], ['random', subQ11], ['random', AA], ['random',
-                                                                                                            BB]
+    return subQ00, subQ01, subQ10, subQ11, [OTHER, AA], [OTHER, BB]
 
 
 @constraint(ComputingUnits="${ComputingUnits}")
@@ -208,10 +251,10 @@ def _multiply_single_block_task(A, typeA, B, typeB, C, typeC, mkl_proc, b_size, 
 
 
 def _multiply_single_block(A, B, C, mkl_proc, b_size, transposeB=False):
-    if A[0] == 'zeros' or B[0] == 'zeros':
+    if A[0] == ZEROS or B[0] == ZEROS:
         return C
     C[1] = _multiply_single_block_task(A[1], A[0], B[1], B[0], C[1], C[0], mkl_proc, b_size, transposeB=transposeB)
-    C = ['random', C[1]]
+    C = [OTHER, C[1]]
     return C
 
 
@@ -227,31 +270,16 @@ def _multiply_blocked(A, B, b_size, mkl_proc, transposeB=False):
     for i in range(len(A)):
         C.append([])
         for j in range(len(B[0])):
-            C[i].append(['zeros', []])
+            C[i].append([ZEROS, []])
             for k in range(len(A[0])):
                 C[i][j] = _multiply_single_block(A[i][k], B[k][j], C[i][j], mkl_proc, b_size, transposeB=transposeB)
     return C
 
 
-def _transpose_block(A):
-    if A[0] == 'zeros' or A[0] == 'identity':
-        return A
-    return ['random', _transpose_block_task(A[1])]
-
-
-def _copy_blocked(A, transpose=False):
-    B = []
-    for i in range(len(A)):
-        B.append([])
-        for j in range(len(A[0])):
-            B[i].append(np.matrix([0]))
-    for i in range(len(A)):
-        for j in range(len(A[0])):
-            if transpose:
-                B[j][i] = A[i][j]
-            else:
-                B[i][j] = [A[i][j][0], A[i][j][1]]
-    return B
+def _transpose_block(a, a_type):
+    if a_type == ZEROS or a_type == IDENTITY:
+        return [a, a_type]
+    return [OTHER, _transpose_block_task(a)]
 
 
 def _split_matrix(A, m_size):
