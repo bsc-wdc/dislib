@@ -13,15 +13,16 @@ class QRTest(unittest.TestCase):
 
     def test_qr(self):
         """Tests qr_blocked"""
+        np.set_printoptions(precision=2)
         np.random.seed(8)
 
-        m_size = 4
+        m_size = 1
         b_size = 4
         mkl_threads = 512
         shape = (m_size * b_size, m_size * b_size)
 
         #m2b = self._gen_matrix(mkl_threads, m_size, b_size)
-        m2b = np.random.random(shape)
+        #m2b = np.random.random(shape)
         #m2b_ds = Array(m2b, (b_size, b_size), (b_size, b_size), shape, sparse=False)
         m2b_ds = random_array(shape, (b_size, b_size))
 
@@ -34,29 +35,52 @@ class QRTest(unittest.TestCase):
 
         (Q, R) = qr_blocked(m2b_ds, mkl_threads)
 
-        Q = compss_wait_on(Q)
-        R = compss_wait_on(R)
+        print("waiting for the results")
+
+        print("returned shape of Q:", Q.shape)
+        print("returned shape of R:", R.shape)
+        Q = compss_wait_on(Q).collect()
+        R = compss_wait_on(R).collect()
         m2b_ds = compss_wait_on(m2b_ds)
+        m2b = m2b_ds.collect()
+
+        print("Q ds", Q)
+        print("R ds", R)
+
+        Q_np = self._ds_to_np(Q)
+        R_np = self._ds_to_np(R)
 
         print("Matriu entrada")
-        print(self._join_matrix(m2b, b_size))
+        print(m2b)
         print("Q*R")
-        print(self._join_matrix(Q, b_size))
-        print(R)
-        print(self._join_matrix(R, b_size))
-        print(self._join_matrix(Q, b_size) * self._join_matrix(R, b_size))
+        print(Q_np * R_np)
         print("R generada")
-        print(self._join_matrix(R, b_size))
-        q, r = np.linalg.qr(self._join_matrix(m2b, b_size))
+        print(R_np)
+        q, r = np.linalg.qr(m2b)
         print("R numpy")
         print(r)
         print("Q generada")
-        print(self._join_matrix(Q, b_size))
+        print(Q_np)
         print("Q numpy")
         print(q)
+        print("Q generada * Q generada.T")
+        print(Q_np.dot(Q_np.T))
+        print("Q numpy * Q numpy.T")
+        print(q.dot(q.T))
+        print("Q generada * R generada")
+        print(Q_np.dot(R_np))
+        print("Q numpy * R numpy")
+        print(q.dot(r))
 
-        self.assertTrue(np.array_equal(self._join_matrix(Q, b_size), q))
-        self.assertTrue(np.array_equal(self._join_matrix(R, b_size), r))
+        self.assertTrue(np.array_equal(Q_np, q))
+        self.assertTrue(np.array_equal(R_np, r))
+
+    def _ds_to_np(self, ds):
+        ds_np = np.zeros(ds.shape)
+        for i in range(ds.shape[0]):
+            for j in range(ds.shape[1]):
+                ds_np[i, j] = ds[i, j]
+        return ds_np
 
     def _join_matrix(self, A, BSIZE):
         joinMat = np.matrix([[]])
