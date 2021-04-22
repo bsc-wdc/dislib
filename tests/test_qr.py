@@ -16,8 +16,8 @@ class QRTest(unittest.TestCase):
         np.set_printoptions(precision=2)
         np.random.seed(8)
 
-        m_size = 1
-        b_size = 4
+        m_size = 2
+        b_size = 2
         mkl_threads = 512
         shape = (m_size * b_size, m_size * b_size)
 
@@ -72,8 +72,8 @@ class QRTest(unittest.TestCase):
         print("Q numpy * R numpy")
         print(q.dot(r))
 
-        self.assertTrue(np.array_equal(Q_np, q))
-        self.assertTrue(np.array_equal(R_np, r))
+        self.assertTrue(np.allclose(Q_np, q))
+        self.assertTrue(np.allclose(R_np, r))
 
     def _ds_to_np(self, ds):
         ds_np = np.zeros(ds.shape)
