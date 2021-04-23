@@ -72,8 +72,12 @@ class QRTest(unittest.TestCase):
         print("Q numpy * R numpy")
         print(q.dot(r))
 
-        self.assertTrue(np.allclose(Q_np, q))
-        self.assertTrue(np.allclose(R_np, r))
+        # check Q matrix is orthogonal
+        self.assertTrue(np.allclose(q.dot(q.T), np.identity(m_size * b_size)))
+        # check R matrix is upper triangular
+        self.assertTrue(np.allclose(np.triu(r), r))
+        # check if the product Q * R is the original matrix
+        self.assertTrue(np.allclose(q.dot(r), m2b))
 
     def _ds_to_np(self, ds):
         ds_np = np.zeros(ds.shape)
