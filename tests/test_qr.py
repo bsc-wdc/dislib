@@ -9,14 +9,15 @@ from dislib.data.array import Array, random_array
 from dislib.math import qr_blocked
 
 
-class QRTest(unittest.TestCase):
+#class QRTest(unittest.TestCase):
+class QRTest(object):
 
     def test_qr(self):
         """Tests qr_blocked"""
         np.set_printoptions(precision=2)
         np.random.seed(8)
 
-        m_size = 2
+        m_size = 4
         b_size = 2
         mkl_threads = 512
         shape = (m_size * b_size, m_size * b_size)
@@ -134,9 +135,9 @@ class QRTest(unittest.TestCase):
         return A
 
 
-def main():
-    unittest.main()
+#def main():
+#    unittest.main()
 
 
-if __name__ == '__main__':
-    main()
+#if __name__ == '__main__':
+#    main()
