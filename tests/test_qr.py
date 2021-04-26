@@ -1,6 +1,7 @@
 import unittest
 
 import numpy as np
+from parameterized import parameterized
 from pycompss.api.api import compss_barrier, compss_wait_on
 from pycompss.api.constraint import constraint
 from pycompss.api.task import task
@@ -12,13 +13,14 @@ from dislib.math import qr_blocked
 #class QRTest(unittest.TestCase):
 class QRTest(object):
 
-    def test_qr(self):
+    @parameterized.expand([(1, 2), (1, 4), (2, 2), (2, 4), (3, 3), (3, 4), (4, 2)])
+    def test_qr(self, m_size, b_size):
         """Tests qr_blocked"""
         np.set_printoptions(precision=2)
         np.random.seed(8)
 
-        m_size = 4
-        b_size = 2
+        #m_size = 2
+        #b_size = 2
         mkl_threads = 512
         shape = (m_size * b_size, m_size * b_size)
 
@@ -29,56 +31,39 @@ class QRTest(object):
 
         compss_barrier()
 
-        #m2b = [[['random', np.matrix(np.array([[0.04, 0.22, 0.15], [0.82, 0.23, 0.9], [0.03, 0.53, 0.12]]))],
-        #        ['random', np.matrix(np.array([[0.16, 0.38, 0.07], [0.02, 0.53, 0.78], [0.22, 0.99, 0.24]]))]],
-        #       [['random', np.matrix(np.array([[0.18, 0.46, 0.33], [0.92, 0.25, 0.75], [0.29, 0.23, 0.95]]))],
-        #        ['random', np.matrix(np.array([[0.99, 0.68, 0.87], [0.16, 0.48, 0.45], [0.41, 0.4, 0.07]]))]]]
-
         (Q, R) = qr_blocked(m2b_ds, mkl_threads)
 
-        print("waiting for the results")
-
-        print("returned shape of Q:", Q.shape)
-        print("returned shape of R:", R.shape)
         Q = compss_wait_on(Q).collect()
         R = compss_wait_on(R).collect()
         m2b_ds = compss_wait_on(m2b_ds)
         m2b = m2b_ds.collect()
 
-        print("Q ds", Q)
-        print("R ds", R)
+        Q_blocked_np = self._ds_to_np(Q)
+        R_blocked_np = self._ds_to_np(R)
 
-        Q_np = self._ds_to_np(Q)
-        R_np = self._ds_to_np(R)
-
-        print("Matriu entrada")
+        print("Entered matrix")
         print(m2b)
-        print("Q*R")
-        print(Q_np * R_np)
-        print("R generada")
-        print(R_np)
-        q, r = np.linalg.qr(m2b)
-        print("R numpy")
-        print(r)
-        print("Q generada")
-        print(Q_np)
-        print("Q numpy")
-        print(q)
-        print("Q generada * Q generada.T")
-        print(Q_np.dot(Q_np.T))
-        print("Q numpy * Q numpy.T")
-        print(q.dot(q.T))
-        print("Q generada * R generada")
-        print(Q_np.dot(R_np))
-        print("Q numpy * R numpy")
-        print(q.dot(r))
+        print("Q_blocked * R_blocked")
+        print(Q_blocked_np * R_blocked_np)
+
+        q_np, r_np = np.linalg.qr(m2b)
+
+        print("Q_blocked")
+        print(Q_blocked_np)
+        print("Q_np")
+        print(q_np)
+        print("R_blocked")
+        print(R_blocked_np)
+        print("R_np")
+        print(r_np)
+
 
         # check Q matrix is orthogonal
-        self.assertTrue(np.allclose(q.dot(q.T), np.identity(m_size * b_size)))
+        self.assertTrue(np.allclose(Q_blocked_np.dot(Q_blocked_np.T), np.identity(m_size * b_size)))
         # check R matrix is upper triangular
-        self.assertTrue(np.allclose(np.triu(r), r))
+        self.assertTrue(np.allclose(np.triu(R_blocked_np), R_blocked_np))
         # check if the product Q * R is the original matrix
-        self.assertTrue(np.allclose(q.dot(r), m2b))
+        self.assertTrue(np.allclose(Q_blocked_np.dot(R_blocked_np), m2b))
 
     def _ds_to_np(self, ds):
         ds_np = np.zeros(ds.shape)

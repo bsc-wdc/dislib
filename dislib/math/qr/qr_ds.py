@@ -10,7 +10,7 @@ ZEROS = 0
 IDENTITY = 1
 OTHER = 2
 
-_DEBUG = False
+_DEBUG = True
 
 
 if _DEBUG:
@@ -294,7 +294,7 @@ def _gen_identity(n, b_size, m_size):
 
 @constraint(ComputingUnits="${ComputingUnits}")
 @task(returns=(list, list), on_failure='FAIL')
-def _qr_task(a, a_type, mkl_proc, b_size, mode='reduced', t=False): #, **kwargs):
+def _qr_task(a, a_type, mkl_proc, b_size, mode='reduced', t=False, **kwargs):
     #a = compss_wait_on(a)
     #a_type = compss_wait_on(a_type)
     print("QR A = ", a, " type = ", a_type)
@@ -333,7 +333,7 @@ def _empty_block(shape):
 #a=COLLECTION_IN, b=COLLECTION_IN,
 @constraint(ComputingUnits="${ComputingUnits}")
 @task(returns=(list,list))
-def _dot(a, a_type, b, b_type, mkl_proc, transposeResult=False, transposeB=False): #, **kwargs):
+def _dot(a, a_type, b, b_type, mkl_proc, transposeResult=False, transposeB=False, **kwargs):
     #print("DOT1", a, "of type", a_type)
     #print("DOT2", b, "of type", b_type)
     if a_type[0][0] == ZEROS:
@@ -391,7 +391,7 @@ def _dot_task(a, b, mkl_proc, transposeResult=False, transposeB=False, **kwargs)
 
 @constraint(ComputingUnits="${ComputingUnits}")
 @task(returns=(list, list, list, list, list, list))
-def _little_qr_task(A, typeA, B, typeB, mkl_proc, b_size, transpose=False): #, **kwargs):
+def _little_qr_task(A, typeA, B, typeB, mkl_proc, b_size, transpose=False, **kwargs):
     # TODO what if blocks are not square
     regular_b_size = b_size[0]
     _set_mkl_num_threads(mkl_proc)
@@ -421,7 +421,7 @@ def _little_qr(a, type_a, b, type_b, mkl_proc, BSIZE, transpose=False):
 
 @constraint(ComputingUnits="${ComputingUnits}")
 @task(returns=(list, list))
-def _multiply_single_block_task(A, typeA, B, typeB, C, typeC, mkl_proc, b_size, transposeB=False): #, **kwargs):
+def _multiply_single_block_task(A, typeA, B, typeB, C, typeC, mkl_proc, b_size, transposeB=False, **kwargs):
     _set_mkl_num_threads(mkl_proc)
 
     if _DEBUG:
