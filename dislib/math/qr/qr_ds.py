@@ -165,8 +165,8 @@ def qr_blocked(a: Array, mkl_proc, overwrite_a=False):
 
         # Update values of the respective column
         for j in range(i + 1, m_size):
-            subQ = [[np.matrix(np.array([0])), np.matrix(np.array([0]))],
-                    [np.matrix(np.array([0])), np.matrix(np.array([0]))]]
+            subQ = [[np.array([0]), np.array([0])],
+                    [np.array([0]), np.array([0])]]
             # setting the following to OTHER because of _little_qr returns this type of matrices
             subQ_type = [[_type_block(OTHER), _type_block(OTHER)],
                         [_type_block(OTHER), _type_block(OTHER)]]
@@ -303,9 +303,9 @@ def _qr_task(a, a_type, mkl_proc, b_size, mode='reduced', t=False, **kwargs):
     if a_type[0, 0] == OTHER:
         q, r = qr(a, mode=mode)
     elif a_type[0, 0] == ZEROS:
-        q, r = qr(np.matrix(np.zeros(b_size)), mode=mode)
+        q, r = qr(np.zeros(b_size), mode=mode)
     else:
-        q, r = qr(np.matrix(np.identity(max(b_size))), mode=mode)
+        q, r = qr(np.identity(max(b_size)), mode=mode)
     if t:
         q = np.transpose(q)
     return q, r
@@ -399,9 +399,9 @@ def _little_qr_task(A, typeA, B, typeB, mkl_proc, b_size, transpose=False, **kwa
     entB = [typeB, B]
     for mat in [entA, entB]:
         if mat[0] == ZEROS:
-            mat[1] = np.matrix(np.zeros((regular_b_size, regular_b_size)))
+            mat[1] = np.zeros((regular_b_size, regular_b_size))
         elif mat[0] == IDENTITY:
-            mat[1] = np.matrix(np.identity(regular_b_size))
+            mat[1] = np.identity(regular_b_size)
     currA = np.bmat([[entA[1]], [entB[1]]])
     (subQ, subR) = np.linalg.qr(currA, mode='complete')
     AA = subR[0:regular_b_size]
@@ -442,12 +442,12 @@ def _multiply_single_block_task(A, typeA, B, typeB, C, typeC, mkl_proc, b_size, 
     funA = [typeA, A]
     funB = [typeB, B]
     if typeC[0][0] == ZEROS:
-        C = np.matrix(np.zeros((b_size[0], b_size[1])))
+        C = np.zeros((b_size[0], b_size[1]))
     elif typeC[0][0] == IDENTITY:
-        C = np.matrix(np.identity(b_size[0]))
+        C = np.identity(b_size[0])
     if funA[0][0][0] == IDENTITY:
         if funB[0][0][0] == IDENTITY:
-            funB[1] = np.matrix(np.identity(b_size[0]))
+            funB[1] = np.identity(b_size[0])
         if transposeB:
             aux = np.transpose(funB[1])
         else:
@@ -555,5 +555,5 @@ def _split_matrix(A, m_size):
     for i in range(m_size):
         for j in range(m_size):
             #print("bSize", bSize, "index", (i * bSize, (i + 1) * bSize), (j * bSize, (j + 1) * bSize))
-            splittedMatrix[i][j] = np.matrix(A[i * bSize:(i + 1) * bSize, j * bSize:(j + 1) * bSize])
+            splittedMatrix[i][j] = A[i * bSize:(i + 1) * bSize, j * bSize:(j + 1) * bSize]
     return splittedMatrix

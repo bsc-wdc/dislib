@@ -13,7 +13,7 @@ from dislib.math import qr_blocked
 #class QRTest(unittest.TestCase):
 class QRTest(object):
 
-    @parameterized.expand([(1, 2), (1, 4), (2, 2), (2, 4), (3, 3), (3, 4), (4, 2)])
+    @parameterized.expand([(1, 2), (1, 4), (2, 2), (2, 4), (3, 3), (3, 4), (4, 2), (4, 3), (4, 4)])
     #@parameterized.expand([(2, 2)])
     def test_qr(self, m_size, b_size):
         """Tests qr_blocked"""
@@ -44,26 +44,25 @@ class QRTest(object):
         Q_blocked_np = self._ds_to_np(Q)
         R_blocked_np = self._ds_to_np(R)
 
-        print("Entered matrix")
-        print(m2b)
-        print("Q_blocked * R_blocked")
-        print(Q_blocked_np * R_blocked_np)
+        #print("Entered matrix")
+        #print(m2b)
+        #print("Q_blocked * R_blocked")
+        #print(Q_blocked_np * R_blocked_np)
 
         q_np, r_np = np.linalg.qr(m2b)
 
-        print("Q_blocked")
-        print(Q_blocked_np)
-        print("Q_np")
-        print(q_np)
-        print("R_blocked")
-        print(R_blocked_np)
-        print("R_np")
-        print(r_np)
+        #print("Q_blocked")
+        #print(Q_blocked_np)
+        #print("Q_np")
+        #print(q_np)
+        #print("R_blocked")
+        #print(R_blocked_np)
+        #print("R_np")
+        #print(r_np)
 
-
-        # check Q matrix is orthogonal
+        # check if Q matrix is orthogonal
         self.assertTrue(np.allclose(Q_blocked_np.dot(Q_blocked_np.T), np.identity(m_size * b_size)))
-        # check R matrix is upper triangular
+        # check if R matrix is upper triangular
         self.assertTrue(np.allclose(np.triu(R_blocked_np), R_blocked_np))
         # check if the product Q * R is the original matrix
         self.assertTrue(np.allclose(Q_blocked_np.dot(R_blocked_np), m2b))
