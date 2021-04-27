@@ -6,7 +6,7 @@ from pycompss.api.api import compss_barrier, compss_wait_on
 from pycompss.api.constraint import constraint
 from pycompss.api.task import task
 
-from dislib.data.array import Array, random_array
+from dislib.data.array import Array, random_array, array
 from dislib.math import qr_blocked
 
 
@@ -14,6 +14,7 @@ from dislib.math import qr_blocked
 class QRTest(object):
 
     @parameterized.expand([(1, 2), (1, 4), (2, 2), (2, 4), (3, 3), (3, 4), (4, 2)])
+    #@parameterized.expand([(2, 2)])
     def test_qr(self, m_size, b_size):
         """Tests qr_blocked"""
         np.set_printoptions(precision=2)
@@ -28,6 +29,8 @@ class QRTest(object):
         #m2b = np.random.random(shape)
         #m2b_ds = Array(m2b, (b_size, b_size), (b_size, b_size), shape, sparse=False)
         m2b_ds = random_array(shape, (b_size, b_size))
+
+        #m2b_ds = array([[0.79, 0.68, 0.07, 0.45], [0.14, 0.51, 0.07, 0.74], [0.42, 0.08, 0.26, 0.54], [0.01, 0.34, 0.01, 0.21]], (2, 2))
 
         compss_barrier()
 

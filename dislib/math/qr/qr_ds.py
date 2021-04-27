@@ -10,11 +10,11 @@ ZEROS = 0
 IDENTITY = 1
 OTHER = 2
 
-_DEBUG = True
+_DEBUG = False
 
-
-if _DEBUG:
-    from pycompss.api.dummy.task import task  # for debugging purposes
+#import pycompss.api.dummy.task as dummy
+#if _DEBUG:
+#    from pycompss.api.dummy.task import task  # for debugging purposes
 
 
 import threading
@@ -293,7 +293,7 @@ def _gen_identity(n, b_size, m_size):
 
 
 @constraint(ComputingUnits="${ComputingUnits}")
-@task(returns=(list, list), on_failure='FAIL')
+@task(returns=(np.array, np.array), on_failure='FAIL')
 def _qr_task(a, a_type, mkl_proc, b_size, mode='reduced', t=False, **kwargs):
     #a = compss_wait_on(a)
     #a_type = compss_wait_on(a_type)
@@ -468,7 +468,10 @@ def _multiply_single_block_task(A, typeA, B, typeB, C, typeC, mkl_proc, b_size, 
         print("C", C)
         print("C.shape", len(C))
 
-    C += (funA[1] * funB[1])
+    print("(funA[1] * funB[1])", (funA[1] * funB[1]))
+
+    C += (funA[1].dot(funB[1]))
+    print("C", C)
     return _type_block(OTHER), C
 
 
