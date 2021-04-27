@@ -900,6 +900,21 @@ class Array(object):
         """
         return apply_along_axis(np.mean, axis, self)
 
+    def median(self, axis=0):
+        """
+        Returns the median along the given axis.
+
+        Parameters
+        ----------
+        axis : int, optional (default=0)
+
+        Returns
+        -------
+        median : ds-array
+            Median along axis.
+        """
+        return apply_along_axis(np.median, axis, self)
+
     def norm(self, axis=0):
         """ Returns the Frobenius norm along an axis.
 
