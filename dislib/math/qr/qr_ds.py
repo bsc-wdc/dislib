@@ -44,9 +44,9 @@ def qr_blocked(a: Array, mkl_proc, overwrite_a=False):
     b_size = a._reg_shape  # size of each block
     m_size = a._n_blocks[0]
     n = a.shape[0] * a.shape[1]  # number of elements in the matrix
-    print("b_size = ", b_size)
-    print("m_size = ", m_size)
-    print("n = ", n)
+    #print("b_size = ", b_size)
+    #print("m_size = ", m_size)
+    #print("n = ", n)
 
     # create an identity matrix together with an auxiliary matrix
     # (one element of the auxiliary matrix per one block of the original matrix) that:
@@ -66,8 +66,8 @@ def qr_blocked(a: Array, mkl_proc, overwrite_a=False):
     # is full of values of 2 in order to indicate that it is a normal matrix
     r_type = full((m_size, m_size), (1, 1), OTHER)
 
-    print("q shape 0:", q.shape)
-    print("r shape 0:", r.shape)
+    #print("q shape 0:", q.shape)
+    #print("r shape 0:", r.shape)
 
     for i in range(m_size):
         if _DEBUG:
@@ -231,10 +231,10 @@ def qr_blocked(a: Array, mkl_proc, overwrite_a=False):
                     print("6. subQ:", subQ)
                     print("6. subQ_type:", subQ_type)
 
-                q._blocks[k][i] = compss_wait_on(q._blocks[k][i])
-                q._blocks[k][j] = compss_wait_on(q._blocks[k][j])
-                print("q._blocks[k][i] for ({}, {}) before".format(k, i), q._blocks[k][i])
-                print("q._blocks[k][j] for ({}, {}) before".format(k, j), q._blocks[k][j])
+                #q._blocks[k][i] = compss_wait_on(q._blocks[k][i])
+                #q._blocks[k][j] = compss_wait_on(q._blocks[k][j])
+                #print("q._blocks[k][i] for ({}, {}) before".format(k, i), q._blocks[k][i])
+                #print("q._blocks[k][j] for ({}, {}) before".format(k, j), q._blocks[k][j])
 
                 [[q_type._blocks[k][i], q_type._blocks[k][j]]], [[q._blocks[k][i], q._blocks[k][j]]] = _multiply_blocked(
                 #q_type._blocks[k][i], q_type._blocks[k][j], q._blocks[k][i], q._blocks[k][j] = _multiply_blocked(
@@ -247,10 +247,10 @@ def qr_blocked(a: Array, mkl_proc, overwrite_a=False):
                     transposeB=True
                 )
 
-                q._blocks[k][i] = compss_wait_on(q._blocks[k][i])
-                q._blocks[k][j] = compss_wait_on(q._blocks[k][j])
-                print("q._blocks[k][i] for ({}, {}) after".format(k, i), q._blocks[k][i])
-                print("q._blocks[k][j] for ({}, {}) after".format(k, j), q._blocks[k][j])
+                #q._blocks[k][i] = compss_wait_on(q._blocks[k][i])
+                #q._blocks[k][j] = compss_wait_on(q._blocks[k][j])
+                #print("q._blocks[k][i] for ({}, {}) after".format(k, i), q._blocks[k][i])
+                #print("q._blocks[k][j] for ({}, {}) after".format(k, j), q._blocks[k][j])
 
                 if _DEBUG:
                     q._blocks = compss_wait_on(q._blocks)
@@ -297,7 +297,7 @@ def _gen_identity(n, b_size, m_size):
 def _qr_task(a, a_type, mkl_proc, b_size, mode='reduced', t=False, **kwargs):
     #a = compss_wait_on(a)
     #a_type = compss_wait_on(a_type)
-    print("QR A = ", a, " type = ", a_type)
+    #print("QR A = ", a, " type = ", a_type)
     from numpy.linalg import qr
     _set_mkl_num_threads(mkl_proc)
     if a_type[0, 0] == OTHER:
@@ -312,7 +312,6 @@ def _qr_task(a, a_type, mkl_proc, b_size, mode='reduced', t=False, **kwargs):
 
 
 def _qr(a, a_type, mkl_proc, b_size, mode='reduced', t=False):
-    print("executing the qr task")
     Qaux, Raux = _qr_task(a, a_type, mkl_proc, b_size, mode=mode, t=t)
     return _type_block(OTHER), Qaux, _type_block(OTHER), Raux
 
@@ -468,10 +467,10 @@ def _multiply_single_block_task(A, typeA, B, typeB, C, typeC, mkl_proc, b_size, 
         print("C", C)
         print("C.shape", len(C))
 
-    print("(funA[1] * funB[1])", (funA[1] * funB[1]))
+    #print("(funA[1] * funB[1])", (funA[1] * funB[1]))
 
     C += (funA[1].dot(funB[1]))
-    print("C", C)
+    #print("C", C)
     return _type_block(OTHER), C
 
 
@@ -506,20 +505,20 @@ def _multiply_blocked(A, type_a, B, type_b, b_size, mkl_proc, transposeB=False):
             C[i].append(_empty_block(b_size))
             type_c[i].append(_type_block(ZEROS))
             for k in range(len(A[0])):
-                print("indices", (i, j, k), "of", (len(A),len(B[0]), len(A[0])))
-                print("A", A)
-                print("type_a", type_a)
-                print("B", B)
-                print("type_b", type_b)
-                print("C", C)
-                print("type_c", type_c)
+                #print("indices", (i, j, k), "of", (len(A),len(B[0]), len(A[0])))
+                #print("A", A)
+                #print("type_a", type_a)
+                #print("B", B)
+                #print("type_b", type_b)
+                #print("C", C)
+                #print("type_c", type_c)
 
-                A[i][k] = compss_wait_on(A[i][k])
-                B[k][j] = compss_wait_on(B[k][j])
-                C[i][j] = compss_wait_on(C[i][j])
-                print("A[{}][{}]".format(i, k), A[i][k])
-                print("B[{}][{}]".format(k, j), B[k][j])
-                print("C[{}][{}]".format(i, j), C[i][j])
+                #A[i][k] = compss_wait_on(A[i][k])
+                #B[k][j] = compss_wait_on(B[k][j])
+                #C[i][j] = compss_wait_on(C[i][j])
+                #print("A[{}][{}]".format(i, k), A[i][k])
+                #print("B[{}][{}]".format(k, j), B[k][j])
+                #print("C[{}][{}]".format(i, j), C[i][j])
 
                 type_c[i][j], C[i][j] = _multiply_single_block(
                     A[i][k], type_a[i][k],  # ??????????????????????????????????????????????? type???
@@ -527,10 +526,10 @@ def _multiply_blocked(A, type_a, B, type_b, b_size, mkl_proc, transposeB=False):
                     C[i][j], type_c[i][j],  # ??????????????????????????????????????????????? type???
                     mkl_proc, b_size, transposeB=transposeB)
 
-                type_c[i][j] = compss_wait_on(type_c[i][j])
-                C[i][j] = compss_wait_on(C[i][j])
-                print("AFTER type_c[{}][{}]".format(i,j), type_c[i][j])
-                print("AFTER C[{}][{}]".format(i,j), C[i][j])
+                #type_c[i][j] = compss_wait_on(type_c[i][j])
+                #C[i][j] = compss_wait_on(C[i][j])
+                #print("AFTER type_c[{}][{}]".format(i,j), type_c[i][j])
+                #print("AFTER C[{}][{}]".format(i,j), C[i][j])
 
     # [[q_type._blocks[k][i], q_type._blocks[k][j]]], [[q._blocks[k][i], q._blocks[k][j]]] = _multiply_blocked(
 
