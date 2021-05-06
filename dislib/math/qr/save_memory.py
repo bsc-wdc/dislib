@@ -1,5 +1,4 @@
 import numpy as np
-from pycompss.api.api import compss_wait_on
 from pycompss.api.constraint import constraint
 from pycompss.api.task import task
 
@@ -10,7 +9,7 @@ IDENTITY = 1
 OTHER = 2
 
 
-def qr_blocked(a: Array, mkl_proc, overwrite_a=False):
+def qr_blocked(a: Array, overwrite_a=False):
     """ QR Decomposition (blocked / save memory).
 
     Parameters
@@ -51,13 +50,13 @@ def qr_blocked(a: Array, mkl_proc, overwrite_a=False):
     r_type = full((m_size, m_size), (1, 1), OTHER)
 
     for i in range(m_size):
-        actQ_type, actQ, r_type._blocks[i][i], r._blocks[i][i] = _qr(r._blocks[i][i], r_type._blocks[i][i], mkl_proc, b_size, t=True)
+        actQ_type, actQ, r_type._blocks[i][i], r._blocks[i][i] = _qr(r._blocks[i][i], r_type._blocks[i][i], b_size, t=True)
 
         for j in range(m_size):
-            q_type._blocks[j][i], q._blocks[j][i] = _dot(q._blocks[j][i], q_type._blocks[j][i], actQ, actQ_type, mkl_proc, transposeB=True)
+            q_type._blocks[j][i], q._blocks[j][i] = _dot(q._blocks[j][i], q_type._blocks[j][i], actQ, actQ_type, transposeB=True)
 
         for j in range(i + 1, m_size):
-            r_type._blocks[i][j], r._blocks[i][j] = _dot(actQ, actQ_type, r._blocks[i][j], r_type._blocks[i][j], mkl_proc)
+            r_type._blocks[i][j], r._blocks[i][j] = _dot(actQ, actQ_type, r._blocks[i][j], r_type._blocks[i][j])
 
         # Update values of the respective column
         for j in range(i + 1, m_size):
@@ -68,7 +67,7 @@ def qr_blocked(a: Array, mkl_proc, overwrite_a=False):
                         [_type_block(OTHER), _type_block(OTHER)]]
 
             subQ[0][0], subQ[0][1], subQ[1][0], subQ[1][1], r_type._blocks[i][i], r._blocks[i][i], r_type._blocks[j][i], r._blocks[j][i] = _little_qr(
-                r._blocks[i][i], r_type._blocks[i][i], r._blocks[j][i], r_type._blocks[j][i], mkl_proc,
+                r._blocks[i][i], r_type._blocks[i][i], r._blocks[j][i], r_type._blocks[j][i],
                 b_size, transpose=True)
 
             # Update values of the row for the value updated in the column
@@ -78,8 +77,7 @@ def qr_blocked(a: Array, mkl_proc, overwrite_a=False):
                     subQ_type,
                     [[r._blocks[i][k]], [r._blocks[j][k]]],
                     [[r_type._blocks[i][k]], [r_type._blocks[j][k]]],
-                    b_size,
-                    mkl_proc
+                    b_size
                 )
 
             for k in range(m_size):
@@ -89,16 +87,10 @@ def qr_blocked(a: Array, mkl_proc, overwrite_a=False):
                     subQ,
                     subQ_type,
                     b_size,
-                    mkl_proc,
                     transposeB=True
                 )
 
     return q, r
-
-
-def _set_mkl_num_threads(mkl_proc):
-    import os
-    os.environ["MKL_NUM_THREADS"] = str(mkl_proc)
 
 
 def _gen_identity(n, b_size, m_size):
@@ -109,9 +101,8 @@ def _gen_identity(n, b_size, m_size):
 
 @constraint(ComputingUnits="${ComputingUnits}")
 @task(returns=(np.array, np.array), on_failure='FAIL')
-def _qr_task(a, a_type, mkl_proc, b_size, mode='reduced', t=False, **kwargs):
+def _qr_task(a, a_type, b_size, mode='reduced', t=False, **kwargs):
     from numpy.linalg import qr
-    _set_mkl_num_threads(mkl_proc)
     if a_type[0, 0] == OTHER:
         q, r = qr(a, mode=mode)
     elif a_type[0, 0] == ZEROS:
@@ -123,8 +114,8 @@ def _qr_task(a, a_type, mkl_proc, b_size, mode='reduced', t=False, **kwargs):
     return q, r
 
 
-def _qr(a, a_type, mkl_proc, b_size, mode='reduced', t=False):
-    Qaux, Raux = _qr_task(a, a_type, mkl_proc, b_size, mode=mode, t=t)
+def _qr(a, a_type, b_size, mode='reduced', t=False):
+    Qaux, Raux = _qr_task(a, a_type, b_size, mode=mode, t=t)
     return _type_block(OTHER), Qaux, _type_block(OTHER), Raux
 
 
@@ -144,7 +135,7 @@ def _empty_block(shape):
 #a=COLLECTION_IN, b=COLLECTION_IN,
 @constraint(ComputingUnits="${ComputingUnits}")
 @task(returns=(list,list))
-def _dot(a, a_type, b, b_type, mkl_proc, transposeResult=False, transposeB=False, **kwargs):
+def _dot(a, a_type, b, b_type, transposeResult=False, transposeB=False, **kwargs):
     if a_type[0][0] == ZEROS:
         return _type_block(ZEROS), _empty_block(a.shape)
     if a_type[0][0] == IDENTITY:
@@ -160,13 +151,12 @@ def _dot(a, a_type, b, b_type, mkl_proc, transposeResult=False, transposeB=False
         if transposeResult:
             return _transpose_block(a, a_type)
         return a_type, a
-    result = _dot_task(a, b, mkl_proc, transposeResult=transposeResult, transposeB=transposeB)
+    result = _dot_task(a, b, transposeResult=transposeResult, transposeB=transposeB)
 
     return _type_block(OTHER), result
 
 
-def _dot_task(a, b, mkl_proc, transposeResult=False, transposeB=False, **kwargs):
-    _set_mkl_num_threads(mkl_proc)
+def _dot_task(a, b, transposeResult=False, transposeB=False, **kwargs):
     if transposeB:
         b = np.transpose(b)
     if transposeResult:
@@ -176,10 +166,9 @@ def _dot_task(a, b, mkl_proc, transposeResult=False, transposeB=False, **kwargs)
 
 @constraint(ComputingUnits="${ComputingUnits}")
 @task(returns=(list, list, list, list, list, list))
-def _little_qr_task(A, typeA, B, typeB, mkl_proc, b_size, transpose=False, **kwargs):
+def _little_qr_task(A, typeA, B, typeB, b_size, transpose=False, **kwargs):
     # TODO what if blocks are not square
     regular_b_size = b_size[0]
-    _set_mkl_num_threads(mkl_proc)
     entA = [typeA, A]
     entB = [typeB, B]
     for mat in [entA, entB]:
@@ -199,16 +188,14 @@ def _little_qr_task(A, typeA, B, typeB, mkl_proc, b_size, transpose=False, **kwa
         return subQ[0][0], subQ[0][1], subQ[1][0], subQ[1][1], AA, BB
 
 
-def _little_qr(a, type_a, b, type_b, mkl_proc, BSIZE, transpose=False):
-    subQ00, subQ01, subQ10, subQ11, AA, BB = _little_qr_task(a, type_a, b, type_b, mkl_proc, BSIZE, transpose)
+def _little_qr(a, type_a, b, type_b, BSIZE, transpose=False):
+    subQ00, subQ01, subQ10, subQ11, AA, BB = _little_qr_task(a, type_a, b, type_b, BSIZE, transpose)
     return subQ00, subQ01, subQ10, subQ11, _type_block(OTHER), AA, _type_block(OTHER), BB
 
 
 @constraint(ComputingUnits="${ComputingUnits}")
 @task(returns=(list, list))
-def _multiply_single_block_task(A, typeA, B, typeB, C, typeC, mkl_proc, b_size, transposeB=False, **kwargs):
-    _set_mkl_num_threads(mkl_proc)
-
+def _multiply_single_block_task(A, typeA, B, typeB, C, typeC, b_size, transposeB=False, **kwargs):
     if typeA[0][0] == ZEROS or typeB[0][0] == ZEROS:
         # TODO to check it in the case of not square blocks
         # bool type to save memory as the matrix is filled with Nones
@@ -239,11 +226,11 @@ def _multiply_single_block_task(A, typeA, B, typeB, C, typeC, mkl_proc, b_size, 
     return _type_block(OTHER), C
 
 
-def _multiply_single_block(a, type_a, b, type_b, c, type_c, mkl_proc, b_size, transposeB=False):
-    return _multiply_single_block_task(a, type_a, b, type_b, c, type_c, mkl_proc, b_size, transposeB=transposeB)
+def _multiply_single_block(a, type_a, b, type_b, c, type_c, b_size, transposeB=False):
+    return _multiply_single_block_task(a, type_a, b, type_b, c, type_c, b_size, transposeB=transposeB)
 
 
-def _multiply_blocked(A, type_a, B, type_b, b_size, mkl_proc, transposeB=False):
+def _multiply_blocked(A, type_a, B, type_b, b_size, transposeB=False):
     if transposeB:
         newB = []
         for i in range(len(B[0])):
@@ -265,7 +252,7 @@ def _multiply_blocked(A, type_a, B, type_b, b_size, mkl_proc, transposeB=False):
                     A[i][k], type_a[i][k],
                     B[k][j], type_b[k][j],
                     C[i][j], type_c[i][j],
-                    mkl_proc, b_size, transposeB=transposeB)
+                    b_size, transposeB=transposeB)
 
     return type_c, C
 
