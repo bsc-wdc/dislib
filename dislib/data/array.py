@@ -7,6 +7,7 @@ from pycompss.api.api import compss_wait_on, compss_delete_object
 from pycompss.api.parameter import Type, COLLECTION_IN, Depth, \
     COLLECTION_OUT, INOUT
 from pycompss.api.task import task
+from pycompss.api.reduction import reduction
 from scipy import sparse as sp
 from scipy.sparse import issparse, csr_matrix
 from sklearn.utils import check_random_state
@@ -1248,15 +1249,7 @@ def _multiply_block_groups(hblock, vblock):
     for blocki, blockj in zip(hblock, vblock):
         blocks.append(_block_apply(operator.matmul, blocki, blockj))
 
-    while len(blocks) > 1:
-        block1 = blocks.popleft()
-        block2 = blocks.popleft()
-        blocks.append(_block_apply(operator.add, block1, block2))
-
-        compss_delete_object(block1)
-        compss_delete_object(block2)
-
-    return blocks[0]
+    return _block_apply_reduce(operator.add, blocks)
 
 
 def _full(shape, block_size, sparse, func, *args, **kwargs):
@@ -1456,6 +1449,20 @@ def _block_apply_axis(func, axis, blocks, *args, **kwargs):
 @task(returns=1)
 def _block_apply(func, block, *args, **kwargs):
     return func(block, *args, **kwargs)
+
+
+@reduction(chunk_size="2")
+@task(returns=1, blocks=COLLECTION_IN)
+def _block_apply_reduce(func, blocks):
+    while len(blocks) > 1:
+        block1 = blocks.popleft()
+        block2 = blocks.popleft()
+        blocks.append(func(block1, block2))
+
+        compss_delete_object(block1)
+        compss_delete_object(block2)
+
+    return blocks[0]
 
 
 @task(block=INOUT)
