@@ -538,7 +538,7 @@ class ArrayTest(unittest.TestCase):
         min = np.array([1, 2, 3])
         max = np.array([7, 8, 9])
         mean = np.array([4., 5., 6.])
-        median = np.array([10., 11., 12.])
+        median = np.array([4., 5., 6.])
         sum = np.array([12, 15, 18])
 
         self.assertTrue(_equal_arrays(x.min().collect(), min))
