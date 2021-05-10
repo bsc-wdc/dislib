@@ -718,6 +718,12 @@ class ArrayTest(unittest.TestCase):
 
         self.assertTrue(_equal_arrays(expected, xm.collect()))
 
+        with self.assertRaises(NotImplementedError):
+            x_csr = ds.array(sp.csr_matrix([[1, 2, 3],
+                                            [4, 5, 6],
+                                            [7, 8, 9]]), (2, 2))
+            x_csr.median()
+
 
 class MathTest(unittest.TestCase):
 
