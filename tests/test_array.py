@@ -534,17 +534,16 @@ class ArrayTest(unittest.TestCase):
                                                     [4, 5, 6],
                                                     [7, 8, 9]]), (2, 2)),)])
     def test_array_functions(self, x):
-        """ Tests various array functions """
+        """ Tests various array functions, applicable to both dense
+        and sparse matrices """
         min = np.array([1, 2, 3])
         max = np.array([7, 8, 9])
         mean = np.array([4., 5., 6.])
-        median = np.array([4., 5., 6.])
         sum = np.array([12, 15, 18])
 
         self.assertTrue(_equal_arrays(x.min().collect(), min))
         self.assertTrue(_equal_arrays(x.max().collect(), max))
         self.assertTrue(_equal_arrays(x.mean().collect(), mean))
-        self.assertTrue(_equal_arrays(x.median().collect(), median))
         self.assertTrue(_equal_arrays(x.sum().collect(), sum))
 
     @parameterized.expand([(np.full((10, 10), 3, complex),),
@@ -698,6 +697,26 @@ class ArrayTest(unittest.TestCase):
         expected = np.linalg.norm(x_np, axis=1)
 
         self.assertTrue(_equal_arrays(expected, xn.collect()))
+
+    def test_median(self):
+        """ Tests the median """
+        x_np = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+        x = ds.array(x_np, block_size=(2, 2))
+        xm = x.median()
+
+        self.assertTrue(_validate_array(xm))
+
+        expected = np.median(x_np, axis=0)
+
+        self.assertTrue(_equal_arrays(expected, xm.collect()))
+
+        xm = x.median(axis=1)
+
+        self.assertTrue(_validate_array(xm))
+
+        expected = np.median(x_np, axis=1)
+
+        self.assertTrue(_equal_arrays(expected, xm.collect()))
 
 
 class MathTest(unittest.TestCase):

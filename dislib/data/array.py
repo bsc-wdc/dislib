@@ -912,7 +912,16 @@ class Array(object):
         -------
         median : ds-array
             Median along axis.
+
+        Raises
+        -------
+        NotImplementedError
+            If the ds-array is sparse.
         """
+        if self._sparse:
+            raise NotImplementedError("Cannot compute the median of sparse "
+                                      "ds-arrays.")
+
         return apply_along_axis(np.median, axis, self)
 
     def norm(self, axis=0):
