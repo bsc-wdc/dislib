@@ -3,6 +3,7 @@ from sys import float_info
 import numpy as np
 from numpy.random.mtrand import RandomState
 from pycompss.api.api import compss_delete_object
+from pycompss.api.constraint import constraint
 from pycompss.api.parameter import FILE_IN, Type, COLLECTION_IN, Depth
 from pycompss.api.task import task
 from sklearn.tree import DecisionTreeClassifier as SklearnDTClassifier
@@ -271,6 +272,7 @@ def _get_features_mmap(features_file):
     return np.load(features_file, mmap_mode='r', allow_pickle=False)
 
 
+@constraint(computing_units="${computingUnits}")
 @task(priority=True, returns=2)
 def _sample_selection(n_samples, y_codes, bootstrap, seed):
     if bootstrap:
@@ -324,6 +326,7 @@ def _split_node_wrapper(sample, n_features, y_s, n_classes, m_try,
                          'None and features_file is None.')
 
 
+@constraint(computing_units="${computingUnits}")
 @task(features_file=FILE_IN, returns=(object, list, list, list, list))
 def _split_node_using_features(sample, n_features, y_s, n_classes, m_try,
                                features_file, seed):
@@ -333,6 +336,7 @@ def _split_node_using_features(sample, n_features, y_s, n_classes, m_try,
                           features_mmap, random_state)
 
 
+@constraint(computing_units="${computingUnits}")
 @task(samples_file=FILE_IN, returns=(object, list, list, list, list))
 def _split_node(sample, n_features, y_s, n_classes, m_try, samples_file, seed):
     features_mmap = np.load(samples_file, mmap_mode='r', allow_pickle=False).T
@@ -390,6 +394,7 @@ def _build_subtree_wrapper(sample, y_s, n_features, max_depth, n_classes,
                               m_try, sklearn_max, seed, samples_file)
 
 
+@constraint(computing_units="${computingUnits}")
 @task(samples_file=FILE_IN, features_file=FILE_IN, returns=_Node)
 def _build_subtree_using_features(sample, y_s, n_features, max_depth,
                                   n_classes, m_try, sklearn_max, seed,
@@ -400,6 +405,7 @@ def _build_subtree_using_features(sample, y_s, n_features, max_depth,
                                   samples_file, features_file=features_file)
 
 
+@constraint(computing_units="${computingUnits}")
 @task(samples_file=FILE_IN, returns=_Node)
 def _build_subtree(sample, y_s, n_features, max_depth, n_classes, m_try,
                    sklearn_max, seed, samples_file):
@@ -455,6 +461,7 @@ def _compute_build_subtree(sample, y_s, n_features, max_depth, n_classes,
     return subtree
 
 
+@constraint(computing_units="${computingUnits}")
 @task(returns=list)
 def _merge(*object_list):
     return object_list
@@ -485,6 +492,7 @@ def _get_predicted_indices(samples, tree, nodes_info, path):
     return idx_mask
 
 
+@constraint(computing_units="${computingUnits}")
 @task(row_blocks={Type: COLLECTION_IN, Depth: 2}, returns=1)
 def _predict_branch(row_blocks, tree, nodes_info, subtree_index, subtree,
                     distr_depth):
@@ -495,6 +503,7 @@ def _predict_branch(row_blocks, tree, nodes_info, subtree_index, subtree,
     return indices_mask, prediction
 
 
+@constraint(computing_units="${computingUnits}")
 @task(row_blocks={Type: COLLECTION_IN, Depth: 2}, returns=1)
 def _predict_branch_proba(row_blocks, tree, nodes_info, subtree_index, subtree,
                           distr_depth, n_classes):
@@ -505,6 +514,7 @@ def _predict_branch_proba(row_blocks, tree, nodes_info, subtree_index, subtree,
     return indices_mask, prediction
 
 
+@constraint(computing_units="${computingUnits}")
 @task(returns=list)
 def _merge_branches(n_classes, *predictions):
     samples_len = len(predictions[0][0])

@@ -3,6 +3,7 @@ from uuid import uuid4
 import numpy as np
 from pycompss.api.api import compss_delete_object
 from pycompss.api.api import compss_wait_on
+from pycompss.api.constraint import constraint
 from pycompss.api.parameter import COLLECTION_IN, Depth, Type
 from pycompss.api.task import task
 from scipy.sparse import hstack as hstack_sp
@@ -379,6 +380,7 @@ class CascadeSVM(BaseEstimator):
         return np.dot(x, x.T)
 
 
+@constraint(computing_units="${computingUnits}")
 @task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=1)
 def _gen_ids(blocks):
     samples = Array._merge_blocks(blocks)
@@ -386,6 +388,7 @@ def _gen_ids(blocks):
     return np.array(idx)
 
 
+@constraint(computing_units="${computingUnits}")
 @task(x_list={Type: COLLECTION_IN, Depth: 2},
       y_list={Type: COLLECTION_IN, Depth: 2},
       id_list={Type: COLLECTION_IN, Depth: 2},
@@ -411,18 +414,21 @@ def _train(x_list, y_list, id_list, random_state, **params):
     return sv, sv_labels, sv_ids, clf
 
 
+@constraint(computing_units="${computingUnits}")
 @task(x_list={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
 def _predict(x_list, clf):
     x = Array._merge_blocks(x_list)
     return clf.predict(x).reshape(-1, 1)
 
 
+@constraint(computing_units="${computingUnits}")
 @task(x_list={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
 def _decision_function(x_list, clf):
     x = Array._merge_blocks(x_list)
     return clf.decision_function(x).reshape(-1, 1)
 
 
+@constraint(computing_units="${computingUnits}")
 @task(x_list={Type: COLLECTION_IN, Depth: 2},
       y_list={Type: COLLECTION_IN, Depth: 2}, returns=tuple)
 def _score(x_list, y_list, clf):
@@ -435,6 +441,7 @@ def _score(x_list, y_list, clf):
     return np.sum(equal), x.shape[0]
 
 
+@constraint(computing_units="${computingUnits}")
 @task(returns=float)
 def _merge_scores(*partials):
     total_correct = 0.

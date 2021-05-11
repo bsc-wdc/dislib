@@ -3,6 +3,7 @@ from collections import Counter
 
 import numpy as np
 from pycompss.api.api import compss_wait_on
+from pycompss.api.constraint import constraint
 from pycompss.api.parameter import Type, COLLECTION_IN, Depth
 from pycompss.api.task import task
 from sklearn.base import BaseEstimator
@@ -238,6 +239,7 @@ class RandomForestClassifier(BaseEstimator):
         return _merge_scores(*partial_scores)
 
 
+@constraint(computing_units="${computingUnits}")
 @task(returns=1)
 def _resolve_try_features(try_features, n_features):
     if try_features is None:
@@ -250,6 +252,7 @@ def _resolve_try_features(try_features, n_features):
         return int(try_features)
 
 
+@constraint(computing_units="${computingUnits}")
 @task(returns=1)
 def _join_predictions(*predictions):
     aggregate = predictions[0]
@@ -259,6 +262,7 @@ def _join_predictions(*predictions):
     return labels
 
 
+@constraint(computing_units="${computingUnits}")
 @task(returns=1)
 def _soft_vote(classes, *predictions):
     aggregate = predictions[0]
@@ -268,6 +272,7 @@ def _soft_vote(classes, *predictions):
     return labels
 
 
+@constraint(computing_units="${computingUnits}")
 @task(returns=1)
 def _hard_vote(classes, *predictions):
     mode = np.empty((len(predictions[0]),), dtype=int)
@@ -277,6 +282,7 @@ def _hard_vote(classes, *predictions):
     return labels
 
 
+@constraint(computing_units="${computingUnits}")
 @task(y_blocks={Type: COLLECTION_IN, Depth: 2}, returns=1)
 def _soft_vote_score(y_blocks, classes, *predictions):
     real_labels = Array._merge_blocks(y_blocks).flatten()
@@ -288,6 +294,7 @@ def _soft_vote_score(y_blocks, classes, *predictions):
     return correct, len(real_labels)
 
 
+@constraint(computing_units="${computingUnits}")
 @task(y_blocks={Type: COLLECTION_IN, Depth: 2}, returns=1)
 def _hard_vote_score(y_blocks, classes, *predictions):
     real_labels = Array._merge_blocks(y_blocks).flatten()
@@ -299,6 +306,7 @@ def _hard_vote_score(y_blocks, classes, *predictions):
     return correct, len(real_labels)
 
 
+@constraint(computing_units="${computingUnits}")
 @task(returns=1)
 def _merge_scores(*partial_scores):
     correct = sum(subset_score[0] for subset_score in partial_scores)

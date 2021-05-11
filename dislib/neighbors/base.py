@@ -1,4 +1,5 @@
 import numpy as np
+from pycompss.api.constraint import constraint
 from pycompss.api.parameter import Depth, Type, COLLECTION_IN
 from pycompss.api.task import task
 from sklearn.base import BaseEstimator
@@ -100,6 +101,7 @@ class NearestNeighbors(BaseEstimator):
         return ind_arr
 
 
+@constraint(computing_units="${computingUnits}")
 @task(returns=2)
 def _merge_queries(*queries):
     final_dist, final_ind, offset = queries[0]
@@ -121,6 +123,7 @@ def _merge_queries(*queries):
     return final_dist, final_ind
 
 
+@constraint(computing_units="${computingUnits}")
 @task(blocks={Type: COLLECTION_IN, Depth: 2},
       q_blocks={Type: COLLECTION_IN, Depth: 2}, returns=tuple)
 def _get_neighbors(blocks, q_blocks, n_neighbors):

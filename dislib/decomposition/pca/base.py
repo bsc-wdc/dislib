@@ -1,4 +1,5 @@
 import numpy as np
+from pycompss.api.constraint import constraint
 from pycompss.api.parameter import COLLECTION_IN, Depth, Type, COLLECTION_OUT
 from pycompss.api.task import task
 from scipy.sparse import issparse, csr_matrix
@@ -192,6 +193,7 @@ def _scatter_matrix(x, arity):
     return _reduce_scatter_matrix(partials, arity)
 
 
+@constraint(computing_units="${computingUnits}")
 @task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=1)
 def _subset_scatter_matrix(blocks):
     data = Array._merge_blocks(blocks)
@@ -210,16 +212,19 @@ def _reduce_scatter_matrix(partials, arity):
     return partials[0]
 
 
+@constraint(computing_units="${computingUnits}")
 @task(returns=1)
 def _merge_partial_scatter_matrix(*partials):
     return sum(partials)
 
 
+@constraint(computing_units="${computingUnits}")
 @task(returns=1)
 def _estimate_covariance(scatter_matrix, n_samples):
     return scatter_matrix / (n_samples - 1)
 
 
+@constraint(computing_units="${computingUnits}")
 @task(val_blocks={Type: COLLECTION_OUT, Depth: 2},
       vec_blocks={Type: COLLECTION_OUT, Depth: 2})
 def _decompose(covariance_matrix, n_components, bsize, val_blocks, vec_blocks):
@@ -247,6 +252,7 @@ def _decompose(covariance_matrix, n_components, bsize, val_blocks, vec_blocks):
                 eig_vec[i * bsize:(i + 1) * bsize, j * bsize:(j + 1) * bsize]
 
 
+@constraint(computing_units="${computingUnits}")
 @task(blocks={Type: COLLECTION_IN, Depth: 2},
       u_blocks={Type: COLLECTION_IN, Depth: 2},
       c_blocks={Type: COLLECTION_IN, Depth: 2},

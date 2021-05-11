@@ -2,6 +2,7 @@ import tempfile
 
 import numpy as np
 from numpy.lib import format
+from pycompss.api.constraint import constraint
 from pycompss.api.parameter import FILE_IN, FILE_INOUT, COLLECTION_IN, Depth, \
     Type
 from pycompss.api.task import task
@@ -261,6 +262,7 @@ class _NpyFile(object):
             self.shape, self.fortran_order, self.dtype = header_data
 
 
+@constraint(computing_units="${computingUnits}")
 @task(labels_path=FILE_IN, returns=3)
 def _get_labels(labels_path):
     y = np.genfromtxt(labels_path, dtype=None, encoding='utf-8')
@@ -268,11 +270,13 @@ def _get_labels(labels_path):
     return codes.astype(np.int8), categories, len(categories)
 
 
+@constraint(computing_units="${computingUnits}")
 @task(returns=1)
 def _get_samples_shape(subset):
     return subset.samples.shape
 
 
+@constraint(computing_units="${computingUnits}")
 @task(returns=3)
 def _merge_shapes(*samples_shapes):
     n_samples = 0
@@ -283,12 +287,14 @@ def _merge_shapes(*samples_shapes):
     return samples_shapes, n_samples, n_features
 
 
+@constraint(computing_units="${computingUnits}")
 @task(samples_path=FILE_INOUT)
 def _allocate_samples_file(samples_path, n_samples, n_features):
     np.lib.format.open_memmap(samples_path, mode='w+', dtype='float32',
                               shape=(int(n_samples), int(n_features)))
 
 
+@constraint(computing_units="${computingUnits}")
 @task(samples_path=FILE_INOUT, row_blocks={Type: COLLECTION_IN, Depth: 2})
 def _fill_samples_file(samples_path, row_blocks, start_idx):
     rows_samples = Array._merge_blocks(row_blocks)
@@ -297,6 +303,7 @@ def _fill_samples_file(samples_path, row_blocks, start_idx):
     samples[start_idx: start_idx + rows_samples.shape[0]] = rows_samples
 
 
+@constraint(computing_units="${computingUnits}")
 @task(labels_path=FILE_INOUT, row_blocks={Type: COLLECTION_IN, Depth: 2})
 def _fill_labels_file(labels_path, row_blocks):
     rows_labels = Array._merge_blocks(row_blocks)

@@ -1,6 +1,7 @@
 from itertools import chain
 
 from pycompss.api.api import compss_wait_on
+from pycompss.api.constraint import constraint
 from pycompss.api.parameter import COLLECTION_IN, INOUT
 from pycompss.api.task import task
 from sklearn.base import BaseEstimator
@@ -72,11 +73,13 @@ class Daura(BaseEstimator):
         return clusters
 
 
+@constraint(computing_units="${computingUnits}")
 @task(returns=1)
 def _get_neighbors(block, start_col, cutoff):
     return [np.flatnonzero(r <= cutoff) + start_col for r in block]
 
 
+@constraint(computing_units="${computingUnits}")
 @task(row_blocks_neighbors=COLLECTION_IN, returns=1)
 def _merge_neighbors(row_blocks_neighbors, start_idx):
     row_neighs = [set(chain(*nb)) for nb in zip(*row_blocks_neighbors)]
@@ -85,6 +88,7 @@ def _merge_neighbors(row_blocks_neighbors, start_idx):
     return row_neighs
 
 
+@constraint(computing_units="${computingUnits}")
 @task(returns=1)
 def _find_candidate_cluster(row_neighbors, start_row):
     argmax = max(range(len(row_neighbors)),
@@ -94,11 +98,13 @@ def _find_candidate_cluster(row_neighbors, start_row):
     return cluster
 
 
+@constraint(computing_units="${computingUnits}")
 @task(candidates=COLLECTION_IN, returns=1)
 def _find_largest_cluster(candidates):
     return max(candidates, key=len)
 
 
+@constraint(computing_units="${computingUnits}")
 @task(row_neighbors=INOUT)
 def _remove_neighbors(row_neighbors, to_remove, start_row):
     for r in to_remove:

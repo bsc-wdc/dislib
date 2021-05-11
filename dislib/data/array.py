@@ -4,6 +4,7 @@ from math import ceil
 
 import numpy as np
 from pycompss.api.api import compss_wait_on, compss_delete_object
+from pycompss.api.constraint import constraint
 from pycompss.api.parameter import Type, COLLECTION_IN, Depth, \
     COLLECTION_OUT, INOUT
 from pycompss.api.task import task
@@ -1329,6 +1330,7 @@ def _random_block_wrapper(block_size, r_state):
     return _random_block(block_size, seed)
 
 
+@constraint(computing_units="${computingUnits}")
 @task(returns=1)
 def _get_item(i, j, block):
     """
@@ -1337,6 +1339,7 @@ def _get_item(i, j, block):
     return block[i, j]
 
 
+@constraint(computing_units="${computingUnits}")
 @task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=1)
 def _filter_rows(blocks, rows):
     """
@@ -1346,6 +1349,7 @@ def _filter_rows(blocks, rows):
     return data[rows, :]
 
 
+@constraint(computing_units="${computingUnits}")
 @task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=1)
 def _filter_cols(blocks, cols):
     """
@@ -1355,6 +1359,7 @@ def _filter_cols(blocks, cols):
     return data[:, cols]
 
 
+@constraint(computing_units="${computingUnits}")
 @task(blocks={Type: COLLECTION_IN, Depth: 2},
       out_blocks={Type: COLLECTION_OUT, Depth: 1})
 def _merge_rows(blocks, out_blocks, blocks_shape, skip):
@@ -1369,6 +1374,7 @@ def _merge_rows(blocks, out_blocks, blocks_shape, skip):
         out_blocks[j] = data[skip:bn + skip, j * bm: (j + 1) * bm]
 
 
+@constraint(computing_units="${computingUnits}")
 @task(blocks={Type: COLLECTION_IN, Depth: 2},
       out_blocks={Type: COLLECTION_OUT, Depth: 1})
 def _merge_cols(blocks, out_blocks, blocks_shape, skip):
@@ -1383,6 +1389,7 @@ def _merge_cols(blocks, out_blocks, blocks_shape, skip):
         out_blocks[i] = data[i * bn: (i + 1) * bn, skip:bm + skip]
 
 
+@constraint(computing_units="${computingUnits}")
 @task(returns=1)
 def _filter_block(block, boundaries):
     """
@@ -1397,6 +1404,7 @@ def _filter_block(block, boundaries):
     return res
 
 
+@constraint(computing_units="${computingUnits}")
 @task(blocks={Type: COLLECTION_IN, Depth: 2},
       out_blocks={Type: COLLECTION_OUT, Depth: 2})
 def _transpose(blocks, out_blocks):
@@ -1405,12 +1413,14 @@ def _transpose(blocks, out_blocks):
             out_blocks[i][j] = blocks[i][j].transpose()
 
 
+@constraint(computing_units="${computingUnits}")
 @task(returns=np.array)
 def _random_block(shape, seed):
     np.random.seed(seed)
     return np.random.random(shape)
 
 
+@constraint(computing_units="${computingUnits}")
 @task(returns=1)
 def _identity_block(block_size, n, reg_shape, i, j, dtype):
     block = np.zeros(block_size, dtype)
@@ -1427,11 +1437,13 @@ def _identity_block(block_size, n, reg_shape, i, j, dtype):
     return block
 
 
+@constraint(computing_units="${computingUnits}")
 @task(returns=np.array)
 def _full_block(shape, value, dtype):
     return np.full(shape, value, dtype)
 
 
+@constraint(computing_units="${computingUnits}")
 @task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
 def _block_apply_axis(func, axis, blocks, *args, **kwargs):
     arr = Array._merge_blocks(blocks)
@@ -1453,16 +1465,19 @@ def _block_apply_axis(func, axis, blocks, *args, **kwargs):
         return out.reshape(-1, 1)
 
 
+@constraint(computing_units="${computingUnits}")
 @task(returns=1)
 def _block_apply(func, block, *args, **kwargs):
     return func(block, *args, **kwargs)
 
 
+@constraint(computing_units="${computingUnits}")
 @task(block=INOUT)
 def _set_value(block, i, j, value):
     block[i][j] = value
 
 
+@constraint(computing_units="${computingUnits}")
 @task(blocks={Type: COLLECTION_IN, Depth: 1}, returns=1)
 def _assemble_blocks(blocks, bshape):
     """ Generates a block of shape bshape from a list of blocks of arbitrary
@@ -1481,6 +1496,7 @@ def _assemble_blocks(blocks, bshape):
     return np.block(merged)
 
 
+@constraint(computing_units="${computingUnits}")
 @task(out_blocks={Type: COLLECTION_OUT, Depth: 2})
 def _split_block(block, tl_shape, reg_shape, out_blocks):
     """ Splits a block into new blocks following the ds-array typical scheme
@@ -1497,11 +1513,13 @@ def _split_block(block, tl_shape, reg_shape, out_blocks):
             out_blocks[i][j] = cols.copy()
 
 
+@constraint(computing_units="${computingUnits}")
 @task(returns=1)
 def _copy_block(block):
     return block.copy()
 
 
+@constraint(computing_units="${computingUnits}")
 @task(blocks={Type: COLLECTION_IN, Depth: 2},
       other={Type: COLLECTION_IN, Depth: 2},
       out_blocks={Type: COLLECTION_OUT, Depth: 1})

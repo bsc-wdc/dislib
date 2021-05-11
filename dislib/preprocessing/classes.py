@@ -1,4 +1,5 @@
 import numpy as np
+from pycompss.api.constraint import constraint
 from pycompss.api.parameter import Depth, Type, COLLECTION_IN, COLLECTION_OUT
 from pycompss.api.task import task
 from scipy.sparse import csr_matrix, issparse
@@ -96,6 +97,7 @@ class StandardScaler(object):
                      sparse=x._sparse)
 
 
+@constraint(computing_units="${computingUnits}")
 @task(blocks={Type: COLLECTION_IN, Depth: 2},
       m_blocks={Type: COLLECTION_IN, Depth: 2},
       returns=1)
@@ -116,6 +118,7 @@ def _compute_var(blocks, m_blocks):
         return var
 
 
+@constraint(computing_units="${computingUnits}")
 @task(blocks={Type: COLLECTION_IN, Depth: 2},
       m_blocks={Type: COLLECTION_IN, Depth: 2},
       v_blocks={Type: COLLECTION_IN, Depth: 2},
