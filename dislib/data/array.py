@@ -1268,12 +1268,17 @@ def apply_along_axis(func, axis, x, *args, **kwargs):
 
 
 def _multiply_block_groups(hblock, vblock):
-    blocks = deque()
+    blocks = []
 
     for blocki, blockj in zip(hblock, vblock):
         blocks.append(_block_apply(operator.matmul, blocki, blockj))
 
-    return _block_apply_reduce(operator.add, blocks)
+    reduced = _block_apply_reduce(blocks, operator.add)
+
+    for blocki in blocks:
+        compss_delete_object(blocki)
+
+    return reduced
 
 
 def _full(shape, block_size, sparse, func, *args, **kwargs):
@@ -1476,15 +1481,16 @@ def _block_apply(func, block, *args, **kwargs):
 
 
 @reduction(chunk_size="2")
-@task(returns=1, blocks=COLLECTION_IN)
-def _block_apply_reduce(func, blocks):
-    while len(blocks) > 1:
-        block1 = blocks.popleft()
-        block2 = blocks.popleft()
-        blocks.append(func(block1, block2))
+@task(returns=1, blocks={Type:COLLECTION_IN, Depth:1})
+def _block_apply_reduce(blocks, func):
+    # COMPSs 2.8.4 requirement: pass the collection to reduce as the first
+    # parameter, deque is converted to a list in the worker (so it
+    # cannot be used)
 
-        compss_delete_object(block1)
-        compss_delete_object(block2)
+    while len(blocks) > 1:
+        block1 = blocks.pop(0)
+        block2 = blocks.pop(0)
+        blocks.append(func(block1, block2))
 
     return blocks[0]
 
