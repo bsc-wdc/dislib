@@ -362,7 +362,7 @@ class Array(object):
                 # distribute each part of the original block into the
                 # corresponding new blocks. cur_block keeps track of the new
                 # block that we are generating, but some parts of the
-                # orignal block might go to neighbouring new blocks
+                # original block might go to neighbouring new blocks
                 for m in range(len(out_blocks)):
                     for n in range(len(out_blocks[m])):
                         bi = cur_block[0] + m

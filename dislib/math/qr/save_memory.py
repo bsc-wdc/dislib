@@ -9,7 +9,7 @@ IDENTITY = 1
 OTHER = 2
 
 
-def qr_blocked(a: Array, overwrite_a=False):
+def qr_blocked(a: Array, mode='full', overwrite_a=False):
     """ QR Decomposition (blocked / save memory).
 
     Parameters
@@ -29,11 +29,11 @@ def qr_blocked(a: Array, overwrite_a=False):
     m_size = (a._n_blocks[0], a._n_blocks[1])
 
     q, q_type = _gen_identity(a.shape[0], b_size, m_size[0])
-    q._sparse = True
+    q._sparse = False
 
     if not overwrite_a:
         r = a.copy()
-        r._sparse = True
+        r._sparse = False
     else:
         r = a
 
@@ -113,7 +113,7 @@ def _type_block(value):
 
 
 def _empty_block(shape):
-    return np.empty(shape, dtype=np.uint8)
+    return np.full(shape, 0, dtype=np.uint8)
 
 
 @constraint(computing_units="${computingUnits}")

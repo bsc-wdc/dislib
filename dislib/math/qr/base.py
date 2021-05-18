@@ -5,16 +5,21 @@ from pycompss.api.parameter import INOUT, IN
 from pycompss.api.task import task
 
 from dislib.data.array import Array, identity
+from dislib.data.util import compute_bottom_right_shape
 from dislib.math.qr import save_memory as save_mem
 
 
-def qr_blocked(a: Array, overwrite_a=False, save_memory=False):
+def qr_blocked(a: Array, mode='full', overwrite_a=False, save_memory=False):
     """ QR Decomposition (blocked / save memory).
 
     Parameters
     ----------
     a : ds-arrays
         Input ds-array.
+    mode : string
+        Mode of the algorithm
+        'full' - computes full Q matrix.
+        'economic' - computes Q matrix
     overwrite_a : bool
         Overwriting the input matrix as R.
     save_memory : bool
@@ -32,30 +37,28 @@ def qr_blocked(a: Array, overwrite_a=False, save_memory=False):
         or
         If blocks are not square
         or
-        If not all blocks of the matrix are of the same shape.
+        If top left shape is different than regular
+        or
+        If bottom right block is different than regular
     """
 
-    if a._n_blocks[0] < a._n_blocks[1]:
-        raise ValueError("m > n is required for matrices m x n")
+    _validate_ds_array(a)
 
-    if a._reg_shape != a._top_left_shape:
-        raise ValueError("Regular block size is required")
-
-    if a._reg_shape[0] != a._reg_shape[1]:
-        raise ValueError("Square blocks are required")
-
-    if save_memory:
-        return save_mem.qr_blocked(a, overwrite_a)
-
-    b_size = a._reg_shape
-    m_size = (a._n_blocks[0], a._n_blocks[1])
-
-    q = identity(a.shape[0], b_size, dtype=None)
+    if mode not in ['full', 'economic']:
+        raise ValueError("Unsupported mode: " + mode)
 
     if not overwrite_a:
         r = a.copy()
     else:
         r = a
+
+    if save_memory:
+        return save_mem.qr_blocked(a, mode=mode, overwrite_a=overwrite_a)
+
+    b_size = a._reg_shape
+    m_size = (a._n_blocks[0], a._n_blocks[1])
+
+    q = identity(a.shape[0], b_size, dtype=None)
 
     for i in range(m_size[1]):
         act_q, r._blocks[i][i] = _qr_task(r._blocks[i][i], t=True)
@@ -92,6 +95,21 @@ def qr_blocked(a: Array, overwrite_a=False, save_memory=False):
                 )
 
     return q, r
+
+
+def _validate_ds_array(a: Array):
+    if a._n_blocks[0] < a._n_blocks[1]:
+        raise ValueError("m > n is required for matrices m x n")
+
+    if a._reg_shape[0] != a._reg_shape[1]:
+        raise ValueError("Square blocks are required")
+
+    if a._reg_shape != a._top_left_shape:
+        raise ValueError("Top left block needs to be of the same shape as regular ones")
+
+    if compute_bottom_right_shape(a) != a._reg_shape:
+        raise ValueError("Bottom right shape is different than regular block"
+                         "Use dislib.data.util.pad_last_blocks_with_zeros to apply padding")
 
 
 @constraint(computing_units="${computingUnits}")

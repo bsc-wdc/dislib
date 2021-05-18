@@ -35,6 +35,8 @@ class QRTest(object):
         m2b_ds = compss_wait_on(m2b_ds)
         m2b = m2b_ds.collect()
 
+        np.save("m2b.npy", self._ds_to_np(m2b))
+
         Q_blocked_np = self._ds_to_np(Q)
         R_blocked_np = self._ds_to_np(R)
 
