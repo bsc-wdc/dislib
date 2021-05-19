@@ -8,16 +8,21 @@ from dislib.data.array import random_array
 from dislib.math import qr
 
 
-#class QRTest(unittest.TestCase):
-class QRTest(object):
+class QRTest(unittest.TestCase):
 
     @parameterized.expand([
-        #(1, 1, 2), (1, 1, 4), (2, 2, 2), (2, 2, 4), (3, 3, 3), (3, 3, 4), (4, 4, 2),
-        #(4, 4, 3), (4, 4, 4), (6, 6, 6), (8, 8, 8), (2, 1, 2), (2, 1, 4), (3, 2, 2),
-        #(3, 2, 4), (4, 3, 3), (4, 3, 4), (5, 4, 2), (10, 6, 6)
-        (10, 6, 6)
+        (1, 1, 2, False), (1, 1, 4, False), (2, 2, 2, False), (2, 2, 4, False),
+        (3, 3, 3, False), (3, 3, 4, False), (4, 4, 2, False), (4, 4, 3, False),
+        (4, 4, 4, False), (6, 6, 6, False), (8, 8, 8, False), (2, 1, 2, False),
+        (2, 1, 4, False), (3, 2, 2, False), (3, 2, 4, False), (4, 3, 3, False),
+        (4, 3, 4, False), (5, 4, 2, False), (10, 6, 6, False), (10, 6, 6, False),
+        (1, 1, 2, True), (1, 1, 4, True), (2, 2, 2, True), (2, 2, 4, True),
+        (3, 3, 3, True), (3, 3, 4, True), (4, 4, 2, True), (4, 4, 3, True),
+        (4, 4, 4, True), (6, 6, 6, True), (8, 8, 8, True), (2, 1, 2, True),
+        (2, 1, 4, True), (3, 2, 2, True), (3, 2, 4, True), (4, 3, 3, True),
+        (4, 3, 4, True), (5, 4, 2, True), (10, 6, 6, True), (10, 6, 6, True),
     ])
-    def test_qr(self, m_size, n_size, b_size):
+    def test_qr(self, m_size, n_size, b_size, save_memory):
         """Tests qr_blocked"""
         np.set_printoptions(precision=2)
         np.random.seed(8)
@@ -28,45 +33,49 @@ class QRTest(object):
 
         compss_barrier()
 
-        (Q, R) = qr(m2b_ds, save_memory=True)
+        (q, r) = qr(m2b_ds, save_memory=save_memory)
 
-        Q = compss_wait_on(Q).collect()
-        R = compss_wait_on(R).collect()
+        q = compss_wait_on(q).collect()
+        r = compss_wait_on(r).collect()
         m2b_ds = compss_wait_on(m2b_ds)
         m2b = m2b_ds.collect()
 
-        np.save("m2b.npy", self._ds_to_np(m2b))
+        # check if Q matrix is orthogonal
+        self.assertTrue(np.allclose(q.dot(q.T), np.identity(m_size * b_size)))
+        # check if R matrix is upper triangular
+        self.assertTrue(np.allclose(np.triu(r), r))
+        # check if the product Q * R is the original matrix
+        self.assertTrue(np.allclose(q.dot(r), m2b))
 
-        Q_blocked_np = self._ds_to_np(Q)
-        R_blocked_np = self._ds_to_np(R)
+    @parameterized.expand([
+        ((7, 6), (3, 3), False), ((7, 5), (2, 2), False), ((10, 4), (3, 3), False),
+        ((4, 4), (3, 3), False), ((6, 4), (3, 3), False), ((6, 5), (2, 2), False),
+    ])
+    def test_qr_with_padding(self, m_shape, b_shape, save_memory):
+        """Tests qr_blocked with padding"""
+        np.set_printoptions(precision=2)
+        np.random.seed(8)
 
-        print("results")
-        print(Q_blocked_np.dot(Q_blocked_np.T).shape)
-        print(Q_blocked_np.dot(Q_blocked_np.T))
-        print(R_blocked_np)
-        print("original")
-        print(m2b)
-        print("results")
-        print(Q_blocked_np.dot(R_blocked_np))
+        m2b_ds = random_array(m_shape, b_shape)
+
+        (q, r) = qr(m2b_ds, save_memory=save_memory)
+
+        q = compss_wait_on(q).collect()
+        r = compss_wait_on(r).collect()
+        m2b_ds = compss_wait_on(m2b_ds)
+        m2b = m2b_ds.collect()
 
         # check if Q matrix is orthogonal
-        self.assertTrue(np.allclose(Q_blocked_np.dot(Q_blocked_np.T), np.identity(m_size * b_size)))
+        self.assertTrue(np.allclose(q.dot(q.T), np.identity(m_shape[0])))
         # check if R matrix is upper triangular
-        self.assertTrue(np.allclose(np.triu(R_blocked_np), R_blocked_np))
+        self.assertTrue(np.allclose(np.triu(r), r))
         # check if the product Q * R is the original matrix
-        self.assertTrue(np.allclose(Q_blocked_np.dot(R_blocked_np), m2b))
-
-    def _ds_to_np(self, ds):
-        ds_np = np.zeros(ds.shape)
-        for i in range(ds.shape[0]):
-            for j in range(ds.shape[1]):
-                ds_np[i, j] = ds[i, j]
-        return ds_np
+        self.assertTrue(np.allclose(q.dot(r), m2b))
 
 
-#def main():
-#    unittest.main()
+def main():
+    unittest.main()
 
 
-#if __name__ == '__main__':
-#    main()
+if __name__ == '__main__':
+    main()

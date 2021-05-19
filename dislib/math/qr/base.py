@@ -1,11 +1,13 @@
 import numpy as np
+from pycompss.api.api import compss_barrier
 
 from pycompss.api.constraint import constraint
 from pycompss.api.parameter import INOUT, IN
 from pycompss.api.task import task
 
 from dislib.data.array import Array, identity
-from dislib.data.util import compute_bottom_right_shape
+from dislib.data.util import compute_bottom_right_shape, pad_last_blocks_with_zeros
+from dislib.data.util.base import remove_last_rows, remove_last_columns
 from dislib.math.qr import save_memory as save_mem
 
 
@@ -44,7 +46,7 @@ def qr_blocked(a: Array, mode='full', overwrite_a=False, save_memory=False):
 
     _validate_ds_array(a)
 
-    if mode not in ['full', 'economic']:
+    if mode not in ['full']:  # TODO, 'economic']:
         raise ValueError("Unsupported mode: " + mode)
 
     if not overwrite_a:
@@ -52,13 +54,23 @@ def qr_blocked(a: Array, mode='full', overwrite_a=False, save_memory=False):
     else:
         r = a
 
+    padded_rows = 0
+    padded_cols = 0
+    bottom_right_shape = compute_bottom_right_shape(r)
+    if bottom_right_shape != r._reg_shape:
+        padded_rows = r._reg_shape[0] - bottom_right_shape[0]
+        padded_cols = r._reg_shape[1] - bottom_right_shape[1]
+        pad_last_blocks_with_zeros(r)
+
     if save_memory:
-        return save_mem.qr_blocked(a, mode=mode, overwrite_a=overwrite_a)
+        q, r = save_mem.qr_blocked(r, mode=mode, overwrite_a=True)
+        _undo_padding(q, r, padded_rows, padded_cols)
+        return q, r
 
-    b_size = a._reg_shape
-    m_size = (a._n_blocks[0], a._n_blocks[1])
+    b_size = r._reg_shape
+    m_size = (r._n_blocks[0], r._n_blocks[1])
 
-    q = identity(a.shape[0], b_size, dtype=None)
+    q = identity(r.shape[0], b_size, dtype=None)
 
     for i in range(m_size[1]):
         act_q, r._blocks[i][i] = _qr_task(r._blocks[i][i], t=True)
@@ -94,7 +106,19 @@ def qr_blocked(a: Array, mode='full', overwrite_a=False, save_memory=False):
                     transpose_b=True
                 )
 
+    _undo_padding(q, r, padded_rows, padded_cols)
+
     return q, r
+
+
+def _undo_padding(q, r, n_rows, n_cols):
+    if n_rows > 0:
+        remove_last_rows(q, n_rows)
+        remove_last_columns(q, n_rows)
+    if n_cols > 0:
+        remove_last_columns(r, n_cols)
+
+    remove_last_rows(r, max(r.shape[0] - q.shape[1], 0))
 
 
 def _validate_ds_array(a: Array):
@@ -106,10 +130,6 @@ def _validate_ds_array(a: Array):
 
     if a._reg_shape != a._top_left_shape:
         raise ValueError("Top left block needs to be of the same shape as regular ones")
-
-    if compute_bottom_right_shape(a) != a._reg_shape:
-        raise ValueError("Bottom right shape is different than regular block"
-                         "Use dislib.data.util.pad_last_blocks_with_zeros to apply padding")
 
 
 @constraint(computing_units="${computingUnits}")

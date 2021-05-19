@@ -91,3 +91,40 @@ def compute_bottom_right_shape(a: Array):
         size1 = a._reg_shape[1]
 
     return size0, size1
+
+
+def remove_last_rows(a: Array, n_rows):
+    if n_rows <= 0:
+        return
+
+    if n_rows >= compute_bottom_right_shape(a)[0]:
+        print(a.collect())
+        print("removing", n_rows)
+        raise ValueError("Number of rows to remove needs to be less than the whole block")
+
+    for col_block_idx in range(a._n_blocks[1]):
+        padded_block = _remove_bottom_rows(a._blocks[-1][col_block_idx], n_rows)
+        a._blocks[-1][col_block_idx] = padded_block
+
+    a._shape = (a._shape[0] - n_rows, a._shape[1])
+
+
+def remove_last_columns(a: Array, n_columns):
+    if n_columns >= compute_bottom_right_shape(a)[1]:
+        raise ValueError("Number of columns to remove needs to be less than the whole block")
+
+    for row_block_idx in range(a._n_blocks[0]):
+        padded_block = _remove_right_columns(a._blocks[row_block_idx][-1], n_columns)
+        a._blocks[row_block_idx][-1] = padded_block
+
+    a._shape = (a._shape[0], a._shape[1] - n_columns)
+
+
+@task(block=IN)
+def _remove_right_columns(block, n_cols):
+    return block[:, :-n_cols]
+
+
+@task(block=IN)
+def _remove_bottom_rows(block, n_rows):
+    return block[:-n_rows, :]
