@@ -8,7 +8,7 @@ import numpy as np
 
 def pad(a: Array, pad_width, **kwargs):
     """
-        Pad array blocks.
+        Pad array blocks with the desired value.
         Parameters
         ----------
         a : array_like of rank N
@@ -72,6 +72,13 @@ def _pad_bottom_block(block, pad_rows, value):
 
 
 def pad_last_blocks_with_zeros(a: Array):
+    """
+        Pad array blocks with zeros.
+        Parameters
+        ----------
+        a : ds-array
+            The array to pad.
+    """
     bottom_right_shape = compute_bottom_right_shape(a)
     if bottom_right_shape != a._reg_shape:
         rows_to_pad = a._reg_shape[0] - bottom_right_shape[0]
@@ -80,6 +87,19 @@ def pad_last_blocks_with_zeros(a: Array):
 
 
 def compute_bottom_right_shape(a: Array):
+    """
+        Computes a shape of the bottom right block.
+        Parameters
+        ----------
+        a : ds-array
+            The array to pad.
+        Returns
+        -------
+        size0 : int
+            size of the first dimension
+        size1 : int
+            size of the second dimension
+    """
     size0_mod = (a.shape[0] - a._top_left_shape[0]) % a._reg_shape[0]
     size0 = a._top_left_shape[0] if a._n_blocks[0] == 1 else size0_mod
     if size0_mod == 0:
@@ -94,6 +114,19 @@ def compute_bottom_right_shape(a: Array):
 
 
 def remove_last_rows(a: Array, n_rows):
+    """
+        Removes last rows from the bottom blocks of the ds-array.
+        Parameters
+        ----------
+        a : ds-array
+            The array to pad.
+        n_rows : int
+            The array to pad.
+        Raises
+        ------
+        ValueError
+            if n_rows >= the height of the bottom blocks
+    """
     if n_rows <= 0:
         return
 
@@ -110,6 +143,19 @@ def remove_last_rows(a: Array, n_rows):
 
 
 def remove_last_columns(a: Array, n_columns):
+    """
+        Removes last columns from the right-most blocks of the ds-array.
+        Parameters
+        ----------
+        a : ds-array
+            The array to pad.
+        n_columns : int
+            The number of columns to remove
+        Raises
+        ------
+        ValueError
+            if n_columns >= the width of the right-most blocks
+    """
     if n_columns >= compute_bottom_right_shape(a)[1]:
         raise ValueError("Number of columns to remove needs to be less than the whole block")
 
