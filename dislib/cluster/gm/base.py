@@ -7,11 +7,11 @@ from pycompss.api.parameter import Type, COLLECTION_IN, Depth
 from pycompss.api.task import task
 from scipy import linalg
 from scipy.sparse import issparse
+from scipy.special import logsumexp
 from sklearn.exceptions import ConvergenceWarning
 from sklearn.base import BaseEstimator
 from sklearn.utils import validation
 from sklearn.utils.extmath import row_norms
-from sklearn.utils.fixes import logsumexp
 
 from dislib.cluster import KMeans
 from dislib.data.array import Array

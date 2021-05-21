@@ -162,25 +162,25 @@ def svd(a, compute_uv=True, sort=True, copy=True, eps=1e-9):
     if compute_uv:
         v = identity(x.shape[1], (x._reg_shape[1], x._reg_shape[1]))
 
-    checks = True
+    checks = [True]
 
     while not _check_convergence_svd(checks):
         checks = []
 
-        pairings = itertools.product(range(x._n_blocks[1]),
-                                     range(x._n_blocks[1]))
+        pairings = itertools.combinations_with_replacement(
+            range(x._n_blocks[1]), 2
+        )
 
         for i, j in pairings:
             if i >= j:
                 continue
-
             coli_x = x._get_col_block(i)
             colj_x = x._get_col_block(j)
 
-            rot, check = _compute_rotation(coli_x._blocks, colj_x._blocks, eps)
+            rot, check = _compute_rotation_and_rotate(
+                coli_x._blocks, colj_x._blocks, eps
+            )
             checks.append(check)
-
-            _rotate(coli_x._blocks, colj_x._blocks, rot)
 
             if compute_uv:
                 coli_v = v._get_col_block(i)
@@ -205,8 +205,11 @@ def svd(a, compute_uv=True, sort=True, copy=True, eps=1e-9):
 
 
 def _check_convergence_svd(checks):
-    checks = compss_wait_on(checks)
-    return not np.array(checks).any()
+    for i in range(len(checks)):
+        if compss_wait_on(checks[i]):
+            return False
+
+    return True
 
 
 def _compute_u(a):
@@ -370,10 +373,10 @@ def _sort_v_block(v_block, index, bsize, sorting, out_blocks):
             out_blocks[i] = np.vstack(out_blocks[i])
 
 
-@task(coli_blocks={Type: COLLECTION_IN, Depth: 2},
-      colj_blocks={Type: COLLECTION_IN, Depth: 2},
+@task(coli_blocks={Type: COLLECTION_INOUT, Depth: 2},
+      colj_blocks={Type: COLLECTION_INOUT, Depth: 2},
       returns=2)
-def _compute_rotation(coli_blocks, colj_blocks, eps):
+def _compute_rotation_and_rotate(coli_blocks, colj_blocks, eps):
     coli = Array._merge_blocks(coli_blocks)
     colj = Array._merge_blocks(colj_blocks)
 
@@ -393,6 +396,7 @@ def _compute_rotation(coli_blocks, colj_blocks, eps):
     else:
         b = np.block([[bii, bij], [bij.T, bjj]])
         j, _, _ = np.linalg.svd(b)
+        _rotate(coli_blocks, colj_blocks, j)
         return j, True
 
 
