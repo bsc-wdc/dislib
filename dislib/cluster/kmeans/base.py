@@ -160,14 +160,10 @@ class KMeans(BaseEstimator):
         return diff < self.tol ** 2 or iteration >= self.max_iter
 
     def _recompute_centers(self, partials):
-        while len(partials) > 1:
-            partials_subset = partials[:self.arity]
-            partials = partials[self.arity:]
-            partials.append(_merge(*partials_subset))
+        reduced_partials = _recompute_centers_reduce(self, partials)
+        reduced_partials = compss_wait_on(reduced_partials)
 
-        partials = compss_wait_on(partials)
-
-        for idx, sum_ in enumerate(partials[0]):
+        for idx, sum_ in enumerate(reduced_partials[0]):
             if sum_[1] != 0:
                 self.centers[idx] = sum_[0] / sum_[1]
 
@@ -204,17 +200,16 @@ def _partial_sum(blocks, centers):
     return partials
 
 
-@task(returns=dict)
-def _merge(*data):
-    accum = data[0].copy()
-
-    for d in data[1:]:
-        accum += d
-
-    return accum
-
-
 @task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
 def _predict(blocks, centers):
     arr = Array._merge_blocks(blocks)
     return pairwise_distances(arr, centers).argmin(axis=1).reshape(-1, 1)
+
+
+@reduction(chunk_size=self.arity)
+@task(blocks={Type: COLLECTION_IN, Depth: 1}, returns=1)
+def _recompute_centers_reduce(self, partials_subset):
+    accum = partials_subset[0].copy()
+    for d in partials_subset[1:]:
+        accum += d
+    return(accum)
