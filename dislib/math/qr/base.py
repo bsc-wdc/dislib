@@ -1,11 +1,12 @@
 import numpy as np
+import warnings
 from pycompss.api.api import compss_barrier
 
 from pycompss.api.constraint import constraint
 from pycompss.api.parameter import INOUT, IN
 from pycompss.api.task import task
 
-from dislib.data.array import Array, identity
+from dislib.data.array import Array, identity, zeros
 from dislib.data.util import compute_bottom_right_shape, pad_last_blocks_with_zeros
 from dislib.data.util.base import remove_last_rows, remove_last_columns
 from dislib.math.qr import save_memory as save_mem
@@ -20,8 +21,9 @@ def qr_blocked(a: Array, mode='full', overwrite_a=False, save_memory=False):
         Input ds-array.
     mode : string
         Mode of the algorithm
-        'full' - computes full Q matrix.
-        'economic' - computes Q matrix
+        'full' - computes full Q matrix of size m x m and R of size m x n
+        'economic' - computes Q of size m x n and R of size n x n
+        'r' - computes only R of size m x n
     overwrite_a : bool
         Overwriting the input matrix as R.
     save_memory : bool
@@ -30,7 +32,9 @@ def qr_blocked(a: Array, mode='full', overwrite_a=False, save_memory=False):
     Returns
     -------
     q : ds-array
-    r : ds-array
+        only for modes 'full' and 'economic'
+     r : ds-array
+        for all modes
 
     Raises
     ------
@@ -46,73 +50,167 @@ def qr_blocked(a: Array, mode='full', overwrite_a=False, save_memory=False):
 
     _validate_ds_array(a)
 
-    if mode not in ['full']:  # TODO, 'economic']:
+    if mode not in ['full', 'economic', 'r']:
         raise ValueError("Unsupported mode: " + mode)
 
-    if not overwrite_a:
-        r = a.copy()
-    else:
-        r = a
+    if mode == 'economic' and overwrite_a:
+        warnings.warn("The economic mode does not overwrite the original matrix. "
+                      "Argument overwrite_a is changed to False.", UserWarning)
+        overwrite_a = False
+
+    a_obj = a if overwrite_a else a.copy()
 
     padded_rows = 0
     padded_cols = 0
-    bottom_right_shape = compute_bottom_right_shape(r)
-    if bottom_right_shape != r._reg_shape:
-        padded_rows = r._reg_shape[0] - bottom_right_shape[0]
-        padded_cols = r._reg_shape[1] - bottom_right_shape[1]
-        pad_last_blocks_with_zeros(r)
+    bottom_right_shape = compute_bottom_right_shape(a_obj)
+    if bottom_right_shape != a_obj._reg_shape:
+        padded_rows = a_obj._reg_shape[0] - bottom_right_shape[0]
+        padded_cols = a_obj._reg_shape[1] - bottom_right_shape[1]
+        pad_last_blocks_with_zeros(a_obj)
 
     if save_memory:
-        q, r = save_mem.qr_blocked(r, mode=mode, overwrite_a=True)
+        q, r = save_mem.qr_blocked(a_obj, mode=mode, overwrite_a=True)
         _undo_padding(q, r, padded_rows, padded_cols)
         return q, r
+    elif mode == "economic":
+        q, r = _qr_economic(a_obj)
+        return q, r
+    elif mode == "full":
+        q, r = _qr_full(a_obj)
+        _undo_padding(q, r, padded_rows, padded_cols)
+        return q, r
+    elif mode == "r":
+        r = _qr_r(a_obj)
+        if padded_cols > 0:
+            remove_last_columns(r, padded_cols)
+        return r
 
-    b_size = r._reg_shape
-    m_size = (r._n_blocks[0], r._n_blocks[1])
 
-    q = identity(r.shape[0], b_size, dtype=None)
+def _qr_full(r):
+    q = identity(r.shape[0], r._reg_shape, dtype=None)
 
-    for i in range(m_size[1]):
+    for i in range(r._n_blocks[1]):
         act_q, r._blocks[i][i] = _qr_task(r._blocks[i][i], t=True)
 
-        for j in range(m_size[0]):
+        for j in range(r._n_blocks[0]):
             q._blocks[j][i] = _dot_task(q._blocks[j][i], act_q, transpose_b=True)
 
-        for j in range(i + 1, m_size[1]):
+        for j in range(i + 1, r._n_blocks[1]):
             r._blocks[i][j] = _dot_task(act_q, r._blocks[i][j])
 
         # Update values of the respective column
-        for j in range(i + 1, m_size[0]):
-            subQ = [[np.array([0]), np.array([0])],
+        for j in range(i + 1, r._n_blocks[0]):
+            sub_q = [[np.array([0]), np.array([0])],
                     [np.array([0]), np.array([0])]]
 
-            subQ[0][0], subQ[0][1], subQ[1][0], subQ[1][1], r._blocks[i][i], r._blocks[j][i] = _little_qr(
+            sub_q[0][0], sub_q[0][1], sub_q[1][0], sub_q[1][1], r._blocks[i][i], r._blocks[j][i] = _little_qr(
+                r._blocks[i][i], r._blocks[j][i],
+                r._reg_shape, transpose=True)
+
+            # Update values of the row for the value updated in the column
+            for k in range(i + 1, r._n_blocks[1]):
+                [[r._blocks[i][k]], [r._blocks[j][k]]] = _multiply_blocked(
+                    sub_q,
+                    [[r._blocks[i][k]], [r._blocks[j][k]]],
+                    r._reg_shape
+                )
+
+            for k in range(r._n_blocks[0]):
+                [[q._blocks[k][i], q._blocks[k][j]]] = _multiply_blocked(
+                    [[q._blocks[k][i], q._blocks[k][j]]],
+                    sub_q,
+                    r._reg_shape,
+                    transpose_b=True
+                )
+
+    return q, r
+
+
+def _qr_r(r):
+    for i in range(r._n_blocks[1]):
+        act_q, r._blocks[i][i] = _qr_task(r._blocks[i][i], t=True)
+
+        for j in range(i + 1, r._n_blocks[1]):
+            r._blocks[i][j] = _dot_task(act_q, r._blocks[i][j])
+
+        # Update values of the respective column
+        for j in range(i + 1, r._n_blocks[0]):
+            sub_q = [[np.array([0]), np.array([0])],
+                    [np.array([0]), np.array([0])]]
+
+            sub_q[0][0], sub_q[0][1], sub_q[1][0], sub_q[1][1], r._blocks[i][i], r._blocks[j][i] = _little_qr(
+                r._blocks[i][i], r._blocks[j][i],
+                r._reg_shape, transpose=True)
+
+            # Update values of the row for the value updated in the column
+            for k in range(i + 1, r._n_blocks[1]):
+                [[r._blocks[i][k]], [r._blocks[j][k]]] = _multiply_blocked(
+                    sub_q,
+                    [[r._blocks[i][k]], [r._blocks[j][k]]],
+                    r._reg_shape
+                )
+
+    return r
+
+
+def _qr_economic(r):
+    a_shape = (r.shape[0], r.shape[1])
+    a_n_blocks = (r._n_blocks[0], r._n_blocks[1])
+    b_size = r._reg_shape
+
+    # FIXME generate identity above and zeros below instead of slicing
+    q = identity(a_shape[0], b_size, dtype=None)[:, 0:a_shape[1]]
+
+    act_q_list = []
+    sub_q_list = {}
+
+    for i in range(a_n_blocks[1]):
+        act_q, r._blocks[i][i] = _qr_task(r._blocks[i][i], t=True)
+        act_q_list.append(act_q)
+
+        for j in range(i + 1, a_n_blocks[1]):
+            r._blocks[i][j] = _dot_task(act_q, r._blocks[i][j])
+
+        # Update values of the respective column
+        for j in range(i + 1, r._n_blocks[0]):
+            sub_q = [[np.array([0]), np.array([0])],
+                    [np.array([0]), np.array([0])]]
+
+            sub_q[0][0], sub_q[0][1], sub_q[1][0], sub_q[1][1], r._blocks[i][i], r._blocks[j][i] = _little_qr(
                 r._blocks[i][i], r._blocks[j][i],
                 b_size, transpose=True)
 
+            sub_q_list[(j, i)] = sub_q
+
             # Update values of the row for the value updated in the column
-            for k in range(i + 1, m_size[1]):
+            for k in range(i + 1, a_n_blocks[1]):
                 [[r._blocks[i][k]], [r._blocks[j][k]]] = _multiply_blocked(
-                    subQ,
+                    sub_q,
                     [[r._blocks[i][k]], [r._blocks[j][k]]],
                     b_size
                 )
 
-            for k in range(m_size[0]):
-                [[q._blocks[k][i], q._blocks[k][j]]] = _multiply_blocked(
-                    [[q._blocks[k][i], q._blocks[k][j]]],
-                    subQ,
+    for i in reversed(range(len(act_q_list))):
+        for j in reversed(range(i + 1, r._n_blocks[0])):
+            for k in range(q._n_blocks[1]):
+                [[q._blocks[i][k]], [q._blocks[j][k]]] = _multiply_blocked(
+                    sub_q_list[(j, i)],
+                    [[q._blocks[i][k]], [q._blocks[j][k]]],
                     b_size,
-                    transpose_b=True
+                    transpose_a=True
                 )
 
-    _undo_padding(q, r, padded_rows, padded_cols)
+        for k in range(q._n_blocks[1]):
+            q._blocks[i][k] = _dot_task(act_q_list[i], q._blocks[i][k], transpose_a=True)
+
+    # removing last rows of r to make it n x n instead of m x n
+    remove_last_rows(r, r.shape[0] - r.shape[1])
 
     return q, r
 
 
 def _undo_padding(q, r, n_rows, n_cols):
-    if n_rows > 0:
+    if n_rows > 0 and q is not None:
         remove_last_rows(q, n_rows)
         remove_last_columns(q, n_rows)
     if n_cols > 0:
@@ -144,7 +242,9 @@ def _qr_task(a, mode='reduced', t=False):
 
 @constraint(computing_units="${computingUnits}")
 @task(returns=np.array)
-def _dot_task(a, b, transpose_result=False, transpose_b=False):
+def _dot_task(a, b, transpose_result=False, transpose_a=False, transpose_b=False):
+    if transpose_a:
+        a = np.transpose(a)
     if transpose_b:
         b = np.transpose(b)
     if transpose_result:
@@ -175,13 +275,23 @@ def _little_qr(a, b, b_size, transpose=False):
 
 @constraint(computing_units="${computingUnits}")
 @task(a=IN, b=IN, c=INOUT)
-def _multiply_single_block_task(a, b, c, transpose_b=False):
+def _multiply_single_block_task(a, b, c, transpose_a=False, transpose_b=False):
+    if transpose_a:
+        a = np.transpose(a)
     if transpose_b:
         b = np.transpose(b)
     c += (a.dot(b))
 
 
-def _multiply_blocked(a, b, b_size, transpose_b=False):
+def _multiply_blocked(a, b, b_size, transpose_a=False, transpose_b=False):
+    if transpose_a:
+        new_a = []
+        for i in range(len(a[0])):
+            new_a.append([])
+            for j in range(len(a)):
+                new_a[i].append(a[j][i])
+        a = new_a
+
     if transpose_b:
         new_b = []
         for i in range(len(b[0])):
@@ -196,7 +306,7 @@ def _multiply_blocked(a, b, b_size, transpose_b=False):
         for j in range(len(b[0])):
             c[i].append(np.zeros(b_size))
             for k in range(len(a[0])):
-                _multiply_single_block_task(a[i][k], b[k][j], c[i][j], transpose_b=transpose_b)
+                _multiply_single_block_task(a[i][k], b[k][j], c[i][j], transpose_a=transpose_a, transpose_b=transpose_b)
 
     return c
 

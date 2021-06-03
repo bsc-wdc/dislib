@@ -122,20 +122,27 @@ def remove_last_rows(a: Array, n_rows):
             The array to pad.
         n_rows : int
             The array to pad.
-        Raises
-        ------
-        ValueError
-            if n_rows >= the height of the bottom blocks
     """
     if n_rows <= 0:
         return
 
-    if n_rows >= compute_bottom_right_shape(a)[0]:
-        print(a.collect())
-        print("removing", n_rows)
-        raise ValueError("Number of rows to remove needs to be less than the whole block")
+    right_bottom_shape = compute_bottom_right_shape(a)
+
+    if n_rows >= right_bottom_shape[0]:
+        # removing whole blocks
+        removed_blocks = int(n_rows / right_bottom_shape[0])
+        removed_rows = removed_blocks * right_bottom_shape[0]
+        del a._blocks[-removed_blocks:]
+
+        a._n_blocks = (a._n_blocks[0] - removed_blocks, a._n_blocks[1])
+        a._shape = (a._shape[0] - removed_rows, a._shape[1])
+        n_rows = n_rows - removed_rows
+
+    if n_rows <= 0:
+        return
 
     for col_block_idx in range(a._n_blocks[1]):
+        # removing remaining rows
         padded_block = _remove_bottom_rows(a._blocks[-1][col_block_idx], n_rows)
         a._blocks[-1][col_block_idx] = padded_block
 

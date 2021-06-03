@@ -23,7 +23,7 @@ class QRTest(unittest.TestCase):
         (4, 3, 4, True), (5, 4, 2, True), (10, 6, 6, True), (10, 6, 6, True),
     ])
     def test_qr(self, m_size, n_size, b_size, save_memory):
-        """Tests qr_blocked"""
+        """Tests qr_blocked full mode"""
         np.set_printoptions(precision=2)
         np.random.seed(8)
 
@@ -71,6 +71,71 @@ class QRTest(unittest.TestCase):
         self.assertTrue(np.allclose(np.triu(r), r))
         # check if the product Q * R is the original matrix
         self.assertTrue(np.allclose(q.dot(r), m2b))
+
+    @parameterized.expand([
+        (1, 1, 2, False), (1, 1, 4, False), (2, 2, 2, False), (2, 2, 4, False),
+        (3, 3, 3, False), (3, 3, 4, False), (4, 4, 2, False), (4, 4, 3, False),
+        (4, 4, 4, False), (6, 6, 6, False), (8, 8, 8, False), (2, 1, 2, False),
+        (2, 1, 4, False), (3, 2, 2, False), (3, 2, 4, False), (4, 3, 3, False),
+        (4, 3, 4, False), (5, 4, 2, False), (10, 6, 6, False), (10, 6, 6, False),
+    ])
+    def test_qr_economic(self, m_size, n_size, b_size, save_memory):
+        """Tests qr_blocked economic mode"""
+        np.set_printoptions(precision=2)
+        np.random.seed(8)
+
+        shape = (m_size * b_size, n_size * b_size)
+
+        m2b_ds = random_array(shape, (b_size, b_size))
+
+        compss_barrier()
+
+        (q, r) = qr(m2b_ds, save_memory=save_memory, mode="economic")
+
+        q = compss_wait_on(q).collect()
+        r = compss_wait_on(r).collect()
+        m2b_ds = compss_wait_on(m2b_ds)
+        m2b = m2b_ds.collect()
+
+        # check if Q matrix is orthogonal
+        self.assertTrue(np.allclose(q.T.dot(q), np.identity(n_size * b_size)))
+        # check if R matrix is upper triangular
+        self.assertTrue(np.allclose(np.triu(r), r))
+        # check if the product Q * R is the original matrix
+        self.assertTrue(np.allclose(q.dot(r), m2b))
+        # check the dimensions of Q
+        self.assertTrue(q.shape == (m_size * b_size, n_size * b_size))
+        # check the dimensions of R
+        self.assertTrue(r.shape == (n_size * b_size, n_size * b_size))
+
+    @parameterized.expand([
+        (1, 1, 2, False), (1, 1, 4, False), (2, 2, 2, False), (2, 2, 4, False),
+        (3, 3, 3, False), (3, 3, 4, False), (4, 4, 2, False), (4, 4, 3, False),
+        (4, 4, 4, False), (6, 6, 6, False), (8, 8, 8, False), (2, 1, 2, False),
+        (2, 1, 4, False), (3, 2, 2, False), (3, 2, 4, False), (4, 3, 3, False),
+        (4, 3, 4, False), (5, 4, 2, False), (10, 6, 6, False), (10, 6, 6, False),
+    ])
+    def test_qr_r(self, m_size, n_size, b_size, save_memory):
+        """Tests qr_blocked r mode"""
+        np.set_printoptions(precision=2)
+        np.random.seed(8)
+
+        shape = (m_size * b_size, n_size * b_size)
+
+        m2b_ds = random_array(shape, (b_size, b_size))
+
+        compss_barrier()
+
+        r = qr(m2b_ds, save_memory=save_memory, mode="r")
+        _, r_full = qr(m2b_ds, save_memory=save_memory, mode="full")
+
+        r = compss_wait_on(r).collect()
+        r_full = compss_wait_on(r_full).collect()
+
+        # check if R matrix is upper triangular
+        self.assertTrue(np.allclose(np.triu(r), r))
+        # check if R matrix is the same as when the full mode is applied
+        self.assertTrue(np.allclose(r, r_full))
 
 
 def main():
