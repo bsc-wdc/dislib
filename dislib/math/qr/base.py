@@ -1,15 +1,13 @@
 import numpy as np
 import warnings
-from pycompss.api.api import compss_barrier
 
 from pycompss.api.constraint import constraint
 from pycompss.api.parameter import INOUT, IN
 from pycompss.api.task import task
 
-from dislib.data.array import Array, identity, zeros
+from dislib.data.array import Array, identity, full
 from dislib.data.util import compute_bottom_right_shape, pad_last_blocks_with_zeros
 from dislib.data.util.base import remove_last_rows, remove_last_columns
-from dislib.math.qr import save_memory as save_mem
 
 
 def qr_blocked(a: Array, mode='full', overwrite_a=False, save_memory=False):
@@ -68,19 +66,15 @@ def qr_blocked(a: Array, mode='full', overwrite_a=False, save_memory=False):
         padded_cols = a_obj._reg_shape[1] - bottom_right_shape[1]
         pad_last_blocks_with_zeros(a_obj)
 
-    if save_memory:
-        q, r = save_mem.qr_blocked(a_obj, mode=mode, overwrite_a=True)
-        _undo_padding(q, r, padded_rows, padded_cols)
-        return q, r
-    elif mode == "economic":
-        q, r = _qr_economic(a_obj)
+    if mode == "economic":
+        q, r = _qr_economic_save_mem(a_obj) if save_memory else _qr_economic(a_obj)
         return q, r
     elif mode == "full":
-        q, r = _qr_full(a_obj)
+        q, r = _qr_full_save_mem(a_obj) if save_memory else _qr_full(a_obj)
         _undo_padding(q, r, padded_rows, padded_cols)
         return q, r
     elif mode == "r":
-        r = _qr_r(a_obj)
+        r = _qr_r_save_mem(a_obj) if save_memory else _qr_r(a_obj)
         if padded_cols > 0:
             remove_last_columns(r, padded_cols)
         return r
@@ -209,6 +203,185 @@ def _qr_economic(r):
     return q, r
 
 
+ZEROS = 0
+IDENTITY = 1
+OTHER = 2
+
+
+def _qr_full_save_mem(r):
+    q, q_type = _gen_identity_save_mem(r.shape[0], r._reg_shape, r._n_blocks[0])
+
+    r_type = full((r._n_blocks[0], r._n_blocks[1]), (1, 1), OTHER)
+
+    for i in range(r._n_blocks[1]):
+        act_q_type, act_q, r_type._blocks[i][i], r._blocks[i][i] = _qr_save_mem(
+            r._blocks[i][i], r_type._blocks[i][i], r._reg_shape, t=True
+        )
+
+        for j in range(r._n_blocks[0]):
+            q_type._blocks[j][i], q._blocks[j][i] = _dot_save_mem(
+                q._blocks[j][i], q_type._blocks[j][i], act_q, act_q_type, transpose_b=True
+            )
+
+        for j in range(i + 1, r._n_blocks[1]):
+            r_type._blocks[i][j], r._blocks[i][j] = _dot_save_mem(
+                act_q, act_q_type, r._blocks[i][j], r_type._blocks[i][j]
+            )
+
+        # Update values of the respective column
+        for j in range(i + 1, r._n_blocks[0]):
+            subQ = [[np.array([0]), np.array([0])],
+                    [np.array([0]), np.array([0])]]
+            subQ_type = [[_type_block_save_mem(OTHER), _type_block_save_mem(OTHER)],
+                         [_type_block_save_mem(OTHER), _type_block_save_mem(OTHER)]]
+
+            subQ[0][0], subQ[0][1], subQ[1][0], subQ[1][1], r_type._blocks[i][i], r._blocks[i][i],\
+            r_type._blocks[j][i], r._blocks[j][i] = _little_qr_save_mem(
+                r._blocks[i][i], r_type._blocks[i][i], r._blocks[j][i], r_type._blocks[j][i],
+                r._reg_shape, transpose=True)
+
+            # Update values of the row for the value updated in the column
+            for k in range(i + 1, r._n_blocks[1]):
+                [[r_type._blocks[i][k]], [r_type._blocks[j][k]]],\
+                [[r._blocks[i][k]], [r._blocks[j][k]]] = _multiply_blocked_save_mem(
+                    subQ,
+                    subQ_type,
+                    [[r._blocks[i][k]], [r._blocks[j][k]]],
+                    [[r_type._blocks[i][k]], [r_type._blocks[j][k]]],
+                    r._reg_shape
+                )
+
+            for k in range(r._n_blocks[0]):
+                [[q_type._blocks[k][i], q_type._blocks[k][j]]],\
+                [[q._blocks[k][i], q._blocks[k][j]]] = _multiply_blocked_save_mem(
+                    [[q._blocks[k][i], q._blocks[k][j]]],
+                    [[q_type._blocks[k][i], q_type._blocks[k][j]]],
+                    subQ,
+                    subQ_type,
+                    r._reg_shape,
+                    transpose_b=True
+                )
+
+    return q, r
+
+
+def _qr_r_save_mem(r):
+    r_type = full((r._n_blocks[0], r._n_blocks[1]), (1, 1), OTHER)
+
+    for i in range(r._n_blocks[1]):
+        act_q_type, act_q, r_type._blocks[i][i], r._blocks[i][i] = _qr_save_mem(
+            r._blocks[i][i], r_type._blocks[i][i], r._reg_shape, t=True
+        )
+
+        for j in range(i + 1, r._n_blocks[1]):
+            r_type._blocks[i][j], r._blocks[i][j] = _dot_save_mem(
+                act_q, act_q_type, r._blocks[i][j], r_type._blocks[i][j]
+            )
+
+        # Update values of the respective column
+        for j in range(i + 1, r._n_blocks[0]):
+            subQ = [[np.array([0]), np.array([0])],
+                    [np.array([0]), np.array([0])]]
+            subQ_type = [[_type_block_save_mem(OTHER), _type_block_save_mem(OTHER)],
+                         [_type_block_save_mem(OTHER), _type_block_save_mem(OTHER)]]
+
+            subQ[0][0], subQ[0][1], subQ[1][0], subQ[1][1], r_type._blocks[i][i], r._blocks[i][i],\
+            r_type._blocks[j][i], r._blocks[j][i] = _little_qr_save_mem(
+                r._blocks[i][i], r_type._blocks[i][i], r._blocks[j][i], r_type._blocks[j][i],
+                r._reg_shape, transpose=True)
+
+            # Update values of the row for the value updated in the column
+            for k in range(i + 1, r._n_blocks[1]):
+                [[r_type._blocks[i][k]], [r_type._blocks[j][k]]],\
+                [[r._blocks[i][k]], [r._blocks[j][k]]] = _multiply_blocked_save_mem(
+                    subQ,
+                    subQ_type,
+                    [[r._blocks[i][k]], [r._blocks[j][k]]],
+                    [[r_type._blocks[i][k]], [r_type._blocks[j][k]]],
+                    r._reg_shape
+                )
+
+    return r
+
+
+def _qr_economic_save_mem(r):
+    a_shape = (r.shape[0], r.shape[1])
+    a_n_blocks = (r._n_blocks[0], r._n_blocks[1])
+    b_size = r._reg_shape
+
+    # FIXME generate identity above and zeros below instead of slicing
+    q, q_type = _gen_identity_save_mem(r.shape[0], b_size, r._n_blocks[0])
+    q = q[:, :a_shape[1]]
+    q_type = q_type[:, :r._n_blocks[1]]
+
+    r_type = full((r._n_blocks[0], r._n_blocks[1]), (1, 1), OTHER)
+
+    act_q_list = []
+    sub_q_list = {}
+
+    for i in range(a_n_blocks[1]):
+        act_q_type, act_q, r_type._blocks[i][i], r._blocks[i][i] = _qr_save_mem(
+            r._blocks[i][i], r_type._blocks[i][i], b_size, t=True
+        )
+        act_q_list.append((act_q_type, act_q))
+
+        for j in range(i + 1, a_n_blocks[1]):
+            r_type._blocks[i][j], r._blocks[i][j] = _dot_save_mem(
+                act_q, act_q_type, r._blocks[i][j], r_type._blocks[i][j]
+            )
+
+        # Update values of the respective column
+        for j in range(i + 1, r._n_blocks[0]):
+            sub_q = [[np.array([0]), np.array([0])],
+                     [np.array([0]), np.array([0])]]
+            sub_q_type = [[_type_block_save_mem(OTHER), _type_block_save_mem(OTHER)],
+                         [_type_block_save_mem(OTHER), _type_block_save_mem(OTHER)]]
+
+            sub_q[0][0], sub_q[0][1], sub_q[1][0], sub_q[1][1],\
+            r_type._blocks[i][i], r._blocks[i][i],\
+            r_type._blocks[j][i], r._blocks[j][i] = _little_qr_save_mem(
+                r._blocks[i][i], r_type._blocks[i][i],
+                r._blocks[j][i], r_type._blocks[j][i],
+                b_size, transpose=True
+            )
+
+            sub_q_list[(j, i)] = (sub_q_type, sub_q)
+
+            # Update values of the row for the value updated in the column
+            for k in range(i + 1, a_n_blocks[1]):
+                [[r_type._blocks[i][k]], [r_type._blocks[j][k]]], \
+                [[r._blocks[i][k]], [r._blocks[j][k]]] = _multiply_blocked_save_mem(
+                    sub_q,
+                    sub_q_type,
+                    [[r._blocks[i][k]], [r._blocks[j][k]]],
+                    [[r_type._blocks[i][k]], [r_type._blocks[j][k]]],
+                    b_size
+                )
+
+    for i in reversed(range(len(act_q_list))):
+        for j in reversed(range(i + 1, r._n_blocks[0])):
+            for k in range(q._n_blocks[1]):
+                [[q_type._blocks[i][k]], [q_type._blocks[j][k]]], \
+                [[q._blocks[i][k]], [q._blocks[j][k]]] = _multiply_blocked_save_mem(
+                    sub_q_list[(j, i)][1],
+                    sub_q_list[(j, i)][0],
+                    [[q._blocks[i][k]], [q._blocks[j][k]]],
+                    [[q_type._blocks[i][k]], [q_type._blocks[j][k]]],
+                    b_size,
+                    transpose_a=True
+                )
+
+        for k in range(q._n_blocks[1]):
+            q_type._blocks[i][k], q._blocks[i][k] = _dot_save_mem(
+                act_q_list[i][1], act_q_list[i][0], q._blocks[i][k], q_type._blocks[i][k], transpose_a=True
+            )
+
+    # removing last rows of r to make it n x n instead of m x n
+    remove_last_rows(r, r.shape[0] - r.shape[1])
+
+    return q, r
+
+
 def _undo_padding(q, r, n_rows, n_cols):
     if n_rows > 0 and q is not None:
         remove_last_rows(q, n_rows)
@@ -318,3 +491,189 @@ def _split_matrix(a, m_size):
         for j in range(m_size):
             split_matrix[i][j] = a[i * b_size:(i + 1) * b_size, j * b_size:(j + 1) * b_size]
     return split_matrix
+
+
+def _gen_identity_save_mem(n, b_size, m_size):
+    a = identity(n, b_size, dtype=None)
+    aux_a = identity(m_size, (1, 1), dtype=np.uint8)
+    return a, aux_a
+
+
+@constraint(computing_units="${computingUnits}")
+@task(returns=(np.array, np.array))
+def _qr_task_save_mem(a, a_type, b_size, mode='reduced', t=False):
+    from numpy.linalg import qr
+    if a_type[0, 0] == OTHER:
+        q, r = qr(a, mode=mode)
+    elif a_type[0, 0] == ZEROS:
+        q, r = qr(np.zeros(b_size), mode=mode)
+    else:
+        q, r = qr(np.identity(max(b_size)), mode=mode)
+    if t:
+        q = np.transpose(q)
+    return q, r
+
+
+def _qr_save_mem(a, a_type, b_size, mode='reduced', t=False):
+    q_aux, r_aux = _qr_task_save_mem(a, a_type, b_size, mode=mode, t=t)
+    return _type_block_save_mem(OTHER), q_aux, _type_block_save_mem(OTHER), r_aux
+
+
+def _type_block_save_mem(value):
+    return np.full((1, 1), value, np.uint8)
+
+
+def _empty_block_save_mem(shape):
+    return np.full(shape, 0, dtype=np.uint8)
+
+
+@constraint(computing_units="${computingUnits}")
+@task(returns=(np.array, np.array))
+def _dot_save_mem(a, a_type, b, b_type, transpose_result=False, transpose_a=False, transpose_b=False):
+    if a_type[0][0] == ZEROS:
+        return _type_block_save_mem(ZEROS), _empty_block_save_mem(a.shape)
+    if a_type[0][0] == IDENTITY:
+        if transpose_b and transpose_result:
+            return b_type, b
+        if transpose_b or transpose_result:
+            return _transpose_block_save_mem(b, b_type)
+
+        return b_type, b
+    if b_type[0][0] == ZEROS:
+        return _type_block_save_mem(ZEROS), _empty_block_save_mem(a.shape)
+    if b_type[0][0] == IDENTITY:
+        if transpose_a:
+            a_type, a = _transpose_block_save_mem(a, a_type)
+        if transpose_result:
+            return _transpose_block_save_mem(a, a_type)
+        return a_type, a
+    result = _dot_task(a, b, transpose_result=transpose_result, transpose_a=transpose_a, transpose_b=transpose_b)
+
+    return _type_block_save_mem(OTHER), result
+
+
+@constraint(computing_units="${computingUnits}")
+@task(returns=(np.array, np.array, np.array, np.array, np.array, np.array))
+def _little_qr_task_save_mem(a, type_a, b, type_b, b_size, transpose=False):
+    regular_b_size = b_size[0]
+    ent_a = [type_a, a]
+    ent_b = [type_b, b]
+    for mat in [ent_a, ent_b]:
+        if mat[0] == ZEROS:
+            mat[1] = np.zeros((regular_b_size, regular_b_size))
+        elif mat[0] == IDENTITY:
+            mat[1] = np.identity(regular_b_size)
+    curr_a = np.bmat([[ent_a[1]], [ent_b[1]]])
+    (sub_q, sub_r) = np.linalg.qr(curr_a, mode='complete')
+    aa = sub_r[0:regular_b_size]
+    bb = sub_r[regular_b_size:2 * regular_b_size]
+    sub_q = _split_matrix(sub_q, 2)
+    if transpose:
+        return np.transpose(sub_q[0][0]), np.transpose(sub_q[1][0]), np.transpose(sub_q[0][1]), np.transpose(
+            sub_q[1][1]), aa, bb
+    else:
+        return sub_q[0][0], sub_q[0][1], sub_q[1][0], sub_q[1][1], aa, bb
+
+
+def _little_qr_save_mem(a, type_a, b, type_b, b_size, transpose=False):
+    sub_q00, sub_q01, sub_q10, sub_q11, aa, bb = _little_qr_task_save_mem(a, type_a, b, type_b, b_size, transpose)
+    return sub_q00, sub_q01, sub_q10, sub_q11, _type_block_save_mem(OTHER), aa, _type_block_save_mem(OTHER), bb
+
+
+@constraint(computing_units="${computingUnits}")
+@task(returns=(np.array, np.array))
+def _multiply_single_block_task_save_mem(a, type_a, b, type_b, c, type_c, b_size, transpose_a=False, transpose_b=False):
+    if type_a[0][0] == ZEROS or type_b[0][0] == ZEROS:
+        return type_c, c
+
+    fun_a = [type_a, a]
+    fun_b = [type_b, b]
+
+    if type_c[0][0] == ZEROS:
+        c = np.zeros((b_size[0], b_size[1]))
+    elif type_c[0][0] == IDENTITY:
+        c = np.identity(b_size[0])
+
+    if fun_a[0][0][0] == IDENTITY:
+        if fun_b[0][0][0] == IDENTITY:
+            fun_b[1] = np.identity(b_size[0])
+        if transpose_b:
+            aux = np.transpose(fun_b[1])
+        else:
+            aux = fun_b[1]
+        c += aux
+        return _type_block_save_mem(OTHER), c
+
+    if fun_b[0][0][0] == IDENTITY:
+        if transpose_a:
+            aux = np.transpose(fun_a[1])
+        else:
+            aux = fun_a[1]
+        c += aux
+        return _type_block_save_mem(OTHER), c
+
+    if transpose_a:
+        fun_a[1] = np.transpose(fun_a[1])
+
+    if transpose_b:
+        fun_b[1] = np.transpose(fun_b[1])
+
+    c += (fun_a[1].dot(fun_b[1]))
+    return _type_block_save_mem(OTHER), c
+
+
+def _multiply_single_block_save_mem(a, type_a, b, type_b, c, type_c, b_size, transpose_a=False, transpose_b=False):
+    return _multiply_single_block_task_save_mem(a, type_a, b, type_b, c, type_c, b_size, transpose_a=transpose_a, transpose_b=transpose_b)
+
+
+def _multiply_blocked_save_mem(a, type_a, b, type_b, b_size, transpose_a=False, transpose_b=False):
+    if transpose_a:
+        new_a = []
+        for i in range(len(a[0])):
+            new_a.append([])
+            for j in range(len(a)):
+                new_a[i].append(a[j][i])
+        a = new_a
+        new_a_type = []
+        for i in range(len(type_a[0])):
+            new_a_type.append([])
+            for j in range(len(type_a)):
+                new_a_type[i].append(type_a[j][i])
+        type_a = new_a_type
+
+    if transpose_b:
+        new_b = []
+        for i in range(len(b[0])):
+            new_b.append([])
+            for j in range(len(b)):
+                new_b[i].append(b[j][i])
+        b = new_b
+        new_b_type = []
+        for i in range(len(type_b[0])):
+            new_b_type.append([])
+            for j in range(len(type_b)):
+                new_b_type[i].append(type_b[j][i])
+        type_b = new_b_type
+
+    c = []
+    type_c = []
+    for i in range(len(a)):
+        c.append([])
+        type_c.append([])
+        for j in range(len(b[0])):
+            c[i].append(_empty_block_save_mem(b_size))
+            type_c[i].append(_type_block_save_mem(ZEROS))
+            for k in range(len(a[0])):
+                type_c[i][j], c[i][j] = _multiply_single_block_save_mem(
+                    a[i][k], type_a[i][k],
+                    b[k][j], type_b[k][j],
+                    c[i][j], type_c[i][j],
+                    b_size, transpose_a=transpose_a, transpose_b=transpose_b)
+
+    return type_c, c
+
+
+def _transpose_block_save_mem(a, a_type):
+    if a_type[0][0] == ZEROS or a_type[0][0] == IDENTITY:
+        return a_type, a
+    return _type_block_save_mem(OTHER), np.transpose(a)

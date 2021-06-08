@@ -78,6 +78,11 @@ class QRTest(unittest.TestCase):
         (4, 4, 4, False), (6, 6, 6, False), (8, 8, 8, False), (2, 1, 2, False),
         (2, 1, 4, False), (3, 2, 2, False), (3, 2, 4, False), (4, 3, 3, False),
         (4, 3, 4, False), (5, 4, 2, False), (10, 6, 6, False), (10, 6, 6, False),
+        (1, 1, 2, True), (1, 1, 4, True), (2, 2, 2, True), (2, 2, 4, True),
+        (3, 3, 3, True), (3, 3, 4, True), (4, 4, 2, True), (4, 4, 3, True),
+        (4, 4, 4, True), (6, 6, 6, True), (8, 8, 8, True), (2, 1, 2, True),
+        (2, 1, 4, True), (3, 2, 2, True), (3, 2, 4, True), (4, 3, 3, True),
+        (4, 3, 4, True), (5, 4, 2, True), (10, 6, 6, True), (10, 6, 6, True),
     ])
     def test_qr_economic(self, m_size, n_size, b_size, save_memory):
         """Tests qr_blocked economic mode"""
@@ -114,6 +119,11 @@ class QRTest(unittest.TestCase):
         (4, 4, 4, False), (6, 6, 6, False), (8, 8, 8, False), (2, 1, 2, False),
         (2, 1, 4, False), (3, 2, 2, False), (3, 2, 4, False), (4, 3, 3, False),
         (4, 3, 4, False), (5, 4, 2, False), (10, 6, 6, False), (10, 6, 6, False),
+        (1, 1, 2, True), (1, 1, 4, True), (2, 2, 2, True), (2, 2, 4, True),
+        (3, 3, 3, True), (3, 3, 4, True), (4, 4, 2, True), (4, 4, 3, True),
+        (4, 4, 4, True), (6, 6, 6, True), (8, 8, 8, True), (2, 1, 2, True),
+        (2, 1, 4, True), (3, 2, 2, True), (3, 2, 4, True), (4, 3, 3, True),
+        (4, 3, 4, True), (5, 4, 2, True), (10, 6, 6, True), (10, 6, 6, True),
     ])
     def test_qr_r(self, m_size, n_size, b_size, save_memory):
         """Tests qr_blocked r mode"""
