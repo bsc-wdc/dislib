@@ -1480,7 +1480,10 @@ def _block_apply(func, block, *args, **kwargs):
     return func(block, *args, **kwargs)
 
 
-@reduction(chunk_size="2")
+chunk_in = 2 # Default chunk size
+if 'DISLIB_CHUNK_SIZE' in os.environ:
+    chunk_in = os.environ['DISLIB_CHUNK_SIZE']
+@reduction(chunk_size=chunk_in)
 @task(returns=1, blocks={Type:COLLECTION_IN, Depth:1})
 def _block_apply_reduce(blocks, func):
     # COMPSs 2.8.4 requirement: pass the collection to reduce as the first
