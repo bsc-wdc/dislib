@@ -28,7 +28,7 @@ def main():
 
     gpfs_cmd = cmd + [
         "--worker_working_dir=/gpfs/scratch/bsc19/compss/COMPSs_Sandbox"]
-    scratch_cmd = cmd + ["--worker_working_dir=scratch"]
+    scratch_cmd = cmd + ["--worker_working_dir=local_disk"]
     dependencies = "afterany"
 
     for f in os.listdir(tests_dir):
