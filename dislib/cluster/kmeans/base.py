@@ -2,6 +2,7 @@ import numpy as np
 from pycompss.api.api import compss_wait_on
 from pycompss.api.parameter import COLLECTION_IN, Depth, Type
 from pycompss.api.task import task
+from pycompss.api.reduction import reduction
 from scipy.sparse import csr_matrix
 from sklearn.base import BaseEstimator
 from sklearn.metrics import pairwise_distances
@@ -95,7 +96,7 @@ class KMeans(BaseEstimator):
             old_centers = self.centers.copy()
             partials = []
 
-            for row in x._iterator(axis=0):
+            for row in x._iterator(axis=0): # Partial sum for each block
                 partial = _partial_sum(row._blocks, old_centers)
                 partials.append(partial)
 
@@ -160,10 +161,17 @@ class KMeans(BaseEstimator):
         return diff < self.tol ** 2 or iteration >= self.max_iter
 
     def _recompute_centers(self, partials):
-        reduced_partials = _recompute_centers_reduce(self, partials)
+        # partials has: for each block, the partial sum of distances for each
+        # cluster K (partials[num_block][0] and the number of samples in that sum
+        # at partials[num_block][1]
+
+        reduced_partials = _recompute_centers_reduce(partials)
         reduced_partials = compss_wait_on(reduced_partials)
 
-        for idx, sum_ in enumerate(reduced_partials[0]):
+        # The reduce condenses all sums for all blocks in one element
+        # sum_[0]: sum of distances
+        # sum_[1]: number of samples
+        for idx, sum_ in enumerate(reduced_partials):
             if sum_[1] != 0:
                 self.centers[idx] = sum_[0] / sum_[1]
 
@@ -206,9 +214,11 @@ def _predict(blocks, centers):
     return pairwise_distances(arr, centers).argmin(axis=1).reshape(-1, 1)
 
 
-@reduction(chunk_size=self.arity)
-@task(blocks={Type: COLLECTION_IN, Depth: 1}, returns=1)
-def _recompute_centers_reduce(self, partials_subset):
+# @reduction(chunk_size=self.arity) # Can't implement this until chunk_size can
+# be dynamically defined
+@reduction(chunk_size=2)
+@task(partials_subset={Type: COLLECTION_IN, Depth: 1}, returns=1)
+def _recompute_centers_reduce(partials_subset):
     accum = partials_subset[0].copy()
     for d in partials_subset[1:]:
         accum += d
