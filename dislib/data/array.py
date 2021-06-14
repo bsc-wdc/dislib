@@ -1,5 +1,5 @@
 import operator
-from collections import defaultdict
+from collections import defaultdict, deque
 from math import ceil
 
 import numpy as np
@@ -900,6 +900,30 @@ class Array(object):
         """
         return apply_along_axis(np.mean, axis, self)
 
+    def median(self, axis=0):
+        """
+        Returns the median along the given axis.
+
+        Parameters
+        ----------
+        axis : int, optional (default=0)
+
+        Returns
+        -------
+        median : ds-array
+            Median along axis.
+
+        Raises
+        -------
+        NotImplementedError
+            If the ds-array is sparse.
+        """
+        if self._sparse:
+            raise NotImplementedError("Cannot compute the median of sparse "
+                                      "ds-arrays.")
+
+        return apply_along_axis(np.median, axis, self)
+
     def norm(self, axis=0):
         """ Returns the Frobenius norm along an axis.
 
@@ -1243,14 +1267,14 @@ def apply_along_axis(func, axis, x, *args, **kwargs):
 
 
 def _multiply_block_groups(hblock, vblock):
-    blocks = []
+    blocks = deque()
 
     for blocki, blockj in zip(hblock, vblock):
         blocks.append(_block_apply(operator.matmul, blocki, blockj))
 
     while len(blocks) > 1:
-        block1 = blocks.pop(0)
-        block2 = blocks.pop(0)
+        block1 = blocks.popleft()
+        block2 = blocks.popleft()
         blocks.append(_block_apply(operator.add, block1, block2))
 
         compss_delete_object(block1)
