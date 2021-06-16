@@ -1,3 +1,4 @@
+from pycompss.api.api import compss_delete_object
 from pycompss.api.parameter import IN
 from pycompss.api.task import task
 
@@ -132,7 +133,9 @@ def remove_last_rows(a: Array, n_rows):
         # removing whole blocks
         removed_blocks = int(n_rows / right_bottom_shape[0])
         removed_rows = removed_blocks * right_bottom_shape[0]
-        del a._blocks[-removed_blocks:]
+        for i in reversed(range(a._n_blocks[0] - removed_blocks, a._n_blocks[0])):
+            compss_delete_object(a._blocks[i])
+            del a._blocks[i]
 
         a._n_blocks = (a._n_blocks[0] - removed_blocks, a._n_blocks[1])
         a._shape = (a._shape[0] - removed_rows, a._shape[1])

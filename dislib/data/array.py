@@ -1006,6 +1006,24 @@ class Array(object):
             res = np.squeeze(res)
         return res
 
+    """
+    Replaces the given block in a safe way.
+    It removes the old version of data in COMPSs.
+    
+    Parameters
+        ----------
+        i : int
+            First coordinate of the block to replace
+        j : int
+            Second coordinate of the block to replace
+        new_block : object
+            First coordinate of the block
+    """
+    def replace_block(self, i, j, new_block):
+        ref = self._blocks[i][j]
+        self._blocks[i][j] = new_block
+        compss_delete_object(ref)
+
 
 def array(x, block_size):
     """
