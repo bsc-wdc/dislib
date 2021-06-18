@@ -1,3 +1,4 @@
+from itertools import product
 import numpy as np
 import warnings
 
@@ -6,7 +7,7 @@ from pycompss.api.constraint import constraint
 from pycompss.api.parameter import INOUT, IN, IN_DELETE
 from pycompss.api.task import task
 
-from dislib.data.array import Array, identity, full
+from dislib.data.array import Array, identity, full, eye
 from dislib.data.util import compute_bottom_right_shape, pad_last_blocks_with_zeros
 from dislib.data.util.base import remove_last_rows, remove_last_columns
 
@@ -69,10 +70,11 @@ def qr_blocked(a: Array, mode='full', overwrite_a=False, save_memory=False):
 
     if mode == "economic":
         q, r = _qr_economic_save_mem(a_obj) if save_memory else _qr_economic(a_obj)
+        _undo_padding_economic(q, r, padded_rows, padded_cols)
         return q, r
     elif mode == "full":
         q, r = _qr_full_save_mem(a_obj) if save_memory else _qr_full(a_obj)
-        _undo_padding(q, r, padded_rows, padded_cols)
+        _undo_padding_full(q, r, padded_rows, padded_cols)
         return q, r
     elif mode == "r":
         r = _qr_r_save_mem(a_obj) if save_memory else _qr_r(a_obj)
@@ -177,8 +179,7 @@ def _qr_economic(r):
     a_n_blocks = (r._n_blocks[0], r._n_blocks[1])
     b_size = r._reg_shape
 
-    # FIXME generate identity above and zeros below instead of slicing
-    q = identity(a_shape[0], b_size, dtype=None)[:, 0:a_shape[1]]
+    q = eye(a_shape[0], a_shape[1], b_size, dtype=None)
 
     act_q_list = []
     sub_q_list = {}
@@ -250,7 +251,8 @@ OTHER = 2
 
 
 def _qr_full_save_mem(r):
-    q, q_type = _gen_identity_save_mem(r.shape[0], r._reg_shape, r._n_blocks[0])
+    b_size = r._reg_shape
+    q, q_type = _gen_identity_save_mem(r.shape[0], r.shape[0], r._reg_shape, r._n_blocks[0], r._n_blocks[0])
 
     r_type = full((r._n_blocks[0], r._n_blocks[1]), (1, 1), OTHER)
 
@@ -263,14 +265,14 @@ def _qr_full_save_mem(r):
 
         for j in range(r._n_blocks[0]):
             q_type_block, q_block = _dot_save_mem(
-                q._blocks[j][i], q_type._blocks[j][i], act_q, act_q_type, transpose_b=True
+                q._blocks[j][i], q_type._blocks[j][i], act_q, act_q_type, b_size, transpose_b=True
             )
             q_type.replace_block(j, i, q_type_block)
             q.replace_block(j, i, q_block)
 
         for j in range(i + 1, r._n_blocks[1]):
             r_type_block, r_block = _dot_save_mem(
-                act_q, act_q_type, r._blocks[i][j], r_type._blocks[i][j]
+                act_q, act_q_type, r._blocks[i][j], r_type._blocks[i][j], b_size
             )
             r_type.replace_block(i, j, r_type_block)
             r.replace_block(i, j, r_block)
@@ -330,10 +332,25 @@ def _qr_full_save_mem(r):
             compss_delete_object(sub_q[1][0])
             compss_delete_object(sub_q[1][1])
 
+    #pairings = product(range(q._n_blocks[0]),
+    #                   range(q._n_blocks[1]))
+
+    #for i, j in pairings:
+    #    q_block = fill_empty_blocks(q_type._blocks[i][j], q._reg_shape, q._blocks[i][j])
+    #    q.replace_block(i, j, q_block)
+
+    #pairings = product(range(r._n_blocks[0]),
+    #                   range(r._n_blocks[1]))
+
+    #for i, j in pairings:
+    #    r_block = fill_empty_blocks(r_type._blocks[i][j], r._reg_shape, r._blocks[i][j])
+    #    r.replace_block(i, j, r_block)
+
     return q, r
 
 
 def _qr_r_save_mem(r):
+    b_size = r._reg_shape
     r_type = full((r._n_blocks[0], r._n_blocks[1]), (1, 1), OTHER)
 
     for i in range(r._n_blocks[1]):
@@ -345,7 +362,7 @@ def _qr_r_save_mem(r):
 
         for j in range(i + 1, r._n_blocks[1]):
             r_type_block, r_block = _dot_save_mem(
-                act_q, act_q_type, r._blocks[i][j], r_type._blocks[i][j]
+                act_q, act_q_type, r._blocks[i][j], r_type._blocks[i][j], b_size
             )
             r_type.replace_block(i, j, r_type_block)
             r.replace_block(i, j, r_block)
@@ -397,10 +414,7 @@ def _qr_economic_save_mem(r):
     a_n_blocks = (r._n_blocks[0], r._n_blocks[1])
     b_size = r._reg_shape
 
-    # FIXME generate identity above and zeros below instead of slicing
-    q, q_type = _gen_identity_save_mem(r.shape[0], b_size, r._n_blocks[0])
-    q = q[:, :a_shape[1]]
-    q_type = q_type[:, :r._n_blocks[1]]
+    q, q_type = _gen_identity_save_mem(r.shape[0], a_shape[1], b_size, r._n_blocks[0], r._n_blocks[1])
 
     r_type = full((r._n_blocks[0], r._n_blocks[1]), (1, 1), OTHER)
 
@@ -417,7 +431,7 @@ def _qr_economic_save_mem(r):
 
         for j in range(i + 1, a_n_blocks[1]):
             r_type_block, r_block = _dot_save_mem(
-                act_q, act_q_type, r._blocks[i][j], r_type._blocks[i][j]
+                act_q, act_q_type, r._blocks[i][j], r_type._blocks[i][j], b_size
             )
             r_type.replace_block(i, j, r_type_block)
             r.replace_block(i, j, r_block)
@@ -479,7 +493,7 @@ def _qr_economic_save_mem(r):
 
         for k in range(q._n_blocks[1]):
             q_type_block, q_block = _dot_save_mem(
-                act_q_list[i][1], act_q_list[i][0], q._blocks[i][k], q_type._blocks[i][k], transpose_a=True
+                act_q_list[i][1], act_q_list[i][0], q._blocks[i][k], q_type._blocks[i][k], b_size, transpose_a=True
             )
             q_type.replace_block(i, k, q_type_block)
             q.replace_block(i, k, q_block)
@@ -493,14 +507,32 @@ def _qr_economic_save_mem(r):
     return q, r
 
 
-def _undo_padding(q, r, n_rows, n_cols):
-    if n_rows > 0 and q is not None:
+#@constraint(computing_units="${computingUnits}")
+#@task(returns=np.array)
+#def fill_empty_blocks(block_type, block_shape, block):
+#    if block_type == ZEROS:
+#        return _empty_block_save_mem(block_shape, True)
+#    else:
+#        return block
+
+
+def _undo_padding_full(q, r, n_rows, n_cols):
+    if n_rows > 0:
         remove_last_rows(q, n_rows)
         remove_last_columns(q, n_rows)
     if n_cols > 0:
         remove_last_columns(r, n_cols)
 
     remove_last_rows(r, max(r.shape[0] - q.shape[1], 0))
+
+
+def _undo_padding_economic(q, r, n_rows, n_cols):
+    if n_rows > 0:
+        remove_last_rows(q, n_rows)
+    if n_cols > 0:
+        remove_last_columns(r, n_cols)
+        remove_last_rows(r, n_cols)
+        remove_last_columns(q, n_cols)
 
 
 def _validate_ds_array(a: Array):
@@ -604,9 +636,9 @@ def _split_matrix(a, m_size):
     return split_matrix
 
 
-def _gen_identity_save_mem(n, b_size, m_size):
-    a = identity(n, b_size, dtype=None)
-    aux_a = identity(m_size, (1, 1), dtype=np.uint8)
+def _gen_identity_save_mem(n, m, b_size, n_size, m_size):
+    a = eye(n, m, b_size, dtype=None)
+    aux_a = eye(n_size, m_size, (1, 1), dtype=np.uint8)
     return a, aux_a
 
 
@@ -634,15 +666,18 @@ def _type_block_save_mem(value):
     return np.full((1, 1), value, np.uint8)
 
 
+#def _empty_block_save_mem(shape, filled=False):
+#    return np.full(shape, 0, dtype=np.uint8) if filled else object()
+
 def _empty_block_save_mem(shape):
     return np.full(shape, 0, dtype=np.uint8)
 
 
 @constraint(computing_units="${computingUnits}")
 @task(returns=(np.array, np.array))
-def _dot_save_mem(a, a_type, b, b_type, transpose_result=False, transpose_a=False, transpose_b=False):
+def _dot_save_mem(a, a_type, b, b_type, b_size, transpose_result=False, transpose_a=False, transpose_b=False):
     if a_type[0][0] == ZEROS:
-        return _type_block_save_mem(ZEROS), _empty_block_save_mem(a.shape)
+        return _type_block_save_mem(ZEROS), _empty_block_save_mem(b_size)
     if a_type[0][0] == IDENTITY:
         if transpose_b and transpose_result:
             return b_type, b
@@ -651,7 +686,7 @@ def _dot_save_mem(a, a_type, b, b_type, transpose_result=False, transpose_a=Fals
 
         return b_type, b
     if b_type[0][0] == ZEROS:
-        return _type_block_save_mem(ZEROS), _empty_block_save_mem(a.shape)
+        return _type_block_save_mem(ZEROS), _empty_block_save_mem(b_size)
     if b_type[0][0] == IDENTITY:
         if transpose_a:
             a_type, a = _transpose_block_save_mem(a, a_type)
@@ -671,7 +706,7 @@ def _little_qr_task_save_mem(a, type_a, b, type_b, b_size, transpose=False):
     ent_b = [type_b, b]
     for mat in [ent_a, ent_b]:
         if mat[0] == ZEROS:
-            mat[1] = np.zeros((regular_b_size, regular_b_size))
+            mat[1] = np.zeros(b_size)
         elif mat[0] == IDENTITY:
             mat[1] = np.identity(regular_b_size)
     curr_a = np.bmat([[ent_a[1]], [ent_b[1]]])

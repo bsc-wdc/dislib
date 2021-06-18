@@ -1123,10 +1123,37 @@ def identity(n, block_size, dtype=None):
     ValueError
         If block_size is greater than n.
     """
-    if n < block_size[0] or n < block_size[1]:
+    return eye(n, n, block_size, dtype)
+
+
+def eye(n, m, block_size, dtype=None):
+    """ Returns a matrix filled with ones on the diagonal and zeros elsewhere.
+
+    Parameters
+    ----------
+    n : int
+        number of rows.
+    m : int
+        number of columns.
+    block_size : tuple of two ints
+        Block size.
+    dtype : data type, optional (default=None)
+        The desired type of the ds-array. Defaults to float.
+
+    Returns
+    -------
+    x : ds-array
+        Identity matrix of shape n x m.
+
+    Raises
+    ------
+    ValueError
+        If block_size is greater than n.
+    """
+    if n < block_size[0] or m < block_size[1]:
         raise ValueError("Block size is greater than the array")
 
-    n_blocks = (int(ceil(n / block_size[0])), int(ceil(n / block_size[1])))
+    n_blocks = (int(ceil(n / block_size[0])), int(ceil(m / block_size[1])))
     blocks = list()
 
     for row_idx in range(n_blocks[0]):
@@ -1139,14 +1166,14 @@ def identity(n, block_size, dtype=None):
                 b_size0 = n - (n_blocks[0] - 1) * block_size[0]
 
             if col_idx == n_blocks[1] - 1:
-                b_size1 = n - (n_blocks[1] - 1) * block_size[1]
+                b_size1 = m - (n_blocks[1] - 1) * block_size[1]
 
-            block = _identity_block((b_size0, b_size1), n, block_size,
+            block = _eye_block((b_size0, b_size1), n, m, block_size,
                                     row_idx, col_idx, dtype)
             blocks[-1].append(block)
 
     return Array(blocks, top_left_shape=block_size, reg_shape=block_size,
-                 shape=(n, n), sparse=False)
+                 shape=(n, m), sparse=False)
 
 
 def zeros(shape, block_size, dtype=None):
@@ -1445,6 +1472,23 @@ def _identity_block(block_size, n, reg_shape, i, j, dtype):
 
     i_values = np.arange(i * reg_shape[0], min(n, (i + 1) * reg_shape[0]))
     j_values = np.arange(j * reg_shape[1], min(n, (j + 1) * reg_shape[1]))
+
+    indices = np.intersect1d(i_values, j_values)
+
+    i_ones = indices - (i * reg_shape[0])
+    j_ones = indices - (j * reg_shape[1])
+
+    block[i_ones, j_ones] = 1
+    return block
+
+
+@constraint(computing_units="${computingUnits}")
+@task(returns=1)
+def _eye_block(block_size, n, m, reg_shape, i, j, dtype):
+    block = np.zeros(block_size, dtype)
+
+    i_values = np.arange(i * reg_shape[0], min(n, (i + 1) * reg_shape[0]))
+    j_values = np.arange(j * reg_shape[1], min(m, (j + 1) * reg_shape[1]))
 
     indices = np.intersect1d(i_values, j_values)
 

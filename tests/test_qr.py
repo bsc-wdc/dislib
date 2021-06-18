@@ -50,6 +50,8 @@ class QRTest(unittest.TestCase):
     @parameterized.expand([
         ((7, 6), (3, 3), False), ((7, 5), (2, 2), False), ((10, 4), (3, 3), False),
         ((4, 4), (3, 3), False), ((6, 4), (3, 3), False), ((6, 5), (2, 2), False),
+        ((7, 6), (3, 3), True), ((7, 5), (2, 2), True), ((10, 4), (3, 3), True),
+        ((4, 4), (3, 3), True), ((6, 4), (3, 3), True), ((6, 5), (2, 2), True),
     ])
     def test_qr_with_padding(self, m_shape, b_shape, save_memory):
         """Tests qr_blocked with padding"""
@@ -58,19 +60,34 @@ class QRTest(unittest.TestCase):
 
         m2b_ds = random_array(m_shape, b_shape)
 
-        (q, r) = qr(m2b_ds, save_memory=save_memory)
+        (q, r) = qr(m2b_ds, mode='full', save_memory=save_memory)
 
-        q = compss_wait_on(q).collect()
-        r = compss_wait_on(r).collect()
-        m2b_ds = compss_wait_on(m2b_ds)
-        m2b = m2b_ds.collect()
+        q = q.collect()
+        r = r.collect()
 
         # check if Q matrix is orthogonal
         self.assertTrue(np.allclose(q.dot(q.T), np.identity(m_shape[0])))
         # check if R matrix is upper triangular
         self.assertTrue(np.allclose(np.triu(r), r))
         # check if the product Q * R is the original matrix
+        self.assertTrue(np.allclose(q.dot(r), m2b_ds.collect()))
+
+        (q, r) = qr(m2b_ds, mode="economic", save_memory=save_memory)
+
+        q = q.collect()
+        r = r.collect()
+        m2b = m2b_ds.collect()
+
+        # check if Q matrix is orthogonal
+        self.assertTrue(np.allclose(q.T.dot(q), np.identity(m_shape[1])))
+        # check if R matrix is upper triangular
+        self.assertTrue(np.allclose(np.triu(r), r))
+        # check if the product Q * R is the original matrix
         self.assertTrue(np.allclose(q.dot(r), m2b))
+        # check the dimensions of Q
+        self.assertTrue(q.shape == (m_shape[0], m_shape[1]))
+        # check the dimensions of R
+        self.assertTrue(r.shape == (m_shape[1], m_shape[1]))
 
     @parameterized.expand([
         (1, 1, 2, False), (1, 1, 4, False), (2, 2, 2, False), (2, 2, 4, False),

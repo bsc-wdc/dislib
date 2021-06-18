@@ -47,11 +47,11 @@ def pad(a: Array, pad_width, **kwargs):
 
     for row_block_idx in range(a._n_blocks[0]):
         padded_block = _pad_right_block(a._blocks[row_block_idx][-1], pad_right, fill_value)
-        a._blocks[row_block_idx][-1] = padded_block
+        a.replace_block(row_block_idx, a._n_blocks[1] - 1, padded_block)
 
     for col_block_idx in range(a._n_blocks[1]):
         padded_block = _pad_bottom_block(a._blocks[-1][col_block_idx], pad_bottom, fill_value)
-        a._blocks[-1][col_block_idx] = padded_block
+        a.replace_block(a._n_blocks[0] - 1, col_block_idx, padded_block)
 
     a._shape = (pad_bottom + a.shape[0] + pad_top, pad_left + a.shape[1] + pad_right)
 
