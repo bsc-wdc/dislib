@@ -459,14 +459,18 @@ def _qr_economic_save_mem(r):
 
             # Update values of the row for the value updated in the column
             for k in range(i + 1, a_n_blocks[1]):
-                [[r_type._blocks[i][k]], [r_type._blocks[j][k]]], \
-                [[r._blocks[i][k]], [r._blocks[j][k]]] = _multiply_blocked_save_mem(
+                [[r_type_block1], [r_type_block2]], \
+                [[r_block1], [r_block2]] = _multiply_blocked_save_mem(
                     sub_q,
                     sub_q_type,
                     [[r._blocks[i][k]], [r._blocks[j][k]]],
                     [[r_type._blocks[i][k]], [r_type._blocks[j][k]]],
                     b_size
                 )
+                r_type.replace_block(i, k, r_type_block1)
+                r.replace_block(i, k, r_block1)
+                r_type.replace_block(j, k, r_type_block2)
+                r.replace_block(j, k, r_block2)
 
     for i in reversed(range(len(act_q_list))):
         for j in reversed(range(i + 1, r._n_blocks[0])):
@@ -489,6 +493,7 @@ def _qr_economic_save_mem(r):
             compss_delete_object(sub_q_list[(j, i)][0][1])
             compss_delete_object(sub_q_list[(j, i)][1][0])
             compss_delete_object(sub_q_list[(j, i)][1][1])
+            del sub_q_list[(j, i)]
 
 
         for k in range(q._n_blocks[1]):
