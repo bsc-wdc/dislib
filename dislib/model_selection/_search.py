@@ -9,7 +9,7 @@ from pycompss.api.api import compss_wait_on
 from scipy.stats import rankdata
 from sklearn import clone
 from sklearn.model_selection import ParameterGrid, ParameterSampler
-from sklearn.utils.fixes import MaskedArray
+from numpy.ma import MaskedArray
 
 from dislib.model_selection._split import infer_cv
 from dislib.model_selection._validation import check_scorer, fit_and_score, \
