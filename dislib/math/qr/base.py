@@ -12,7 +12,7 @@ from dislib.data.util import compute_bottom_right_shape, pad_last_blocks_with_ze
 from dislib.data.util.base import remove_last_rows, remove_last_columns
 
 
-def qr_blocked(a: Array, mode='full', overwrite_a=False, save_memory=False):
+def qr_blocked(a: Array, mode='full', overwrite_a=False, save_memory=True):
     """ QR Decomposition (blocked / save memory).
 
     Parameters
