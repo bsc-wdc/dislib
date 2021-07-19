@@ -1,6 +1,7 @@
 import json
 import os
 import numpy as np
+import cbor2
 
 from pycompss.runtime.management.classes import Future
 from pycompss.api.api import compss_wait_on
@@ -23,11 +24,6 @@ from dislib.classification.rf.decision_tree import (
     _LeafInfo,
     _SkTreeWrapper,
 )
-
-try:
-    import cbor2
-except ImportError:
-    cbor2 = None
 
 # Dislib models with saving tested (model: str -> module: str)
 _implemented_models = {
@@ -56,9 +52,27 @@ _sklearn_classes = {
 }
 
 
-def save_model(model, filepath, overwrite=True, save_format=None):
-    """Saves a model to a file.
-    Usage:
+def save_model(model, filepath, overwrite=True, save_format="json"):
+    """ Saves a model to a file.
+
+    The model is synchronized before saving and can be reinstantiated in the
+    exact same state, without any of the code used for model definition or
+    fitting.
+
+    Parameters
+    ----------
+    model : dislib model.
+        Dislib model to serialize and save.
+    filepath : str
+        Path where to save the model
+    overwrite : bool, optional (default=True)
+        Whether any existing model at the target
+        location should be overwritten.
+    save_format : str, optional (default='json)
+        Format used to save the models.
+
+    Examples
+    --------
     >>> from dislib.cluster import KMeans
     >>> from dislib.utils import save_model, load_model
     >>> import numpy as np
@@ -73,20 +87,8 @@ def save_model(model, filepath, overwrite=True, save_format=None):
     >>> model_pred = model.predict(x_test)
     >>> loaded_model_pred = loaded_model.predict(x_test)
     >>> assert np.allclose(model_pred.collect(), loaded_model_pred.collect())
-
-    The file contains:
-    - the model's class
-    - the model's attributes
-    The model is synchronized before saving and can be reinstantiated in the
-    exact same state, without any of the code used for model definition or
-    fitting.
-    Args:
-        model: `dislib` model instance to be saved.
-        filepath: String path where to save the model
-        overwrite: Whether we should overwrite any existing model at the target
-          location, or instead ask the user with a manual prompt.
-        save_format: Format used to save the model. Defaults to `json`.
     """
+
     # Check overwrite
     if not overwrite and os.path.isfile(filepath):
         return
@@ -108,23 +110,31 @@ def save_model(model, filepath, overwrite=True, save_format=None):
     model_metadata["model_name"] = model_name
 
     # Save model
-    default_format = "json"
-    save_format = save_format or default_format
     if save_format == "json":
         with open(filepath, "w") as f:
             json.dump(model_metadata, f, default=_encode_helper)
     elif save_format == "cbor":
-        if cbor2 is None:
-            raise ModuleNotFoundError("No module named 'cbor2'")
         with open(filepath, "wb") as f:
             cbor2.dump(model_metadata, f, default=_encode_helper_cbor)
     else:
-        raise ValueError("Save format must be either json or h5.")
+        raise ValueError("Wrong save format.")
 
 
-def load_model(filepath, load_format=None):
-    """Loads a model from a file.
-    Usage:
+def load_model(filepath, load_format="json"):
+    """ Loads a model from a file.
+
+    The model is reinstantiated in the exact same state in which it was saved,
+    without any of the code used for model definition or fitting.
+
+    Parameters
+    ----------
+    filepath : str
+        Path of the saved the model
+    load_format : str, optional (default='json')
+        Format used to load the model.
+
+    Examples
+    --------
     >>> from dislib.cluster import KMeans
     >>> from dislib.utils import save_model, load_model
     >>> import numpy as np
@@ -139,36 +149,22 @@ def load_model(filepath, load_format=None):
     >>> model_pred = model.predict(x_test)
     >>> loaded_model_pred = loaded_model.predict(x_test)
     >>> assert np.allclose(model_pred.collect(), loaded_model_pred.collect())
-
-    The file must contain:
-    - the model's class
-    - the model's attributes
-    The model is reinstantiated in the exact same state in which it was saved,
-    without any of the code used for model definition or fitting.
-    Args:
-        filepath: String path where to save the model
-        load_format: Format used to load the model. Defaults to 'json'.
     """
     # Load model
-    default_format = "json"
-    load_format = load_format or default_format
-
     if load_format == "json":
         with open(filepath, "r") as f:
             model_metadata = json.load(f, object_hook=_decode_helper)
     elif load_format == "cbor":
-        if cbor2 is None:
-            raise ModuleNotFoundError("No module named 'cbor2'")
         with open(filepath, "rb") as f:
             model_metadata = cbor2.load(f, object_hook=_decode_helper_cbor)
     else:
-        raise ValueError("Load format must be either json or h5.")
+        raise ValueError("Wrong load format.")
 
     # Check for dislib model
     model_name = model_metadata["model_name"]
     if model_name not in _implemented_models.keys():
         raise NotImplementedError(
-            "Loading has only been implemented for the following models:\n%s"
+            "Saving has only been implemented for the following models:\n%s"
             % _implemented_models.keys()
         )
     del model_metadata["model_name"]
@@ -179,7 +175,7 @@ def load_model(filepath, load_format=None):
     model = model_class()
     model.__dict__.update(model_metadata)
 
-    # Set class methodss
+    # Set class methods
     if model_name == "CascadeSVM" and "kernel" in model_metadata:
         try:
             model._kernel_f = getattr(
@@ -192,17 +188,19 @@ def load_model(filepath, load_format=None):
 
 
 def _encode_helper_cbor(encoder, obj):
-    """Special encoder wrapper for dislib using cbor"""
+    """ Special encoder wrapper for dislib using cbor2"""
     encoder.encode(_encode_helper(obj))
 
 
 def _decode_helper_cbor(decoder, obj):
-    """Special decoder wrapper for dislib using cbor"""
+    """ Special decoder wrapper for dislib using cbor2"""
     return _decode_helper(obj)
 
 
 def _encode_helper(obj):
-    """Special encoder for dislib"""
+    """ Special encoder for dislib that serializes the different objectes
+    and stores their state for future loading.
+    """
     if isinstance(obj, np.generic):
         return obj.item()
     elif isinstance(obj, range):
@@ -254,7 +252,9 @@ def _encode_helper(obj):
 
 
 def _decode_helper(obj):
-    """Special decoder for dislib"""
+    """ Special decoder for dislib that instantiates the different objects
+    and updates their attributes to recover the saved state.
+    """
     if isinstance(obj, dict) and "class_name" in obj:
 
         class_name = obj["class_name"]
@@ -331,7 +331,9 @@ def _decode_helper(obj):
 
 
 def _sync_obj(obj):
-    """Recursively synchronizes the Future objects of a list or dictionary."""
+    """ Recursively synchronizes the Future objects of a list or dictionary
+    by using `compss_wait_on(obj)`.
+    """
     if isinstance(obj, dict):
         iterator = iter(obj.items())
     elif isinstance(obj, list):
@@ -353,7 +355,8 @@ def _sync_obj(obj):
 
 
 def _sync_rf(rf):
-    """Sync the `try_features` and 'n_classes' attribute of the different trees
+    """ Sync the `try_features` and `n_classes` attribute of the different trees
+    since they cannot be synced recursively.
     """
     if isinstance(rf.trees[0].try_features, Future):
         try_features = compss_wait_on(rf.trees[0].try_features)
