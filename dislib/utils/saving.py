@@ -1,7 +1,6 @@
 import json
 import os
 import numpy as np
-import cbor2
 
 from pycompss.runtime.management.classes import Future
 from pycompss.api.api import compss_wait_on
@@ -25,6 +24,11 @@ from dislib.classification.rf.decision_tree import (
     _SkTreeWrapper,
 )
 
+try:
+    import cbor2
+except ImportError:
+    cbor2 = None
+   
 # Dislib models with saving tested (model: str -> module: str)
 _implemented_models = {
     "KMeans": "cluster",
@@ -114,6 +118,8 @@ def save_model(model, filepath, overwrite=True, save_format="json"):
         with open(filepath, "w") as f:
             json.dump(model_metadata, f, default=_encode_helper)
     elif save_format == "cbor":
+        if cbor2 is None:
+            raise ModuleNotFoundError("No module named 'cbor2'")
         with open(filepath, "wb") as f:
             cbor2.dump(model_metadata, f, default=_encode_helper_cbor)
     else:
@@ -155,6 +161,8 @@ def load_model(filepath, load_format="json"):
         with open(filepath, "r") as f:
             model_metadata = json.load(f, object_hook=_decode_helper)
     elif load_format == "cbor":
+        if cbor2 is None:
+            raise ModuleNotFoundError("No module named 'cbor2'")
         with open(filepath, "rb") as f:
             model_metadata = cbor2.load(f, object_hook=_decode_helper_cbor)
     else:
@@ -188,12 +196,12 @@ def load_model(filepath, load_format="json"):
 
 
 def _encode_helper_cbor(encoder, obj):
-    """ Special encoder wrapper for dislib using cbor2"""
+    """ Special encoder wrapper for dislib using cbor2."""
     encoder.encode(_encode_helper(obj))
 
 
 def _decode_helper_cbor(decoder, obj):
-    """ Special decoder wrapper for dislib using cbor2"""
+    """ Special decoder wrapper for dislib using cbor2."""
     return _decode_helper(obj)
 
 
