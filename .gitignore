@@ -112,6 +112,9 @@ target/
 *compss*.out
 *compss*.err
 
+# Saving
+**/saving/*
+
 # ========== C & C++ ignores =================
 # Prerequisites
 *.d
