@@ -113,7 +113,8 @@ target/
 *compss*.err
 
 # Saving
-**/saving/*
+tests/files/saving/*
+!tests/files/saving/*.txt
 
 # ========== C & C++ ignores =================
 # Prerequisites
