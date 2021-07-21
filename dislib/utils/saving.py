@@ -28,7 +28,7 @@ try:
     import cbor2
 except ImportError:
     cbor2 = None
-   
+
 # Dislib models with saving tested (model: str -> module: str)
 _implemented_models = {
     "KMeans": "cluster",
@@ -57,7 +57,7 @@ _sklearn_classes = {
 
 
 def save_model(model, filepath, overwrite=True, save_format="json"):
-    """ Saves a model to a file.
+    """Saves a model to a file.
 
     The model is synchronized before saving and can be reinstantiated in the
     exact same state, without any of the code used for model definition or
@@ -127,7 +127,7 @@ def save_model(model, filepath, overwrite=True, save_format="json"):
 
 
 def load_model(filepath, load_format="json"):
-    """ Loads a model from a file.
+    """Loads a model from a file.
 
     The model is reinstantiated in the exact same state in which it was saved,
     without any of the code used for model definition or fitting.
@@ -196,17 +196,17 @@ def load_model(filepath, load_format="json"):
 
 
 def _encode_helper_cbor(encoder, obj):
-    """ Special encoder wrapper for dislib using cbor2."""
+    """Special encoder wrapper for dislib using cbor2."""
     encoder.encode(_encode_helper(obj))
 
 
 def _decode_helper_cbor(decoder, obj):
-    """ Special decoder wrapper for dislib using cbor2."""
+    """Special decoder wrapper for dislib using cbor2."""
     return _decode_helper(obj)
 
 
 def _encode_helper(obj):
-    """ Special encoder for dislib that serializes the different objectes
+    """Special encoder for dislib that serializes the different objectes
     and stores their state for future loading.
     """
     if isinstance(obj, np.generic):
@@ -260,7 +260,7 @@ def _encode_helper(obj):
 
 
 def _decode_helper(obj):
-    """ Special decoder for dislib that instantiates the different objects
+    """Special decoder for dislib that instantiates the different objects
     and updates their attributes to recover the saved state.
     """
     if isinstance(obj, dict) and "class_name" in obj:
@@ -339,7 +339,7 @@ def _decode_helper(obj):
 
 
 def _sync_obj(obj):
-    """ Recursively synchronizes the Future objects of a list or dictionary
+    """Recursively synchronizes the Future objects of a list or dictionary
     by using `compss_wait_on(obj)`.
     """
     if isinstance(obj, dict):
@@ -363,7 +363,7 @@ def _sync_obj(obj):
 
 
 def _sync_rf(rf):
-    """ Sync the `try_features` and `n_classes` attribute of the different trees
+    """Sync the `try_features` and `n_classes` attribute of the different trees
     since they cannot be synced recursively.
     """
     if isinstance(rf.trees[0].try_features, Future):
