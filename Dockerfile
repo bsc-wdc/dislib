@@ -5,7 +5,7 @@ COPY . dislib/
 
 ENV PYTHONPATH=$PYTHONPATH:/dislib
 
-RUN python -m pip install -r /dislib/requirements.txt
+RUN pip3 install -r /dislib/requirements.txt
 
 # Expose SSH port and run SSHD
 EXPOSE 22
