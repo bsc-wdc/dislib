@@ -196,13 +196,13 @@ class _Node:
             if len(sample) > 0:
                 return node_content.sk_tree.predict(sample)
         if isinstance(node_content, _InnerNodeInfo):
-            pred = np.empty((len(sample),), dtype=np.int64)
+            pred = np.empty((len(sample),), dtype=np.float64)
             left_mask = sample[:, node_content.index] <= node_content.value
             pred[left_mask] = self.left.predict(sample[left_mask])
             pred[~left_mask] = self.right.predict(sample[~left_mask])
             return pred
         assert len(sample) == 0, "Type not supported"
-        return np.empty((0,), dtype=np.int64)
+        return np.empty((0,), dtype=np.float64)
 
 
 class _InnerNodeInfo:
@@ -220,7 +220,6 @@ class _LeafInfo:
 class _SkTreeWrapper:
     def __init__(self, tree):
         self.sk_tree = tree
-        self.classes = tree.classes_
 
 
 def _get_sample_attributes(samples_file, indices):
@@ -260,8 +259,8 @@ def _feature_selection(untried_indices, m_try, random_state):
 def _get_groups(sample, y_s, features_mmap, index, value):
     if index is None:
         empty_sample = np.array([], dtype=np.int64)
-        empty_labels = np.array([], dtype=np.int8)
-        return sample, y_s, empty_sample, empty_labels
+        empty_target = np.array([], dtype=np.float64)
+        return sample, y_s, empty_sample, empty_target
     feature = features_mmap[index][sample]
     mask = feature < value
     left = sample[mask]
@@ -351,7 +350,7 @@ def _compute_split(
                 left_group = sample
                 y_l = y_s
                 right_group = np.array([], dtype=np.int64)
-                y_r = np.array([], dtype=np.int8)
+                y_r = np.array([], dtype=np.float64)
 
     return node_info, left_group, y_l, right_group, y_r
 
@@ -558,7 +557,7 @@ def _merge_branches(n_classes, *predictions):
         dtype = np.float64
     else:  # predict_proba
         shape = (samples_len,)
-        dtype = np.int64
+        dtype = np.float64
     merged_prediction = np.empty(shape, dtype=dtype)
     for selected, prediction in predictions:
         merged_prediction[selected] = prediction
