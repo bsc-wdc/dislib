@@ -16,9 +16,12 @@ import dislib.cluster
 import dislib.recommendation
 import dislib.regression
 from dislib.data.array import Array
-from dislib.classification.rf.decision_tree import (
+from dislib.commons.rf._decision_tree import (
     DecisionTreeClassifier,
+    DecisionTreeRegressor,
     _Node,
+    _ClassificationNode,
+    _RegressionNode,
     _InnerNodeInfo,
     _LeafInfo,
     _SkTreeWrapper,
@@ -44,7 +47,10 @@ IMPLEMENTED_MODELS = {
 DISLIB_CLASSES = {
     "KMeans": dislib.cluster.KMeans,
     "DecisionTreeClassifier": DecisionTreeClassifier,
+    "DecisionTreeRegressor": DecisionTreeRegressor,
     "_Node": _Node,
+    "_ClassificationNode": _ClassificationNode,
+    "_RegressionNode": _RegressionNode,
     "_InnerNodeInfo": _InnerNodeInfo,
     "_LeafInfo": _LeafInfo,
     "_SkTreeWrapper": _SkTreeWrapper,
@@ -347,6 +353,7 @@ def _sync_obj(obj):
     elif isinstance(obj, list):
         iterator = iter(enumerate(obj))
     else:
+        print(obj)
         raise ValueError("Expected dict or list and received %s." % type(obj))
 
     for key, val in iterator:
@@ -358,7 +365,7 @@ def _sync_obj(obj):
                 raise TypeError(
                     "Could not synchronize Future (%s, %s)." % (key, val)
                 )
-            if hasattr(obj[key], "__dict__"):
+            if isinstance(getattr(obj[key], "__dict__", None), dict):
                 _sync_obj(obj[key].__dict__)
 
 
