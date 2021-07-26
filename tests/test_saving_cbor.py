@@ -25,32 +25,6 @@ from pycompss.api.api import compss_wait_on
 class KMeansSavingTestCBOR(unittest.TestCase):
     filepath = "tests/files/saving/kmeans.cbor"
 
-    def test_init_params_kmeans(self):
-        """Tests that KMeans correctly sets the initialization
-        parameters"""
-        n_clusters = 2
-        max_iter = 1
-        tol = 1e-4
-        seed = 666
-        arity = 2
-        init = "random"
-
-        km = KMeans(
-            n_clusters=n_clusters,
-            max_iter=max_iter,
-            tol=tol,
-            arity=arity,
-            random_state=seed,
-        )
-        save_model(km, self.filepath, save_format="cbor")
-        km2 = load_model(self.filepath, load_format="cbor")
-
-        expected = (n_clusters, init, max_iter, tol, arity)
-        real = (km.n_clusters, km.init, km.max_iter, km.tol, km.arity)
-        real2 = (km2.n_clusters, km2.init, km2.max_iter, km2.tol, km2.arity)
-        self.assertEqual(expected, real)
-        self.assertEqual(expected, real2)
-
     def test_fit_kmeans(self):
         """Tests that the fit method returns the expected centers using toy
         data.
@@ -93,35 +67,6 @@ class KMeansSavingTestCBOR(unittest.TestCase):
 
         self.assertTrue(np.array_equal(labels, expected_labels))
         self.assertTrue(np.array_equal(labels2, expected_labels))
-
-    def test_fit_predict_kmeans(self):
-        """Tests fit_predict."""
-        x, y = make_blobs(n_samples=1500, random_state=170)
-        x_filtered = np.vstack(
-            (x[y == 0][:500], x[y == 1][:100], x[y == 2][:10])
-        )
-
-        x_train = ds.array(x_filtered, block_size=(300, 2))
-
-        kmeans = KMeans(n_clusters=3, random_state=170)
-        labels = kmeans.fit_predict(x_train).collect()
-
-        save_model(kmeans, self.filepath, save_format="cbor")
-        kmeans = load_model(self.filepath, load_format="cbor")
-
-        skmeans = SKMeans(n_clusters=3, random_state=170)
-        sklabels = skmeans.fit_predict(x_filtered)
-
-        centers = np.array(
-            [
-                [-8.941375656533449, -5.481371322614891],
-                [-4.524023204953875, 0.06235042593214654],
-                [2.332994701667008, 0.37681003933082696],
-            ]
-        )
-
-        self.assertTrue(np.allclose(centers, kmeans.centers))
-        self.assertTrue(np.allclose(labels, sklabels))
 
     def test_sparse_kmeans(self):
         """Tests K-means produces the same results using dense and sparse
@@ -191,67 +136,6 @@ class KMeansSavingTestCBOR(unittest.TestCase):
 
 class GaussianMixtureSavingTestCBOR(unittest.TestCase):
     filepath = "tests/files/saving/gm.cbor"
-
-    def test_init_params(self):
-        """Tests that GaussianMixture params are set"""
-        n_components = 2
-        covariance_type = "diag"
-        tol = 1e-4
-        reg_covar = 1e-5
-        max_iter = 3
-        init_params = "random"
-        weights_init = np.array([0.4, 0.6])
-        means_init = np.array([[0, 0], [2, 3]])
-        precisions_init = "todo"
-        random_state = RandomState(666)
-        gm = GaussianMixture(
-            n_components=n_components,
-            covariance_type=covariance_type,
-            tol=tol,
-            reg_covar=reg_covar,
-            max_iter=max_iter,
-            init_params=init_params,
-            weights_init=weights_init,
-            means_init=means_init,
-            precisions_init=precisions_init,
-            random_state=random_state,
-        )
-
-        save_model(gm, self.filepath, save_format="cbor")
-        gm2 = load_model(self.filepath, load_format="cbor")
-
-        real = (
-            gm.n_components,
-            gm.covariance_type,
-            gm.tol,
-            gm.reg_covar,
-            gm.max_iter,
-            gm.init_params,
-            gm.weights_init.tolist(),
-            gm.means_init.tolist(),
-            gm.precisions_init,
-            *[
-                list(x) if isinstance(x, np.ndarray) else x
-                for x in gm.random_state.get_state()
-            ],
-        )
-        real2 = (
-            gm2.n_components,
-            gm2.covariance_type,
-            gm2.tol,
-            gm2.reg_covar,
-            gm2.max_iter,
-            gm2.init_params,
-            gm2.weights_init.tolist(),
-            gm2.means_init.tolist(),
-            gm2.precisions_init,
-            *[
-                list(x) if isinstance(x, np.ndarray) else x
-                for x in gm2.random_state.get_state()
-            ],
-        )
-
-        self.assertEqual(real, real2)
 
     def test_fit(self):
         """Tests GaussianMixture.fit()"""
@@ -324,32 +208,6 @@ class GaussianMixtureSavingTestCBOR(unittest.TestCase):
         self.assertTrue(pred2[0] == pred2[2] == pred2[4])
         self.assertTrue(pred2[1] == pred2[3] == pred2[5])
 
-    def test_fit_predict(self):
-        """Tests GaussianMixture.fit_predict()"""
-        x, y = make_blobs(n_samples=1500, random_state=170)
-        x_filtered = np.vstack(
-            (x[y == 0][:500], x[y == 1][:100], x[y == 2][:10])
-        )
-        y_real = np.concatenate((np.zeros(500), np.ones(100), 2 * np.ones(10)))
-
-        ds_x = ds.array(x_filtered, block_size=(300, 2))
-
-        gm = GaussianMixture(n_components=3, random_state=170)
-        pred = gm.fit_predict(ds_x).collect()
-
-        save_model(gm, self.filepath, save_format="cbor")
-        gm2 = load_model(self.filepath, load_format="cbor")
-
-        pred2 = gm2.predict(ds_x).collect()
-
-        self.assertEqual(len(pred), 610)
-        accuracy = np.count_nonzero(pred == y_real) / len(pred)
-        self.assertGreater(accuracy, 0.99)
-
-        self.assertEqual(len(pred2), 610)
-        accuracy2 = np.count_nonzero(pred2 == y_real) / len(pred2)
-        self.assertGreater(accuracy2, 0.99)
-
     def test_sparse(self):
         """Tests GaussianMixture produces the same results using dense and
         sparse data structures"""
@@ -383,85 +241,9 @@ class GaussianMixtureSavingTestCBOR(unittest.TestCase):
             self.assertTrue(np.array_equal(labels_sparse, labels_dense))
             self.assertTrue(np.array_equal(labels_sparse2, labels_dense2))
 
-    def test_init_random(self):
-        """Tests GaussianMixture random initialization"""
-        x = ds.random_array((50, 3), (10, 3), random_state=0)
-        gm = GaussianMixture(
-            init_params="random", n_components=4, arity=2, random_state=170
-        )
-        gm.fit(x)
-        save_model(gm, self.filepath, save_format="cbor")
-        gm2 = load_model(self.filepath, load_format="cbor")
-        self.assertGreater(gm.n_iter, 5)
-        self.assertGreater(gm2.n_iter, 5)
-
-    def test_means_init_and_weights_init(self):
-        """Tests GaussianMixture means_init and weights_init parameters"""
-        x, _ = load_iris(return_X_y=True)
-        x_ds = ds.array(x, (75, 4))
-        weights_init = [1 / 3, 1 / 3, 1 / 3]
-        means_init = np.array([[5, 3, 2, 0], [6, 3, 4, 1], [7, 3, 6, 2]])
-        gm = GaussianMixture(
-            random_state=0,
-            n_components=3,
-            weights_init=weights_init,
-            means_init=means_init,
-        )
-        gm.fit(x_ds)
-        save_model(gm, self.filepath, save_format="cbor")
-        gm2 = load_model(self.filepath, load_format="cbor")
-        self.assertTrue(gm.converged_)
-        self.assertTrue(gm2.converged_)
-
 
 class CSVMSavingTestCBOR(unittest.TestCase):
     filepath = "tests/files/saving/csvm.cbor"
-
-    def test_init_params(self):
-        """Test constructor parameters"""
-        cascade_arity = 3
-        max_iter = 1
-        tol = 1e-4
-        kernel = "rbf"
-        c = 2
-        gamma = 0.1
-        check_convergence = True
-        seed = 666
-        verbose = False
-
-        csvm = CascadeSVM(
-            cascade_arity=cascade_arity,
-            max_iter=max_iter,
-            tol=tol,
-            kernel=kernel,
-            c=c,
-            gamma=gamma,
-            check_convergence=check_convergence,
-            random_state=seed,
-            verbose=verbose,
-        )
-        save_model(csvm, self.filepath, save_format="cbor")
-        csvm2 = load_model(self.filepath, load_format="cbor")
-
-        self.assertEqual(csvm.cascade_arity, cascade_arity)
-        self.assertEqual(csvm.max_iter, max_iter)
-        self.assertEqual(csvm.tol, tol)
-        self.assertEqual(csvm.kernel, kernel)
-        self.assertEqual(csvm.c, c)
-        self.assertEqual(csvm.gamma, gamma)
-        self.assertEqual(csvm.check_convergence, check_convergence)
-        self.assertEqual(csvm.random_state, seed)
-        self.assertEqual(csvm.verbose, verbose)
-
-        self.assertEqual(csvm2.cascade_arity, cascade_arity)
-        self.assertEqual(csvm2.max_iter, max_iter)
-        self.assertEqual(csvm2.tol, tol)
-        self.assertEqual(csvm2.kernel, kernel)
-        self.assertEqual(csvm2.c, c)
-        self.assertEqual(csvm2.gamma, gamma)
-        self.assertEqual(csvm2.check_convergence, check_convergence)
-        self.assertEqual(csvm2.random_state, seed)
-        self.assertEqual(csvm2.verbose, verbose)
 
     def test_fit_private_params(self):
         kernel = "rbf"
@@ -494,51 +276,6 @@ class CSVMSavingTestCBOR(unittest.TestCase):
 
         # # check for exception when incorrect kernel is passed
         # self.assertRaises(AttributeError, CascadeSVM(kernel='fake_kernel'))
-
-    def test_fit(self):
-        seed = 666
-        file_ = "tests/files/libsvm/2"
-
-        x, y = ds.load_svmlight_file(file_, (10, 300), 780, False)
-
-        csvm = CascadeSVM(
-            cascade_arity=3,
-            max_iter=5,
-            tol=1e-4,
-            kernel="linear",
-            c=2,
-            gamma=0.1,
-            check_convergence=True,
-            random_state=seed,
-            verbose=False,
-        )
-
-        csvm.fit(x, y)
-        save_model(csvm, self.filepath, save_format="cbor")
-        csvm2 = load_model(self.filepath, load_format="cbor")
-
-        self.assertTrue(csvm.converged)
-        self.assertTrue(csvm2.converged)
-
-        csvm = CascadeSVM(
-            cascade_arity=3,
-            max_iter=1,
-            tol=1e-4,
-            kernel="linear",
-            c=2,
-            gamma=0.1,
-            check_convergence=False,
-            random_state=seed,
-            verbose=False,
-        )
-
-        csvm.fit(x, y)
-        save_model(csvm, self.filepath, save_format="cbor")
-        csvm2 = load_model(self.filepath, load_format="cbor")
-        self.assertFalse(csvm.converged)
-        self.assertEqual(csvm.iterations, 1)
-        self.assertFalse(csvm2.converged)
-        self.assertEqual(csvm2.iterations, 1)
 
     def test_predict(self):
         seed = 666
@@ -617,60 +354,6 @@ class CSVMSavingTestCBOR(unittest.TestCase):
         self.assertEqual(accuracy, 1.0)
         self.assertEqual(accuracy2, 1.0)
 
-    def test_decision_func(self):
-        seed = 666
-
-        # negative points belong to class 1, positives to 0
-        # all points are in the x-axis
-        p1, p2, p3, p4 = [0, 2], [0, 1], [0, -2], [0, -1]
-
-        x = ds.array(np.array([p1, p4, p3, p2]), (2, 2))
-        y = ds.array(np.array([0, 1, 1, 0]).reshape(-1, 1), (2, 1))
-
-        csvm = CascadeSVM(
-            cascade_arity=3,
-            max_iter=10,
-            tol=1e-4,
-            kernel="rbf",
-            c=2,
-            gamma=0.1,
-            check_convergence=False,
-            random_state=seed,
-            verbose=False,
-        )
-
-        csvm.fit(x, y)
-        save_model(csvm, self.filepath, save_format="cbor")
-        csvm2 = load_model(self.filepath, load_format="cbor")
-
-        # p1 should be equidistant to p3, and p2 to p4
-        x_test = ds.array(np.array([p1, p2, p3, p4]), (2, 2))
-
-        y_pred = csvm.decision_function(x_test)
-        y_pred2 = csvm2.decision_function(x_test)
-
-        d1, d2, d3, d4 = y_pred.collect()
-        self.assertTrue(np.isclose(abs(d1) - abs(d3), 0))
-        self.assertTrue(np.isclose(abs(d2) - abs(d4), 0))
-        d1, d2, d3, d4 = y_pred2.collect()
-        self.assertTrue(np.isclose(abs(d1) - abs(d3), 0))
-        self.assertTrue(np.isclose(abs(d2) - abs(d4), 0))
-
-        # p5 and p6 should be in the decision function (distance=0)
-        p5, p6 = np.array([1, 0]), np.array([-1, 0])
-
-        x_test = ds.array(np.array([p5, p6]), (1, 2))
-
-        y_pred = csvm.decision_function(x_test)
-        y_pred2 = csvm2.decision_function(x_test)
-
-        d5, d6 = y_pred.collect()
-        self.assertTrue(np.isclose(d5, 0))
-        self.assertTrue(np.isclose(d6, 0))
-        d5, d6 = y_pred2.collect()
-        self.assertTrue(np.isclose(d5, 0))
-        self.assertTrue(np.isclose(d6, 0))
-
     def test_sparse(self):
         """Tests that C-SVM produces the same results with sparse and dense
         data"""
@@ -708,36 +391,6 @@ class CSVMSavingTestCBOR(unittest.TestCase):
         self.assertTrue(np.array_equal(coef_d2, coef_sp2))
         self.assertTrue(np.array_equal(coef_d, coef_d2))
 
-    def test_duplicates(self):
-        """Tests that C-SVM does not generate duplicate support vectors"""
-        x = ds.array(
-            np.array(
-                [
-                    [0, 1],
-                    [1, 1],
-                    [0, 1],
-                    [1, 2],
-                    [0, 0],
-                    [2, 2],
-                    [2, 1],
-                    [1, 0],
-                ]
-            ),
-            (2, 2),
-        )
-
-        y = ds.array(np.array([1, 0, 1, 0, 1, 0, 0, 1]).reshape(-1, 1), (2, 1))
-
-        csvm = CascadeSVM(c=1, random_state=1, max_iter=100, tol=0)
-        csvm.fit(x, y)
-        save_model(csvm, self.filepath, save_format="cbor")
-        csvm2 = load_model(self.filepath, load_format="cbor")
-
-        csvm._collect_clf()
-        csvm2._collect_clf()
-        self.assertEqual(csvm._clf.support_vectors_.shape[0], 6)
-        self.assertEqual(csvm2._clf.support_vectors_.shape[0], 6)
-
 
 class RFSavingTestCBOR(unittest.TestCase):
     filepath = "tests/files/saving/rf.cbor"
@@ -757,8 +410,8 @@ class RFSavingTestCBOR(unittest.TestCase):
         )
         x_train = ds.array(x[: len(x) // 2], (300, 10))
         y_train = ds.array(y[: len(y) // 2][:, np.newaxis], (300, 1))
-        x_test = ds.array(x[len(x) // 2:], (300, 10))
-        y_test = ds.array(y[len(y) // 2:][:, np.newaxis], (300, 1))
+        x_test = ds.array(x[len(x) // 2 :], (300, 10))
+        y_test = ds.array(y[len(y) // 2 :][:, np.newaxis], (300, 1))
 
         rf = RandomForestClassifier(random_state=0)
         rf.fit(x_train, y_train)
@@ -785,8 +438,8 @@ class RFSavingTestCBOR(unittest.TestCase):
         )
         x_train = ds.array(x[: len(x) // 2], (300, 10))
         y_train = ds.array(y[: len(y) // 2][:, np.newaxis], (300, 1))
-        x_test = ds.array(x[len(x) // 2:], (300, 10))
-        y_test = y[len(y) // 2:]
+        x_test = ds.array(x[len(x) // 2 :], (300, 10))
+        y_test = y[len(y) // 2 :]
 
         rf = RandomForestClassifier(distr_depth=2, random_state=0)
         rf.fit(x_train, y_train)
@@ -797,35 +450,6 @@ class RFSavingTestCBOR(unittest.TestCase):
         y_pred2 = rf2.predict(x_test).collect()
         accuracy = np.count_nonzero(y_pred == y_test) / len(y_test)
         accuracy2 = np.count_nonzero(y_pred2 == y_test) / len(y_test)
-        self.assertGreater(accuracy, 0.7)
-        self.assertGreater(accuracy2, 0.7)
-
-    def test_make_classification_fit_predict(self):
-        """Tests RandomForestClassifier fit_predict with default params."""
-        x, y = make_classification(
-            n_samples=3000,
-            n_features=10,
-            n_classes=3,
-            n_informative=4,
-            n_redundant=2,
-            n_repeated=1,
-            n_clusters_per_class=2,
-            shuffle=True,
-            random_state=0,
-        )
-        x_train = ds.array(x[: len(x) // 2], (300, 10))
-        y_train = ds.array(y[: len(y) // 2][:, np.newaxis], (300, 1))
-
-        rf = RandomForestClassifier(random_state=0)
-        rf.fit(x_train, y_train)
-        save_model(rf, self.filepath, save_format="cbor")
-        rf2 = load_model(self.filepath, load_format="cbor")
-
-        y_pred = rf.predict(x_train).collect()
-        y_pred2 = rf2.predict(x_train).collect()
-        y_train = y_train.collect()
-        accuracy = np.count_nonzero(y_pred == y_train) / len(y_train)
-        accuracy2 = np.count_nonzero(y_pred2 == y_train) / len(y_train)
         self.assertGreater(accuracy, 0.7)
         self.assertGreater(accuracy2, 0.7)
 
@@ -844,8 +468,8 @@ class RFSavingTestCBOR(unittest.TestCase):
         )
         x_train = ds.array(x[: len(x) // 2], (300, 10))
         y_train = ds.array(y[: len(y) // 2][:, np.newaxis], (300, 1))
-        x_test = ds.array(x[len(x) // 2:], (300, 10))
-        y_test = y[len(y) // 2:]
+        x_test = ds.array(x[len(x) // 2 :], (300, 10))
+        y_test = y[len(y) // 2 :]
 
         rf = RandomForestClassifier(random_state=0, sklearn_max=10)
         rf.fit(x_train, y_train)
@@ -874,8 +498,8 @@ class RFSavingTestCBOR(unittest.TestCase):
         )
         x_train = ds.array(x[: len(x) // 2], (300, 10))
         y_train = ds.array(y[: len(y) // 2][:, np.newaxis], (300, 1))
-        x_test = ds.array(x[len(x) // 2:], (300, 10))
-        y_test = y[len(y) // 2:]
+        x_test = ds.array(x[len(x) // 2 :], (300, 10))
+        y_test = y[len(y) // 2 :]
 
         rf = RandomForestClassifier(random_state=0, sklearn_max=10)
         rf.fit(x_train, y_train)
@@ -908,8 +532,8 @@ class RFSavingTestCBOR(unittest.TestCase):
         )
         x_train = ds.array(x[: len(x) // 2], (300, 10))
         y_train = ds.array(y[: len(y) // 2][:, np.newaxis], (300, 1))
-        x_test = ds.array(x[len(x) // 2:], (300, 10))
-        y_test = y[len(y) // 2:]
+        x_test = ds.array(x[len(x) // 2 :], (300, 10))
+        y_test = y[len(y) // 2 :]
 
         rf = RandomForestClassifier(
             random_state=0, sklearn_max=10, hard_vote=True
@@ -941,8 +565,8 @@ class RFSavingTestCBOR(unittest.TestCase):
         )
         x_train = ds.array(x[: len(x) // 2], (300, 10))
         y_train = ds.array(y[: len(y) // 2][:, np.newaxis], (300, 1))
-        x_test = ds.array(x[len(x) // 2:], (300, 10))
-        y_test = ds.array(y[len(y) // 2:][:, np.newaxis], (300, 1))
+        x_test = ds.array(x[len(x) // 2 :], (300, 10))
+        y_test = ds.array(y[len(y) // 2 :][:, np.newaxis], (300, 1))
 
         rf = RandomForestClassifier(
             random_state=0,
@@ -959,28 +583,6 @@ class RFSavingTestCBOR(unittest.TestCase):
         accuracy2 = compss_wait_on(rf2.score(x_test, y_test))
         self.assertGreater(accuracy, 0.7)
         self.assertGreater(accuracy2, 0.7)
-
-    def test_iris(self):
-        """Tests RandomForestClassifier with a minimal example."""
-        x, y = datasets.load_iris(return_X_y=True)
-        ds_fit = ds.array(x[::2], block_size=(30, 2))
-        fit_y = ds.array(y[::2].reshape(-1, 1), block_size=(30, 1))
-        ds_validate = ds.array(x[1::2], block_size=(30, 2))
-        validate_y = ds.array(y[1::2].reshape(-1, 1), block_size=(30, 1))
-
-        rf = RandomForestClassifier(
-            n_estimators=1, max_depth=1, random_state=0
-        )
-        rf.fit(ds_fit, fit_y)
-        save_model(rf, self.filepath, save_format="cbor")
-        rf2 = load_model(self.filepath, load_format="cbor")
-
-        accuracy = compss_wait_on(rf.score(ds_validate, validate_y))
-        accuracy2 = compss_wait_on(rf2.score(ds_validate, validate_y))
-
-        # Accuracy should be <= 2/3 for any seed, often exactly equal.
-        self.assertAlmostEqual(accuracy, 2 / 3)
-        self.assertAlmostEqual(accuracy2, 2 / 3)
 
 
 class LassoSavingTestCBOR(unittest.TestCase):
@@ -1005,7 +607,7 @@ class LassoSavingTestCBOR(unittest.TestCase):
 
         n_samples = X.shape[0]
         X_train, y_train = X[: n_samples // 2], y[: n_samples // 2]
-        X_test, y_test = X[n_samples // 2:], y[n_samples // 2:]
+        X_test, y_test = X[n_samples // 2 :], y[n_samples // 2 :]
 
         lasso = Lasso(lmbd=0.1, max_iter=50)
 
@@ -1175,100 +777,6 @@ class LinearRegressionSavingTestCBOR(unittest.TestCase):
             np.allclose(pred2, [2.05649718, 3.14689266, 1.3940678])
         )
 
-    def test_multivariate_multiobjective(self):
-        """Tests fit() and predict(), multivariate, multiobjective."""
-        x_data = np.array(
-            [[1, 2, 3], [2, 0, 4], [3, 1, 8], [4, 4, 2], [5, 3, 1], [2, 7, 1]]
-        )
-        y_data = np.array(
-            [
-                [2, 0, 3],
-                [1, 5, 2],
-                [1, 3, 4],
-                [2, 7, 9],
-                [4.5, -1, 4],
-                [0, 0, 0],
-            ]
-        )
-
-        bn, bm = 2, 2
-
-        x = ds.array(x=x_data, block_size=(bn, bm))
-        y = ds.array(x=y_data, block_size=(bn, bm))
-
-        reg = LinearRegression()
-        reg.fit(x, y)
-        save_model(reg, self.filepath, save_format="cbor")
-        reg2 = load_model(self.filepath, load_format="cbor")
-
-        # Predict one sample
-        x_test = np.array([3, 2, 1])
-        test_data = ds.array(x=x_test, block_size=(1, bm))
-        pred = reg.predict(test_data).collect()
-        pred2 = reg2.predict(test_data).collect()
-        self.assertTrue(np.allclose(pred, [3.0318415, 1.97164872, 3.85410906]))
-        self.assertTrue(
-            np.allclose(pred2, [3.0318415, 1.97164872, 3.85410906])
-        )
-
-        # Predict multiple samples
-        x_test = np.array([[3, 2, 1], [4, 3, 3], [1, 1, 1]])
-        test_data = ds.array(x=x_test, block_size=(bn, bm))
-        pred = reg.predict(test_data).collect()
-        pred2 = reg2.predict(test_data).collect()
-        self.assertTrue(
-            np.allclose(
-                pred,
-                [
-                    [3.0318415, 1.97164872, 3.85410906],
-                    [2.5033157, 2.65809327, 5.05310495],
-                    [2.145797, 1.4840121, 1.5739791],
-                ],
-            )
-        )
-        self.assertTrue(
-            np.allclose(
-                pred2,
-                [
-                    [3.0318415, 1.97164872, 3.85410906],
-                    [2.5033157, 2.65809327, 5.05310495],
-                    [2.145797, 1.4840121, 1.5739791],
-                ],
-            )
-        )
-
-        # Check attributes values
-        self.assertTrue(
-            np.allclose(
-                reg2.coef_.collect(),
-                [
-                    [0.65034768, 0.34673933, 1.22176283],
-                    [-0.41465084, -0.20584208, -0.16339571],
-                    [-0.38211131, 0.27277365, 0.07031439],
-                ],
-            )
-        )
-        self.assertTrue(
-            np.allclose(
-                reg2.coef_.collect(),
-                [
-                    [0.65034768, 0.34673933, 1.22176283],
-                    [-0.41465084, -0.20584208, -0.16339571],
-                    [-0.38211131, 0.27277365, 0.07031439],
-                ],
-            )
-        )
-        self.assertTrue(
-            np.allclose(
-                reg.intercept_.collect(), [2.29221145, 1.07034124, 0.44529761]
-            )
-        )
-        self.assertTrue(
-            np.allclose(
-                reg2.intercept_.collect(), [2.29221145, 1.07034124, 0.44529761]
-            )
-        )
-
 
 def load_movielens(train_ratio=0.9):
     file = "tests/files/sample_movielens_ratings.csv"
@@ -1306,43 +814,6 @@ def load_movielens(train_ratio=0.9):
 
 class ALSSavingTestCBOR(unittest.TestCase):
     filepath = "tests/files/saving/als.cbor"
-
-    def test_init_params(self):
-        # Test all parameters
-        seed = 666
-        n_f = 100
-        lambda_ = 0.001
-        convergence_threshold = 0.1
-        max_iter = 10
-        verbose = True
-        arity = 12
-
-        als = ALS(
-            random_state=seed,
-            n_f=n_f,
-            lambda_=lambda_,
-            tol=convergence_threshold,
-            max_iter=max_iter,
-            verbose=verbose,
-            arity=arity,
-        )
-        save_model(als, self.filepath, save_format="cbor")
-        als2 = load_model(self.filepath, load_format="cbor")
-
-        self.assertEqual(als.random_state, seed)
-        self.assertEqual(als.n_f, n_f)
-        self.assertEqual(als.lambda_, lambda_)
-        self.assertEqual(als.tol, convergence_threshold)
-        self.assertEqual(als.max_iter, max_iter)
-        self.assertEqual(als.verbose, verbose)
-        self.assertEqual(als.arity, arity)
-        self.assertEqual(als2.random_state, seed)
-        self.assertEqual(als2.n_f, n_f)
-        self.assertEqual(als2.lambda_, lambda_)
-        self.assertEqual(als2.tol, convergence_threshold)
-        self.assertEqual(als2.max_iter, max_iter)
-        self.assertEqual(als2.verbose, verbose)
-        self.assertEqual(als2.arity, arity)
 
     def test_fit(self):
         train, test = load_movielens()
