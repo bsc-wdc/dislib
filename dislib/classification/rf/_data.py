@@ -2,8 +2,13 @@ import tempfile
 
 import numpy as np
 from numpy.lib import format
-from pycompss.api.parameter import FILE_IN, FILE_INOUT, COLLECTION_IN, Depth, \
-    Type
+from pycompss.api.parameter import (
+    FILE_IN,
+    FILE_INOUT,
+    COLLECTION_IN,
+    Depth,
+    Type,
+)
 from pycompss.api.task import task
 
 from dislib.data.array import Array
@@ -82,12 +87,13 @@ class RfDataset(object):
 
         """
         if self.n_samples is None:
-            assert isinstance(self.samples_path, str), \
-                'self.n_samples must be set manually if self.samples_path ' \
-                'is a pycompss.runtime.Future object'
+            assert isinstance(self.samples_path, str), (
+                "self.n_samples must be set manually if self.samples_path "
+                "is a pycompss.runtime.Future object"
+            )
             shape = _NpyFile(self.samples_path).get_shape()
             if len(shape) != 2:
-                raise ValueError('Cannot read 2D array from the samples file.')
+                raise ValueError("Cannot read 2D array from the samples file.")
             self.n_samples, self.n_features = shape
         return self.n_samples
 
@@ -107,12 +113,13 @@ class RfDataset(object):
 
         """
         if self.n_features is None:
-            assert isinstance(self.samples_path, str), \
-                'self.n_features must be set manually if self.samples_path ' \
-                'is a pycompss.runtime.Future object'
+            assert isinstance(self.samples_path, str), (
+                "self.n_features must be set manually if self.samples_path "
+                "is a pycompss.runtime.Future object"
+            )
             shape = _NpyFile(self.samples_path).get_shape()
             if len(shape) != 2:
-                raise ValueError('Cannot read 2D array from the samples file.')
+                raise ValueError("Cannot read 2D array from the samples file.")
             self.n_samples, self.n_features = shape
         return self.n_features
 
@@ -169,11 +176,11 @@ class RfDataset(object):
         shape = features_npy_file.get_shape()
         fortran_order = features_npy_file.get_fortran_order()
         if len(shape) != 2:
-            raise ValueError('Cannot read 2D array from features_file.')
+            raise ValueError("Cannot read 2D array from features_file.")
         if (self.get_n_features(), self.get_n_samples()) != shape:
-            raise ValueError('Invalid dimensions for the features_file.')
+            raise ValueError("Invalid dimensions for the features_file.")
         if fortran_order:
-            raise ValueError('Fortran order not supported for features array.')
+            raise ValueError("Fortran order not supported for features array.")
 
 
 def transform_to_rf_dataset(x: Array, y: Array) -> RfDataset:
@@ -197,9 +204,9 @@ def transform_to_rf_dataset(x: Array, y: Array) -> RfDataset:
     n_samples = x.shape[0]
     n_features = x.shape[1]
 
-    samples_file = tempfile.NamedTemporaryFile(mode='wb',
-                                               prefix='tmp_rf_samples_',
-                                               delete=False)
+    samples_file = tempfile.NamedTemporaryFile(
+        mode="wb", prefix="tmp_rf_samples_", delete=False
+    )
     samples_path = samples_file.name
     samples_file.close()
     _allocate_samples_file(samples_path, n_samples, n_features)
@@ -213,9 +220,9 @@ def transform_to_rf_dataset(x: Array, y: Array) -> RfDataset:
         _fill_samples_file(samples_path, x_row._blocks, start_idx)
         start_idx += x._reg_shape[0]
 
-    labels_file = tempfile.NamedTemporaryFile(mode='w',
-                                              prefix='tmp_rf_labels_',
-                                              delete=False)
+    labels_file = tempfile.NamedTemporaryFile(
+        mode="w", prefix="tmp_rf_labels_", delete=False
+    )
     labels_path = labels_file.name
     labels_file.close()
     for y_row in y._iterator(axis=0):
@@ -251,19 +258,19 @@ class _NpyFile(object):
         return self.dtype
 
     def _read_header(self):
-        with open(self.path, 'rb') as fp:
+        with open(self.path, "rb") as fp:
             version = format.read_magic(fp)
             try:
                 format._check_version(version)
             except ValueError:
-                raise ValueError('Invalid file format.')
+                raise ValueError("Invalid file format.")
             header_data = format._read_array_header(fp, version)
             self.shape, self.fortran_order, self.dtype = header_data
 
 
 @task(labels_path=FILE_IN, returns=3)
 def _get_labels(labels_path):
-    y = np.genfromtxt(labels_path, dtype=None, encoding='utf-8')
+    y = np.genfromtxt(labels_path, dtype=None, encoding="utf-8")
     categories, codes = np.unique(y, return_inverse=True)
     return codes.astype(np.int8), categories, len(categories)
 
@@ -279,26 +286,30 @@ def _merge_shapes(*samples_shapes):
     n_features = samples_shapes[0][1]
     for shape in samples_shapes:
         n_samples += shape[0]
-        assert shape[1] == n_features, 'Subsamples with different n_features.'
+        assert shape[1] == n_features, "Subsamples with different n_features."
     return samples_shapes, n_samples, n_features
 
 
 @task(samples_path=FILE_INOUT)
 def _allocate_samples_file(samples_path, n_samples, n_features):
-    np.lib.format.open_memmap(samples_path, mode='w+', dtype='float32',
-                              shape=(int(n_samples), int(n_features)))
+    np.lib.format.open_memmap(
+        samples_path,
+        mode="w+",
+        dtype="float32",
+        shape=(int(n_samples), int(n_features)),
+    )
 
 
 @task(samples_path=FILE_INOUT, row_blocks={Type: COLLECTION_IN, Depth: 2})
 def _fill_samples_file(samples_path, row_blocks, start_idx):
     rows_samples = Array._merge_blocks(row_blocks)
-    rows_samples = rows_samples.astype(dtype='float32', casting='same_kind')
-    samples = np.lib.format.open_memmap(samples_path, mode='r+')
-    samples[start_idx: start_idx + rows_samples.shape[0]] = rows_samples
+    rows_samples = rows_samples.astype(dtype="float32", casting="same_kind")
+    samples = np.lib.format.open_memmap(samples_path, mode="r+")
+    samples[start_idx : start_idx + rows_samples.shape[0]] = rows_samples
 
 
 @task(labels_path=FILE_INOUT, row_blocks={Type: COLLECTION_IN, Depth: 2})
 def _fill_labels_file(labels_path, row_blocks):
     rows_labels = Array._merge_blocks(row_blocks)
-    with open(labels_path, 'at') as f:
-        np.savetxt(f, rows_labels, fmt='%s', encoding='utf-8')
+    with open(labels_path, "at") as f:
+        np.savetxt(f, rows_labels, fmt="%s", encoding="utf-8")
