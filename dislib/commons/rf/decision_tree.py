@@ -8,7 +8,7 @@ from pycompss.api.task import task
 from sklearn.tree import DecisionTreeClassifier as SklearnDTClassifier
 from sklearn.tree import DecisionTreeRegressor as SklearnDTRegressor
 
-from ._test_split import test_split
+from dislib.commons.rf.test_split import test_split
 from dislib.data.array import Array
 
 

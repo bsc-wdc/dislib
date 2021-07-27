@@ -23,7 +23,7 @@ def test_split(sample, y_s, feature, n_classes):
 
     # Threshold value must not be that value of a sample
     not_repeated = np.empty(size, dtype=np.bool_)
-    not_repeated[0 : size - 1] = f_sorted[1:] != f_sorted[:-1]
+    not_repeated[0: size - 1] = f_sorted[1:] != f_sorted[:-1]
     not_repeated[size - 1] = True
 
     if n_classes is not None:  # Classification

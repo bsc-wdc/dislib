@@ -16,7 +16,7 @@ import dislib.cluster
 import dislib.recommendation
 import dislib.regression
 from dislib.data.array import Array
-from dislib.commons.rf._decision_tree import (
+from dislib.commons.rf.decision_tree import (
     DecisionTreeClassifier,
     DecisionTreeRegressor,
     _Node,
@@ -187,16 +187,8 @@ def load_model(filepath, load_format="json"):
     model_module = getattr(ds, IMPLEMENTED_MODELS[model_name])
     model_class = getattr(model_module, model_name)
     model = model_class()
-    model.__dict__.update(model_metadata)
-
-    # Set class methods
-    if model_name == "CascadeSVM" and "kernel" in model_metadata:
-        try:
-            model._kernel_f = getattr(
-                model, model._name_to_kernel[model_metadata["kernel"]]
-            )
-        except AttributeError:
-            model._kernel_f = getattr(model, "_rbf_kernel")
+    for key, val in model_metadata.items():
+        setattr(model, key, val)
 
     return model
 
@@ -217,13 +209,6 @@ def _encode_helper(obj):
     """
     if isinstance(obj, np.generic):
         return obj.item()
-    elif isinstance(obj, range):
-        return {
-            "class_name": "range",
-            "start": obj.start,
-            "stop": obj.stop,
-            "step": obj.step,
-        }
     elif isinstance(obj, csr_matrix):
         return {
             "class_name": "csr_matrix",
@@ -272,11 +257,7 @@ def _decode_helper(obj):
     if isinstance(obj, dict) and "class_name" in obj:
 
         class_name = obj["class_name"]
-        if class_name == "range":
-            return range(obj["start"], obj["stop"], obj["step"])
-        elif class_name == "tuple":
-            return tuple(obj["items"])
-        elif class_name == "ndarray":
+        if class_name == "ndarray":
             if obj["dtype_list"]:
                 items = list(map(tuple, obj["items"]))
                 return np.rec.fromrecords(items, dtype=eval(obj["dtype"]))
@@ -353,8 +334,7 @@ def _sync_obj(obj):
     elif isinstance(obj, list):
         iterator = iter(enumerate(obj))
     else:
-        print(obj)
-        raise ValueError("Expected dict or list and received %s." % type(obj))
+        raise TypeError("Expected dict or list and received %s." % type(obj))
 
     for key, val in iterator:
         if isinstance(val, (dict, list)):

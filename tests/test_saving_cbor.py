@@ -1,13 +1,10 @@
 import unittest
 
 import numpy as np
-from numpy.random.mtrand import RandomState
 from scipy.sparse import csr_matrix
-from sklearn import datasets
-from sklearn.cluster import KMeans as SKMeans
 from sklearn.metrics import r2_score
 from sklearn.datasets import make_classification
-from sklearn.datasets import make_blobs, load_iris
+from sklearn.datasets import make_blobs
 
 import dislib as ds
 from dislib.cluster import KMeans
@@ -410,8 +407,8 @@ class RFSavingTestCBOR(unittest.TestCase):
         )
         x_train = ds.array(x[: len(x) // 2], (300, 10))
         y_train = ds.array(y[: len(y) // 2][:, np.newaxis], (300, 1))
-        x_test = ds.array(x[len(x) // 2 :], (300, 10))
-        y_test = ds.array(y[len(y) // 2 :][:, np.newaxis], (300, 1))
+        x_test = ds.array(x[len(x) // 2:], (300, 10))
+        y_test = ds.array(y[len(y) // 2:][:, np.newaxis], (300, 1))
 
         rf = RandomForestClassifier(random_state=0)
         rf.fit(x_train, y_train)
@@ -438,8 +435,8 @@ class RFSavingTestCBOR(unittest.TestCase):
         )
         x_train = ds.array(x[: len(x) // 2], (300, 10))
         y_train = ds.array(y[: len(y) // 2][:, np.newaxis], (300, 1))
-        x_test = ds.array(x[len(x) // 2 :], (300, 10))
-        y_test = y[len(y) // 2 :]
+        x_test = ds.array(x[len(x) // 2:], (300, 10))
+        y_test = y[len(y) // 2:]
 
         rf = RandomForestClassifier(distr_depth=2, random_state=0)
         rf.fit(x_train, y_train)
@@ -468,8 +465,8 @@ class RFSavingTestCBOR(unittest.TestCase):
         )
         x_train = ds.array(x[: len(x) // 2], (300, 10))
         y_train = ds.array(y[: len(y) // 2][:, np.newaxis], (300, 1))
-        x_test = ds.array(x[len(x) // 2 :], (300, 10))
-        y_test = y[len(y) // 2 :]
+        x_test = ds.array(x[len(x) // 2:], (300, 10))
+        y_test = y[len(y) // 2:]
 
         rf = RandomForestClassifier(random_state=0, sklearn_max=10)
         rf.fit(x_train, y_train)
@@ -498,8 +495,8 @@ class RFSavingTestCBOR(unittest.TestCase):
         )
         x_train = ds.array(x[: len(x) // 2], (300, 10))
         y_train = ds.array(y[: len(y) // 2][:, np.newaxis], (300, 1))
-        x_test = ds.array(x[len(x) // 2 :], (300, 10))
-        y_test = y[len(y) // 2 :]
+        x_test = ds.array(x[len(x) // 2:], (300, 10))
+        y_test = y[len(y) // 2:]
 
         rf = RandomForestClassifier(random_state=0, sklearn_max=10)
         rf.fit(x_train, y_train)
@@ -532,8 +529,8 @@ class RFSavingTestCBOR(unittest.TestCase):
         )
         x_train = ds.array(x[: len(x) // 2], (300, 10))
         y_train = ds.array(y[: len(y) // 2][:, np.newaxis], (300, 1))
-        x_test = ds.array(x[len(x) // 2 :], (300, 10))
-        y_test = y[len(y) // 2 :]
+        x_test = ds.array(x[len(x) // 2:], (300, 10))
+        y_test = y[len(y) // 2:]
 
         rf = RandomForestClassifier(
             random_state=0, sklearn_max=10, hard_vote=True
@@ -565,8 +562,8 @@ class RFSavingTestCBOR(unittest.TestCase):
         )
         x_train = ds.array(x[: len(x) // 2], (300, 10))
         y_train = ds.array(y[: len(y) // 2][:, np.newaxis], (300, 1))
-        x_test = ds.array(x[len(x) // 2 :], (300, 10))
-        y_test = ds.array(y[len(y) // 2 :][:, np.newaxis], (300, 1))
+        x_test = ds.array(x[len(x) // 2:], (300, 10))
+        y_test = ds.array(y[len(y) // 2:][:, np.newaxis], (300, 1))
 
         rf = RandomForestClassifier(
             random_state=0,
@@ -607,7 +604,7 @@ class LassoSavingTestCBOR(unittest.TestCase):
 
         n_samples = X.shape[0]
         X_train, y_train = X[: n_samples // 2], y[: n_samples // 2]
-        X_test, y_test = X[n_samples // 2 :], y[n_samples // 2 :]
+        X_test, y_test = X[n_samples // 2:], y[n_samples // 2:]
 
         lasso = Lasso(lmbd=0.1, max_iter=50)
 

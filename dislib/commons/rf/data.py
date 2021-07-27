@@ -35,7 +35,7 @@ class RfBaseDataset:
 
         Returns
         -------
-        n_samples : int
+        n_samples: int
 
         Raises
         ------
@@ -61,7 +61,7 @@ class RfBaseDataset:
 
         Returns
         -------
-        n_features : int
+        n_features: int
 
         Raises
         ------
@@ -115,35 +115,35 @@ class RfClassifierDataset(RfBaseDataset):
 
     Parameters
     ----------
-    samples_path : str
+    samples_path: str
         Path of the .npy file containing the 2-d array of samples. It can be a
         pycompss.runtime.Future object. If so, self.n_samples and
         self.n_features must be set manually (they can also be
         pycompss.runtime.Future objects).
-    targets_path : str
+    targets_path: str
         Path of the .dat file containing the 1-d array of target labels.
         It can be a pycompss.runtime.Future object.
-    features_path : str, optional (default=None)
+    features_path: str, optional (default=None)
         Path of the .npy file containing the 2-d array of samples transposed.
         The array must be C-ordered. Providing this array may improve the
         performance as it allows sequential access to the features.
 
     Attributes
     ----------
-    n_samples : int
+    n_samples: int
         The number of samples of the dataset. It can be a
         pycompss.runtime.Future object.
-    n_features : int
+    n_features: int
         The number of features of the dataset. It can be a
         pycompss.runtime.Future object.
-    y_targets : ndarray
+    y_targets: ndarray
         The codified array of labels for this RfDataset. The values are indices
         of the array of classes, which contains the corresponding labels. The
         dtype is np.int8. It can be a pycompss.runtime.Future object.
-    y_categories : ndarray
+    y_categories: ndarray
         The array of classes for this RfDataset. The values are unique. It can
         be a pycompss.runtime.Future object.
-    n_classes : int
+    n_classes: int
         The number of classes of this RfDataset. It can be a
         pycompss.runtime.Future object.
 
@@ -159,7 +159,7 @@ class RfClassifierDataset(RfBaseDataset):
 
         Returns
         -------
-        y_targets : ndarray
+        y_targets: ndarray
 
         """
         if self.y_targets is None:
@@ -172,7 +172,7 @@ class RfClassifierDataset(RfBaseDataset):
 
         Returns
         -------
-        y_categories : ndarray
+        y_categories: ndarray
 
         """
         if self.y_categories is None:
@@ -185,7 +185,7 @@ class RfClassifierDataset(RfBaseDataset):
 
         Returns
         -------
-        n_classes : int
+        n_classes: int
 
         """
         if self.n_classes is None:
@@ -206,28 +206,28 @@ class RfRegressorDataset(RfBaseDataset):
 
     Parameters
     ----------
-    samples_path : str
+    samples_path: str
         Path of the .npy file containing the 2-d array of samples. It can be a
         pycompss.runtime.Future object. If so, self.n_samples and
         self.n_features must be set manually (they can also be
         pycompss.runtime.Future objects).
-    targets_path : str
+    targets_path: str
         Path of the .dat file containing the 1-d array of target values.
         It can be a pycompss.runtime.Future object.
-    features_path : str, optional (default=None)
+    features_path: str, optional (default=None)
         Path of the .npy file containing the 2-d array of samples transposed.
         The array must be C-ordered. Providing this array may improve the
         performance as it allows sequential access to the features.
 
     Attributes
     ----------
-    n_samples : int
+    n_samples: int
         The number of samples of the dataset. It can be a
         pycompss.runtime.Future object.
-    n_features : int
+    n_features: int
         The number of features of the dataset. It can be a
         pycompss.runtime.Future object.
-    y_targets : ndarray
+    y_targets: ndarray
         The array of targets for this RfDataset. It can be a
         pycompss.runtime.Future object.
 
@@ -241,7 +241,7 @@ class RfRegressorDataset(RfBaseDataset):
 
         Returns
         -------
-        y_targets : ndarray
+        y_targets: ndarray
 
         """
         if self.y_targets is None:
@@ -255,6 +255,7 @@ class RfRegressorDataset(RfBaseDataset):
     def get_classes(self):
         return None
 
+
 def transform_to_rf_dataset(
     x: Array, y: Array, task: str
 ) -> RfRegressorDataset or RfClassifierDataset:
@@ -265,16 +266,16 @@ def transform_to_rf_dataset(
 
     Parameters
     ----------
-    x : ds-array, shape = (n_samples, n_features)
+    x: ds-array, shape = (n_samples, n_features)
         The training input samples.
-    y : ds-array, shape = (n_samples,) or (n_samples, n_outputs)
+    y: ds-array, shape = (n_samples,) or (n_samples, n_outputs)
         The target values.
-    task : {"classification", "regression"}
+    task: {"classification", "regression"}
         Task of the Random Forest.
 
     Returns
     -------
-    rf_dataset : dislib.regression.rf._data.RfDataset
+    rf_dataset: dislib.regression.rf._data.RfDataset
 
     """
     n_samples = x.shape[0]
@@ -394,7 +395,7 @@ def _fill_samples_file(samples_path, row_blocks, start_idx):
     rows_samples = Array._merge_blocks(row_blocks)
     rows_samples = rows_samples.astype(dtype="float32", casting="same_kind")
     samples = np.lib.format.open_memmap(samples_path, mode="r+")
-    samples[start_idx : start_idx + rows_samples.shape[0]] = rows_samples
+    samples[start_idx: start_idx + rows_samples.shape[0]] = rows_samples
 
 
 @task(targets_path=FILE_INOUT, row_blocks={Type: COLLECTION_IN, Depth: 2})
