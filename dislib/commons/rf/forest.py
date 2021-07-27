@@ -8,13 +8,13 @@ from pycompss.api.task import task
 from sklearn.base import BaseEstimator
 from sklearn.utils import check_random_state
 
-from dislib.commons.rf._decision_tree import (
+from dislib.commons.rf.decision_tree import (
     DecisionTreeClassifier,
     DecisionTreeRegressor,
 )
 from dislib.data.array import Array
 from dislib.utils.base import _paired_partition
-from ._data import transform_to_rf_dataset
+from dislib.commons.rf.data import transform_to_rf_dataset
 
 
 class BaseRandomForest(BaseEstimator):
