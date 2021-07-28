@@ -123,11 +123,10 @@ class BaseDecisionTree:
         Returns
         -------
         predicted : ndarray
-            An array with the predicted classes for the given samples. The
-            values are codes of the fitted
+            An array with the predicted classes or values for the given
+            samples. For classification, the values are codes of the fitted
             dislib.classification.rf.data.RfDataset. The returned object can
             be a pycompss.runtime.Future object.
-
         """
 
         assert self.tree is not None, "The decision tree is not fitted."
@@ -301,10 +300,7 @@ class DecisionTreeRegressor(BaseDecisionTree):
     fit(dataset)
         Fits the DecisionTreeRegressor.
     predict(x_row)
-        Predicts classes for the given samples using a fitted tree.
-    predict_proba(x_row)
-        Predicts class probabilities for the given smaples using a fitted tree.
-
+        Predicts target values for the given samples using a fitted tree.
     """
 
     def __init__(
@@ -405,14 +401,6 @@ def _get_sample_attributes(samples_file, indices):
     samples_mmap = np.load(samples_file, mmap_mode="r", allow_pickle=False)
     x = samples_mmap[indices]
     return x
-
-
-def _get_feature_mmap(features_file, i):
-    return _get_features_mmap(features_file)[i]
-
-
-def _get_features_mmap(features_file):
-    return np.load(features_file, mmap_mode="r", allow_pickle=False)
 
 
 @task(priority=True, returns=2)

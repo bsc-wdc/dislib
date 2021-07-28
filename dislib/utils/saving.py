@@ -2,11 +2,11 @@ import json
 import os
 import numpy as np
 
-from pycompss.runtime.management.classes import Future
 from pycompss.api.api import compss_wait_on
 
 from sklearn.svm import SVC as SklearnSVC
 from sklearn.tree import DecisionTreeClassifier as SklearnDTClassifier
+from sklearn.tree import DecisionTreeRegressor as SklearnDTRegressor
 from sklearn.tree._tree import Tree as SklearnTree
 from scipy.sparse import csr_matrix
 
@@ -38,6 +38,7 @@ IMPLEMENTED_MODELS = {
     "GaussianMixture": "cluster",
     "CascadeSVM": "classification",
     "RandomForestClassifier": "classification",
+    "RandomForestRegressor": "regression",
     "ALS": "recommendation",
     "LinearRegression": "regression",
     "Lasso": "regression",
@@ -59,6 +60,7 @@ DISLIB_CLASSES = {
 SKLEARN_CLASSES = {
     "SVC": SklearnSVC,
     "DecisionTreeClassifier": SklearnDTClassifier,
+    "DecisionTreeRegressor": SklearnDTRegressor,
 }
 
 
@@ -112,7 +114,7 @@ def save_model(model, filepath, overwrite=True, save_format="json"):
         )
 
     # Synchronize model
-    if model_name == "RandomForestClassifier":
+    if model_name in ("RandomForestClassifier", "RandomForestRegressor"):
         _sync_rf(model)
 
     _sync_obj(model.__dict__)
@@ -293,7 +295,9 @@ def _decode_helper(obj):
             and "dislib" in obj["module_name"]
         ):
             dict_ = _decode_helper(obj["items"])
-            if class_name == "DecisionTreeClassifier":
+            if class_name in (
+                "DecisionTreeClassifier", "DecisionTreeRegressor"
+            ):
                 model = DISLIB_CLASSES[obj["class_name"]](
                     try_features=dict_.pop("try_features"),
                     max_depth=dict_.pop("max_depth"),
@@ -341,10 +345,6 @@ def _sync_obj(obj):
             _sync_obj(obj[key])
         else:
             obj[key] = compss_wait_on(val)
-            if isinstance(obj[key], Future):
-                raise TypeError(
-                    "Could not synchronize Future (%s, %s)." % (key, val)
-                )
             if isinstance(getattr(obj[key], "__dict__", None), dict):
                 _sync_obj(obj[key].__dict__)
 
@@ -353,9 +353,8 @@ def _sync_rf(rf):
     """Sync the `try_features` and `n_classes` attribute of the different trees
     since they cannot be synced recursively.
     """
-    if isinstance(rf.trees[0].try_features, Future):
-        try_features = compss_wait_on(rf.trees[0].try_features)
-        n_classes = compss_wait_on(rf.trees[0].n_classes)
-        for tree in rf.trees:
-            tree.try_features = try_features
-            tree.n_classes = n_classes
+    try_features = compss_wait_on(rf.trees[0].try_features)
+    n_classes = compss_wait_on(rf.trees[0].n_classes)
+    for tree in rf.trees:
+        tree.try_features = try_features
+        tree.n_classes = n_classes
