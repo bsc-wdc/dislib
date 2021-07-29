@@ -1,6 +1,7 @@
 import unittest
 
 import numpy as np
+from parameterized import parameterized
 from pycompss.api.api import compss_wait_on
 
 import dislib as ds
@@ -136,7 +137,8 @@ class CSVMTest(unittest.TestCase):
         self.assertTrue(l1 == l2 == l5 == 0)
         self.assertTrue(l3 == l4 == l6 == 1)
 
-    def test_score(self):
+    @parameterized.expand([(True,), (False,)])
+    def test_score(self, collect):
         seed = 666
 
         # negative points belong to class 1, positives to 0
@@ -157,7 +159,9 @@ class CSVMTest(unittest.TestCase):
         x_test = ds.array(np.array([p1, p2, p3, p4]), (2, 2))
         y_test = ds.array(np.array([0, 0, 1, 1]).reshape(-1, 1), (2, 1))
 
-        accuracy = compss_wait_on(csvm.score(x_test, y_test))
+        accuracy = csvm.score(x_test, y_test, collect)
+        if not collect:
+            accuracy = compss_wait_on(accuracy)
 
         self.assertEqual(accuracy, 1.0)
 
