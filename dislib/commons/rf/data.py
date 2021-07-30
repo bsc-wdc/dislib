@@ -46,13 +46,12 @@ class RfBaseDataset:
 
         """
         if self.n_samples is None:
-            assert isinstance(self.samples_path, str), (
-                "self.n_samples must be set manually if self.samples_path "
-                "is a pycompss.runtime.Future object"
-            )
+            if not isinstance(self.samples_path, str):
+                raise TypeError(
+                    "self.n_samples must be set manually if self.samples_path "
+                    "is a pycompss.runtime.Future object"
+                )
             shape = _NpyFile(self.samples_path).get_shape()
-            if len(shape) != 2:
-                raise ValueError("Cannot read 2D array from the samples file.")
             self.n_samples, self.n_features = shape
         return self.n_samples
 
@@ -72,13 +71,12 @@ class RfBaseDataset:
 
         """
         if self.n_features is None:
-            assert isinstance(self.samples_path, str), (
-                "self.n_features must be set manually if self.samples_path "
-                "is a pycompss.runtime.Future object"
-            )
+            if not isinstance(self.samples_path, str):
+                raise TypeError(
+                    "self.n_features must be set manually if self.samples_path"
+                    " is a pycompss.runtime.Future object"
+                )
             shape = _NpyFile(self.samples_path).get_shape()
-            if len(shape) != 2:
-                raise ValueError("Cannot read 2D array from the samples file.")
             self.n_samples, self.n_features = shape
         return self.n_features
 
@@ -95,8 +93,6 @@ class RfBaseDataset:
         features_npy_file = _NpyFile(self.features_path)
         shape = features_npy_file.get_shape()
         fortran_order = features_npy_file.get_fortran_order()
-        if len(shape) != 2:
-            raise ValueError("Cannot read 2D array from features_file.")
         if (self.get_n_features(), self.get_n_samples()) != shape:
             raise ValueError("Invalid dimensions for the features_file.")
         if fortran_order:
