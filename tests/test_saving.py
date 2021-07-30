@@ -1,16 +1,25 @@
 import unittest
 import json
-
+import os
+import shutil
 from dislib.cluster import KMeans
 from dislib.cluster import DBSCAN
 import dislib.utils.saving as saving
 
+DIRPATH = "tests/files/saving"
+
 
 class SavingTest(unittest.TestCase):
+    def setUp(self) -> None:
+        os.makedirs(DIRPATH, exist_ok=True)
+        return super().setUp()
+
+    def tearDown(self) -> None:
+        shutil.rmtree(DIRPATH)
+        return super().tearDown()
 
     def test_errors(self):
-        """Test that errors are raised"""
-        filepath = "tests/files/saving/model.json"
+        filepath = os.path.join(DIRPATH, "model.json")
 
         # Models
         km = KMeans(n_clusters=2)
