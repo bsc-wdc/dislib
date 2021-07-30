@@ -1,5 +1,6 @@
 import unittest
-
+import os
+import shutil
 import numpy as np
 from scipy.sparse import csr_matrix
 from sklearn.metrics import r2_score
@@ -18,12 +19,21 @@ from dislib.utils import save_model, load_model
 
 from pycompss.api.api import compss_wait_on
 
+DIRPATH = "tests/files/saving"
+
 
 class CBORSavingTest(unittest.TestCase):
+    def setUp(self) -> None:
+        os.makedirs(DIRPATH, exist_ok=True)
+        return super().setUp()
+
+    def tearDown(self) -> None:
+        shutil.rmtree(DIRPATH)
+        return super().tearDown()
 
     def test_saving_kmeans(self):
         file_ = "tests/files/libsvm/2"
-        filepath = "tests/files/saving/kmeans.cbor"
+        filepath = os.path.join(DIRPATH, "kmeans.cbor")
 
         x_sp, _ = ds.load_svmlight_file(file_, (10, 300), 780, True)
         x_ds, _ = ds.load_svmlight_file(file_, (10, 300), 780, False)
@@ -52,7 +62,7 @@ class CBORSavingTest(unittest.TestCase):
 
     def test_saving_gm(self):
         file_ = "tests/files/libsvm/2"
-        filepath = "tests/files/saving/gm.cbor"
+        filepath = os.path.join(DIRPATH, "gm.cbor")
 
         x_sparse, _ = ds.load_svmlight_file(file_, (10, 780), 780, True)
         x_dense, _ = ds.load_svmlight_file(file_, (10, 780), 780, False)
@@ -85,7 +95,7 @@ class CBORSavingTest(unittest.TestCase):
     def test_saving_csvm(self):
         seed = 666
         train = "tests/files/libsvm/3"
-        filepath = "tests/files/saving/csvm.cbor"
+        filepath = os.path.join(DIRPATH, "csvm.cbor")
 
         x_sp, y_sp = ds.load_svmlight_file(train, (10, 300), 780, True)
         x_d, y_d = ds.load_svmlight_file(train, (10, 300), 780, False)
@@ -119,7 +129,7 @@ class CBORSavingTest(unittest.TestCase):
         self.assertTrue(np.array_equal(coef_d, coef_d2))
 
     def test_saving_rf_class(self):
-        filepath = "tests/files/saving/rf_class.cbor"
+        filepath = os.path.join(DIRPATH, "rf_class.cbor")
         x, y = make_classification(
             n_samples=3000,
             n_features=10,
@@ -153,7 +163,7 @@ class CBORSavingTest(unittest.TestCase):
         self.assertGreater(accuracy2, 0.7)
 
     def test_saving_rf_regr(self):
-        filepath = "tests/files/saving/rf_regr.cbor"
+        filepath = os.path.join(DIRPATH, "rf_regr.cbor")
 
         def determination_coefficient(y_true, y_pred):
             u = np.sum(np.square(y_true - y_pred))
@@ -195,7 +205,7 @@ class CBORSavingTest(unittest.TestCase):
         self.assertAlmostEqual(coef1, coef2)
 
     def test_saving_lasso(self):
-        filepath = "tests/files/saving/lasso.cbor"
+        filepath = os.path.join(DIRPATH, "lasso.cbor")
         np.random.seed(42)
 
         n_samples, n_features = 50, 100
@@ -229,7 +239,7 @@ class CBORSavingTest(unittest.TestCase):
         self.assertAlmostEqual(r2_score_lasso2, 0.9481746925431124)
 
     def test_saving_linear(self):
-        filepath = "tests/files/saving/linear_regression.cbor"
+        filepath = os.path.join(DIRPATH, "linear_regression.cbor")
 
         x_data = np.array([[1, 2], [2, 0], [3, 1], [4, 4], [5, 3]])
         y_data = np.array([2, 1, 1, 2, 4.5])
@@ -266,7 +276,7 @@ class CBORSavingTest(unittest.TestCase):
         self.assertTrue(np.allclose(pred, [2.1, 3.115625, 1.553125]))
 
     def test_saving_als(self):
-        filepath = "tests/files/saving/als.cbor"
+        filepath = os.path.join(DIRPATH, "als.cbor")
 
         data = np.array([[0, 0, 5], [3, 0, 5], [3, 1, 2]])
         ratings = csr_matrix(data)
