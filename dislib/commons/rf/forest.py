@@ -153,7 +153,7 @@ class BaseRandomForest(BaseEstimator):
 
         return y_pred
 
-    def score(self, x, y):
+    def score(self, x, y, collect=False):
         """Accuracy classification score.
 
         For classification returns the mean accuracy on the given test data.
@@ -175,6 +175,9 @@ class BaseRandomForest(BaseEstimator):
             The training input samples.
         y : ds-array, shape (n_samples, 1)
             The true labels.
+        collect : bool, optional (default=False)
+            When True, a synchronized result is returned.
+
 
         Returns
         -------
@@ -218,7 +221,7 @@ class BaseRandomForest(BaseEstimator):
                 partial_scores.append(subset_score)
             score = _merge_regression_scores(*partial_scores)
 
-        return score
+        return compss_wait_on(score) if collect else score
 
 
 class RandomForestClassifier(BaseRandomForest):
