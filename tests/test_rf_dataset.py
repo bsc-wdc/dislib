@@ -104,10 +104,10 @@ class RFDatasetTest(unittest.TestCase):
 
         # Dataset creation
         rf_regr = data.transform_to_rf_dataset(
-            x_ds_1, y_ds_1, "regression"
+            x_ds_1, y_ds_1, "regression", features_file=True
         )
         rf_class = data.transform_to_rf_dataset(
-            x_ds_1, y_ds_1, "classification"
+            x_ds_1, y_ds_1, "classification", features_file=True
         )
         self.assertEquals(compss_wait_on(rf_regr.get_n_samples()), 900)
         self.assertEquals(compss_wait_on(rf_regr.get_n_features()), 10)
@@ -137,34 +137,22 @@ class RFDatasetTest(unittest.TestCase):
         self.assertEqual(value, np.float64(np.inf))
 
 
-def _fill_samples_file(
-    samples_path, row_blocks, start_idx, fortran_order
-):
+def _fill_samples_file(samples_path, row_blocks, start_idx, fortran_order):
     rows_samples = Array._merge_blocks(row_blocks)
-    rows_samples = rows_samples.astype(
-        dtype="float32", casting="same_kind"
-    )
+    rows_samples = rows_samples.astype(dtype="float32", casting="same_kind")
     samples = np.lib.format.open_memmap(
         samples_path, mode="r+", fortran_order=fortran_order
     )
-    samples[start_idx: start_idx + rows_samples.shape[0]] = (
-        rows_samples
-    )
+    samples[start_idx : start_idx + rows_samples.shape[0]] = rows_samples
 
 
-def _fill_features_file(
-    samples_path, row_blocks, start_idx, fortran_order
-):
-    rows_samples = Array._merge_blocks(row_blocks).T
-    rows_samples = rows_samples.astype(
-        dtype="float32", casting="same_kind"
-    )
+def _fill_features_file(samples_path, row_blocks, start_idx, fortran_order):
+    rows_samples = Array._merge_blocks(row_blocks)
+    rows_samples = rows_samples.astype(dtype="float32", casting="same_kind")
     samples = np.lib.format.open_memmap(
         samples_path, mode="r+", fortran_order=fortran_order
     )
-    samples[start_idx: start_idx + rows_samples.shape[1]] = (
-        rows_samples
-    )
+    samples[:, start_idx : start_idx + rows_samples.shape[0]] = rows_samples.T
 
 
 def _fill_targets_file(targets_path, row_blocks):
@@ -177,7 +165,7 @@ def save_samples(x, samples_path, fortran_order):
     n_samples = x.shape[0]
     n_features = x.shape[1]
 
-    open(samples_path, 'w').close()
+    open(samples_path, "w").close()
     np.lib.format.open_memmap(
         samples_path,
         mode="w+",
@@ -188,9 +176,7 @@ def save_samples(x, samples_path, fortran_order):
     start_idx = 0
     row_blocks_iterator = x._iterator(axis=0)
     top_row = next(row_blocks_iterator)
-    _fill_samples_file(
-        samples_path, top_row._blocks, start_idx, fortran_order
-    )
+    _fill_samples_file(samples_path, top_row._blocks, start_idx, fortran_order)
     start_idx += x._top_left_shape[0]
     for x_row in row_blocks_iterator:
         _fill_samples_file(
@@ -200,7 +186,7 @@ def save_samples(x, samples_path, fortran_order):
 
 
 def save_targets(y, targets_path):
-    open(targets_path, 'w').close()
+    open(targets_path, "w").close()
     for y_row in y._iterator(axis=0):
         _fill_targets_file(targets_path, y_row._blocks)
 
@@ -209,33 +195,30 @@ def save_features(x, features_path, fortran_order):
     n_samples = x.shape[0]
     n_features = x.shape[1]
 
-    if features_path is not None:
-        np.lib.format.open_memmap(
-            features_path,
-            mode="w+",
-            dtype="float32",
-            fortran_order=fortran_order,
-            shape=(int(n_features), int(n_samples)),
-        )
-        start_idx = 0
-        col_blocks_iterator = x._iterator(axis=1)
-        left_col = next(col_blocks_iterator)
+    np.lib.format.open_memmap(
+        features_path,
+        mode="w+",
+        dtype="float32",
+        fortran_order=fortran_order,
+        shape=(int(n_features), int(n_samples)),
+    )
+    start_idx = 0
+    row_blocks_iterator = x._iterator(axis=0)
+    top_row = next(row_blocks_iterator)
+    _fill_features_file(
+        features_path, top_row._blocks, start_idx, fortran_order
+    )
+    start_idx += x._top_left_shape[0]
+    for x_row in row_blocks_iterator:
         _fill_features_file(
-            features_path, left_col._blocks,
-            start_idx, fortran_order
+            features_path, x_row._blocks, start_idx, fortran_order
         )
-        start_idx += x._top_left_shape[1]
-        for x_row in col_blocks_iterator:
-            _fill_features_file(
-                features_path, x_row._blocks,
-                start_idx, fortran_order
-            )
-            start_idx += x._reg_shape[1]
+        start_idx += x._reg_shape[0]
 
 
 def main():
     unittest.main()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
