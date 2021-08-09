@@ -412,7 +412,7 @@ def _fill_samples_file(samples_path, row_blocks, start_idx):
     rows_samples = Array._merge_blocks(row_blocks)
     rows_samples = rows_samples.astype(dtype="float32", casting="same_kind")
     samples = np.lib.format.open_memmap(samples_path, mode="r+")
-    samples[start_idx : start_idx + rows_samples.shape[0]] = rows_samples
+    samples[start_idx: start_idx + rows_samples.shape[0]] = rows_samples
 
 
 @task(samples_path=FILE_INOUT, row_blocks={Type: COLLECTION_IN, Depth: 2})
@@ -420,7 +420,7 @@ def _fill_features_file(samples_path, row_blocks, start_idx):
     rows_samples = Array._merge_blocks(row_blocks)
     rows_samples = rows_samples.astype(dtype="float32", casting="same_kind")
     samples = np.lib.format.open_memmap(samples_path, mode="r+")
-    samples[:, start_idx : start_idx + rows_samples.shape[0]] = rows_samples.T
+    samples[:, start_idx: start_idx + rows_samples.shape[0]] = rows_samples.T
 
 
 @task(targets_path=FILE_INOUT, row_blocks={Type: COLLECTION_IN, Depth: 2})

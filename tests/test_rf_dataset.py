@@ -143,7 +143,7 @@ def _fill_samples_file(samples_path, row_blocks, start_idx, fortran_order):
     samples = np.lib.format.open_memmap(
         samples_path, mode="r+", fortran_order=fortran_order
     )
-    samples[start_idx : start_idx + rows_samples.shape[0]] = rows_samples
+    samples[start_idx: start_idx + rows_samples.shape[0]] = rows_samples
 
 
 def _fill_features_file(samples_path, row_blocks, start_idx, fortran_order):
@@ -152,7 +152,7 @@ def _fill_features_file(samples_path, row_blocks, start_idx, fortran_order):
     samples = np.lib.format.open_memmap(
         samples_path, mode="r+", fortran_order=fortran_order
     )
-    samples[:, start_idx : start_idx + rows_samples.shape[0]] = rows_samples.T
+    samples[:, start_idx: start_idx + rows_samples.shape[0]] = rows_samples.T
 
 
 def _fill_targets_file(targets_path, row_blocks):
