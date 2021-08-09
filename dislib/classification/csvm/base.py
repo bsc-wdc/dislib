@@ -192,7 +192,7 @@ class CascadeSVM(BaseEstimator):
             Test samples.
         y : ds-array, shape=(n_samples, 1)
             True labels for x.
-        collect : bool
+        collect : bool, optional (default=False)
             When True, a synchronized result is returned.
 
         Returns
