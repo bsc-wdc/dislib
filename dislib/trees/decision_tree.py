@@ -8,7 +8,7 @@ from pycompss.api.task import task
 from sklearn.tree import DecisionTreeClassifier as SklearnDTClassifier
 from sklearn.tree import DecisionTreeRegressor as SklearnDTRegressor
 
-from dislib.commons.rf.test_split import test_split
+from dislib.trees.test_split import test_split
 from dislib.data.array import Array
 
 
@@ -27,6 +27,8 @@ class BaseDecisionTree:
         sklearn_max,
         bootstrap,
         random_state,
+        base_node,
+        base_tree,
     ):
         self.try_features = try_features
         self.max_depth = max_depth
@@ -34,6 +36,8 @@ class BaseDecisionTree:
         self.sklearn_max = sklearn_max
         self.bootstrap = bootstrap
         self.random_state = random_state
+        self.base_node = base_node
+        self.base_tree = base_tree
 
         self.n_features = None
         self.n_classes = None
@@ -48,7 +52,6 @@ class BaseDecisionTree:
         Parameters
         ----------
         dataset : dislib.classification.rf._data.RfDataset
-
         """
 
         self.n_features = dataset.get_n_features()
@@ -63,9 +66,8 @@ class BaseDecisionTree:
         sample, y_s = _sample_selection(
             n_samples, y_targets, self.bootstrap, seed
         )
-        Node = _ClassificationNode if self.n_classes else _RegressionNode
 
-        self.tree = Node()
+        self.tree = self.base_node()
         self.nodes_info = []
         self.subtrees = []
         tree_traversal = [(self.tree, sample, y_s, 0)]
@@ -87,8 +89,8 @@ class BaseDecisionTree:
                 compss_delete_object(y_s)
                 node.content = len(self.nodes_info)
                 self.nodes_info.append(node_info)
-                node.left = Node()
-                node.right = Node()
+                node.left = self.base_node()
+                node.right = self.base_node()
                 depth = depth + 1
                 tree_traversal.append((node.right, right_group, y_r, depth))
                 tree_traversal.append((node.left, left_group, y_l, depth))
@@ -102,6 +104,8 @@ class BaseDecisionTree:
                     self.try_features,
                     self.sklearn_max,
                     self.random_state,
+                    self.base_node,
+                    self.base_tree,
                     samples_path,
                     features_path,
                 )
@@ -216,6 +220,8 @@ class DecisionTreeClassifier(BaseDecisionTree):
             sklearn_max,
             bootstrap,
             random_state,
+            _ClassificationNode,
+            SklearnDTClassifier,
         )
 
     def predict_proba(self, x_row):
@@ -234,7 +240,6 @@ class DecisionTreeClassifier(BaseDecisionTree):
             of the column being codes of the fitted
             dislib.classification.rf.data.RfDataset. The returned object can be
             a pycompss.runtime.Future object.
-
         """
 
         assert self.tree is not None, "The decision tree is not fitted."
@@ -319,6 +324,8 @@ class DecisionTreeRegressor(BaseDecisionTree):
             sklearn_max,
             bootstrap,
             random_state,
+            _RegressionNode,
+            SklearnDTRegressor,
         )
 
 
@@ -539,6 +546,8 @@ def _build_subtree_wrapper(
     m_try,
     sklearn_max,
     random_state,
+    base_node,
+    base_tree,
     samples_file,
     features_file,
 ):
@@ -553,6 +562,8 @@ def _build_subtree_wrapper(
             m_try,
             sklearn_max,
             seed,
+            base_node,
+            base_tree,
             samples_file,
             features_file,
         )
@@ -566,6 +577,8 @@ def _build_subtree_wrapper(
             m_try,
             sklearn_max,
             seed,
+            base_node,
+            base_tree,
             samples_file,
         )
 
@@ -580,6 +593,8 @@ def _build_subtree_using_features(
     m_try,
     sklearn_max,
     seed,
+    base_node,
+    base_tree,
     samples_file,
     features_file,
 ):
@@ -593,6 +608,8 @@ def _build_subtree_using_features(
         m_try,
         sklearn_max,
         random_state,
+        base_node,
+        base_tree,
         samples_file,
         features_file=features_file,
     )
@@ -608,6 +625,8 @@ def _build_subtree(
     m_try,
     sklearn_max,
     seed,
+    base_node,
+    base_tree,
     samples_file,
 ):
     random_state = RandomState(seed)
@@ -620,6 +639,8 @@ def _build_subtree(
         m_try,
         sklearn_max,
         random_state,
+        base_node,
+        base_tree,
         samples_file,
     )
 
@@ -633,19 +654,19 @@ def _compute_build_subtree(
     m_try,
     sklearn_max,
     random_state,
+    base_node,
+    base_tree,
     samples_file,
     features_file=None,
     use_sklearn=True,
 ):
-    Node = _ClassificationNode if n_classes else _RegressionNode
-    SklearnDT = SklearnDTClassifier if n_classes else SklearnDTRegressor
     if not sample.size:
-        return Node()
+        return base_node()
     if features_file is not None:
         mmap = np.load(features_file, mmap_mode="r", allow_pickle=False)
     else:
         mmap = np.load(samples_file, mmap_mode="r", allow_pickle=False).T
-    subtree = Node()
+    subtree = base_node()
     tree_traversal = [(subtree, sample, y_s, 0)]
     while tree_traversal:
         node, sample, y_s, depth = tree_traversal.pop()
@@ -655,7 +676,7 @@ def _compute_build_subtree(
                     sklearn_max_depth = None
                 else:
                     sklearn_max_depth = max_depth - depth
-                dt = SklearnDT(
+                dt = base_tree(
                     max_features=m_try,
                     max_depth=sklearn_max_depth,
                     random_state=random_state,
@@ -681,8 +702,8 @@ def _compute_build_subtree(
                 node_info, left_group, y_l, right_group, y_r = split
                 node.content = node_info
                 if isinstance(node_info, _InnerNodeInfo):
-                    node.left = Node()
-                    node.right = Node()
+                    node.left = base_node()
+                    node.right = base_node()
                     tree_traversal.append(
                         (node.right, right_group, y_r, depth + 1)
                     )

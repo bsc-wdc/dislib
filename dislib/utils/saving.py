@@ -16,7 +16,7 @@ import dislib.cluster
 import dislib.recommendation
 import dislib.regression
 from dislib.data.array import Array
-from dislib.commons.rf.decision_tree import (
+from dislib.trees.decision_tree import (
     DecisionTreeClassifier,
     DecisionTreeRegressor,
     _Node,
@@ -296,7 +296,8 @@ def _decode_helper(obj):
         ):
             dict_ = _decode_helper(obj["items"])
             if class_name in (
-                "DecisionTreeClassifier", "DecisionTreeRegressor"
+                "DecisionTreeClassifier",
+                "DecisionTreeRegressor",
             ):
                 model = DISLIB_CLASSES[obj["class_name"]](
                     try_features=dict_.pop("try_features"),

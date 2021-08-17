@@ -4,8 +4,7 @@ import os
 import shutil
 from sklearn.datasets import make_classification
 import dislib as ds
-from dislib.commons.rf import data
-from dislib.commons.rf import test_split
+from dislib.trees import data, test_split
 from dislib.data.array import Array
 import numpy as np
 from sys import float_info
@@ -83,10 +82,6 @@ class RFDatasetTest(unittest.TestCase):
         with self.assertRaises(TypeError):
             rf_dataset.get_n_features()
 
-        # Task must be classification or regression
-        with self.assertRaises(ValueError):
-            rf_dataset = data.transform_to_rf_dataset(x_ds_1, y_ds_1, "aaa")
-
         # Validate dimension
         rf_dataset = data.RfBaseDataset(
             samples_path_1, targets_path_1, features_path_f
@@ -104,10 +99,10 @@ class RFDatasetTest(unittest.TestCase):
 
         # Dataset creation
         rf_regr = data.transform_to_rf_dataset(
-            x_ds_1, y_ds_1, "regression", features_file=True
+            x_ds_1, y_ds_1, data.RfRegressorDataset, features_file=True
         )
         rf_class = data.transform_to_rf_dataset(
-            x_ds_1, y_ds_1, "classification", features_file=True
+            x_ds_1, y_ds_1, data.RfClassifierDataset, features_file=True
         )
         self.assertEquals(compss_wait_on(rf_regr.get_n_samples()), 900)
         self.assertEquals(compss_wait_on(rf_regr.get_n_features()), 10)

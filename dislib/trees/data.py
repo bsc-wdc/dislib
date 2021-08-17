@@ -1,5 +1,4 @@
 import tempfile
-
 import numpy as np
 from numpy.lib import format
 from pycompss.api.parameter import (
@@ -10,7 +9,6 @@ from pycompss.api.parameter import (
     Type,
 )
 from pycompss.api.task import task
-
 from dislib.data.array import Array
 
 
@@ -43,7 +41,6 @@ class RfBaseDataset:
             If self.n_samples is None and self.samples_path is not a string.
         ValueError
             If invalid content is encountered in the samples file.
-
         """
         if self.n_samples is None:
             if not isinstance(self.samples_path, str):
@@ -68,7 +65,6 @@ class RfBaseDataset:
             If self.n_features is None and self.samples_path is not a string.
         ValueError
             If invalid content is encountered in the samples file.
-
         """
         if self.n_features is None:
             if not isinstance(self.samples_path, str):
@@ -88,7 +84,6 @@ class RfBaseDataset:
         ValueError
             If the shape of the array in the features_file doesn't match this
             class n_samples and n_features or if the array is in fortran order.
-
         """
         features_npy_file = _NpyFile(self.features_path)
         shape = features_npy_file.get_shape()
@@ -156,7 +151,6 @@ class RfClassifierDataset(RfBaseDataset):
         Returns
         -------
         y_targets: ndarray
-
         """
         if self.y_targets is None:
             labels = _get_labels(self.targets_path)
@@ -169,7 +163,6 @@ class RfClassifierDataset(RfBaseDataset):
         Returns
         -------
         y_categories: ndarray
-
         """
         if self.y_categories is None:
             labels = _get_labels(self.targets_path)
@@ -182,7 +175,6 @@ class RfClassifierDataset(RfBaseDataset):
         Returns
         -------
         n_classes: int
-
         """
         if self.n_classes is None:
             labels = _get_labels(self.targets_path)
@@ -238,7 +230,6 @@ class RfRegressorDataset(RfBaseDataset):
         Returns
         -------
         y_targets: ndarray
-
         """
         if self.y_targets is None:
             targets = _get_values(self.targets_path)
@@ -253,11 +244,14 @@ class RfRegressorDataset(RfBaseDataset):
 
 
 def transform_to_rf_dataset(
-    x: Array, y: Array, task: str, features_file=False
+    x: Array,
+    y: Array,
+    base_dataset: RfRegressorDataset or RfClassifierDataset,
+    features_file=False,
 ) -> RfRegressorDataset or RfClassifierDataset:
     """Creates a RfDataset object from samples x and targets y.
 
-    This function creates a dislib.commons.rf.data.RfDataset by saving
+    This function creates a `RfDataset` by saving
     x and y in files.
 
     Parameters
@@ -323,16 +317,7 @@ def transform_to_rf_dataset(
     else:
         features_path = None
 
-    if task == "classification":
-        rf_dataset = RfClassifierDataset(
-            samples_path, targets_path, features_path
-        )
-    elif task == "regression":
-        rf_dataset = RfRegressorDataset(
-            samples_path, targets_path, features_path
-        )
-    else:
-        raise ValueError("task must be either classification or regression.")
+    rf_dataset = base_dataset(samples_path, targets_path, features_path)
     rf_dataset.n_samples = n_samples
     rf_dataset.n_features = n_features
     return rf_dataset
