@@ -1,10 +1,12 @@
 from pycompss.api.api import compss_delete_object
-from pycompss.api.parameter import IN
+from pycompss.api.parameter import IN, INOUT
 from pycompss.api.task import task
 
 from dislib.data.array import Array
 
 import numpy as np
+
+from dislib.data.array_block import ArrayBlock
 
 
 def pad(a: Array, pad_width, **kwargs):
@@ -46,12 +48,10 @@ def pad(a: Array, pad_width, **kwargs):
     fill_value = kwargs.get('constant_value', 0)
 
     for row_block_idx in range(a._n_blocks[0]):
-        padded_block = _pad_right_block(a._blocks[row_block_idx][-1], pad_right, fill_value)
-        a.replace_block(row_block_idx, a._n_blocks[1] - 1, padded_block)
+        _pad_right_block(a._blocks[row_block_idx][-1], pad_right, fill_value)
 
     for col_block_idx in range(a._n_blocks[1]):
-        padded_block = _pad_bottom_block(a._blocks[-1][col_block_idx], pad_bottom, fill_value)
-        a.replace_block(a._n_blocks[0] - 1, col_block_idx, padded_block)
+        _pad_bottom_block(a._blocks[-1][col_block_idx], pad_bottom, fill_value)
 
     a._shape = (pad_bottom + a.shape[0] + pad_top, pad_left + a.shape[1] + pad_right)
 
@@ -62,14 +62,22 @@ def pad(a: Array, pad_width, **kwargs):
         a._top_left_shape[1] += pad_left + pad_right
 
 
-@task(block=IN)
+@task(block=INOUT)
 def _pad_right_block(block, pad_cols, value):
-    return np.pad(block, ((0, 0), (0, pad_cols)), constant_values=((0, 0), (0, value)))
+    if block.type in [ArrayBlock.ZEROS, ArrayBlock.IDENTITY]:
+        block._shape = (block.shape[0], block.shape[1] + pad_cols)
+    elif block.type in [ArrayBlock.OTHER]:
+        padded_block = np.pad(block, ((0, 0), (0, pad_cols)), constant_values=((0, 0), (0, value)))
+        block.replace_content(padded_block, ArrayBlock.OTHER, padded_block.shape)
 
 
-@task(block=IN)
+@task(block=INOUT)
 def _pad_bottom_block(block, pad_rows, value):
-    return np.pad(block, ((0, pad_rows), (0, 0)), constant_values=((0, value), (0, 0)))
+    if block.type in [ArrayBlock.ZEROS, ArrayBlock.IDENTITY]:
+        block._shape = (block.shape[0] + pad_rows, block.shape[1])
+    elif block.type in [ArrayBlock.OTHER]:
+        padded_block = np.pad(block, ((0, pad_rows), (0, 0)), constant_values=((0, value), (0, 0)))
+        block.replace_content(padded_block, ArrayBlock.OTHER, padded_block.shape)
 
 
 def pad_last_blocks_with_zeros(a: Array):
@@ -146,8 +154,7 @@ def remove_last_rows(a: Array, n_rows):
 
     for col_block_idx in range(a._n_blocks[1]):
         # removing remaining rows
-        padded_block = _remove_bottom_rows(a._blocks[-1][col_block_idx], n_rows)
-        a._blocks[-1][col_block_idx] = padded_block
+        _remove_bottom_rows(a._blocks[-1][col_block_idx], n_rows)
 
     a._shape = (a._shape[0] - n_rows, a._shape[1])
 
@@ -170,17 +177,24 @@ def remove_last_columns(a: Array, n_columns):
         raise ValueError("Number of columns to remove needs to be less than the whole block")
 
     for row_block_idx in range(a._n_blocks[0]):
-        padded_block = _remove_right_columns(a._blocks[row_block_idx][-1], n_columns)
-        a._blocks[row_block_idx][-1] = padded_block
+        _remove_right_columns(a._blocks[row_block_idx][-1], n_columns)
 
     a._shape = (a._shape[0], a._shape[1] - n_columns)
 
 
-@task(block=IN)
+@task(block=INOUT)
 def _remove_right_columns(block, n_cols):
-    return block[:, :-n_cols]
+    if block.type in [ArrayBlock.ZEROS, ArrayBlock.IDENTITY]:
+        block.shape = (block.shape[0], block.shape[1] - n_cols)
+    elif block.type in [ArrayBlock.OTHER]:
+        new_content = np.asarray(block)[:, :-n_cols]
+        block.replace_content(new_content, ArrayBlock.OTHER, new_content.shape)
 
 
-@task(block=IN)
+@task(block=INOUT)
 def _remove_bottom_rows(block, n_rows):
-    return block[:-n_rows, :]
+    if block.type in [ArrayBlock.ZEROS, ArrayBlock.IDENTITY]:
+        block.shape = (block.shape[0] - n_rows, block.shape[1])
+    elif block.type in [ArrayBlock.OTHER]:
+        new_content = np.asarray(block)[:-n_rows, :]
+        block.replace_content(new_content, ArrayBlock.OTHER, new_content.shape)

@@ -12,6 +12,8 @@ from scipy import sparse as sp
 from scipy.sparse import issparse, csr_matrix
 from sklearn.utils import check_random_state
 
+from dislib.data.array_block import ArrayBlock
+
 
 class Array(object):
     """ A distributed 2-dimensional array divided in blocks.
@@ -1449,44 +1451,26 @@ def _filter_block(block, boundaries):
     return res
 
 
+#FIXME no memory leaks??
 @constraint(computing_units="${computingUnits}")
 @task(blocks={Type: COLLECTION_IN, Depth: 2},
       out_blocks={Type: COLLECTION_OUT, Depth: 2})
 def _transpose(blocks, out_blocks):
     for i in range(len(blocks)):
         for j in range(len(blocks[i])):
-            out_blocks[i][j] = blocks[i][j].transpose()
+            out_blocks[i][j] = ArrayBlock(np.transpose(blocks[i][j]))
 
 
 @constraint(computing_units="${computingUnits}")
 @task(returns=np.array)
 def _random_block(shape, seed):
     np.random.seed(seed)
-    return np.random.random(shape)
-
-
-@constraint(computing_units="${computingUnits}")
-@task(returns=1)
-def _identity_block(block_size, n, reg_shape, i, j, dtype):
-    block = np.zeros(block_size, dtype)
-
-    i_values = np.arange(i * reg_shape[0], min(n, (i + 1) * reg_shape[0]))
-    j_values = np.arange(j * reg_shape[1], min(n, (j + 1) * reg_shape[1]))
-
-    indices = np.intersect1d(i_values, j_values)
-
-    i_ones = indices - (i * reg_shape[0])
-    j_ones = indices - (j * reg_shape[1])
-
-    block[i_ones, j_ones] = 1
-    return block
+    return ArrayBlock(np.random.random(shape))
 
 
 @constraint(computing_units="${computingUnits}")
 @task(returns=1)
 def _eye_block(block_size, n, m, reg_shape, i, j, dtype):
-    block = np.zeros(block_size, dtype)
-
     i_values = np.arange(i * reg_shape[0], min(n, (i + 1) * reg_shape[0]))
     j_values = np.arange(j * reg_shape[1], min(m, (j + 1) * reg_shape[1]))
 
@@ -1495,8 +1479,14 @@ def _eye_block(block_size, n, m, reg_shape, i, j, dtype):
     i_ones = indices - (i * reg_shape[0])
     j_ones = indices - (j * reg_shape[1])
 
-    block[i_ones, j_ones] = 1
-    return block
+    if np.array_equal(i_values, indices) and np.array_equal(j_values, indices):
+        return ArrayBlock(None, ArrayBlock.IDENTITY, block_size)
+    elif len(indices) == 0:
+        return ArrayBlock(None, ArrayBlock.ZEROS, block_size)
+    else:
+        block = np.zeros(block_size, dtype)
+        block[i_ones, j_ones] = 1
+        return ArrayBlock(block, ArrayBlock.OTHER, block_size)
 
 
 @constraint(computing_units="${computingUnits}")
