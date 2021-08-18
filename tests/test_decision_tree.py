@@ -4,8 +4,8 @@ import numpy as np
 from pycompss.api.api import compss_wait_on
 
 import dislib as ds
-import dislib.commons.rf.decision_tree as dt
-import dislib.commons.rf.data as data
+import dislib.trees.decision_tree as dt
+import dislib.trees.data as data
 
 
 class DecisionTreeTest(unittest.TestCase):
@@ -32,7 +32,7 @@ class DecisionTreeTest(unittest.TestCase):
         y1_ds = ds.array(y1[:, np.newaxis], (3, 1))
 
         data1 = data.transform_to_rf_dataset(
-            x1_ds, y1_ds, "classification", features_file=True
+            x1_ds, y1_ds, data.RfClassifierDataset, features_file=True
         )
 
         # Model
