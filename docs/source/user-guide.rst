@@ -294,7 +294,7 @@ scalability of the estimator is limited by the reduction phase of the cascade.
 Random forest classifier
 ........................
 
-:class:`RandomForestClassifier <dislib.commons.rf.forest.RandomForestClassifier>`
+:class:`RandomForestClassifier <dislib.trees.forest.RandomForestClassifier>`
 is a classifier that uses an ensemble of decision trees and aggregates their
 predictions. The process of building each decision tree includes some
 randomization in order to make them different. The accuracy of the joint
@@ -569,7 +569,7 @@ linear equations.)
 Random forest regressor
 ........................
 
-:class:`RandomForestRegressor <dislib.commons.rf.forest.RandomForestRegressor>`
+:class:`RandomForestRegressor <dislib.trees.forest.RandomForestRegressor>`
 is a regressor that uses an ensemble of decision trees and aggregates their
 predictions. The process of building each decision tree includes some
 randomization in order to make them different. The accuracy of the joint

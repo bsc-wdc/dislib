@@ -24,10 +24,10 @@ class RandomForestRegressorTest(unittest.TestCase):
             shuffle=True,
             random_state=0,
         )
-        x_train = ds.array(x[: len(x) // 2], (300, 10))
-        y_train = ds.array(y[: len(y) // 2][:, np.newaxis], (300, 1))
-        x_test = ds.array(x[len(x) // 2:], (300, 10))
-        y_test = ds.array(y[len(y) // 2:][:, np.newaxis], (300, 1))
+        x_train = ds.array(x[::2], (300, 10))
+        y_train = ds.array(y[::2][:, np.newaxis], (300, 1))
+        x_test = ds.array(x[1::2], (300, 10))
+        y_test = ds.array(y[1::2][:, np.newaxis], (300, 1))
 
         rf = RandomForestRegressor(random_state=0)
 
@@ -35,7 +35,7 @@ class RandomForestRegressorTest(unittest.TestCase):
         accuracy1 = compss_wait_on(rf.score(x_test, y_test))
 
         y_pred = rf.predict(x_test).collect()
-        y_true = y[len(y) // 2:]
+        y_true = y[1::2]
         accuracy2 = _determination_coefficient(y_true, y_pred)
 
         self.assertGreater(accuracy1, 0.85)
@@ -51,10 +51,10 @@ class RandomForestRegressorTest(unittest.TestCase):
             shuffle=True,
             random_state=0,
         )
-        x_train = ds.array(x[: len(x) // 2], (300, 10))
-        y_train = ds.array(y[: len(y) // 2][:, np.newaxis], (300, 1))
-        x_test = ds.array(x[len(x) // 2:], (300, 10))
-        y_test = ds.array(y[len(y) // 2:][:, np.newaxis], (300, 1))
+        x_train = ds.array(x[::2], (300, 10))
+        y_train = ds.array(y[::2][:, np.newaxis], (300, 1))
+        x_test = ds.array(x[1::2], (300, 10))
+        y_test = ds.array(y[1::2][:, np.newaxis], (300, 1))
 
         rf = RandomForestRegressor(distr_depth=2, random_state=0)
 
@@ -62,7 +62,7 @@ class RandomForestRegressorTest(unittest.TestCase):
         accuracy1 = compss_wait_on(rf.score(x_test, y_test))
 
         y_pred = rf.predict(x_test).collect()
-        y_true = y[len(y) // 2:]
+        y_true = y[1::2]
         accuracy2 = _determination_coefficient(y_true, y_pred)
 
         self.assertGreater(accuracy1, 0.85)
@@ -78,10 +78,10 @@ class RandomForestRegressorTest(unittest.TestCase):
             shuffle=True,
             random_state=0,
         )
-        x_train = ds.array(x[: len(x) // 2], (300, 10))
-        y_train = ds.array(y[: len(y) // 2][:, np.newaxis], (300, 1))
-        x_test = ds.array(x[len(x) // 2:], (300, 10))
-        y_test = ds.array(y[len(y) // 2:][:, np.newaxis], (300, 1))
+        x_train = ds.array(x[::2], (300, 10))
+        y_train = ds.array(y[::2][:, np.newaxis], (300, 1))
+        x_test = ds.array(x[1::2], (300, 10))
+        y_test = ds.array(y[1::2][:, np.newaxis], (300, 1))
 
         rf = RandomForestRegressor(random_state=0, sklearn_max=10)
 
@@ -89,7 +89,7 @@ class RandomForestRegressorTest(unittest.TestCase):
         accuracy1 = compss_wait_on(rf.score(x_test, y_test))
 
         y_pred = rf.predict(x_test).collect()
-        y_true = y[len(y) // 2:]
+        y_true = y[1::2]
         accuracy2 = _determination_coefficient(y_true, y_pred)
 
         self.assertGreater(accuracy1, 0.85)
