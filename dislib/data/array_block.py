@@ -1,3 +1,5 @@
+from logging import warning
+
 import numpy as np
 
 
@@ -35,7 +37,7 @@ class ArrayBlock:
                 self._shape = array.shape
 
     def __repr__(self):
-        return f"{self.__class__.__name__}(_array={self._array}, _block_type={self._block_type}, _shape={self._shape})"
+        return f"{self.__class__.__name__}(_array={self._array}, _block_type={self._block_type}, _shape={self._shape}, _sparse={self._sparse})"
 
     def __getitem__(self, arg):
         if self._block_type not in [ArrayBlock.ZEROS, ArrayBlock.IDENTITY, ArrayBlock.OTHER]:
@@ -116,13 +118,31 @@ class ArrayBlock:
 
         raise IndexError("Invalid indexing information: %s" % str(arg))
 
+    def __matmul__(self, x):
+        if self.shape[1] != x.shape[0]:
+            raise ValueError(
+                "Cannot multiply ArrayBlocks of shapes %r and %r" % (
+                    self.shape, x.shape))
+
+        if self._sparse != x.sparse:
+            raise ValueError("Cannot multiply sparse and dense ArrayBlocks.")
+
+        if self._sparse:
+            return ArrayBlock(self.array @ x.array, sparse=True)
+        else:
+            # TODO implement optimal multiplication based on the array type
+            return ArrayBlock(np.asarray(self) @ np.asarray(x))
+
     def __array__(self, dtype=None):
-        if self._sparse or self._block_type == ArrayBlock.OTHER:
+        if self._sparse:
+            warning("Conversion of scipy to numpy. Consider accessing the array field instead.")
+            return np.asarray(self._array)
+        elif self._block_type == ArrayBlock.OTHER:
             return self._array
         elif self._block_type == ArrayBlock.ZEROS:
-            return np.zeros(self._shape, dtype)
+            return np.zeros(self._shape, dtype=dtype)
         elif self._block_type == ArrayBlock.IDENTITY:
-            return np.eye(self._shape[0], self._shape[1], dtype)
+            return np.eye(self._shape[0], self._shape[1], dtype=dtype)
 
     @property
     def type(self):
@@ -157,7 +177,7 @@ class ArrayBlock:
         if self._sparse:
             return self._array
         else:
-            raise AttributeError("internal array is accessible only if sparse")
+            return np.copy(self._array)
 
     @array.setter
     def array(self, array):
@@ -180,3 +200,14 @@ class ArrayBlock:
             self._array = array
             self._block_type = block_type
             self._shape = array.shape
+
+    def apply(self, func, *args, **kwargs):
+        if self._block_type in [ArrayBlock.OTHER]:
+            self._array = func(self._array, *args, **kwargs)
+        elif self._block_type in [ArrayBlock.ZEROS, ArrayBlock.IDENTITY]:
+            if not self._sparse:
+                self._array = func(np.asarray(self), *args, **kwargs)
+                self._shape = self._array.shape
+                self._block_type = ArrayBlock.OTHER
+            else:
+                raise ValueError("Sparse zeros/identity blocks are not handled")

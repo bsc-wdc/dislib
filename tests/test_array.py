@@ -13,8 +13,12 @@ from math import ceil
 from dislib.data.array_block import ArrayBlock
 
 
-def _sum_and_mult(arr, a=0, axis=0, b=1):
+def _sum_and_mult_np(arr, a=0, axis=0, b=1):
     return (np.sum(arr, axis=axis) + a) * b
+
+
+def _sum_and_mult_sparse(arr, a=0, axis=0, b=1):
+    return (sp.csr_matrix.sum(arr, axis=axis) + a) * b
 
 
 def _validate_array(x):
@@ -40,7 +44,7 @@ def _validate_array(x):
     br1 = br1 if br1 > 0 else x._top_left_shape[1]
 
     return (tl == x._top_left_shape and br == (br0, br1) and
-            sp.issparse(x._blocks[0][0]) == x._sparse)
+            sp.issparse(x._blocks[0][0].array) == x._sparse)
 
 
 def _equal_arrays(x1, x2):
@@ -513,34 +517,36 @@ class ArrayTest(unittest.TestCase):
                                                     [7, 8, 9]]), (2, 2)),)])
     def test_apply_axis(self, x):
         """ Tests apply along axis """
-        x1 = ds.apply_along_axis(_sum_and_mult, 0, x)
+        func = _sum_and_mult_sparse if x.sparse else _sum_and_mult_np
+
+        x1 = ds.apply_along_axis(func, 0, x)
         self.assertTrue(x1.shape, (1, 3))
         self.assertTrue(x1._reg_shape, (1, 2))
         self.assertTrue(_equal_arrays(x1.collect(), np.array([12, 15, 18])))
         self.assertTrue(_validate_array(x1))
 
-        x1 = ds.apply_along_axis(_sum_and_mult, 1, x)
+        x1 = ds.apply_along_axis(func, 1, x)
         self.assertTrue(x1.shape, (3, 1))
         self.assertTrue(x1._reg_shape, (2, 1))
         self.assertTrue(_equal_arrays(x1.collect(False),
                                       np.array([[6], [15], [24]])))
         self.assertTrue(_validate_array(x1))
 
-        x1 = ds.apply_along_axis(_sum_and_mult, 1, x, 2)
+        x1 = ds.apply_along_axis(func, 1, x, 2)
         self.assertTrue(x1.shape, (3, 1))
         self.assertTrue(x1._reg_shape, (2, 1))
         self.assertTrue(_equal_arrays(x1.collect(False),
                                       np.array([[8], [17], [26]])))
         self.assertTrue(_validate_array(x1))
 
-        x1 = ds.apply_along_axis(_sum_and_mult, 1, x, b=2)
+        x1 = ds.apply_along_axis(func, 1, x, b=2)
         self.assertTrue(x1.shape, (3, 1))
         self.assertTrue(x1._reg_shape, (2, 1))
         self.assertTrue(_equal_arrays(x1.collect(False),
                                       np.array([[12], [30], [48]])))
         self.assertTrue(_validate_array(x1))
 
-        x1 = ds.apply_along_axis(_sum_and_mult, 1, x, 1, b=2)
+        x1 = ds.apply_along_axis(func, 1, x, 1, b=2)
         self.assertTrue(x1.shape, (3, 1))
         self.assertTrue(x1._reg_shape, (2, 1))
         self.assertTrue(_equal_arrays(x1.collect(False),

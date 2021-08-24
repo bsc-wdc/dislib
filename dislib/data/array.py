@@ -72,6 +72,10 @@ class Array(object):
 
         self._delete = delete
 
+    @property
+    def sparse(self):
+        return self._sparse
+
     def __del__(self):
         if self._delete:
             [compss_delete_object(b) for r_block in self._blocks for b in
@@ -280,11 +284,11 @@ class Array(object):
             sparse = b0.sparse
 
         if sparse:
-            ret = ArrayBlock(sp.bmat([[block.array for block in row] for row in blocks],
+            ret = sp.bmat([[block.array for block in row] for row in blocks],
                                      format=b0.array.getformat(),
-                                     dtype=b0.array.dtype), sparse=True)
+                                     dtype=b0.array.dtype)
         else:
-            ret = ArrayBlock(np.block([[np.asarray(block) for block in row] for row in blocks]))
+            ret = np.block([[np.asarray(block) for block in row] for row in blocks])
 
         return ret
 
@@ -574,9 +578,9 @@ class Array(object):
             n_rows = max(0, n_rows)
             n_cols = max(0, n_cols)
             if self._sparse:
-                empty_block = csr_matrix((0, 0))
+                empty_block = ArrayBlock(csr_matrix((0, 0)), sparse=True)
             else:
-                empty_block = np.empty((0, 0))
+                empty_block = ArrayBlock(np.empty((0, 0)))
             res = Array(blocks=[[empty_block]], top_left_shape=self._reg_shape,
                         reg_shape=self._reg_shape, shape=(n_rows, n_cols),
                         sparse=self._sparse)
@@ -1395,7 +1399,7 @@ def _filter_rows(blocks, rows):
     Returns an array resulting of selecting rows of the input blocks
     """
     data = Array._merge_blocks(blocks)
-    return data[rows, :]
+    return ArrayBlock(data[rows, :], sparse=issparse(data))
 
 
 @constraint(computing_units="${computingUnits}")
@@ -1405,7 +1409,7 @@ def _filter_cols(blocks, cols):
     Returns an array resulting of selecting rows of the input blocks
     """
     data = Array._merge_blocks(blocks)
-    return data[:, cols]
+    return ArrayBlock(data[:, cols], sparse=issparse(data))
 
 
 @constraint(computing_units="${computingUnits}")
@@ -1420,7 +1424,7 @@ def _merge_rows(blocks, out_blocks, blocks_shape, skip):
     data = Array._merge_blocks(blocks)
 
     for j in range(0, ceil(data.shape[1] / bm)):
-        out_blocks[j] = data[skip:bn + skip, j * bm: (j + 1) * bm]
+        out_blocks[j] = ArrayBlock(data[skip:bn + skip, j * bm: (j + 1) * bm], sparse=issparse(data))
 
 
 @constraint(computing_units="${computingUnits}")
@@ -1435,7 +1439,7 @@ def _merge_cols(blocks, out_blocks, blocks_shape, skip):
     data = Array._merge_blocks(blocks)
 
     for i in range(0, ceil(data.shape[0] / bn)):
-        out_blocks[i] = data[i * bn: (i + 1) * bn, skip:bm + skip]
+        out_blocks[i] = ArrayBlock(data[i * bn: (i + 1) * bn, skip:bm + skip], sparse=issparse(data))
 
 
 @constraint(computing_units="${computingUnits}")
@@ -1450,7 +1454,7 @@ def _filter_block(block, boundaries):
 
     res = block[i_0:i_n, j_0:j_n]
 
-    return res
+    return ArrayBlock(res)
 
 
 #FIXME no memory leaks??
@@ -1512,21 +1516,23 @@ def _block_apply_axis(func, axis, blocks, *args, **kwargs):
     # sparse input). Therefore, we force the output to be of the same type
     # of the input. Otherwise, the result of apply_along_axis would be of
     # unknown type.
-    if not arr.sparse:
-        out = ArrayBlock(np.asarray(out))
+    sparse = issparse(arr)
+    if not sparse:
+        out = np.asarray(out)
     else:
-        out = ArrayBlock(csr_matrix(out), sparse=True)
+        out = csr_matrix(out)
 
     if axis == 0:
-        return ArrayBlock(np.asarray(out).reshape(1, -1))
+        return ArrayBlock(out.reshape(1, -1), sparse=sparse)
     else:
-        return ArrayBlock(np.asarray(out).reshape(-1, 1))
+        return ArrayBlock(out.reshape(-1, 1), sparse=sparse)
 
 
 @constraint(computing_units="${computingUnits}")
 @task(returns=1)
 def _block_apply(func, block, *args, **kwargs):
-    return func(block, *args, **kwargs)
+    block.apply(func, *args, **kwargs)
+    return block
 
 
 @constraint(computing_units="${computingUnits}")
