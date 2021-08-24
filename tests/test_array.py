@@ -10,6 +10,8 @@ from sklearn.datasets import load_svmlight_file
 import dislib as ds
 from math import ceil
 
+from dislib.data.array_block import ArrayBlock
+
 
 def _sum_and_mult(arr, a=0, axis=0, b=1):
     return (np.sum(arr, axis=axis) + a) * b
@@ -841,3 +843,11 @@ class MathTest(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             ds.svd(ds.random_array((3, 3), (3, 3)))
+
+
+def main():
+    unittest.main()
+
+
+if __name__ == '__main__':
+    main()

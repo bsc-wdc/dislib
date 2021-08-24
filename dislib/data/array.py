@@ -148,6 +148,7 @@ class Array(object):
         # all rows (slice : for rows) and list of indices for columns
         elif isinstance(rows, slice) and \
                 (isinstance(cols, list) or isinstance(cols, np.ndarray)):
+            #FIXME slicing for rows only, while it should be done also for columns
             return self._get_by_lst_cols(cols=cols)
 
         # slicing both dimensions
@@ -276,12 +277,14 @@ class Array(object):
         sparse = None
         b0 = blocks[0][0]
         if sparse is None:
-            sparse = issparse(b0)
+            sparse = b0.sparse
 
         if sparse:
-            ret = sp.bmat(blocks, format=b0.getformat(), dtype=b0.dtype)
+            ret = ArrayBlock(sp.bmat([[block.array for block in row] for row in blocks],
+                                     format=b0.array.getformat(),
+                                     dtype=b0.array.dtype), sparse=True)
         else:
-            ret = np.block(blocks)
+            ret = ArrayBlock(np.block([[np.asarray(block) for block in row] for row in blocks]))
 
         return ret
 
@@ -1069,10 +1072,9 @@ def array(x, block_size):
 
     blocks = []
     for i in range(0, x.shape[0], bn):
-        row = [x[i: i + bn, j: j + bm] for j in range(0, x.shape[1], bm)]
+        row = [ArrayBlock(x[i: i + bn, j: j + bm], sparse=sparse) for j in range(0, x.shape[1], bm)]
         blocks.append(row)
 
-    sparse = issparse(x)
     arr = Array(blocks=blocks, top_left_shape=block_size,
                 reg_shape=block_size, shape=x.shape, sparse=sparse)
 
@@ -1458,7 +1460,8 @@ def _filter_block(block, boundaries):
 def _transpose(blocks, out_blocks):
     for i in range(len(blocks)):
         for j in range(len(blocks[i])):
-            out_blocks[i][j] = ArrayBlock(np.transpose(blocks[i][j]))
+            if blocks[i][j].type == ArrayBlock.OTHER:
+                out_blocks[i][j] = ArrayBlock(np.transpose(blocks[i][j]))
 
 
 @constraint(computing_units="${computingUnits}")
@@ -1480,19 +1483,22 @@ def _eye_block(block_size, n, m, reg_shape, i, j, dtype):
     j_ones = indices - (j * reg_shape[1])
 
     if np.array_equal(i_values, indices) and np.array_equal(j_values, indices):
-        return ArrayBlock(None, ArrayBlock.IDENTITY, block_size)
+        return ArrayBlock(None, block_type=ArrayBlock.IDENTITY, shape=block_size)
     elif len(indices) == 0:
-        return ArrayBlock(None, ArrayBlock.ZEROS, block_size)
+        return ArrayBlock(None, block_type=ArrayBlock.ZEROS, shape=block_size)
     else:
         block = np.zeros(block_size, dtype)
         block[i_ones, j_ones] = 1
-        return ArrayBlock(block, ArrayBlock.OTHER, block_size)
+        return ArrayBlock(block, block_type=ArrayBlock.OTHER, shape=block_size)
 
 
 @constraint(computing_units="${computingUnits}")
-@task(returns=np.array)
+@task(returns=ArrayBlock)
 def _full_block(shape, value, dtype):
-    return np.full(shape, value, dtype)
+    if value == 0:
+        return ArrayBlock(None, block_type=ArrayBlock.ZEROS, shape=shape)
+    else:
+        return ArrayBlock(np.full(shape, value, dtype))
 
 
 @constraint(computing_units="${computingUnits}")
@@ -1506,15 +1512,15 @@ def _block_apply_axis(func, axis, blocks, *args, **kwargs):
     # sparse input). Therefore, we force the output to be of the same type
     # of the input. Otherwise, the result of apply_along_axis would be of
     # unknown type.
-    if not issparse(arr):
-        out = np.asarray(out)
+    if not arr.sparse:
+        out = ArrayBlock(np.asarray(out))
     else:
-        out = csr_matrix(out)
+        out = ArrayBlock(csr_matrix(out), sparse=True)
 
     if axis == 0:
-        return out.reshape(1, -1)
+        return ArrayBlock(np.asarray(out).reshape(1, -1))
     else:
-        return out.reshape(-1, 1)
+        return ArrayBlock(np.asarray(out).reshape(-1, 1))
 
 
 @constraint(computing_units="${computingUnits}")

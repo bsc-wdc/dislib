@@ -88,20 +88,14 @@ def _qr_full_save_mem(r):
     q = _gen_identity_save_mem(r.shape[0], r.shape[0], r._reg_shape)
 
     for i in range(r._n_blocks[1]):
-        act_q = _qr_save_mem(
-            r._blocks[i][i], t=True
-        )
+        act_q = _qr_save_mem(r._blocks[i][i], t=True)
 
         for j in range(r._n_blocks[0]):
-            q_block = _dot_save_mem(
-                q._blocks[j][i], act_q, b_size, transpose_b=True
-            )
+            q_block = _dot_save_mem(q._blocks[j][i], act_q, b_size, transpose_b=True)
             q.replace_block(j, i, q_block)
 
         for j in range(i + 1, r._n_blocks[1]):
-            r_block = _dot_save_mem(
-                act_q, r._blocks[i][j],b_size
-            )
+            r_block = _dot_save_mem(act_q, r._blocks[i][j], b_size)
             r.replace_block(i, j, r_block)
 
         compss_delete_object(act_q)
@@ -125,7 +119,6 @@ def _qr_full_save_mem(r):
                 r.replace_block(i, k, r_block1)
                 r.replace_block(j, k, r_block2)
 
-
             for k in range(r._n_blocks[0]):
                 [[q_block1, q_block2]] = _multiply_blocked_save_mem(
                     [[q._blocks[k][i], q._blocks[k][j]]],
@@ -136,22 +129,7 @@ def _qr_full_save_mem(r):
                 q.replace_block(k, i, q_block1)
                 q.replace_block(k, j, q_block2)
 
-            compss_delete_object(sub_q[0])
-            compss_delete_object(sub_q[1])
-
-    #pairings = product(range(q._n_blocks[0]),
-    #                   range(q._n_blocks[1]))
-
-    #for i, j in pairings:
-    #    q_block = fill_empty_blocks(q_type._blocks[i][j], q._reg_shape, q._blocks[i][j])
-    #    q.replace_block(i, j, q_block)
-
-    #pairings = product(range(r._n_blocks[0]),
-    #                   range(r._n_blocks[1]))
-
-    #for i, j in pairings:
-    #    r_block = fill_empty_blocks(r_type._blocks[i][j], r._reg_shape, r._blocks[i][j])
-    #    r.replace_block(i, j, r_block)
+            _compss_delete_array(sub_q)
 
     return q, r
 
@@ -191,8 +169,7 @@ def _qr_r_save_mem(r):
                 r.replace_block(i, k, r_block1)
                 r.replace_block(j, k, r_block2)
 
-            compss_delete_object(sub_q[0])
-            compss_delete_object(sub_q[1])
+            _compss_delete_array(sub_q)
 
     return r
 
@@ -211,7 +188,7 @@ def _qr_economic_save_mem(r):
         act_q = _qr_save_mem(
             r._blocks[i][i], t=True
         )
-        act_q_list.append( act_q)
+        act_q_list.append(act_q)
 
         for j in range(i + 1, a_n_blocks[1]):
             r_block = _dot_save_mem(
@@ -254,10 +231,8 @@ def _qr_economic_save_mem(r):
                 q.replace_block(i, k, q_block1)
                 q.replace_block(j, k, q_block2)
 
-            compss_delete_object(sub_q_list[(j, i)][0])
-            compss_delete_object(sub_q_list[(j, i)][1])
+            _compss_delete_array(sub_q_list[(j, i)])
             del sub_q_list[(j, i)]
-
 
         for k in range(q._n_blocks[1]):
             q_block = _dot_save_mem(
@@ -271,15 +246,6 @@ def _qr_economic_save_mem(r):
     remove_last_rows(r, r.shape[0] - r.shape[1])
 
     return q, r
-
-
-#@constraint(computing_units="${computingUnits}")
-#@task(returns=np.array)
-#def fill_empty_blocks(block_type, block_shape, block):
-#    if block_type == ZEROS:
-#        return _empty_block_save_mem(block_shape, True)
-#    else:
-#        return block
 
 
 def _undo_padding_full(q, r, n_rows, n_cols):
@@ -312,87 +278,6 @@ def _validate_ds_array(a: Array):
         raise ValueError("Top left block needs to be of the same shape as regular ones")
 
 
-@constraint(computing_units="${computingUnits}")
-@task(returns=(ArrayBlock, ArrayBlock), a=IN_DELETE)
-def _qr_task(a, mode='reduced', t=False):
-    from numpy.linalg import qr
-    q, r = qr(a, mode=mode)
-    if t:
-        q = np.transpose(q)
-    return ArrayBlock(q), ArrayBlock(r)
-
-
-@constraint(computing_units="${computingUnits}")
-@task(returns=ArrayBlock)
-def _dot_task(a, b, transpose_result=False, transpose_a=False, transpose_b=False):
-    if transpose_a:
-        a = np.transpose(a)
-    if transpose_b:
-        b = np.transpose(b)
-    if transpose_result:
-        return ArrayBlock(np.transpose(np.dot(a, b)))
-    return ArrayBlock(np.dot(a, b))
-
-
-@constraint(computing_units="${computingUnits}")
-@task(returns=(np.array, np.array, np.array, np.array, np.array, np.array))
-def _little_qr_task(a, b, b_size, transpose=False):
-    regular_b_size = b_size[0]
-    curr_a = np.bmat([[a], [b]])
-    (sub_q, sub_r) = np.linalg.qr(curr_a, mode='complete')
-    aa = sub_r[0:regular_b_size]
-    bb = sub_r[regular_b_size:2 * regular_b_size]
-    sub_q = _split_matrix(sub_q, 2)
-    if transpose:
-        return np.transpose(sub_q[0][0]), np.transpose(sub_q[1][0]), np.transpose(sub_q[0][1]), np.transpose(
-            sub_q[1][1]), aa, bb
-    else:
-        return sub_q[0][0], sub_q[0][1], sub_q[1][0], sub_q[1][1], aa, bb
-
-
-def _little_qr(a, b, b_size, transpose=False):
-    sub_q00, sub_q01, sub_q10, sub_q11, aa, bb = _little_qr_task(a, b, b_size, transpose)
-    return sub_q00, sub_q01, sub_q10, sub_q11, aa, bb
-
-
-@constraint(computing_units="${computingUnits}")
-@task(a=IN, b=IN, c=INOUT)
-def _multiply_single_block_task(a, b, c, transpose_a=False, transpose_b=False):
-    if transpose_a:
-        a = np.transpose(a)
-    if transpose_b:
-        b = np.transpose(b)
-    c.replace_content(np.asarray(c) + (np.dot(a, b)))
-
-
-def _multiply_blocked(a, b, b_size, transpose_a=False, transpose_b=False):
-    if transpose_a:
-        new_a = []
-        for i in range(len(a[0])):
-            new_a.append([])
-            for j in range(len(a)):
-                new_a[i].append(a[j][i])
-        a = new_a
-
-    if transpose_b:
-        new_b = []
-        for i in range(len(b[0])):
-            new_b.append([])
-            for j in range(len(b)):
-                new_b[i].append(b[j][i])
-        b = new_b
-
-    c = []
-    for i in range(len(a)):
-        c.append([])
-        for j in range(len(b[0])):
-            c[i].append(ArrayBlock(block_type=ArrayBlock.ZEROS, shape=(b_size, b_size)))
-            for k in range(len(a[0])):
-                _multiply_single_block_task(a[i][k], b[k][j], c[i][j], transpose_a=transpose_a, transpose_b=transpose_b)
-
-    return c
-
-
 def _split_matrix(a, m_size):
     b_size = int(len(a) / m_size)
     split_matrix = [[None for m in range(m_size)] for m in range(m_size)]
@@ -408,7 +293,7 @@ def _gen_identity_save_mem(n, m, b_size):
 
 
 @constraint(computing_units="${computingUnits}")
-@task(a=INOUT, returns=ArrayBlock)
+@task(a=INOUT, returns=object)
 def _qr_task_save_mem(a, mode='reduced', t=False):
     from numpy.linalg import qr
     q, r = qr(np.asarray(a), mode=mode)
@@ -423,40 +308,38 @@ def _qr_save_mem(a, mode='reduced', t=False):
     return q_aux
 
 
-#def _empty_block_save_mem(shape, filled=False):
-#    return np.full(shape, 0, dtype=np.uint8) if filled else object()
-
 def _empty_block_save_mem(shape):
-    return ArrayBlock(None, ArrayBlock.ZEROS, shape)
+    return ArrayBlock(None, block_type=ArrayBlock.ZEROS, shape=shape)
 
 
 @constraint(computing_units="${computingUnits}")
-@task(returns=ArrayBlock)
+@task(returns=object)
 def _dot_save_mem(a, b, b_size, transpose_result=False, transpose_a=False, transpose_b=False):
     if a.type == ArrayBlock.ZEROS:
         return _empty_block_save_mem(b_size)
     if a.type == ArrayBlock.IDENTITY:
-        if transpose_b and transpose_result:
-            return b
-        if transpose_b or transpose_result:
+        if transpose_b != transpose_result:
             return _transpose_block_save_mem(b)
-
-        return b
+        else:
+            return b
     if b.type == ArrayBlock.ZEROS:
         return _empty_block_save_mem(b_size)
     if b.type == ArrayBlock.IDENTITY:
-        if transpose_a:
-            a = _transpose_block_save_mem(a)
-        if transpose_result:
+        if transpose_a != transpose_result:
             return _transpose_block_save_mem(a)
         return a
-    result = _dot_task(a, b, transpose_result=transpose_result, transpose_a=transpose_a, transpose_b=transpose_b)
 
-    return result
+    if transpose_a:
+        a = np.transpose(a)
+    if transpose_b:
+        b = np.transpose(b)
+    if transpose_result:
+        return ArrayBlock(np.transpose(np.dot(a, b)))
+    return ArrayBlock(np.dot(a, b))
 
 
 @constraint(computing_units="${computingUnits}")
-@task(a=INOUT, b=INOUT, returns=(ArrayBlock, ArrayBlock, ArrayBlock, ArrayBlock))
+@task(a=INOUT, b=INOUT, returns=(object, object, object, object))
 def _little_qr_task_save_mem(a, b, b_size, transpose=False):
     regular_b_size = b_size[0]
     curr_a = np.bmat([[np.asarray(a)], [np.asarray(b)]])
@@ -478,7 +361,7 @@ def _little_qr_save_mem(a, b, b_size, transpose=False):
 
 
 @constraint(computing_units="${computingUnits}")
-@task(returns=ArrayBlock)
+@task(returns=object)
 def _multiply_single_block_task_save_mem(a, b, c, b_size, transpose_a=False, transpose_b=False):
     if a.type == ArrayBlock.ZEROS or b.type == ArrayBlock.ZEROS:
         return c
@@ -499,7 +382,7 @@ def _multiply_single_block_task_save_mem(a, b, c, b_size, transpose_a=False, tra
         else:
             aux = fun_b[1]
         c += aux
-        return ArrayBlock(c, ArrayBlock.OTHER, c.shape)
+        return ArrayBlock(c, block_type=ArrayBlock.OTHER, shape=c.shape)
 
     if fun_b[0] == ArrayBlock.IDENTITY:
         if transpose_a:
@@ -507,7 +390,7 @@ def _multiply_single_block_task_save_mem(a, b, c, b_size, transpose_a=False, tra
         else:
             aux = fun_a[1]
         c += aux
-        return ArrayBlock(c, ArrayBlock.OTHER, c.shape)
+        return ArrayBlock(c, block_type=ArrayBlock.OTHER, shape=c.shape)
 
     if transpose_a:
         fun_a[1] = np.transpose(fun_a[1])
@@ -560,3 +443,9 @@ def _transpose_block_save_mem(a):
     elif a.type == ArrayBlock.OTHER:
         a = np.transpose(a)
         return ArrayBlock(a)
+
+
+def _compss_delete_array(array):
+    for i in range(len(array)):
+        for j in range(len(array[i])):
+            compss_delete_object(array[i][j])

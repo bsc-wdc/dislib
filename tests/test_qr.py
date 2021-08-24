@@ -88,6 +88,7 @@ class QRTest(unittest.TestCase):
         (4, 4, 4), (6, 6, 6), (8, 8, 8), (2, 1, 2),
         (2, 1, 4), (3, 2, 2), (3, 2, 4), (4, 3, 3),
         (4, 3, 4), (5, 4, 2), (10, 6, 6), (10, 6, 6),
+        (30, 5, 10)
     ])
     def test_qr_economic(self, m_size, n_size, b_size):
         """Tests qr_blocked economic mode"""
