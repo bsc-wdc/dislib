@@ -243,8 +243,8 @@ class ArrayBlock:
         array = self._array if self._block_type in [ArrayBlock.OTHER] else None
         return ArrayBlock(array, block_type=self._block_type, shape=self.shape)
 
-    def replace_content(self, array=None, block_type=OTHER, shape=None):
-        _validate_args(array, block_type, shape)
+    def replace_content(self, array=None, block_type=OTHER, shape=None, sparse=False):
+        _validate_args(array, block_type, shape, sparse)
         if block_type in [ArrayBlock.ZEROS, ArrayBlock.IDENTITY]:
             self._array = None
             self._block_type = block_type
