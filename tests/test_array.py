@@ -22,6 +22,7 @@ def _sum_and_mult_sparse(arr, a=0, axis=0, b=1):
 
 
 def _validate_array(x):
+    print(x._blocks)
     x.collect()
     tl = x._blocks[0][0].shape
     br = x._blocks[-1][-1].shape
@@ -43,8 +44,14 @@ def _validate_array(x):
     br0 = br0 if br0 > 0 else x._top_left_shape[0]
     br1 = br1 if br1 > 0 else x._top_left_shape[1]
 
+    print(x)
+    print(tl == x._top_left_shape)
+    print(br == (br0, br1))
+    print(x._blocks[0][0].sparse)
+    print(x.sparse)
+
     return (tl == x._top_left_shape and br == (br0, br1) and
-            sp.issparse(x._blocks[0][0].array) == x._sparse)
+            x._blocks[0][0].sparse == x.sparse)
 
 
 def _equal_arrays(x1, x2):
@@ -53,6 +60,13 @@ def _equal_arrays(x1, x2):
 
     if sp.issparse(x2):
         x2 = x2.toarray()
+
+    print(type(x1))
+    print(x1.dtype)
+    print("x1", x1)
+    print(type(x2))
+    print(x2.dtype)
+    print("x2", x2)
 
     return np.allclose(x1, x2)
 
@@ -193,7 +207,7 @@ class DataLoadingTest(unittest.TestCase):
 
     def test_load_svmlight_file(self):
         """ Tests loading a LibSVM file  """
-        file_ = "tests/files/libsvm/1"
+        file_ = "/home/bscuser/git/dislib/tests/files/libsvm/1"
 
         x_np, y_np = load_svmlight_file(file_, n_features=780)
 
@@ -213,7 +227,7 @@ class DataLoadingTest(unittest.TestCase):
 
     def test_load_csv_file(self):
         """ Tests loading a CSV file. """
-        csv_f = "tests/files/csv/1"
+        csv_f = "/home/bscuser/git/dislib/tests/files/csv/1"
 
         data = ds.load_txt_file(csv_f, block_size=(300, 50))
         csv = np.loadtxt(csv_f, delimiter=",")
@@ -225,13 +239,13 @@ class DataLoadingTest(unittest.TestCase):
 
         self.assertTrue(np.array_equal(data.collect(), csv))
 
-        csv_f = "tests/files/other/4"
+        csv_f = "/home/bscuser/git/dislib/tests/files/other/4"
         data = ds.load_txt_file(csv_f, block_size=(1000, 122), delimiter=" ")
         csv = np.loadtxt(csv_f, delimiter=" ")
 
         self.assertTrue(np.array_equal(data.collect(), csv))
 
-        csv_f = "tests/files/csv/4"
+        csv_f = "/home/bscuser/git/dislib/tests/files/csv/4"
         data = ds.load_txt_file(csv_f, block_size=(1, 2))
         csv = np.loadtxt(csv_f, delimiter=",")
 
@@ -239,7 +253,7 @@ class DataLoadingTest(unittest.TestCase):
 
     def test_load_npy_file(self):
         """ Tests loading an npy file """
-        path = "tests/files/npy/1.npy"
+        path = "/home/bscuser/git/dislib/tests/files/npy/1.npy"
 
         x = ds.load_npy_file(path, block_size=(3, 9))
         x_np = np.load(path)
@@ -251,11 +265,11 @@ class DataLoadingTest(unittest.TestCase):
             ds.load_npy_file(path, block_size=(1000, 1000))
 
         with self.assertRaises(ValueError):
-            ds.load_npy_file("tests/files/npy/3d.npy", block_size=(3, 3))
+            ds.load_npy_file("/home/bscuser/git/dislib/tests/files/npy/3d.npy", block_size=(3, 3))
 
     def test_load_mdcrd_file(self):
         """ Tests loading an mdcrd file """
-        path = "tests/files/traj10samples_12atoms.mdcrd"
+        path = "/home/bscuser/git/dislib/tests/files/traj10samples_12atoms.mdcrd"
 
         x = ds.load_mdcrd_file(path, block_size=(4, 5), n_atoms=12)
         self.assertTrue(_validate_array(x))
@@ -611,6 +625,8 @@ class ArrayTest(unittest.TestCase):
         a = ds.array(a_np, (b0, b1))
         b = ds.array(b_np, (b1, b2))
 
+        print("shapes:", "({}, {}) x ({}, {})".format(b0, b1, b1, b2))
+
         expected = a_np @ b_np
         computed = a @ b
         self.assertTrue(_equal_arrays(expected, computed.collect(False)))
@@ -677,7 +693,10 @@ class ArrayTest(unittest.TestCase):
         orig = np.array([[1, 2, 3], [4, 5, 6]])
         x = ds.array(orig, block_size=(2, 1))
         xp = x ** 2
+        print("xp", xp.collect())
         xs = xp.sqrt()
+        print("xs", xs.collect())
+        print("xp", xp.collect())
 
         self.assertTrue(_validate_array(xp))
         self.assertTrue(_validate_array(xs))

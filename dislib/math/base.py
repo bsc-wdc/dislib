@@ -8,6 +8,7 @@ from pycompss.api.parameter import COLLECTION_OUT, Type, Depth, \
 from pycompss.api.task import task
 
 from dislib.data.array import Array, identity
+from dislib.data.array_block import ArrayBlock
 
 
 def kron(a, b, block_size=None):
@@ -289,7 +290,7 @@ def _sort_s(s_blocks):
     bsize = s_blocks[0][0].shape[1]
 
     for i in range(len(s_blocks[0])):
-        s_blocks[0][i] = s_sorted[i * bsize:(i + 1) * bsize].reshape(1, -1)
+        s_blocks[0][i] = ArrayBlock(s_sorted[i * bsize:(i + 1) * bsize].reshape(1, -1))
 
     return sorting
 
@@ -311,7 +312,7 @@ def _compute_u_block(a_block, u_block):
     block_size = a_block[0][0].shape[0]
 
     for i in range(len(u_block)):
-        u_block[i] = u_col[i * block_size: (i + 1) * block_size]
+        u_block[i] = ArrayBlock(u_col[i * block_size: (i + 1) * block_size])
 
 
 @constraint(computing_units="${computingUnits}")
@@ -357,7 +358,7 @@ def _merge_svd_block(block, index, hbsize, vbsize, sorting, out_blocks):
     col = col[:, local_sorting]
 
     for i in range(len(out_blocks)):
-        out_blocks[i] = col[i * vbsize: (i + 1) * vbsize]
+        out_blocks[i] = ArrayBlock(col[i * vbsize: (i + 1) * vbsize])
 
 
 @constraint(computing_units="${computingUnits}")
@@ -373,7 +374,7 @@ def _sort_v_block(v_block, index, bsize, sorting, out_blocks):
 
     for i in range(len(out_blocks)):
         if out_blocks[i]:
-            out_blocks[i] = np.vstack(out_blocks[i])
+            out_blocks[i] = ArrayBlock(np.vstack(out_blocks[i]))
 
 
 @constraint(computing_units="${computingUnits}")
@@ -435,4 +436,4 @@ def _kron(block1, block2, out_blocks):
     per (element-in-block1, block2) pair."""
     for i in range(block1.shape[0]):
         for j in range(block1.shape[1]):
-            out_blocks[i][j] = block1[i, j] * block2
+            out_blocks[i][j] = ArrayBlock(np.asarray(block1[i, j]) * np.asarray(block2))

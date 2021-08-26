@@ -9,6 +9,9 @@ import os
 
 from dislib.data.array import Array
 from math import ceil
+
+from dislib.data.array_block import ArrayBlock
+
 _CRD_LINE_SIZE = 81
 
 
@@ -135,8 +138,7 @@ def load_npy_file(path, block_size):
     -------
     x : ds-array
     """
-    try:
-        fid = open(path, "rb")
+    with open(path, "rb") as fid:
         version = format.read_magic(fid)
         format._check_version(version)
         shape, fortran_order, dtype = format._read_array_header(fid, version)
@@ -163,8 +165,6 @@ def load_npy_file(path, block_size):
 
         return Array(blocks=blocks, top_left_shape=block_size,
                      reg_shape=block_size, shape=shape, sparse=False)
-    finally:
-        fid.close()
 
 
 def load_mdcrd_file(path, block_size, n_atoms, copy=False):
@@ -326,7 +326,7 @@ def _read_from_buffer(data, dtype, shape, block_size, out_blocks):
     arr = arr.reshape((-1, shape))
 
     for i in range(len(out_blocks)):
-        out_blocks[i] = arr[:, i * block_size:(i + 1) * block_size]
+        out_blocks[i] = ArrayBlock(arr[:, i * block_size:(i + 1) * block_size])
 
 
 @constraint(computing_units="${computingUnits}")
@@ -338,7 +338,7 @@ def _read_lines(lines, block_size, delimiter, out_blocks):
         samples = samples.reshape(1, -1)
 
     for i, j in enumerate(range(0, samples.shape[1], block_size)):
-        out_blocks[i] = samples[:, j:j + block_size]
+        out_blocks[i] = ArrayBlock(samples[:, j:j + block_size])
 
 
 @constraint(computing_units="${computingUnits}")
@@ -360,10 +360,10 @@ def _read_svmlight(lines, out_blocks, col_size, n_features, store_sparse):
     # tried also converting to csc/ndarray first for faster splitting but it's
     # not worth. Position 0 contains the X
     for i in range(ceil(n_features / col_size)):
-        out_blocks[0][i] = x[:, i * col_size:(i + 1) * col_size]
+        out_blocks[0][i] = ArrayBlock(x[:, i * col_size:(i + 1) * col_size], sparse=store_sparse)
 
     # Position 1 contains the y block
-    out_blocks[1][0] = y.reshape(-1, 1)
+    out_blocks[1][0] = ArrayBlock(y.reshape(-1, 1), sparse=store_sparse)
 
 
 def _load_mdcrd_copy(path, block_size, n_cols, n_hblocks, bytes_per_snap,
@@ -413,7 +413,7 @@ def _read_crd_bytes(data, hblock_size, n_cols, out_blocks):
     arr = arr.reshape((-1, n_cols))
 
     for i in range(len(out_blocks)):
-        out_blocks[i] = arr[:, i * hblock_size:(i + 1) * hblock_size]
+        out_blocks[i] = ArrayBlock(arr[:, i * hblock_size:(i + 1) * hblock_size])
 
 
 @task(path=FILE_IN, out_blocks=COLLECTION_INOUT)
@@ -426,15 +426,15 @@ def _read_crd_file(path, start, read_size, hblock_size, n_cols, out_blocks):
     arr = arr.reshape((-1, n_cols))
 
     for i in range(len(out_blocks)):
-        out_blocks[i] = arr[:, i * hblock_size:(i + 1) * hblock_size]
+        out_blocks[i] = ArrayBlock(arr[:, i * hblock_size:(i + 1) * hblock_size])
 
 
 @task(block_files=COLLECTION_FILE_IN)
 def _load_hstack_npy_block(block_files, start_col, end_col):
     if len(block_files) == 1:
-        return np.load(block_files[0])[:, start_col:end_col]
+        return ArrayBlock(np.load(block_files[0])[:, start_col:end_col])
     arrays = [np.load(block_files[0])[:, start_col:]]
     for file in block_files[1:-1]:
         arrays.append(np.load(file))
     arrays.append(np.load(block_files[-1])[:, :end_col])
-    return np.concatenate(arrays, axis=1)
+    return ArrayBlock(np.concatenate(arrays, axis=1))

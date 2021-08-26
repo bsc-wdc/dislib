@@ -105,7 +105,7 @@ class Array(object):
             raise ValueError("Cannot multiply ds-arrays with incompatible "
                              "number of blocks or different block shapes.")
 
-        if self._sparse != x._sparse:
+        if self.sparse != x.sparse:
             raise ValueError("Cannot multiply sparse and dense ds-arrays.")
 
         n_blocks = (self._n_blocks[0], x._n_blocks[1])
@@ -123,7 +123,7 @@ class Array(object):
         reg_shape = (self._reg_shape[0], x._reg_shape[1])
 
         return Array(blocks=blocks, top_left_shape=tl_shape,
-                     reg_shape=reg_shape, shape=shape, sparse=self._sparse)
+                     reg_shape=reg_shape, shape=shape, sparse=self.sparse)
 
     def __getitem__(self, arg):
 
@@ -152,7 +152,7 @@ class Array(object):
         # all rows (slice : for rows) and list of indices for columns
         elif isinstance(rows, slice) and \
                 (isinstance(cols, list) or isinstance(cols, np.ndarray)):
-            #FIXME slicing for rows only, while it should be done also for columns
+            #FIXME slicing for columns only, while it should be done also for rows
             return self._get_by_lst_cols(cols=cols)
 
         # slicing both dimensions
@@ -283,10 +283,13 @@ class Array(object):
         if sparse is None:
             sparse = b0.sparse
 
+        print("sparse", sparse)
+
         if sparse:
-            ret = sp.bmat([[block.array for block in row] for row in blocks],
-                                     format=b0.array.getformat(),
-                                     dtype=b0.array.dtype)
+            b0_scipy = b0.scipy()
+            ret = sp.bmat([[block.scipy() for block in row] for row in blocks],
+                          format=b0_scipy.getformat(),
+                          dtype=b0_scipy.dtype)
         else:
             ret = np.block([[np.asarray(block) for block in row] for row in blocks])
 
@@ -536,7 +539,7 @@ class Array(object):
         element = _get_item(local_i, local_j, block)
 
         return Array(blocks=[[element]], top_left_shape=(1, 1),
-                     reg_shape=(1, 1), shape=(1, 1), sparse=False)
+                     reg_shape=(1, 1), shape=(1, 1), sparse=self.sparse)
 
     def _get_slice(self, rows, cols):
         """
@@ -1011,6 +1014,8 @@ class Array(object):
         """
         self._blocks = compss_wait_on(self._blocks)
         res = Array._merge_blocks(self._blocks)
+        print(type(res))
+        print("res", res)
         if not self._sparse and squeeze:
             res = np.squeeze(res)
         return res
@@ -1293,7 +1298,7 @@ def apply_along_axis(func, axis, x, *args, **kwargs):
         out_shape = (shape[0], 1)
 
     return Array(blocks, top_left_shape=out_tlbshape, reg_shape=out_bshape,
-                 shape=out_shape, sparse=x._sparse)
+                 shape=out_shape, sparse=x.sparse)
 
 
 def _multiply_block_groups(hblock, vblock):
@@ -1452,20 +1457,16 @@ def _filter_block(block, boundaries):
     """
     i_0, j_0, i_n, j_n = boundaries
 
-    res = block[i_0:i_n, j_0:j_n]
-
-    return ArrayBlock(res)
+    return block[i_0:i_n, j_0:j_n]
 
 
-#FIXME no memory leaks??
 @constraint(computing_units="${computingUnits}")
 @task(blocks={Type: COLLECTION_IN, Depth: 2},
       out_blocks={Type: COLLECTION_OUT, Depth: 2})
 def _transpose(blocks, out_blocks):
     for i in range(len(blocks)):
         for j in range(len(blocks[i])):
-            if blocks[i][j].type == ArrayBlock.OTHER:
-                out_blocks[i][j] = ArrayBlock(np.transpose(blocks[i][j]))
+            out_blocks[i][j] = blocks[i][j].transpose()
 
 
 @constraint(computing_units="${computingUnits}")
@@ -1531,6 +1532,7 @@ def _block_apply_axis(func, axis, blocks, *args, **kwargs):
 @constraint(computing_units="${computingUnits}")
 @task(returns=1)
 def _block_apply(func, block, *args, **kwargs):
+    block = block.copy()
     block.apply(func, *args, **kwargs)
     return block
 
@@ -1538,7 +1540,7 @@ def _block_apply(func, block, *args, **kwargs):
 @constraint(computing_units="${computingUnits}")
 @task(block=INOUT)
 def _set_value(block, i, j, value):
-    block[i][j] = value
+    block[i, j] = value
 
 
 @constraint(computing_units="${computingUnits}")
@@ -1555,9 +1557,9 @@ def _assemble_blocks(blocks, bshape):
         if size / bshape[1] > len(merged):
             merged.append([])
 
-        merged[-1].append(block)
+        merged[-1].append(np.asarray(block))
 
-    return np.block(merged)
+    return ArrayBlock(np.block(merged))
 
 
 @constraint(computing_units="${computingUnits}")
@@ -1569,12 +1571,14 @@ def _split_block(block, tl_shape, reg_shape, out_blocks):
     vsplit = range(tl_shape[0], block.shape[0], reg_shape[0])
     hsplit = range(tl_shape[1], block.shape[1], reg_shape[1])
 
-    for i, rows in enumerate(np.vsplit(block, vsplit)):
-        for j, cols in enumerate(np.hsplit(rows, hsplit)):
+    # TODO do not use np.asarray, but rather depending on the block type
+    for i, rows in enumerate(np.vsplit(np.asarray(block), vsplit)):
+        for j, cols in enumerate(np.hsplit(np.asarray(rows), hsplit)):
             # copy is only necessary when executing with regular Python.
             # When using PyCOMPSs the reference to the original block is broken
             # because this is executed in a task.
-            out_blocks[i][j] = cols.copy()
+            # TODO do not use np.asarray, but rather depending on the block type
+            out_blocks[i][j] = ArrayBlock(cols.copy())
 
 
 @constraint(computing_units="${computingUnits}")
