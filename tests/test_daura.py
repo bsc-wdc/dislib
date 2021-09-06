@@ -20,3 +20,11 @@ class GaussianMixtureTest(unittest.TestCase):
         clusters = est.fit_predict(ds_dist)
         expected_clusters = [[1, 0, 2], [3, 4]]
         self.assertEqual(clusters, expected_clusters)
+
+
+def main():
+    unittest.main()
+
+
+if __name__ == '__main__':
+    main()

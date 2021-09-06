@@ -76,7 +76,7 @@ class Daura(BaseEstimator):
 @constraint(computing_units="${computingUnits}")
 @task(returns=1)
 def _get_neighbors(block, start_col, cutoff):
-    return [np.flatnonzero(r <= cutoff) + start_col for r in block]
+    return [np.flatnonzero(np.asarray(r) <= cutoff) + start_col for r in block]
 
 
 @constraint(computing_units="${computingUnits}")

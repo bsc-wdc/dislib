@@ -207,7 +207,7 @@ class DataLoadingTest(unittest.TestCase):
 
     def test_load_svmlight_file(self):
         """ Tests loading a LibSVM file  """
-        file_ = "/home/bscuser/git/dislib/tests/files/libsvm/1"
+        file_ = "tests/files/libsvm/1"
 
         x_np, y_np = load_svmlight_file(file_, n_features=780)
 
@@ -227,7 +227,7 @@ class DataLoadingTest(unittest.TestCase):
 
     def test_load_csv_file(self):
         """ Tests loading a CSV file. """
-        csv_f = "/home/bscuser/git/dislib/tests/files/csv/1"
+        csv_f = "tests/files/csv/1"
 
         data = ds.load_txt_file(csv_f, block_size=(300, 50))
         csv = np.loadtxt(csv_f, delimiter=",")
@@ -239,13 +239,13 @@ class DataLoadingTest(unittest.TestCase):
 
         self.assertTrue(np.array_equal(data.collect(), csv))
 
-        csv_f = "/home/bscuser/git/dislib/tests/files/other/4"
+        csv_f = "tests/files/other/4"
         data = ds.load_txt_file(csv_f, block_size=(1000, 122), delimiter=" ")
         csv = np.loadtxt(csv_f, delimiter=" ")
 
         self.assertTrue(np.array_equal(data.collect(), csv))
 
-        csv_f = "/home/bscuser/git/dislib/tests/files/csv/4"
+        csv_f = "tests/files/csv/4"
         data = ds.load_txt_file(csv_f, block_size=(1, 2))
         csv = np.loadtxt(csv_f, delimiter=",")
 
@@ -253,7 +253,7 @@ class DataLoadingTest(unittest.TestCase):
 
     def test_load_npy_file(self):
         """ Tests loading an npy file """
-        path = "/home/bscuser/git/dislib/tests/files/npy/1.npy"
+        path = "tests/files/npy/1.npy"
 
         x = ds.load_npy_file(path, block_size=(3, 9))
         x_np = np.load(path)
@@ -265,11 +265,11 @@ class DataLoadingTest(unittest.TestCase):
             ds.load_npy_file(path, block_size=(1000, 1000))
 
         with self.assertRaises(ValueError):
-            ds.load_npy_file("/home/bscuser/git/dislib/tests/files/npy/3d.npy", block_size=(3, 3))
+            ds.load_npy_file("tests/files/npy/3d.npy", block_size=(3, 3))
 
     def test_load_mdcrd_file(self):
         """ Tests loading an mdcrd file """
-        path = "/home/bscuser/git/dislib/tests/files/traj10samples_12atoms.mdcrd"
+        path = "tests/files/traj10samples_12atoms.mdcrd"
 
         x = ds.load_mdcrd_file(path, block_size=(4, 5), n_atoms=12)
         self.assertTrue(_validate_array(x))

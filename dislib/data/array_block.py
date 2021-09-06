@@ -165,6 +165,21 @@ class ArrayBlock:
             # TODO implement optimal multiplication based on the array type
             return ArrayBlock(np.asarray(self) @ np.asarray(x))
 
+    def __add__(self, x):
+        if self.shape != x.shape:
+            raise ValueError(
+                "Cannot add ArrayBlocks of shapes %r and %r" % (
+                    self.shape, x.shape))
+
+        if self._sparse != x.sparse:
+            raise ValueError("Cannot add sparse and dense ArrayBlocks.")
+
+        if self._sparse:
+            return ArrayBlock(self.scipy() + x.scipy(), sparse=True)
+        else:
+            # TODO implement optimal addition based on the array type
+            return ArrayBlock(np.asarray(self) + np.asarray(x))
+
     def __array__(self, dtype=None):
         if self._sparse:
             warning("Conversion of scipy to numpy. Consider accessing the array via scipy() instead.")
@@ -261,6 +276,8 @@ class ArrayBlock:
             if len(args) > 0 and isinstance(args[0], ArrayBlock):
                 print("second array shape", args[0].shape)
             # FIXME TypeError: unsupported operand type(s) for @: 'csr_matrix' and 'ArrayBlock'
+            # FIXME self._array is a csr_matrix, while the other block is ArrayBlock
+            # FIXME needs to be fixed
             self._array = func(self._array, *args, *kwargs)
             self._shape = self._array.shape
             print("new shape", self._shape)

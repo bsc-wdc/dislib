@@ -120,9 +120,9 @@ class CascadeSVM(BaseEstimator):
         self._reset_model()
         self._set_gamma(x.shape[1])
         self._set_kernel()
-        self._hstack_f = hstack_sp if x._sparse else np.hstack
+        self._hstack_f = hstack_sp if x.sparse else np.hstack
 
-        ids_list = [[_gen_ids(row._blocks)] for row in x._iterator(axis=0)]
+        ids_list = [[_gen_ids(row.blocks)] for row in x._iterator(axis=0)]
 
         while not self._check_finished():
             self._do_iteration(x, y, ids_list)
@@ -272,8 +272,8 @@ class CascadeSVM(BaseEstimator):
 
         # first level
         for partition, id_bk in zip(_paired_partition(x, y), ids_list):
-            x_data = partition[0]._blocks
-            y_data = partition[1]._blocks
+            x_data = partition[0].blocks
+            y_data = partition[1].blocks
             ids = [id_bk]
 
             if self._svs is not None:

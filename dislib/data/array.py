@@ -1305,12 +1305,12 @@ def _multiply_block_groups(hblock, vblock):
     blocks = []
 
     for blocki, blockj in zip(hblock, vblock):
-        blocks.append(_block_apply(operator.matmul, blocki, blockj))
+        blocks.append(_block_multiply(blocki, blockj))
 
     while len(blocks) > 1:
         block1 = blocks.pop(0)
         block2 = blocks.pop(0)
-        blocks.append(_block_apply(operator.add, block1, block2))
+        blocks.append(_block_add(block1, block2))
 
         compss_delete_object(block1)
         compss_delete_object(block2)
@@ -1535,6 +1535,18 @@ def _block_apply(func, block, *args, **kwargs):
     block = block.copy()
     block.apply(func, *args, **kwargs)
     return block
+
+
+@constraint(computing_units="${computingUnits}")
+@task(returns=1)
+def _block_multiply(block1, block2):
+    return block1 @ block2
+
+
+@constraint(computing_units="${computingUnits}")
+@task(returns=1)
+def _block_add(block1, block2):
+    return block1 + block2
 
 
 @constraint(computing_units="${computingUnits}")
