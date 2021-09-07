@@ -182,7 +182,7 @@ class CascadeSVM(BaseEstimator):
                      reg_shape=(x._reg_shape[0], 1),
                      shape=(x.shape[0], 1), sparse=False)
 
-    def score(self, x, y):
+    def score(self, x, y, collect=False):
         """
         Returns the mean accuracy on the given test data and labels.
 
@@ -192,6 +192,8 @@ class CascadeSVM(BaseEstimator):
             Test samples.
         y : ds-array, shape=(n_samples, 1)
             True labels for x.
+        collect : bool, optional (default=False)
+            When True, a synchronized result is returned.
 
         Returns
         -------
@@ -207,7 +209,9 @@ class CascadeSVM(BaseEstimator):
             partial = _score(x_row._blocks, y_row._blocks, self._clf)
             partial_scores.append(partial)
 
-        return _merge_scores(*partial_scores)
+        score = _merge_scores(*partial_scores)
+
+        return compss_wait_on(score) if collect else score
 
     def _check_initial_parameters(self):
         gamma = self.gamma
