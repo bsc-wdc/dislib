@@ -91,8 +91,8 @@ All operations on ds-arrays are internally parallelized with PyCOMPSs. The
 degree of parallelization is controlled using the array's block size. Block
 size defines the number of rows and columns of each block in a ds-array.
 Sometimes a ds-array cannot be completely split into uniform blocks of a
-given size. In these cases, some blocks of the ds-array will be slightly
-smaller than the defined block size. Choosing the right block size is essential
+given size. In these cases, the bottom and right blocks will be smaller than
+the specified regular block size. Choosing the right block size is essential
 to be able to exploit dislib's full potential.
 
 Choosing the right block size
@@ -174,6 +174,22 @@ Nevertheless, these are the main ideas when choosing your block size:
 2. Define NxN blocks, where N is the number of processors you want to use.
 3. For small ds-arrays, it might be better to use N < number of processors
    and increase granularity at the cost of reducing parallelism.
+
+Irregular blocks
+................
+
+Usually a ds-array cannot be divided into blocks of equal size. In this case,
+bottom-most blocks can be shorter than the regular block size, and right-most blocks
+can be narrower. When both dimension are not divisible by the desired block height/weight,
+bottom-right block is both shorter and narrower.
+
+However, there is also a special case for sliced ds-arrays. If the performed slicing begins
+in middle of the block, this block is sliced and its new dimensions are kept as
+the top-left block instead of re-chunking the whole array. The resulting ds-array would then have the top
+and the left blocks smaller than the regular size blocks. Furthermore, it could also have
+the bottom and the right blocks smaller as well, depending on the original shape of the matrix,
+and the bottom/right bounds used in slicing. This optimization helps to avoid unnecessary
+and costly re-chunking of the ds-array.
 
 Creating arrays
 ...............
