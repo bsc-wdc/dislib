@@ -7,6 +7,7 @@ from pycompss.api.task import task
 
 from dislib import utils
 from dislib.data.array import Array
+from dislib.data.array_block import ArrayBlock
 
 
 def infer_cv(cv=None):

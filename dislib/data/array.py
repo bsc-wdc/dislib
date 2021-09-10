@@ -76,6 +76,10 @@ class Array(object):
     def sparse(self):
         return self._sparse
 
+    @property
+    def blocks(self):
+        return self._blocks
+
     def __del__(self):
         if self._delete:
             [compss_delete_object(b) for r_block in self._blocks for b in
@@ -272,12 +276,15 @@ class Array(object):
                 raise AttributeError(
                     'All rows must contain the same number of blocks.')
 
+    #TODO keep it private,
+    #implement another method working with np/sp arrays instead of blocks
     @staticmethod
-    def _merge_blocks(blocks):
+    def _merge_blocks(blocks, wrapped=True):
         """
         Helper function that merges the _blocks attribute of a ds-array into
         a single ndarray / sparse matrix.
         """
+
         sparse = None
         b0 = blocks[0][0]
         if sparse is None:
@@ -292,6 +299,9 @@ class Array(object):
                           dtype=b0_scipy.dtype)
         else:
             ret = np.block([[np.asarray(block) for block in row] for row in blocks])
+
+        if wrapped:
+            ret = ArrayBlock(ret, sparse=sparse)
 
         return ret
 
@@ -1013,7 +1023,7 @@ class Array(object):
             The actual contents of the ds-array.
         """
         self._blocks = compss_wait_on(self._blocks)
-        res = Array._merge_blocks(self._blocks)
+        res = Array._merge_blocks(self._blocks, wrapped=False)
         print(type(res))
         print("res", res)
         if not self._sparse and squeeze:
@@ -1081,7 +1091,7 @@ def array(x, block_size):
 
     blocks = []
     for i in range(0, x.shape[0], bn):
-        row = [ArrayBlock(x[i: i + bn, j: j + bm], sparse=sparse) for j in range(0, x.shape[1], bm)]
+        row = [ArrayBlock(x[i: i + bn, j: j + bm]) for j in range(0, x.shape[1], bm)]
         blocks.append(row)
 
     arr = Array(blocks=blocks, top_left_shape=block_size,
@@ -1403,7 +1413,7 @@ def _filter_rows(blocks, rows):
     """
     Returns an array resulting of selecting rows of the input blocks
     """
-    data = Array._merge_blocks(blocks)
+    data = Array._merge_blocks(blocks, wrapped=False)
     return ArrayBlock(data[rows, :], sparse=issparse(data))
 
 
@@ -1413,7 +1423,7 @@ def _filter_cols(blocks, cols):
     """
     Returns an array resulting of selecting rows of the input blocks
     """
-    data = Array._merge_blocks(blocks)
+    data = Array._merge_blocks(blocks, wrapped=False)
     return ArrayBlock(data[:, cols], sparse=issparse(data))
 
 
@@ -1426,7 +1436,7 @@ def _merge_rows(blocks, out_blocks, blocks_shape, skip):
     as number of rows (the number of cols remains the same per block).
     """
     bn, bm = blocks_shape
-    data = Array._merge_blocks(blocks)
+    data = Array._merge_blocks(blocks, wrapped=False)
 
     for j in range(0, ceil(data.shape[1] / bm)):
         out_blocks[j] = ArrayBlock(data[skip:bn + skip, j * bm: (j + 1) * bm], sparse=issparse(data))
@@ -1441,7 +1451,7 @@ def _merge_cols(blocks, out_blocks, blocks_shape, skip):
     as number of rows (the number of cols remains the same per block).
     """
     bn, bm = blocks_shape
-    data = Array._merge_blocks(blocks)
+    data = Array._merge_blocks(blocks, wrapped=False)
 
     for i in range(0, ceil(data.shape[0] / bn)):
         out_blocks[i] = ArrayBlock(data[i * bn: (i + 1) * bn, skip:bm + skip], sparse=issparse(data))
@@ -1509,7 +1519,7 @@ def _full_block(shape, value, dtype):
 @constraint(computing_units="${computingUnits}")
 @task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
 def _block_apply_axis(func, axis, blocks, *args, **kwargs):
-    arr = Array._merge_blocks(blocks)
+    arr = Array._merge_blocks(blocks, wrapped=False)
     kwargs['axis'] = axis
     out = func(arr, *args, **kwargs)
 
@@ -1604,8 +1614,8 @@ def _copy_block(block):
       other={Type: COLLECTION_IN, Depth: 2},
       out_blocks={Type: COLLECTION_OUT, Depth: 1})
 def _combine_blocks(blocks, other, func, out_blocks):
-    x = Array._merge_blocks(blocks)
-    y = Array._merge_blocks(other)
+    x = Array._merge_blocks(blocks, wrapped=False)
+    y = Array._merge_blocks(other, wrapped=False)
 
     res = func(x, y)
 

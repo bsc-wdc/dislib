@@ -1,18 +1,22 @@
 import warnings
+from copy import copy
 from logging import warning
 
 import numpy as np
 import scipy as sp
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_matrix, issparse
 
 
 def _validate_args(array, block_type, shape, sparse):
-    if block_type in [ArrayBlock.ZEROS, ArrayBlock.IDENTITY] and shape is None:
-        raise ValueError("shape cannot be empty if the block is ZEROS or IDENTITY")
-    elif block_type in [ArrayBlock.OTHER] and array is None:
-        raise ValueError("array cannot be empty if the block is OTHER")
-    elif sparse and block_type not in [ArrayBlock.OTHER]:
-        raise ValueError("only OTHER is accepted if sparse")
+    if not isinstance(array, ArrayBlock):
+        if block_type in [ArrayBlock.ZEROS, ArrayBlock.IDENTITY] and shape is None:
+            raise ValueError("shape cannot be empty if the block is ZEROS or IDENTITY")
+        elif block_type in [ArrayBlock.ZEROS, ArrayBlock.IDENTITY] and array is not None:
+            raise ValueError("array must be empty if the block is ZEROS or IDENTITY")
+        elif block_type in [ArrayBlock.OTHER] and array is None:
+            raise ValueError("array cannot be empty if the block is OTHER")
+        elif sparse and block_type not in [ArrayBlock.OTHER]:
+            raise ValueError("only OTHER is accepted if sparse")
 
 
 class ArrayBlock:
@@ -22,20 +26,31 @@ class ArrayBlock:
 
     def __init__(self, array, *, block_type=OTHER, shape=None, sparse=False):
         _validate_args(array, block_type, shape, sparse)
-        self._sparse = sparse
-        if self.sparse:
-            self._array = csr_matrix(np.array([array]), shape=(1, 1)) if np.isscalar(array) else array
-            self._block_type = block_type
-            self._shape = self._array.shape
+
+        if isinstance(array, ArrayBlock):
+            self._array = copy(array._array)
+            self._block_type = array._block_type
+            self._shape = array._shape
+            self._sparse = array._sparse
         else:
-            if block_type in [ArrayBlock.ZEROS, ArrayBlock.IDENTITY]:
-                self._array = None
-                self._block_type = block_type
-                self._shape = shape
-            elif block_type in [ArrayBlock.OTHER]:
-                self._array = np.full((1, 1), array) if np.isscalar(array) else array
+            if sparse:
+                self._sparse = True
+            else:
+                self._sparse = issparse(array)
+
+            if self.sparse:
+                self._array = csr_matrix(np.array([array]), shape=(1, 1)) if np.isscalar(array) else array
                 self._block_type = block_type
                 self._shape = self._array.shape
+            else:
+                if block_type in [ArrayBlock.ZEROS, ArrayBlock.IDENTITY]:
+                    self._array = None
+                    self._block_type = block_type
+                    self._shape = shape
+                elif block_type in [ArrayBlock.OTHER]:
+                    self._array = np.full((1, 1), array) if np.isscalar(array) else array
+                    self._block_type = block_type
+                    self._shape = self._array.shape
 
     def __repr__(self):
         return f"{self.__class__.__name__}(_array={self._array}, _block_type={self._block_type}, _shape={self._shape}, _sparse={self._sparse})"
@@ -254,9 +269,14 @@ class ArrayBlock:
         else:
             raise TypeError("This is not a scipy based block. Use numpy() instead")
 
+    def array(self):
+        if not self.sparse:
+            return self.numpy()
+        else:
+            return self.scipy()
+
     def copy(self):
-        array = self._array if self._block_type in [ArrayBlock.OTHER] else None
-        return ArrayBlock(array, block_type=self._block_type, shape=self.shape)
+        return ArrayBlock(copy(self._array), block_type=self._block_type, shape=self._shape, sparse=self._sparse)
 
     def replace_content(self, array=None, block_type=OTHER, shape=None, sparse=False):
         _validate_args(array, block_type, shape, sparse)

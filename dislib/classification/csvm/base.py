@@ -12,6 +12,8 @@ from sklearn.base import BaseEstimator
 from sklearn.svm import SVC
 
 from dislib.data.array import Array
+from dislib.data.array_block import ArrayBlock
+from dislib.data.util import merge_arrays
 from dislib.utils.base import _paired_partition
 
 
@@ -274,7 +276,7 @@ class CascadeSVM(BaseEstimator):
         for partition, id_bk in zip(_paired_partition(x, y), ids_list):
             x_data = partition[0].blocks
             y_data = partition[1].blocks
-            ids = [id_bk]
+            ids = [[ArrayBlock(idbk) for idbk in id_bk]]
 
             if self._svs is not None:
                 x_data.append(self._svs)
@@ -383,7 +385,7 @@ class CascadeSVM(BaseEstimator):
 @constraint(computing_units="${computingUnits}")
 @task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=1)
 def _gen_ids(blocks):
-    samples = Array._merge_blocks(blocks)
+    samples = merge_arrays(blocks)
     idx = [[uuid4().int] for _ in range(samples.shape[0])]
     return np.array(idx)
 
@@ -417,23 +419,23 @@ def _train(x_list, y_list, id_list, random_state, **params):
 @constraint(computing_units="${computingUnits}")
 @task(x_list={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
 def _predict(x_list, clf):
-    x = Array._merge_blocks(x_list)
-    return clf.predict(x).reshape(-1, 1)
+    x = merge_arrays(x_list)
+    return ArrayBlock(clf.predict(x).reshape(-1, 1))
 
 
 @constraint(computing_units="${computingUnits}")
 @task(x_list={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
 def _decision_function(x_list, clf):
-    x = Array._merge_blocks(x_list)
-    return clf.decision_function(x).reshape(-1, 1)
+    x = merge_arrays(x_list)
+    return ArrayBlock(clf.decision_function(x).reshape(-1, 1))
 
 
 @constraint(computing_units="${computingUnits}")
 @task(x_list={Type: COLLECTION_IN, Depth: 2},
       y_list={Type: COLLECTION_IN, Depth: 2}, returns=tuple)
 def _score(x_list, y_list, clf):
-    x = Array._merge_blocks(x_list)
-    y = Array._merge_blocks(y_list)
+    x = merge_arrays(x_list)
+    y = merge_arrays(y_list)
 
     y_pred = clf.predict(x)
     equal = np.equal(y_pred, y.ravel())
@@ -455,9 +457,9 @@ def _merge_scores(*partials):
 
 
 def _merge(x_list, y_list, id_list):
-    samples = Array._merge_blocks(x_list)
-    labels = Array._merge_blocks(y_list)
-    sample_ids = Array._merge_blocks(id_list)
+    samples = merge_arrays(x_list)
+    labels = merge_arrays(y_list)
+    sample_ids = merge_arrays(id_list)
 
     _, uniques = np.unique(sample_ids, return_index=True)
     indices = np.argsort(uniques)

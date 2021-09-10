@@ -10,6 +10,7 @@ from sklearn.metrics.pairwise import paired_distances
 from sklearn.utils import check_random_state, validation
 
 from dislib.data.array import Array
+from dislib.data.array_block import ArrayBlock
 
 
 class KMeans(BaseEstimator):
@@ -143,7 +144,7 @@ class KMeans(BaseEstimator):
         blocks = []
 
         for row in x._iterator(axis=0):
-            blocks.append([_predict(row._blocks, self.centers)])
+            blocks.append([ArrayBlock(_predict(row._blocks, self.centers))])
 
         return Array(blocks=blocks, top_left_shape=(x._top_left_shape[0], 1),
                      reg_shape=(x._reg_shape[0], 1), shape=(x.shape[0], 1),

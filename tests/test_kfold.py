@@ -19,6 +19,7 @@ class KFoldTest(unittest.TestCase):
         for train_ds, test_ds in cv.split(x, y):
             len_x_test = test_ds[0].shape[0]
             self.assertEqual(len_x_test, 200)
+            test_ds[0].collect()
             n_splits += 1
         self.assertEqual(cv.get_n_splits(), n_splits)
 
@@ -33,6 +34,7 @@ class KFoldTest(unittest.TestCase):
         for train_ds, test_ds in cv.split(x, y):
             len_x_test = test_ds[0].shape[0]
             self.assertEqual(len_x_test, 200)
+            test_ds[0].collect()
             n_splits += 1
         self.assertEqual(cv.get_n_splits(), n_splits)
 
@@ -49,6 +51,7 @@ class KFoldTest(unittest.TestCase):
             self.assertTrue(len_x_test == 333 or len_x_test == 334,
                             'Fold size is ' + str(len_x_test) +
                             ' and should be 333 or 334.')
+            test_ds[0].collect()
             n_splits += 1
         self.assertEqual(cv.get_n_splits(), n_splits)
         self.assertEqual(3, n_splits)
@@ -72,6 +75,10 @@ class KFoldTest(unittest.TestCase):
             self.assertTrue(len_x_test == 166 or len_x_test == 167,
                             'Fold size is ' + str(len_x_test) +
                             ' but should be 166 or 167.')
+            train_ds[0].collect()
+            train_ds[1].collect()
+            test_ds[0].collect()
+            test_ds[1].collect()
             n_splits += 1
         self.assertEqual(cv.get_n_splits(), n_splits)
 

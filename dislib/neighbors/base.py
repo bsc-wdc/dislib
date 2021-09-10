@@ -7,6 +7,7 @@ from sklearn.neighbors import NearestNeighbors as SKNeighbors
 from sklearn.utils import validation
 
 from dislib.data.array import Array
+from dislib.data.array_block import ArrayBlock
 
 
 class NearestNeighbors(BaseEstimator):
@@ -83,8 +84,8 @@ class NearestNeighbors(BaseEstimator):
                                               n_neighbors))
 
             dist, ind = _merge_queries(*queries)
-            distances.append([dist])
-            indices.append([ind])
+            distances.append([ArrayBlock(dist)])
+            indices.append([ArrayBlock(ind)])
 
         ind_arr = Array(blocks=indices,
                         top_left_shape=(x._top_left_shape[0], n_neighbors),

@@ -1,6 +1,8 @@
 from pycompss.api.api import compss_delete_object
 from pycompss.api.parameter import IN, INOUT
 from pycompss.api.task import task
+import scipy.sparse as sp
+from scipy.sparse import issparse
 
 from dislib.data.array import Array
 
@@ -198,3 +200,27 @@ def _remove_bottom_rows(block, n_rows):
     elif block.type in [ArrayBlock.OTHER]:
         new_content = np.asarray(block)[:-n_rows, :]
         block.replace_content(new_content, ArrayBlock.OTHER, new_content.shape)
+
+
+def is_array_block(block):
+    return isinstance(block, ArrayBlock)
+
+
+def unwrap_array_block(block):
+    return block.array() if is_array_block(block) else block
+
+
+def merge_arrays(arrays):
+    """
+    Helper function that merges the given arrays or ArrayBlocks into
+    a single ndarray / sparse matrix.
+    """
+    b0 = unwrap_array_block(arrays[0][0])
+    sparse = issparse(b0)
+
+    if sparse:
+        return sp.bmat([[unwrap_array_block(block) for block in row] for row in arrays],
+                      format=b0.getformat(),
+                      dtype=b0.dtype)
+    else:
+        return np.block([[unwrap_array_block(block) for block in row] for row in arrays])

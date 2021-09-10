@@ -3,13 +3,13 @@ import warnings
 
 from pycompss.api.api import compss_delete_object
 from pycompss.api.constraint import constraint
-from pycompss.api.parameter import INOUT, IN, IN_DELETE
+from pycompss.api.parameter import INOUT
 from pycompss.api.task import task
 
-from dislib.data.array import Array, identity, eye
+from dislib.data.array import Array, eye
 from dislib.data.array_block import ArrayBlock
 from dislib.data.util import compute_bottom_right_shape, pad_last_blocks_with_zeros
-from dislib.data.util.base import remove_last_rows, remove_last_columns
+from dislib.data.util import remove_last_rows, remove_last_columns
 
 
 def qr_blocked(a: Array, mode='full', overwrite_a=False):
