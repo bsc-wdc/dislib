@@ -90,7 +90,8 @@ class MinMaxScaler(object):
       min_blocks={Type: COLLECTION_IN, Depth: 2},
       max_blocks={Type: COLLECTION_IN, Depth: 2},
       out_blocks=COLLECTION_OUT)
-def _transform(blocks, min_blocks, max_blocks, out_blocks, range_min, range_max):
+def _transform(blocks, min_blocks, max_blocks, out_blocks,
+               range_min, range_max):
     x = Array._merge_blocks(blocks)
     min_val = Array._merge_blocks(min_blocks)
     max_val = Array._merge_blocks(max_blocks)
