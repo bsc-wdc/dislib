@@ -101,7 +101,6 @@ class MinMaxScalerTest(unittest.TestCase):
         self.assertEqual(ds_arr.shape, ds_scaled.shape)
         self.assertEqual(ds_arr._n_blocks, ds_scaled._n_blocks)
 
-
     class StandardScalerTest(unittest.TestCase):
         def test_fit_transform(self):
             """ Tests fit_transform against scikit-learn.
