@@ -1,3 +1,14 @@
+
+def save_model(model, filepath, overwrite=True, save_format="json"):
+    raise NotImplementedError
+
+
+def load_model(filepath, load_format="json"):
+    raise NotImplementedError
+
+
+# TODO uncomment the following
+'''
 import json
 import os
 import numpy as np
@@ -359,3 +370,5 @@ def _sync_rf(rf):
     for tree in rf.trees:
         tree.try_features = try_features
         tree.n_classes = n_classes
+
+'''

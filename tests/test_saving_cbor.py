@@ -31,6 +31,8 @@ class CBORSavingTest(unittest.TestCase):
         shutil.rmtree(DIRPATH)
         return super().tearDown()
 
+    # TODO uncomment the following
+    '''
     def test_saving_kmeans(self):
         file_ = "tests/files/libsvm/2"
         filepath = os.path.join(DIRPATH, "kmeans.cbor")
@@ -130,6 +132,7 @@ class CBORSavingTest(unittest.TestCase):
 
     def test_saving_rf_class(self):
         filepath = os.path.join(DIRPATH, "rf_class.cbor")
+        
         x, y = make_classification(
             n_samples=3000,
             n_features=10,
@@ -339,6 +342,8 @@ def load_movielens(train_ratio=0.9):
     test_arr = ds.array(test, block_size=(x_size, y_size))
 
     return train_arr, test_arr
+    
+'''
 
 
 def main():
