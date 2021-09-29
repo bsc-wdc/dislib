@@ -1,10 +1,10 @@
 import unittest
-import json
+#import json
 import os
 import shutil
-from dislib.cluster import KMeans
+'''from dislib.cluster import KMeans
 from dislib.cluster import DBSCAN
-import dislib.utils.saving as saving
+import dislib.utils.saving as saving'''
 
 DIRPATH = "tests/files/saving"
 

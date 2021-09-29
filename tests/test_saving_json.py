@@ -1,6 +1,7 @@
 import unittest
 import os
 import shutil
+'''
 import numpy as np
 from scipy.sparse import csr_matrix
 from sklearn.metrics import r2_score
@@ -18,6 +19,7 @@ from dislib.recommendation import ALS
 from dislib.utils import save_model, load_model
 
 from pycompss.api.api import compss_wait_on
+'''
 
 DIRPATH = "tests/files/saving"
 
