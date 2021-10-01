@@ -12,10 +12,13 @@ from dislib.trees.decision_tree import (
     DecisionTreeClassifier,
     DecisionTreeRegressor,
 )
-from dislib.trees.data import RfClassifierDataset, RfRegressorDataset
 from dislib.data.array import Array
 from dislib.utils.base import _paired_partition
-from dislib.trees.data import transform_to_rf_dataset
+from dislib.trees.data import (
+    RfClassifierDataset,
+    RfRegressorDataset,
+    transform_to_rf_dataset
+)
 
 
 class BaseRandomForest(BaseEstimator):
