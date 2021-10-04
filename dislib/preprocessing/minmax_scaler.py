@@ -16,6 +16,8 @@ class MinMaxScaler(object):
 
     Attributes
     ----------
+    feature_range : tuple
+        The desired range of values in the ds-array.
     """
 
     def __init__(self, feature_range=(0, 1)):
@@ -56,7 +58,7 @@ class MinMaxScaler(object):
 
     def transform(self, x):
         """
-        Standarize data.
+        Scale data.
 
         Parameters
         ----------
