@@ -51,31 +51,13 @@ Other functions
 :meth:`dislib.apply_along_axis <dislib.apply_along_axis>` - Applies a
 function to a ds-array along a given axis.
 
-dislib.utils: Utility functions
+
+dislib.classification: Classification
 -------------------------------------
 
-:meth:`utils.shuffle <dislib.utils.base.shuffle>` - Randomly shuffles the
-rows of a ds-array.
+:class:`classification.CascadeSVM <dislib.classification.csvm.base.CascadeSVM>`
+- Distributed support vector classification using a cascade of classifiers.
 
-dislib.math: Mathematical functions
------------------------------------
-
-:meth:`dislib.kron <dislib.kron>` - Computes the Kronecker product of two
-ds-arrays.
-
-:meth:`dislib.svd <dislib.svd>` - Singular value decomposition of a ds-array.
-
-dislib.preprocessing: Data pre-processing
------------------------------------------
-
-:class:`preprocessing.StandardScaler <dislib.preprocessing.classes.StandardScaler>` -
-Scale a ds-array to zero mean and unit variance.
-
-dislib.decomposition: Matrix Decomposition
-------------------------------------------
-
-:class:`decomposition.PCA <dislib.decomposition.pca.base.PCA>` - Principal
-component analysis (PCA).
 
 dislib.cluster: Clustering
 --------------------------
@@ -93,14 +75,50 @@ Fit a gaussian mixture model.
 clustering.
 
 
-dislib.classification: Classification
--------------------------------------
+dislib.decomposition: Matrix Decomposition
+------------------------------------------
 
-:class:`classification.CascadeSVM <dislib.classification.csvm.base.CascadeSVM>`
-- Distributed support vector classification using a cascade of classifiers.
+:class:`decomposition.PCA <dislib.decomposition.pca.base.PCA>` - Principal
+component analysis (PCA).
 
-:class:`classification.RandomForestClassifier <dislib.classification.rf.forest.RandomForestClassifier>` -
-Build a random forest for classification.
+
+dislib.math: Mathematical functions
+-----------------------------------
+
+:meth:`dislib.kron <dislib.kron>` - Computes the Kronecker product of two
+ds-arrays.
+
+:meth:`dislib.svd <dislib.svd>` - Singular value decomposition of a ds-array.
+
+
+dislib.model_selection: Model selection
+---------------------------------------
+
+:class:`model_selection.GridSearchCV <dislib.model_selection.GridSearchCV>` -
+Exhaustive search over specified parameter values for an estimator.
+
+:class:`model_selection.RandomizedSearchCV <dislib.model_selection.RandomizedSearchCV>` -
+Randomized search over estimator parameters sampled from given distributions.
+
+:class:`model_selection.KFold <dislib.model_selection.KFold>` -
+K-fold splitter for cross-validation.
+
+
+dislib.neighbors: Neighbor queries
+----------------------------------
+
+:class:`cluster.NearestNeighbors <dislib.neighbors.base.NearestNeighbors>` -
+Perform k-nearest neighbors queries.
+
+
+dislib.preprocessing: Data pre-processing
+-----------------------------------------
+
+:class:`preprocessing.MinMaxScaler <dislib.preprocessing.MinMaxScaler>` -
+Scale a ds-array to zero mean and unit variance.
+
+:class:`preprocessing.StandardScaler <dislib.preprocessing.StandardScaler>` -
+Scale a ds-array to the given range.
 
 
 dislib.recommendation: Recommendation
@@ -121,28 +139,24 @@ dislib.regression: Regression
 - Linear Model trained with L1 prior as regularizer.
 
 
-dislib.optimization: Optimization
----------------------------------
+dislib.trees: Trees
+-------------------------------------
 
-:class:`optimization.ADMM <dislib.optimization.admm.base.ADMM>` - Alternating
-Direction Method of Multipliers (ADMM) solver.
+:class:`trees.DecisionTreeClassifier <dislib.trees.DecisionTreeClassifier>` -
+Build a decision tree.
+
+:class:`trees.DecisionTreeRegressor <dislib.trees.DecisionTreeRegressor>` -
+Build a regression tree.
+
+:class:`trees.RandomForestClassifier <dislib.trees.RandomForestClassifier>` -
+Build a random forest for classification.
+
+:class:`trees.RandomForestRegressor <dislib.trees.RandomForestClassifier>` -
+Build a random forest for regression.
 
 
-dislib.neighbors: Neighbor queries
-----------------------------------
+dislib.utils: Utility functions
+-------------------------------------
 
-:class:`cluster.NearestNeighbors <dislib.neighbors.base.NearestNeighbors>` -
-Perform k-nearest neighbors queries.
-
-
-dislib.model_selection: Model selection
----------------------------------------
-
-:class:`model_selection.GridSearchCV <dislib.model_selection.GridSearchCV>` -
-Exhaustive search over specified parameter values for an estimator.
-
-:class:`model_selection.RandomizedSearchCV <dislib.model_selection.RandomizedSearchCV>` -
-Randomized search over estimator parameters sampled from given distributions.
-
-:class:`model_selection.KFold <dislib.model_selection.KFold>` -
-K-fold splitter for cross-validation.
+:meth:`utils.shuffle <dislib.utils.base.shuffle>` - Randomly shuffles the
+rows of a ds-array.

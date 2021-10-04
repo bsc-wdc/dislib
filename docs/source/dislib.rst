@@ -8,19 +8,19 @@ Subpackages
 
     dislib.array
     dislib.classification.csvm
-    dislib.classification.rf
-    dislib.cluster.kmeans
-    dislib.cluster.gm
-    dislib.cluster.dbscan
     dislib.cluster.daura
-    dislib.neighbors
-    dislib.recommendation.als
+    dislib.cluster.dbscan
+    dislib.cluster.gm
+    dislib.cluster.kmeans
     dislib.decomposition.pca
-    dislib.regression.linear
-    dislib.regression.lasso
     dislib.model_selection
+    dislib.neighbors
     dislib.optimization.admm
     dislib.preprocessing
+    dislib.recommendation.als
+    dislib.regression.lasso
+    dislib.regression.linear
+    dislib.trees
     dislib.utils
 
 .. automodule:: dislib
