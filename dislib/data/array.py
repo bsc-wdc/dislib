@@ -157,21 +157,48 @@ class Array(object):
         raise IndexError("Invalid indexing information: %s" % str(arg))
 
     def __setitem__(self, key, value):
-        if not np.isscalar(value):
-            raise ValueError("Can only assign scalar values.")
+        if isinstance(key, tuple) and all(isinstance(v, int) for v in key):
+            if np.isscalar(value):
+                if key[0] >= self.shape[0] or key[1] >= self.shape[1] or \
+                        key[0] < 0 or key[1] < 0:
+                    raise IndexError("Index %r is out of bounds for ds-array "
+                                     "with shape %r." % (key, self.shape))
 
-        if not isinstance(key, tuple):
-            raise IndexError("Need to provide two indexes to assign a value.")
+                bi, bj = self._get_containing_block(*key)
+                vi, vj = self._coords_in_block(bi, bj, *key)
 
-        if key[0] >= self.shape[0] or key[1] >= self.shape[1] or \
-                key[0] < 0 or key[1] < 0:
-            raise IndexError("Index %r is out of bounds for ds-array with "
-                             "shape %r." % (key, self.shape))
+                _set_value(self._blocks[bi][bj], vi, vj, value)
+            else:
+                raise ValueError("Scalar value is required when "
+                                 "indexing by two integers.")
+        elif isinstance(key, tuple) and isinstance(key[0], slice)\
+                and isinstance(key[1], int):
+            rows, cols = key
+            r_start, r_stop = rows.start, rows.stop
+            r_start = 0 if r_start is None else r_start
+            r_stop = self.shape[0] if r_stop is None else r_stop
 
-        bi, bj = self._get_containing_block(*key)
-        vi, vj = self._coords_in_block(bi, bj, *key)
+            if r_stop - r_start != value.shape[0]:
+                raise IndexError("Incorrect shape of the "
+                                 f"given array: {value.shape}")
 
-        _set_value(self._blocks[bi][bj], vi, vj, value)
+            dims = len(value.shape)
+
+            if dims == 2 and value.shape[1] != 1:
+                raise IndexError("A column vector is required"
+                                 "for setting a column.")
+
+            if dims > 2:
+                raise IndexError("Arrays of dimensions > 2 are not accepted.")
+
+            if dims == 1:
+                value = value.reshape((value.shape[0], 1))
+
+            self._set_column((r_start, r_stop), cols, value)
+        else:
+            raise NotImplementedError(
+                f"Provided indexing by {type(key)} is not implemented."
+            )
 
     def __pow__(self, power, modulo=None):
         if not np.isscalar(power):
@@ -488,6 +515,36 @@ class Array(object):
             block_j = self._n_blocks[1] - 1
 
         return block_i, block_j
+
+    def _set_column(self, i: tuple, j: int, value_array):
+        """
+        Sets rows of a particular column of the whole array
+        """
+        k = i[0]
+        array_offset = 0
+        j_block = None
+        while k < i[1]:
+            row, col = self._get_containing_block(k, j)
+            add_offset = min(i[1], self._top_left_shape[0]) - i[0] \
+                if row == 0 \
+                else min(
+                i[1], self._top_left_shape[0] + row * self._reg_shape[0]) - k
+
+            block_row_start = i[0] if row == 0 else\
+                (k - self._top_left_shape[0]) % self._reg_shape[0]
+
+            if j_block is None:
+                j_block = min(j, self._top_left_shape[1]) if col == 0 \
+                    else (j - self._top_left_shape[1]) % self._reg_shape[1]
+
+            _block_set_slice(
+                self._blocks[row][col],
+                (block_row_start, block_row_start + add_offset),
+                (j_block, j_block + 1),
+                value_array[array_offset:array_offset+add_offset]
+            )
+            k += add_offset
+            array_offset += add_offset
 
     def _coords_in_block(self, block_i, block_j, i, j):
         """
@@ -1485,6 +1542,11 @@ def _block_apply(func, block, *args, **kwargs):
 @task(block=INOUT)
 def _set_value(block, i, j, value):
     block[i, j] = value
+
+
+@task(block=INOUT)
+def _block_set_slice(block, i: tuple, j: tuple, value_array):
+    block[i[0]:i[1], j[0]:j[1]] = value_array
 
 
 @task(blocks={Type: COLLECTION_IN, Depth: 1}, returns=1)
