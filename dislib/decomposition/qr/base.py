@@ -12,7 +12,7 @@ from dislib.data.util.base import remove_last_rows, remove_last_columns
 
 
 def qr(a: Array, mode='full', overwrite_a=False):
-    """ QR Decomposition (blocked / save memory).
+    """ QR Decomposition (blocked).
 
     Parameters
     ----------

@@ -32,19 +32,21 @@ def pad(a: Array, pad_width, **kwargs):
         return
 
     if pad_top != 0:
-        raise ValueError("Padding top blocks is currently not available")
+        raise NotImplementedError("Padding top blocks is currently "
+                                  "not available")
 
     if pad_left != 0:
-        raise ValueError("Padding left blocks is currently not available")
+        raise NotImplementedError("Padding left blocks is currently "
+                                  "not available")
 
     bottom_right_shape = compute_bottom_right_shape(a)
     if pad_bottom + bottom_right_shape[0] + pad_top > a._reg_shape[0]:
-        raise ValueError("Adding new row blocks is currently "
+        raise NotImplementedError("Adding new row blocks is currently "
                          "not available. Make sure that the new content "
                          "does not exceed the regular block size.")
 
     if pad_left + bottom_right_shape[1] + pad_right > a._reg_shape[1]:
-        raise ValueError("Adding new column blocks is currently "
+        raise NotImplementedError("Adding new column blocks is currently "
                          "not available. Make sure that the new content "
                          "does not exceed the regular block size.")
 

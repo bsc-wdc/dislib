@@ -4,7 +4,7 @@ import numpy as np
 from parameterized import parameterized
 from dislib.data.array import random_array
 from dislib.data.util import pad, pad_last_blocks_with_zeros, \
-    compute_bottom_right_shape
+    compute_bottom_right_shape, remove_last_columns
 
 
 class DataUtilsTest(unittest.TestCase):
@@ -117,6 +117,26 @@ class DataUtilsTest(unittest.TestCase):
             self.assertTrue(a._top_left_shape[0] == a._reg_shape[0])
         if shape[1] < block_size[1]:
             self.assertTrue(a._top_left_shape[1] == a._reg_shape[1])
+
+    def test_exceptions(self):
+        """Tests exceptions thrown by utility functions"""
+        np.random.seed(8)
+
+        a = random_array((20, 20), (6, 6))
+        with self.assertRaises(NotImplementedError):
+            pad(a, ((2, 0), (0, 0)))
+
+        with self.assertRaises(NotImplementedError):
+            pad(a, ((0, 0), (2, 0)))
+
+        with self.assertRaises(NotImplementedError):
+            pad(a, ((0, 4), (0, 0)))
+
+        with self.assertRaises(NotImplementedError):
+            pad(a, ((0, 0), (0, 4)))
+
+        with self.assertRaises(ValueError):
+            remove_last_columns(a, 8)
 
 
 def main():
