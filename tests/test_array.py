@@ -167,6 +167,33 @@ class DataLoadingTest(unittest.TestCase):
         self.assertTrue(_validate_array(x))
         self.assertTrue(_equal_arrays(x.collect(), x_np))
 
+    @parameterized.expand([(2, ), (3, ), (5, ), (8, ), (13, ), (21, ), (44, )])
+    def test_identity(self, n):
+        """ Tests identity function """
+        x = ds.identity(n, (2, 2))
+        x_np = np.identity(n)
+        self.assertTrue(_validate_array(x))
+        self.assertTrue(_equal_arrays(x.collect(), x_np))
+
+    @parameterized.expand([(2, 3), (3, 2), (5, 3), (3, 5), (8, 5),
+                           (5, 8), (13, 8), (8, 13), (21, 13),
+                           (13, 21), (44, 21), (21, 44)])
+    def test_eye(self, n, m):
+        """ Tests eye function """
+        x = ds.eye(n, m, (2, 2))
+        x_np = np.eye(n, m)
+        self.assertTrue(_validate_array(x))
+        self.assertTrue(_equal_arrays(x.collect(), x_np))
+
+    def test_eye_exceptions(self):
+        """ Tests eye function exceptions """
+
+        with self.assertRaises(ValueError):
+            ds.eye(10, 20, (20, 10))
+
+        with self.assertRaises(ValueError):
+            ds.eye(20, 10, (10, 20))
+
     def test_load_svmlight_file(self):
         """ Tests loading a LibSVM file  """
         file_ = "tests/files/libsvm/1"
@@ -818,8 +845,6 @@ class MathTest(unittest.TestCase):
                            ((1, 30), (12, 1), False)])
     def test_kron(self, shape_a, shape_b, sparse):
         """ Tests kronecker product """
-        import time
-        t0 = time.time()
         np.random.seed()
 
         a_np = np.random.random(shape_a)
@@ -841,8 +866,6 @@ class MathTest(unittest.TestCase):
         b4 = np.random.randint(1, (b0 * b2) + 1)
         b5 = np.random.randint(1, (b1 * b3) + 1)
 
-        print(b0, b1, b2, b3, b4, b5)
-        print(time.time() - t0)
         computed = ds.kron(a, b, (b4, b5))
 
         self.assertTrue(_validate_array(computed))
@@ -855,7 +878,6 @@ class MathTest(unittest.TestCase):
             computed = computed.toarray()
 
         self.assertTrue(_equal_arrays(expected, computed))
-        print(time.time() - t0)
 
     @parameterized.expand([((15, 13), (3, 6), (9, 6), (3, 2)),
                            ((7, 8), (2, 3), (1, 15), (1, 15))])

@@ -1,5 +1,6 @@
 import numpy as np
 from pycompss.api.api import compss_wait_on
+from pycompss.api.constraint import constraint
 from pycompss.api.parameter import COLLECTION_IN, COLLECTION_OUT, \
     Type, Depth
 from pycompss.api.task import task
@@ -311,6 +312,7 @@ def _rearrange_labels(labels, indices, n_blocks):
     return sorted_blocks
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(mn={Type: COLLECTION_IN, Depth: 2},
       mx={Type: COLLECTION_IN, Depth: 2},
       returns=1)
@@ -331,6 +333,7 @@ def _generate_bins(mn, mx, dimensions, n_regions):
     return bins
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(blocks={Type: COLLECTION_IN, Depth: 2},
       samples_list={Type: COLLECTION_OUT},
       indices={Type: COLLECTION_OUT})
@@ -372,6 +375,7 @@ def _arrange_block(blocks, bins, dimensions, shape, samples_list, indices):
         indices[i] = sample_indices
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(indices=COLLECTION_IN,
       blocks=COLLECTION_OUT)
 def _rearrange_region(labels, indices, blocks):
@@ -389,6 +393,7 @@ def _rearrange_region(labels, indices, blocks):
         start = end
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(samples_list={Type: COLLECTION_IN}, returns=2)
 def _merge_samples(samples_list, sparse):
     if sparse:
@@ -399,6 +404,7 @@ def _merge_samples(samples_list, sparse):
     return samples, samples.shape[0]
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(labels_list=COLLECTION_IN, indices=COLLECTION_IN, returns=1)
 def _merge_labels(labels_list, indices):
     labels = np.vstack(labels_list)
@@ -409,6 +415,7 @@ def _merge_labels(labels_list, indices):
     return np.take(labels, idx).reshape(-1, 1)
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(returns=1)
 def _merge_dicts(*dicts):
     merged_dict = {}
@@ -419,6 +426,7 @@ def _merge_dicts(*dicts):
     return merged_dict
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(returns=1)
 def _get_connected_components(equiv):
     # Add inverse equivalences

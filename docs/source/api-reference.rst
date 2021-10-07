@@ -24,6 +24,8 @@ random contents.
 
 :meth:`dislib.full <dislib.full>` - Build a ds-array filled with a value.
 
+:meth:`dislib.eye <dislib.eye>` - Build an eye ds-array.
+
 :meth:`dislib.identity <dislib.identity>` - Build an identity ds-array.
 
 :meth:`dislib.load_svmlight_file <dislib.load_svmlight_file>` - Build a
@@ -43,6 +45,24 @@ from .npy files, concatenating them side-by-side.
 
 :meth:`dislib.save_txt <dislib.save_txt>` - Save a ds-array by blocks to a
 directory in txt format.
+
+Utility functions
+.......................
+
+:meth:`data.util.compute_bottom_right_shape <dislib.data.util.compute_bottom_right_shape>` -
+Computes a shape of the bottom right block.
+
+:meth:`data.util.pad <dislib.data.util.pad>` - Pad array blocks with
+the desired value.
+
+:meth:`data.util.pad_last_blocks_with_zeros <dislib.data.util.pad_last_blocks_with_zeros>` -
+Pad array blocks with zeros.
+
+:meth:`data.util.remove_last_columns <dislib.data.util.remove_last_columns>` -
+Removes last columns from the right-most blocks of the ds-array.
+
+:meth:`data.util.remove_last_rows <dislib.data.util.remove_last_rows>` -
+Removes last rows from the bottom blocks of the ds-array.
 
 
 Other functions
@@ -78,8 +98,12 @@ clustering.
 dislib.decomposition: Matrix Decomposition
 ------------------------------------------
 
-:class:`decomposition.PCA <dislib.decomposition.pca.base.PCA>` - Principal
-component analysis (PCA).
+:meth:`decomposition.qr <dislib.decomposition.qr.base.qr>` -
+QR decomposition.
+
+:class:`decomposition.PCA <dislib.decomposition.pca.base.PCA>` -
+Principal
+Component Analysis (PCA).
 
 
 dislib.math: Mathematical functions

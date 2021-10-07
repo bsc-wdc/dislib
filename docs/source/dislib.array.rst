@@ -19,6 +19,8 @@ Array creation routines
 
 .. autofunction:: dislib.full
 
+.. autofunction:: dislib.eye
+
 .. autofunction:: dislib.identity
 
 .. autofunction:: dislib.load_txt_file
@@ -31,10 +33,23 @@ Array creation routines
 
 .. autofunction:: dislib.data.load_hstack_npy_files
 
+.. _array-utility:
+
+Utility functions
+-----------------------
+
+.. automodule:: dislib.data.util
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 
 Other functions
----------------
+-----------------------
 
 .. autofunction:: dislib.save_txt
 
 .. autofunction:: dislib.data.array.apply_along_axis
+
+
+
