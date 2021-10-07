@@ -1,8 +1,9 @@
 import numpy as np
 from numpy.lib import format
 from pycompss.api.api import compss_wait_on
-from pycompss.api.parameter import COLLECTION_INOUT, COLLECTION_OUT, Type, \
-    Depth, FILE_IN, IN_DELETE, COLLECTION_FILE_IN
+from pycompss.api.constraint import constraint
+from pycompss.api.parameter import Depth, COLLECTION_INOUT, COLLECTION_OUT, \
+    Type, FILE_IN, IN_DELETE, COLLECTION_FILE_IN
 from pycompss.api.task import task
 import os
 
@@ -318,6 +319,7 @@ def save_txt(arr, dir, merge_rows=False):
                 np.savetxt(path, block)
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(out_blocks=COLLECTION_OUT)
 def _read_from_buffer(data, dtype, shape, block_size, out_blocks):
     arr = np.frombuffer(data, dtype=dtype)
@@ -327,6 +329,7 @@ def _read_from_buffer(data, dtype, shape, block_size, out_blocks):
         out_blocks[i] = arr[:, i * block_size:(i + 1) * block_size]
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(out_blocks=COLLECTION_OUT)
 def _read_lines(lines, block_size, delimiter, out_blocks):
     samples = np.genfromtxt(lines, delimiter=delimiter)
@@ -338,6 +341,7 @@ def _read_lines(lines, block_size, delimiter, out_blocks):
         out_blocks[i] = samples[:, j:j + block_size]
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(out_blocks={Type: COLLECTION_OUT, Depth: 2})
 def _read_svmlight(lines, out_blocks, col_size, n_features, store_sparse):
     from tempfile import SpooledTemporaryFile
@@ -403,6 +407,7 @@ def _load_mdcrd(path, block_size, n_cols, n_blocks, bytes_per_snap,
                  shape=(n_samples, n_cols), sparse=False)
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(data=IN_DELETE, out_blocks=COLLECTION_INOUT)
 def _read_crd_bytes(data, hblock_size, n_cols, out_blocks):
     arr = np.fromstring(data.decode(), sep=" ")
@@ -412,6 +417,7 @@ def _read_crd_bytes(data, hblock_size, n_cols, out_blocks):
         out_blocks[i] = arr[:, i * hblock_size:(i + 1) * hblock_size]
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(path=FILE_IN, out_blocks=COLLECTION_INOUT)
 def _read_crd_file(path, start, read_size, hblock_size, n_cols, out_blocks):
     with open(path, "rb") as fid:
@@ -425,6 +431,7 @@ def _read_crd_file(path, start, read_size, hblock_size, n_cols, out_blocks):
         out_blocks[i] = arr[:, i * hblock_size:(i + 1) * hblock_size]
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(block_files=COLLECTION_FILE_IN)
 def _load_hstack_npy_block(block_files, start_col, end_col):
     if len(block_files) == 1:

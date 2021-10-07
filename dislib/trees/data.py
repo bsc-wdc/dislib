@@ -1,6 +1,7 @@
 import tempfile
 import numpy as np
 from numpy.lib import format
+from pycompss.api.constraint import constraint
 from pycompss.api.parameter import (
     FILE_IN,
     FILE_INOUT,
@@ -357,6 +358,7 @@ class _NpyFile(object):
             self.shape, self.fortran_order, self.dtype = header_data
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(targets_path=FILE_IN, returns=3)
 def _get_labels(targets_path):
     # Classification
@@ -365,6 +367,7 @@ def _get_labels(targets_path):
     return codes.astype(np.int8), categories, len(categories)
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(targets_path=FILE_IN, returns=1)
 def _get_values(targets_path):
     # Regression
@@ -372,6 +375,7 @@ def _get_values(targets_path):
     return y.astype(np.float64)
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(samples_path=FILE_INOUT)
 def _allocate_samples_file(samples_path, n_samples, n_features):
     np.lib.format.open_memmap(
@@ -382,6 +386,7 @@ def _allocate_samples_file(samples_path, n_samples, n_features):
     )
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(samples_path=FILE_INOUT)
 def _allocate_features_file(samples_path, n_samples, n_features):
     np.lib.format.open_memmap(
@@ -392,6 +397,7 @@ def _allocate_features_file(samples_path, n_samples, n_features):
     )
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(samples_path=FILE_INOUT, row_blocks={Type: COLLECTION_IN, Depth: 2})
 def _fill_samples_file(samples_path, row_blocks, start_idx):
     rows_samples = Array._merge_blocks(row_blocks)
@@ -400,6 +406,7 @@ def _fill_samples_file(samples_path, row_blocks, start_idx):
     samples[start_idx: start_idx + rows_samples.shape[0]] = rows_samples
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(samples_path=FILE_INOUT, row_blocks={Type: COLLECTION_IN, Depth: 2})
 def _fill_features_file(samples_path, row_blocks, start_idx):
     rows_samples = Array._merge_blocks(row_blocks)
@@ -408,6 +415,7 @@ def _fill_features_file(samples_path, row_blocks, start_idx):
     samples[:, start_idx: start_idx + rows_samples.shape[0]] = rows_samples.T
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(targets_path=FILE_INOUT, row_blocks={Type: COLLECTION_IN, Depth: 2})
 def _fill_targets_file(targets_path, row_blocks):
     rows_targets = Array._merge_blocks(row_blocks)

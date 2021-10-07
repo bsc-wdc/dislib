@@ -4,6 +4,7 @@ import numpy as np
 import pytraj as pt
 import os
 
+from pycompss.api.constraint import constraint
 from pytraj.utils.tools import split_and_write_traj
 
 from pycompss.api.api import compss_wait_on
@@ -55,6 +56,7 @@ def main(traj_path, top_path, n_chunks, cutoff):
     print('Clusters (first frame is the center):', clusters)
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(chunk1=FILE_IN, chunk2=FILE_IN, top_path=FILE_IN, returns=1)
 def compute_rmsd(chunk1, chunk2, top_path):
     # Load trajectory chunks with topology.

@@ -3,6 +3,7 @@ from collections import Counter
 
 import numpy as np
 from pycompss.api.api import compss_wait_on
+from pycompss.api.constraint import constraint
 from pycompss.api.parameter import Type, COLLECTION_IN, Depth
 from pycompss.api.task import task
 from sklearn.base import BaseEstimator
@@ -451,6 +452,7 @@ def _base_hard_vote(classes, *predictions):
     return labels
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(returns=1)
 def _resolve_try_features(try_features, n_features):
     if try_features is None:
@@ -463,6 +465,7 @@ def _resolve_try_features(try_features, n_features):
         return int(try_features)
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(returns=1)
 def _join_predictions(*predictions):
     aggregate = predictions[0]
@@ -472,18 +475,21 @@ def _join_predictions(*predictions):
     return labels
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(returns=1)
 def _soft_vote(classes, *predictions):
     predicted_labels = _base_soft_vote(classes, *predictions)
     return predicted_labels
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(returns=1)
 def _hard_vote(classes, *predictions):
     predicted_labels = _base_hard_vote(classes, *predictions)
     return predicted_labels
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(y_blocks={Type: COLLECTION_IN, Depth: 2}, returns=1)
 def _soft_vote_score(y_blocks, classes, *predictions):
     predicted_labels = _base_soft_vote(classes, *predictions)
@@ -492,6 +498,7 @@ def _soft_vote_score(y_blocks, classes, *predictions):
     return correct, len(real_labels)
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(y_blocks={Type: COLLECTION_IN, Depth: 2}, returns=1)
 def _hard_vote_score(y_blocks, classes, *predictions):
     predicted_labels = _base_hard_vote(classes, *predictions)
@@ -500,6 +507,7 @@ def _hard_vote_score(y_blocks, classes, *predictions):
     return correct, len(real_labels)
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(y_blocks={Type: COLLECTION_IN, Depth: 2}, returns=1)
 def _regression_score(y_blocks, *predictions):
     y_true = Array._merge_blocks(y_blocks).flatten()
@@ -511,6 +519,7 @@ def _regression_score(y_blocks, *predictions):
     return u_partial, v_partial, y_avg, n_samples
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(returns=1)
 def _merge_classification_scores(*partial_scores):
     correct = sum(subset_score[0] for subset_score in partial_scores)
@@ -518,6 +527,7 @@ def _merge_classification_scores(*partial_scores):
     return correct / total
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(returns=1)
 def _merge_regression_scores(*partial_scores):
     u = v = avg = n = 0

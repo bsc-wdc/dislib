@@ -7,6 +7,7 @@ ADMM Lasso
 This work is supported by the I-BiDaaS project, funded by the European
 Commission under Grant Agreement No. 780787.
 """
+from pycompss.api.constraint import constraint
 
 try:
     import cvxpy as cp
@@ -203,12 +204,14 @@ class ADMM(BaseEstimator):
         self._w = Array(w_blocks, r_shape, r_shape, self._u.shape, x._sparse)
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(z_blocks={Type: COLLECTION_OUT, Depth: 1})
 def _split_z(z, block_size, z_blocks):
     for i in range(len(z_blocks)):
         z_blocks[i] = z[i * block_size: (i + 1) * block_size]
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(x_blocks={Type: COLLECTION_IN, Depth: 2},
       y_blocks={Type: COLLECTION_IN, Depth: 2},
       u_blocks={Type: COLLECTION_IN, Depth: 2},
@@ -240,6 +243,7 @@ def _objective(loss, x, y, w, z, u, rho):
     return loss(x, y, w) + (rho / 2) * reg
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(w_blocks={Type: COLLECTION_IN, Depth: 2},
       u_blocks={Type: COLLECTION_IN, Depth: 2},
       returns=np.array)
@@ -260,6 +264,7 @@ def _soft_thresholding(w_blocks, u_blocks, k):
     return z
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(u_blocks={Type: COLLECTION_IN, Depth: 2},
       w_blocks={Type: COLLECTION_IN, Depth: 2},
       out_blocks={Type: COLLECTION_OUT, Depth: 1})
@@ -273,11 +278,13 @@ def _update_u(z, u_blocks, w_blocks, out_blocks):
         out_blocks[i] = u_new[i * n_cols: (i + 1) * n_cols].reshape(1, -1)
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(returns=1)
 def _compute_dual_res(n_samples, rho, z, z_old):
     return np.sqrt(n_samples) * rho * np.linalg.norm(z - z_old)
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(blocks={Type: COLLECTION_IN, Depth: 2},
       out_blocks={Type: COLLECTION_OUT, Depth: 1})
 def _substract(blocks, z, out_blocks):
@@ -288,6 +295,7 @@ def _substract(blocks, z, out_blocks):
         out_blocks[i] = w_np[i * n_cols: (i + 1) * n_cols].reshape(1, -1)
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(returns=bool)
 def _check_convergence(prires, dualres, n_samples, n_total, nxstack,
                        nystack, abstol, reltol, z):

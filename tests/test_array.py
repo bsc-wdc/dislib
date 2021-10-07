@@ -167,6 +167,33 @@ class DataLoadingTest(unittest.TestCase):
         self.assertTrue(_validate_array(x))
         self.assertTrue(_equal_arrays(x.collect(), x_np))
 
+    @parameterized.expand([(2, ), (3, ), (5, ), (8, ), (13, ), (21, ), (44, )])
+    def test_identity(self, n):
+        """ Tests identity function """
+        x = ds.identity(n, (2, 2))
+        x_np = np.identity(n)
+        self.assertTrue(_validate_array(x))
+        self.assertTrue(_equal_arrays(x.collect(), x_np))
+
+    @parameterized.expand([(2, 3), (3, 2), (5, 3), (3, 5), (8, 5),
+                           (5, 8), (13, 8), (8, 13), (21, 13),
+                           (13, 21), (44, 21), (21, 44)])
+    def test_eye(self, n, m):
+        """ Tests eye function """
+        x = ds.eye(n, m, (2, 2))
+        x_np = np.eye(n, m)
+        self.assertTrue(_validate_array(x))
+        self.assertTrue(_equal_arrays(x.collect(), x_np))
+
+    def test_eye_exceptions(self):
+        """ Tests eye function exceptions """
+
+        with self.assertRaises(ValueError):
+            ds.eye(10, 20, (20, 10))
+
+        with self.assertRaises(ValueError):
+            ds.eye(20, 10, (10, 20))
+
     def test_load_svmlight_file(self):
         """ Tests loading a LibSVM file  """
         file_ = "tests/files/libsvm/1"

@@ -175,3 +175,5 @@ dkms.conf
 # Ignore log files
 *.log
 
+# Ignore virtual environments
+venv
