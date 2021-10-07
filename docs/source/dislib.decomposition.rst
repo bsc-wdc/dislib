@@ -1,12 +1,12 @@
 dislib.decomposition
 ========================
 
-.. automodule:: dislib.decomposition.qr
+.. automodule:: dislib.decomposition.qr.base
     :members:
     :undoc-members:
     :show-inheritance:
 
-.. automodule:: dislib.decomposition.pca
+.. automodule:: dislib.decomposition.pca.base
     :members:
     :undoc-members:
     :show-inheritance:
