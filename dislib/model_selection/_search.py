@@ -5,15 +5,16 @@ from functools import partial
 from itertools import product
 
 import numpy as np
-from pycompss.api.api import compss_wait_on
+from pycompss.api.api import compss_wait_on, compss_barrier
 from scipy.stats import rankdata
 from sklearn import clone
 from sklearn.model_selection import ParameterGrid, ParameterSampler
 from numpy.ma import MaskedArray
+from pycompss.api.task import task
 
 from dislib.model_selection._split import infer_cv
 from dislib.model_selection._validation import check_scorer, fit_and_score, \
-    validate_score, aggregate_score_dicts
+    validate_score, aggregate_score_dicts, fit_and_score_task, eval_candidates
 
 
 class BaseSearchCV(ABC):
@@ -59,19 +60,31 @@ class BaseSearchCV(ABC):
             """Evaluate some parameters"""
             candidate_params = list(candidate_params)
 
-            out = [fit_and_score(clone(base_estimator), train, validation,
-                                 scorer=scorers, parameters=parameters,
-                                 fit_params=fit_params)
-                   for parameters, (train, validation)
-                   in product(candidate_params, cv.split(x, y))]
+            out = eval_candidates(base_estimator, candidate_params, cv, x, y, scorers, fit_params)
 
             nonlocal n_splits
             n_splits = cv.get_n_splits()
 
             all_candidate_params.extend(candidate_params)
+            out = compss_wait_on(out)
             all_out.extend(out)
 
-        self._run_search(evaluate_candidates)
+        def evaluate_candidates_with_nesting(candidate_params):
+            """Evaluate some parameters"""
+            cand_params = list(candidate_params)
+            out_files = []
+            for params, (train, validation) in product(cand_params, cv.split(x, y)):
+                out_files.append(fit_and_score_task(clone(base_estimator), train, validation, scorers, params,
+                  fit_params))
+
+            all_candidate_params.extend(candidate_params)
+            out = []
+            for out_file in out_files:
+                out_f = compss_wait_on(out_file)
+                out.append(out_f)
+            all_out.extend(out)
+
+        self._run_search(evaluate_candidates_with_nesting)
 
         for params_result in all_out:
             scores = params_result[0]
@@ -562,6 +575,7 @@ class RandomizedSearchCV(BaseSearchCV):
     n_splits_ : int
         The number of cross-validation splits (folds/iterations).
     """
+
     def __init__(self, estimator, param_distributions, n_iter=10, scoring=None,
                  cv=None, refit=True, random_state=None):
         super().__init__(estimator=estimator, scoring=scoring, cv=cv,

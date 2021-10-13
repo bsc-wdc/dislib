@@ -1,9 +1,32 @@
 import numbers
 
 import numpy as np
+from pycompss.api.task import task
+from itertools import product
+from sklearn import clone
 
+@task()
+def eval_candidates(base_estimator, candidate_params, cv, x, y, scorers, fit_params):
+    return [fit_and_score(clone(base_estimator), train, validation,
+                   scorer=scorers, parameters=parameters,
+                   fit_params=fit_params)
+     for parameters, (train, validation)
+     in product(candidate_params, cv.split(x, y))]
 
+@task()
 def fit_and_score(estimator, train_ds, validation_ds, scorer, parameters,
+                  fit_params):
+    if parameters is not None:
+        estimator.set_params(**parameters)
+    x_train, y_train = train_ds
+    estimator.fit(x_train, y_train, **fit_params)
+    x_test, y_test = validation_ds
+    test_scores = _score(estimator, x_test, y_test, scorer)
+
+    return [test_scores]
+
+@task()
+def fit_and_score_task(estimator, train_ds, validation_ds, scorer, parameters,
                   fit_params):
     if parameters is not None:
         estimator.set_params(**parameters)
