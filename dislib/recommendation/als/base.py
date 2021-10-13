@@ -2,6 +2,7 @@ from math import sqrt
 
 import numpy as np
 from pycompss.api.api import compss_wait_on
+from pycompss.api.constraint import constraint
 from pycompss.api.parameter import COLLECTION_IN, Depth, Type
 from pycompss.api.task import task
 from scipy import sparse
@@ -220,6 +221,7 @@ def _mean(dataset):
     return np.bmat(averages)
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
 def _col_mean(blocks):
     cols = Array._merge_blocks(blocks)
@@ -228,12 +230,14 @@ def _col_mean(blocks):
     return averages
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(returns=np.array)
 def _merge(*chunks):
     res = np.vstack(chunks)
     return res
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
 def _update_chunk(blocks, x, params):
     n_f, lambda_, axis = params
@@ -260,6 +264,7 @@ def _update_chunk(blocks, x, params):
     return y
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=1)
 def _get_rmse(blocks, users, items):
     test = Array._merge_blocks(blocks)

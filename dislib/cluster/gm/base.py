@@ -3,6 +3,7 @@ import warnings
 import numpy as np
 from numpy.random.mtrand import RandomState
 from pycompss.api.api import compss_wait_on, compss_delete_object
+from pycompss.api.constraint import constraint
 from pycompss.api.parameter import Type, COLLECTION_IN, Depth
 from pycompss.api.task import task
 from scipy import linalg
@@ -541,6 +542,7 @@ class GaussianMixture(BaseEstimator):
                 compss_delete_object(resp_block)
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(x={Type: COLLECTION_IN, Depth: 2},
       resp={Type: COLLECTION_IN, Depth: 2},
       returns=1)
@@ -564,6 +566,7 @@ def _reduce_estimate_parameters(partials, arity):
     return _finalize_parameters(partials[0])
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(returns=1)
 def _merge_estimate_parameters(*partials_params):
     n_samples = sum(params[0] for params in partials_params)
@@ -572,6 +575,7 @@ def _merge_estimate_parameters(*partials_params):
     return n_samples, nk, means
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(returns=3)
 def _finalize_parameters(params):
     n_samples = params[0]
@@ -634,6 +638,7 @@ def _estimate_covariances(x, resp, nk, means, reg_covar, covar_type, arity):
     return finalize_covariances(covar_type, reg_covar, nk, means, partials[0])
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(x={Type: COLLECTION_IN, Depth: 2},
       resp={Type: COLLECTION_IN, Depth: 2},
       returns=1)
@@ -654,6 +659,7 @@ def _partial_covar_full(resp, x, means):
     return covariances
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(x={Type: COLLECTION_IN, Depth: 2},
       returns=1)
 def _partial_covar_tied(x):
@@ -665,6 +671,7 @@ def _partial_covar_tied(x):
     return avg_sample_2
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(x={Type: COLLECTION_IN, Depth: 2},
       resp={Type: COLLECTION_IN, Depth: 2},
       returns=1)
@@ -680,11 +687,13 @@ def _partial_covar_diag(resp, x, means):
     return avg_resp_sample_2 - 2 * avg_sample_means
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(returns=1)
 def _sum_covar_partials(*covar_partials):
     return sum(covar_partials)
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(returns=2)
 def _finalize_covar_full(covar_type, reg_covar, nk, covariances):
     n_components, n_features, _ = covariances.shape
@@ -695,6 +704,7 @@ def _finalize_covar_full(covar_type, reg_covar, nk, covariances):
     return covariances, precisions_chol
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(returns=2)
 def _finalize_covar_tied(covar_type, reg_covar, nk, means, covariances):
     avg_means2 = np.dot(nk * means.T, means)
@@ -705,6 +715,7 @@ def _finalize_covar_tied(covar_type, reg_covar, nk, means, covariances):
     return covariances, precisions_chol
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(returns=2)
 def _finalize_covar_diag(covar_type, reg_covar, nk, means, covariances):
     covariances /= nk[:, np.newaxis]
@@ -714,6 +725,7 @@ def _finalize_covar_diag(covar_type, reg_covar, nk, means, covariances):
     return covariances, precisions_chol
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(returns=2)
 def _finalize_covar_spherical(covar_type, reg_covar, nk, means, covariances):
     covariances /= nk[:, np.newaxis]
@@ -775,18 +787,21 @@ def _compute_precision_cholesky(covariances, covariance_type):
     return precisions_chol
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(returns=1)
 def _sum_log_prob_norm(*partials):
     total, count = map(sum, zip(*partials))
     return total, count
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(returns=1)
 def _finalize_sum_log_prob_norm(*partials):
     total, count = map(sum, zip(*partials))
     return total / count
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(x={Type: COLLECTION_IN, Depth: 2}, returns=2)
 def _estimate_responsibilities(x, weights, means, precisions_cholesky,
                                covariance_type):
@@ -964,12 +979,14 @@ def _resp_argmax(resp):
     return pred
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(resp={Type: COLLECTION_IN, Depth: 2}, returns=1)
 def _partial_resp_argmax(resp):
     resp = Array._merge_blocks(resp)
     return resp.argmax(axis=1)[:, np.newaxis]
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(labels={Type: COLLECTION_IN, Depth: 2}, returns=1)
 def _resp_subset(labels, n_components):
     labels = Array._merge_blocks(labels).flatten()
@@ -979,6 +996,7 @@ def _resp_subset(labels, n_components):
     return resp_chunk
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(returns=1)
 def _random_resp_subset(n_samples, n_components, seed):
     resp_chunk = RandomState(seed).rand(n_samples, n_components)

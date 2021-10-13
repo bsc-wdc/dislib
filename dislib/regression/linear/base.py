@@ -1,4 +1,5 @@
 import numpy as np
+from pycompss.api.constraint import constraint
 from pycompss.api.parameter import COLLECTION_IN, Depth, Type
 from pycompss.api.task import task
 from sklearn.base import BaseEstimator
@@ -143,6 +144,7 @@ def _compute_ztz(x, fit_intercept, arity):
     return _reduce(_sum_arrays, partials, arity)
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(x={Type: COLLECTION_IN, Depth: 2}, returns=1)
 def _partial_ztz(x, fit_intercept):
     z = Array._merge_blocks(x)
@@ -151,6 +153,7 @@ def _partial_ztz(x, fit_intercept):
     return z.T@z
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(returns=1)
 def _sum_arrays(*arrays):
     return np.add.reduce(arrays)
@@ -174,6 +177,7 @@ def _compute_zty(x, y, fit_intercept, arity):
     return _reduce(_sum_arrays, partials, arity)
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(x={Type: COLLECTION_IN, Depth: 2}, y={Type: COLLECTION_IN, Depth: 2},
       returns=1)
 def _partial_zty(x, y, fit_intercept):
@@ -184,6 +188,7 @@ def _partial_zty(x, y, fit_intercept):
     return z.T@y
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(returns=2)
 def _compute_model_parameters(ztz, zty, fit_intercept):
     """Compute the model parameters, inv(z.T@z)@z.T@y, by solving a linear
@@ -202,6 +207,7 @@ def _to_dsarray(np_array, shape):
                  shape=shape, sparse=False)
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=1)
 def _predict(blocks, coef, intercept):
     x = Array._merge_blocks(blocks)

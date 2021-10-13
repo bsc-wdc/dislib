@@ -1,5 +1,6 @@
 import numpy as np
 from pycompss.api.api import compss_wait_on
+from pycompss.api.constraint import constraint
 from pycompss.api.parameter import COLLECTION_IN, Depth, Type
 from pycompss.api.task import task
 from scipy.sparse import csr_matrix
@@ -189,6 +190,7 @@ class KMeans(BaseEstimator):
                              "or an sp.matrix")
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
 def _partial_sum(blocks, centers):
     partials = np.zeros((centers.shape[0], 2), dtype=object)
@@ -204,6 +206,7 @@ def _partial_sum(blocks, centers):
     return partials
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(returns=dict)
 def _merge(*data):
     accum = data[0].copy()
@@ -214,6 +217,7 @@ def _merge(*data):
     return accum
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
 def _predict(blocks, centers):
     arr = Array._merge_blocks(blocks)

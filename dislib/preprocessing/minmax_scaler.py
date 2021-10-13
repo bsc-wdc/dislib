@@ -1,4 +1,5 @@
 import numpy as np
+from pycompss.api.constraint import constraint
 from pycompss.api.parameter import Depth, Type, COLLECTION_IN, COLLECTION_OUT
 from pycompss.api.task import task
 from scipy.sparse import csr_matrix, issparse
@@ -88,6 +89,7 @@ class MinMaxScaler(object):
                      sparse=x._sparse)
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(blocks={Type: COLLECTION_IN, Depth: 2},
       min_blocks={Type: COLLECTION_IN, Depth: 2},
       max_blocks={Type: COLLECTION_IN, Depth: 2},

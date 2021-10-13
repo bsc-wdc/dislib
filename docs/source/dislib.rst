@@ -7,12 +7,13 @@ Subpackages
 .. toctree::
 
     dislib.array
+    dislib.data.util
     dislib.classification.csvm
     dislib.cluster.daura
     dislib.cluster.dbscan
     dislib.cluster.gm
     dislib.cluster.kmeans
-    dislib.decomposition.pca
+    dislib.decomposition
     dislib.model_selection
     dislib.neighbors
     dislib.optimization.admm

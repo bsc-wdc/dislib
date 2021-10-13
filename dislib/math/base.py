@@ -2,6 +2,7 @@ import itertools
 
 import numpy as np
 from pycompss.api.api import compss_delete_object, compss_wait_on
+from pycompss.api.constraint import constraint
 from pycompss.api.parameter import COLLECTION_OUT, Type, Depth, \
     COLLECTION_INOUT, COLLECTION_IN
 from pycompss.api.task import task
@@ -281,6 +282,7 @@ def _sort_v(v, sorting):
                  v._sparse)
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(s_blocks={Type: COLLECTION_INOUT, Depth: 2}, returns=1)
 def _sort_s(s_blocks):
     s = Array._merge_blocks(s_blocks)
@@ -295,6 +297,7 @@ def _sort_s(s_blocks):
     return sorting
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(a_block={Type: COLLECTION_IN, Depth: 2},
       u_block={Type: COLLECTION_OUT, Depth: 1})
 def _compute_u_block(a_block, u_block):
@@ -314,6 +317,7 @@ def _compute_u_block(a_block, u_block):
         u_block[i] = u_col[i * block_size: (i + 1) * block_size]
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(a_block={Type: COLLECTION_IN, Depth: 2},
       u_block={Type: COLLECTION_OUT, Depth: 1})
 def _compute_u_block_sorted(a_block, index, bsize, sorting, u_block):
@@ -341,6 +345,7 @@ def _compute_u_block_sorted(a_block, index, bsize, sorting, u_block):
             u_block[i] = np.vstack(u_block[i])
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(block={Type: COLLECTION_IN, Depth: 1},
       out_blocks={Type: COLLECTION_OUT, Depth: 1})
 def _merge_svd_block(block, index, hbsize, vbsize, sorting, out_blocks):
@@ -358,6 +363,7 @@ def _merge_svd_block(block, index, hbsize, vbsize, sorting, out_blocks):
         out_blocks[i] = col[i * vbsize: (i + 1) * vbsize]
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(v_block={Type: COLLECTION_IN, Depth: 2},
       out_blocks={Type: COLLECTION_OUT, Depth: 1})
 def _sort_v_block(v_block, index, bsize, sorting, out_blocks):
@@ -373,6 +379,7 @@ def _sort_v_block(v_block, index, bsize, sorting, out_blocks):
             out_blocks[i] = np.vstack(out_blocks[i])
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(coli_blocks={Type: COLLECTION_INOUT, Depth: 2},
       colj_blocks={Type: COLLECTION_INOUT, Depth: 2},
       returns=2)
@@ -400,6 +407,7 @@ def _compute_rotation_and_rotate(coli_blocks, colj_blocks, eps):
         return j, True
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(coli_blocks={Type: COLLECTION_INOUT, Depth: 2},
       colj_blocks={Type: COLLECTION_INOUT, Depth: 2})
 def _rotate(coli_blocks, colj_blocks, j):
@@ -424,6 +432,7 @@ def _kron_shape_f(i, j, b):
     return b._get_block_shape(i % b._n_blocks[0], j % b._n_blocks[1])
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(out_blocks={Type: COLLECTION_OUT, Depth: 2})
 def _kron(block1, block2, out_blocks):
     """ Computes the kronecker product of two blocks and returns one ndarray

@@ -3,6 +3,7 @@ from collections import defaultdict
 from itertools import chain
 
 import numpy as np
+from pycompss.api.constraint import constraint
 from pycompss.api.task import task
 from scipy.sparse import lil_matrix, vstack as vstack_sparse
 from scipy.sparse.csgraph import connected_components
@@ -89,6 +90,7 @@ class Region(object):
                                      components)
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(returns=1)
 def _update_labels(labels_region, labels, components):
     components_map = {}
@@ -102,6 +104,7 @@ def _update_labels(labels_region, labels, components):
     return labels
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(returns=3)
 def _compute_equivalences(n_samples, region_ids, *starred_args):
     n_regions = len(region_ids)
@@ -143,6 +146,7 @@ def _compute_equivalences(n_samples, region_ids, *starred_args):
     return label_regions, labels, equiv
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(returns=4)
 def _compute_neighbours(epsilon, min_samples, begin_idx, end_idx, samples,
                         sparse, *neigh_samples):
@@ -196,11 +200,13 @@ def _concatenate_samples(sparse, *samples):
         return vstack_sparse(samples)
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(returns=1)
 def _lists_to_array(*cp_list):
     return np.concatenate(cp_list)
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(returns=1)
 def _compute_cp_labels(core_points, *in_cp_neighs):
     core_ids = np.cumsum(core_points) - 1
