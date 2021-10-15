@@ -104,10 +104,10 @@ class RFDatasetTest(unittest.TestCase):
         rf_class = data.transform_to_rf_dataset(
             x_ds_1, y_ds_1, data.RfClassifierDataset, features_file=True
         )
-        self.assertEquals(compss_wait_on(rf_regr.get_n_samples()), 900)
-        self.assertEquals(compss_wait_on(rf_regr.get_n_features()), 10)
-        self.assertEquals(compss_wait_on(rf_class.get_n_samples()), 900)
-        self.assertEquals(compss_wait_on(rf_class.get_n_features()), 10)
+        self.assertEqual(compss_wait_on(rf_regr.get_n_samples()), 900)
+        self.assertEqual(compss_wait_on(rf_regr.get_n_features()), 10)
+        self.assertEqual(compss_wait_on(rf_class.get_n_samples()), 900)
+        self.assertEqual(compss_wait_on(rf_class.get_n_features()), 10)
 
         # Npy files
         file = data._NpyFile(features_path_f)
