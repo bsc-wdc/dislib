@@ -1337,9 +1337,12 @@ def apply_along_axis(func, axis, x, *args, **kwargs):
     --------
     >>> import dislib as ds
     >>> import numpy as np
-    >>> x = ds.random_array((100, 100), block_size=(25, 25))
-    >>> mean = ds.apply_along_axis(np.mean, 0, x)
-    >>> print(mean.collect())
+    >>>
+    >>>
+    >>> if __name__ == '__main__':
+    >>>     x = ds.random_array((100, 100), block_size=(25, 25))
+    >>>     mean = ds.apply_along_axis(np.mean, 0, x)
+    >>>     print(mean.collect())
     """
     if axis != 0 and axis != 1:
         raise ValueError("Axis must be 0 or 1.")

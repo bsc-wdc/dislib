@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 from numpy.linalg import qr as qr_numpy
 from parameterized import parameterized
-from pycompss.api.api import compss_barrier, compss_wait_on
+from pycompss.api.api import compss_wait_on
 
 from dislib.data.array import random_array
 from dislib.decomposition import qr

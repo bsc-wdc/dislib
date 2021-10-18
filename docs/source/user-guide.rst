@@ -246,7 +246,7 @@ Currently, these are the supported slicing methods:
 Resource allocation
 --------------
 
-All dislib tasks are allocated specific number of computational resources.
+All dislib tasks are allocated a specific number of computational resources.
 By default, each task receives one CPU. This number can be adjusted according
 to the specific needs of the program by setting the environment
 variable ComputingUnits before executing the script:
