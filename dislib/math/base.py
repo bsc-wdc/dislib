@@ -168,13 +168,11 @@ def svd(a, compute_uv=True, sort=True, copy=True, eps=1e-9):
     while not _check_convergence_svd(checks):
         checks = []
 
-        pairings = itertools.combinations_with_replacement(
+        pairings = itertools.combinations(
             range(x._n_blocks[1]), 2
         )
 
         for i, j in pairings:
-            if i >= j:
-                continue
             coli_x = x._get_col_block(i)
             colj_x = x._get_col_block(j)
 
