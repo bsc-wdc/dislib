@@ -1337,9 +1337,11 @@ def apply_along_axis(func, axis, x, *args, **kwargs):
     --------
     >>> import dislib as ds
     >>> import numpy as np
-    >>> x = ds.random_array((100, 100), block_size=(25, 25))
-    >>> mean = ds.apply_along_axis(np.mean, 0, x)
-    >>> print(mean.collect())
+    >>>
+    >>> if __name__ == "__main__":
+    >>>     x = ds.random_array((100, 100), block_size=(25, 25))
+    >>>     mean = ds.apply_along_axis(np.mean, 0, x)
+    >>>     print(mean.collect())
     """
     if axis != 0 and axis != 1:
         raise ValueError("Axis must be 0 or 1.")
@@ -1369,11 +1371,101 @@ def apply_along_axis(func, axis, x, *args, **kwargs):
                  shape=out_shape, sparse=x._sparse)
 
 
-def _multiply_block_groups(hblock, vblock):
+def matmul(a: Array, b: Array, transpose_a=False, transpose_b=False):
+    """ Matrix multiplication with a possible transpose of the input.
+
+        Parameters
+        ----------
+        a : ds-array
+            First matrix.
+        b : ds-array
+            Second matrix.
+        transpose_a : bool
+            Input distributed array.
+        transpose_b : any
+            Additional arguments to func.
+
+        Returns
+        -------
+        out : ds-array
+            The output array.
+
+        Raises
+        ------
+        NotImplementedError
+            If _top_left shape does not match _reg_shape. This case will be
+            implemented in the future.
+        ValueError
+            If any of the block sizes does not match.
+
+        Examples
+        --------
+        >>> import dislib as ds
+        >>>
+        >>>
+        >>> if __name__ == "__main__":
+        >>>     x = ds.random_array((8, 4), block_size=(2, 2))
+        >>>     y = ds.random_array((5, 8), block_size=(2, 2))
+        >>>     result = ds.matmul(x, y, transpose_a=True, transpose_b=True)
+        >>>     print(result.collect())
+        """
+    if a._reg_shape != a._top_left_shape:
+        raise NotImplementedError("a._reg_shape != a._top_left_shape")
+
+    if b._reg_shape != b._top_left_shape:
+        raise NotImplementedError("b._reg_shape != b._top_left_shape")
+
+    checks = [
+        (False, False, a._reg_shape[1], b._reg_shape[0]),
+        (True, False, a._reg_shape[0], b._reg_shape[0]),
+        (False, True, a._reg_shape[1], b._reg_shape[1]),
+        (True, True, a._reg_shape[0], b._reg_shape[1])
+    ]
+    for ta, tb, size1, size2 in checks:
+        if ta == transpose_a and tb == transpose_b and size1 != size2:
+            raise ValueError("incorrect block sizes for the requested "
+                             f"multiplication ({size1} != {size2})")
+
+    a_blocks = _transpose_blocks(a._blocks) if transpose_a else a._blocks
+    b_blocks = _transpose_blocks(b._blocks) if transpose_b else b._blocks
+
+    n_blocks = (len(a_blocks), len(b_blocks[0]))
+    blocks = Array._get_out_blocks(n_blocks)
+
+    for i in range(n_blocks[0]):
+        for j in range(n_blocks[1]):
+            hblock = a_blocks[i]
+            vblock = [b_blocks[k][j] for k in range(len(b_blocks))]
+
+            blocks[i][j] = _multiply_block_groups(hblock, vblock,
+                                                  transpose_a, transpose_b)
+
+    new_block_size = (
+        a._reg_shape[1] if transpose_a else a._reg_shape[0],
+        b._reg_shape[0] if transpose_b else b._reg_shape[1]
+    )
+    new_shape = (
+        a._shape[1] if transpose_a else a._shape[0],
+        b._shape[0] if transpose_b else b._shape[1]
+    )
+
+    return Array(blocks=blocks, top_left_shape=new_block_size,
+                 reg_shape=new_block_size, shape=new_shape, sparse=a._sparse)
+
+
+def _matmul_with_transpose(a, b, transpose_a, transpose_b):
+    return (a.T if transpose_a else a) @ (b.T if transpose_b else b)
+
+
+def _multiply_block_groups(hblock, vblock, transpose_a=False,
+                           transpose_b=False):
     blocks = deque()
 
     for blocki, blockj in zip(hblock, vblock):
-        blocks.append(_block_apply(operator.matmul, blocki, blockj))
+        blocks.append(
+            _block_apply(_matmul_with_transpose, blocki, blockj,
+                         transpose_a, transpose_b)
+        )
 
     while len(blocks) > 1:
         block1 = blocks.popleft()
@@ -1384,6 +1476,15 @@ def _multiply_block_groups(hblock, vblock):
         compss_delete_object(block2)
 
     return blocks[0]
+
+
+def _transpose_blocks(blocks):
+    new_blocks = []
+    for i in range(len(blocks[0])):
+        new_blocks.append([])
+        for j in range(len(blocks)):
+            new_blocks[i].append(blocks[j][i])
+    return new_blocks
 
 
 def _full(shape, block_size, sparse, func, *args, **kwargs):
