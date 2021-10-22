@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 from numpy.linalg import qr as qr_numpy
 from parameterized import parameterized
-from pycompss.api.api import compss_barrier, compss_wait_on
+from pycompss.api.api import compss_wait_on
 
 from dislib.data.array import random_array
 from dislib.decomposition import qr
@@ -32,16 +32,12 @@ class QRTest(unittest.TestCase):
         np.random.seed(8)
 
         shape = (m_size * b_size, n_size * b_size)
-
         m2b_ds = random_array(shape, (b_size, b_size))
-
-        compss_barrier()
 
         (q, r) = qr(m2b_ds)
 
-        q = compss_wait_on(q).collect()
-        r = compss_wait_on(r).collect()
-        m2b_ds = compss_wait_on(m2b_ds)
+        q = q.collect()
+        r = r.collect()
         m2b = m2b_ds.collect()
 
         # check if Q matrix is orthogonal
@@ -104,16 +100,12 @@ class QRTest(unittest.TestCase):
         np.random.seed(8)
 
         shape = (m_size * b_size, n_size * b_size)
-
         m2b_ds = random_array(shape, (b_size, b_size))
-
-        compss_barrier()
 
         (q, r) = qr(m2b_ds, mode="economic")
 
-        q = compss_wait_on(q).collect()
-        r = compss_wait_on(r).collect()
-        m2b_ds = compss_wait_on(m2b_ds)
+        q = q.collect()
+        r = r.collect()
         m2b = m2b_ds.collect()
 
         # check if Q matrix is orthogonal
@@ -140,16 +132,13 @@ class QRTest(unittest.TestCase):
         np.random.seed(8)
 
         shape = (m_size * b_size, n_size * b_size)
-
         m2b_ds = random_array(shape, (b_size, b_size))
-
-        compss_barrier()
 
         r = qr(m2b_ds, mode="r")
         _, r_full = qr(m2b_ds, mode="full")
 
-        r = compss_wait_on(r).collect()
-        r_full = compss_wait_on(r_full).collect()
+        r = r.collect()
+        r_full = r_full.collect()
 
         # check if R matrix is upper triangular
         self.assertTrue(np.allclose(np.triu(r), r))
@@ -213,8 +202,8 @@ class QRTest(unittest.TestCase):
         m2b_ds = random_array((m_size, n_size), (b_size, b_size))
         (q, r) = qr(m2b_ds, mode="economic", overwrite_a=True)
 
-        q = compss_wait_on(q).collect()
-        r = compss_wait_on(r).collect()
+        q = q.collect()
+        r = r.collect()
         m2b = m2b_ds.collect()
 
         # check if arrays original and r arrays are different

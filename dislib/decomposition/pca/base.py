@@ -45,17 +45,20 @@ class PCA(BaseEstimator):
 
     Examples
     --------
+    >>> import dislib as ds
     >>> from dislib.decomposition import PCA
     >>> import numpy as np
-    >>> import dislib as ds
-    >>> x = np.array([[1, 2], [1, 4], [1, 0], [4, 2], [4, 4], [4, 0]])
-    >>> bn, bm = 2, 2
-    >>> data = ds.array(x=x, block_size=(bn, bm))
-    >>> pca = PCA()
-    >>> transformed_data = pca.fit_transform(data)
-    >>> print(transformed_data)
-    >>> print(pca.components_.collect())
-    >>> print(pca.explained_variance_.collect())
+    >>>
+    >>>
+    >>> if __name__ == '__main__':
+    >>>     x = np.array([[1, 2], [1, 4], [1, 0], [4, 2], [4, 4], [4, 0]])
+    >>>     bn, bm = 2, 2
+    >>>     data = ds.array(x=x, block_size=(bn, bm))
+    >>>     pca = PCA()
+    >>>     transformed_data = pca.fit_transform(data)
+    >>>     print(transformed_data)
+    >>>     print(pca.components_.collect())
+    >>>     print(pca.explained_variance_.collect())
     """
 
     def __init__(self, n_components=None, arity=50, method="eig", eps=1e-9):

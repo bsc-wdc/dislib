@@ -122,17 +122,21 @@ class GaussianMixture(BaseEstimator):
 
     Examples
     --------
-    >>> from pycompss.api.api import compss_wait_on
-    >>> from dislib.cluster import GaussianMixture
     >>> import dislib as ds
-    >>> x = ds.array([[1, 2], [1, 4], [1, 0], [4, 2], [4, 4], [4, 0]], (3, 2))
-    >>> gm = GaussianMixture(n_components=2, random_state=0)
-    >>> labels = gm.fit_predict(x).collect()
-    >>> print(labels)
-    >>> x_test = ds.array([[0, 0], [4, 4]], (2, 2))
-    >>> labels_test = gm.predict(x_test).collect()
-    >>> print(labels_test)
-    >>> print(compss_wait_on(gm.means_))
+    >>> from dislib.cluster import GaussianMixture
+    >>> from pycompss.api.api import compss_wait_on
+    >>>
+    >>>
+    >>> if __name__ == '__main__':
+    >>>     x = ds.array([[1, 2], [1, 4], [1, 0], [4, 2], [4, 4], [4, 0]],
+    >>>                  (3, 2))
+    >>>     gm = GaussianMixture(n_components=2, random_state=0)
+    >>>     labels = gm.fit_predict(x).collect()
+    >>>     print(labels)
+    >>>     x_test = ds.array([[0, 0], [4, 4]], (2, 2))
+    >>>     labels_test = gm.predict(x_test).collect()
+    >>>     print(labels_test)
+    >>>     print(compss_wait_on(gm.means_))
     """
 
     def __init__(self, n_components=1, covariance_type='full',

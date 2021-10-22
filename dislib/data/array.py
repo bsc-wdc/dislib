@@ -1338,7 +1338,8 @@ def apply_along_axis(func, axis, x, *args, **kwargs):
     >>> import dislib as ds
     >>> import numpy as np
     >>>
-    >>> if __name__ == "__main__":
+    >>>
+    >>> if __name__ == '__main__':
     >>>     x = ds.random_array((100, 100), block_size=(25, 25))
     >>>     mean = ds.apply_along_axis(np.mean, 0, x)
     >>>     print(mean.collect())

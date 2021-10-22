@@ -58,16 +58,19 @@ class ALS(BaseEstimator):
 
     Examples
     --------
+    >>> import dislib as ds
+    >>> from dislib.recommendation import ALS
     >>> import numpy as np
     >>> from scipy.sparse import csr_matrix
-    >>> import dislib as ds
-    >>> data = np.array([[0, 0, 5], [3, 0, 5], [3, 1, 2]])
-    >>> ratings = csr_matrix(data).transpose().tocsr()
-    >>> train = ds.array(ratings, block_size=(1, 3))
-    >>> from dislib.recommendation import ALS
-    >>> als = ALS()
-    >>> als.fit(train)
-    >>> print('Ratings for user 0: %s' % als.predict_user(user_id=0))
+    >>>
+    >>>
+    >>> if __name__ == '__main__':
+    >>>     data = np.array([[0, 0, 5], [3, 0, 5], [3, 1, 2]])
+    >>>     ratings = csr_matrix(data).transpose().tocsr()
+    >>>     train = ds.array(ratings, block_size=(1, 3))
+    >>>     als = ALS()
+    >>>     als.fit(train)
+    >>>     print('Ratings for user 0: %s' % als.predict_user(user_id=0))
     """
 
     def __init__(self, random_state=None, n_f=100, lambda_=0.065,

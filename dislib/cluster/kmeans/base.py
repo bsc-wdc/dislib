@@ -48,18 +48,21 @@ class KMeans(BaseEstimator):
 
     Examples
     --------
+    >>> import dislib as ds
     >>> from dislib.cluster import KMeans
     >>> import numpy as np
-    >>> import dislib as ds
-    >>> x = np.array([[1, 2], [1, 4], [1, 0], [4, 2], [4, 4], [4, 0]])
-    >>> x_train = ds.array(x, (2, 2))
-    >>> kmeans = KMeans(n_clusters=2, random_state=0)
-    >>> labels = kmeans.fit_predict(x_train)
-    >>> print(labels)
-    >>> x_test = ds.array(np.array([[0, 0], [4, 4]]), (2, 2))
-    >>> labels = kmeans.predict(x_test)
-    >>> print(labels)
-    >>> print(kmeans.centers)
+    >>>
+    >>>
+    >>> if __name__ == '__main__':
+    >>>     x = np.array([[1, 2], [1, 4], [1, 0], [4, 2], [4, 4], [4, 0]])
+    >>>     x_train = ds.array(x, (2, 2))
+    >>>     kmeans = KMeans(n_clusters=2, random_state=0)
+    >>>     labels = kmeans.fit_predict(x_train)
+    >>>     print(labels)
+    >>>     x_test = ds.array(np.array([[0, 0], [4, 4]]), (2, 2))
+    >>>     labels = kmeans.predict(x_test)
+    >>>     print(labels)
+    >>>     print(kmeans.centers)
     """
 
     def __init__(self, n_clusters=8, init='random', max_iter=10, tol=1e-4,
