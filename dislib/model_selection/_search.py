@@ -253,18 +253,21 @@ class GridSearchCV(BaseSearchCV):
     Examples
     --------
     >>> import dislib as ds
-    >>> import numpy as np
     >>> from dislib.model_selection import GridSearchCV
     >>> from dislib.classification import RandomForestClassifier
+    >>> import numpy as np
     >>> from sklearn import datasets
-    >>> x_np, y_np = datasets.load_iris(return_X_y=True)
-    >>> x = ds.array(x_np, (30, 4))
-    >>> y = ds.array(y_np[:, np.newaxis], (30, 1))
-    >>> param_grid = {'n_estimators': (2, 4), 'max_depth': range(3, 5)}
-    >>> rf = RandomForestClassifier()
-    >>> searcher = GridSearchCV(rf, param_grid)
-    >>> searcher.fit(x, y)
-    >>> searcher.cv_results_
+    >>>
+    >>>
+    >>> if __name__ == '__main__':
+    >>>     x_np, y_np = datasets.load_iris(return_X_y=True)
+    >>>     x = ds.array(x_np, (30, 4))
+    >>>     y = ds.array(y_np[:, np.newaxis], (30, 1))
+    >>>     param_grid = {'n_estimators': (2, 4), 'max_depth': range(3, 5)}
+    >>>     rf = RandomForestClassifier()
+    >>>     searcher = GridSearchCV(rf, param_grid)
+    >>>     searcher.fit(x, y)
+    >>>     searcher.cv_results_
 
     Attributes
     ----------
@@ -456,21 +459,25 @@ class RandomizedSearchCV(BaseSearchCV):
     Examples
     --------
     >>> import dislib as ds
-    >>> import numpy as np
     >>> from dislib.model_selection import RandomizedSearchCV
     >>> from dislib.classification import CascadeSVM
-    >>> from sklearn import datasets
+    >>> import numpy as np
     >>> import scipy.stats as stats
-    >>> x_np, y_np = datasets.load_iris(return_X_y=True)
-    >>> p = np.random.permutation(len(x_np))  # Pre-shuffling required for CSVM
-    >>> x = ds.array(x_np[p], (30, 4))
-    >>> y = ds.array((y_np[p] == 0)[:, np.newaxis], (30, 1))
-    >>> param_distributions = {'c': stats.expon(scale=0.5),
-    >>>                        'gamma': stats.expon(scale=10)}
-    >>> csvm = CascadeSVM()
-    >>> searcher = RandomizedSearchCV(csvm, param_distributions, n_iter=10)
-    >>> searcher.fit(x, y)
-    >>> searcher.cv_results_
+    >>> from sklearn import datasets
+    >>>
+    >>>
+    >>> if __name__ == '__main__':
+    >>>     x_np, y_np = datasets.load_iris(return_X_y=True)
+    >>>     # Pre-shuffling required for CSVM
+    >>>     p = np.random.permutation(len(x_np))
+    >>>     x = ds.array(x_np[p], (30, 4))
+    >>>     y = ds.array((y_np[p] == 0)[:, np.newaxis], (30, 1))
+    >>>     param_distributions = {'c': stats.expon(scale=0.5),
+    >>>                            'gamma': stats.expon(scale=10)}
+    >>>     csvm = CascadeSVM()
+    >>>     searcher = RandomizedSearchCV(csvm, param_distributions, n_iter=10)
+    >>>     searcher.fit(x, y)
+    >>>     searcher.cv_results_
 
     Attributes
     ----------

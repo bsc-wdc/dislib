@@ -73,18 +73,21 @@ class CascadeSVM(BaseEstimator):
 
     Examples
     --------
-    >>> import numpy as np
-    >>> x = np.array([[-1, -1], [-2, -1], [1, 1], [2, 1]])
-    >>> y = np.array([1, 1, 2, 2])
     >>> import dislib as ds
-    >>> train_data = ds.array(x, block_size=(4, 2))
-    >>> train_labels = ds.array(y, block_size=(4, 2))
     >>> from dislib.classification import CascadeSVM
-    >>> svm = CascadeSVM()
-    >>> svm.fit(train_data, train_labels)
-    >>> test_data = ds.array(np.array([[-0.8, -1]]), block_size=(1, 2))
-    >>> y_pred = svm.predict(test_data)
-    >>> print(y_pred)
+    >>> import numpy as np
+    >>>
+    >>>
+    >>> if __name__ == '__main__':
+    >>>     x = np.array([[-1, -1], [-2, -1], [1, 1], [2, 1]])
+    >>>     y = np.array([1, 1, 2, 2])
+    >>>     train_data = ds.array(x, block_size=(4, 2))
+    >>>     train_labels = ds.array(y, block_size=(4, 2))
+    >>>     svm = CascadeSVM()
+    >>>     svm.fit(train_data, train_labels)
+    >>>     test_data = ds.array(np.array([[-0.8, -1]]), block_size=(1, 2))
+    >>>     y_pred = svm.predict(test_data)
+    >>>     print(y_pred)
     """
     _name_to_kernel = {"linear": "_linear_kernel", "rbf": "_rbf_kernel"}
 

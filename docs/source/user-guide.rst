@@ -33,17 +33,18 @@ clustering with dislib is as follows:
     import dislib as ds
     from dislib.cluster import KMeans
 
-    # load data into a ds-array
-    x = ds.load_txt_file("/path/to/file", block_size=(100, 100))
+    if __name__ == '__main__':
+        # load data into a ds-array
+        x = ds.load_txt_file("/path/to/file", block_size=(100, 100))
 
-    # create estimator object
-    kmeans = KMeans(n_clusters=10)
+        # create estimator object
+        kmeans = KMeans(n_clusters=10)
 
-    # fit estimator
-    kmeans.fit(x)
+        # fit estimator
+        kmeans.fit(x)
 
-    # get information from the model
-    cluster_centers = kmeans.centers
+        # get information from the model
+        cluster_centers = kmeans.centers
 
 It is worth noting that, although the code above looks completely sequential,
 all dislib algorithms and operations are paralellized using `PyCOMPSs
@@ -242,8 +243,20 @@ Currently, these are the supported slicing methods:
 ``x[i:j, k:m]``
   returns a set of elements, where i, j, m, and n are optional.
 
-Other operations
-................
+Resource allocation
+--------------
+
+All dislib tasks are allocated a specific number of computational resources.
+By default, each task receives one CPU. This number can be adjusted according
+to the specific needs of the program by setting the environment
+variable ComputingUnits before executing the script:
+
+``export ComputingUnits=8``
+
+The above example sets the number of CPUs available for each task to 8. This
+is specifically useful for algorithms (for example those implemented in NumPy)
+that automatically take advantage of fine-grained parallelism facilitated by a
+higher number of computing units.
 
 Classification
 --------------
