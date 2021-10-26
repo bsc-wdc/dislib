@@ -36,26 +36,29 @@ class LinearRegression(BaseEstimator):
 
     Examples
     --------
-    >>> import numpy as np
     >>> import dislib as ds
     >>> from dislib.regression import LinearRegression
+    >>> import numpy as np
     >>> from pycompss.api.api import compss_wait_on
-    >>> x_data = np.array([[1, 2], [2, 0], [3, 1], [4, 4], [5, 3]])
-    >>> y_data = np.array([2, 1, 1, 2, 4.5])
-    >>> bn, bm = 2, 2
-    >>> x = ds.array(x=x_data, block_size=(bn, bm))
-    >>> y = ds.array(x=y_data, block_size=(bn, 1))
-    >>> reg = LinearRegression()
-    >>> reg.fit(x, y)
-    >>> reg.coef_.collect()
-    array([0.421875, 0.296875])
-    >>> reg.intercept_.collect()
-    0.240625
-    >>> x_test = np.array([[3, 2], [4, 4]])
-    >>> test_data = ds.array(x=x_test, block_size=(bn, bm))
-    >>> pred = reg.predict(test_data).collect()
-    >>> pred
-    array([2.1, 3.115625])
+    >>>
+    >>>
+    >>> if __name__ == '__main__':
+    >>>     x_data = np.array([[1, 2], [2, 0], [3, 1], [4, 4], [5, 3]])
+    >>>     y_data = np.array([2, 1, 1, 2, 4.5])
+    >>>     bn, bm = 2, 2
+    >>>     x = ds.array(x=x_data, block_size=(bn, bm))
+    >>>     y = ds.array(x=y_data, block_size=(bn, 1))
+    >>>     reg = LinearRegression()
+    >>>     reg.fit(x, y)
+    >>>     reg.coef_.collect()
+        array([0.421875, 0.296875])
+    >>>     reg.intercept_.collect()
+        0.240625
+    >>>     x_test = np.array([[3, 2], [4, 4]])
+    >>>     test_data = ds.array(x=x_test, block_size=(bn, bm))
+    >>>     pred = reg.predict(test_data).collect()
+    >>>     pred
+        array([2.1, 3.115625])
     """
 
     def __init__(self, fit_intercept=True, arity=50):

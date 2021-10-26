@@ -137,14 +137,17 @@ def svd(a, compute_uv=True, sort=True, copy=True, eps=1e-9):
 
     Examples
     --------
-    >>> import numpy as np
     >>> import dislib as ds
-    >>> x = ds.random_array((10, 6), (2, 2), random_state=7)
-    >>> u, s, v = ds.svd(x)
-    >>> u = u.collect()
-    >>> s = np.diag(s.collect())
-    >>> v = v.collect()
-    >>> print(np.allclose(x.collect(), u @ s @ v.T))
+    >>> import numpy as np
+    >>>
+    >>>
+    >>> if __name__ == '__main__':
+    >>>     x = ds.random_array((10, 6), (2, 2), random_state=7)
+    >>>     u, s, v = ds.svd(x)
+    >>>     u = u.collect()
+    >>>     s = np.diag(s.collect())
+    >>>     v = v.collect()
+    >>>     print(np.allclose(x.collect(), u @ s @ v.T))
     """
     if a._n_blocks[1] < 2:
         raise ValueError("Not enough column blocks to compute SVD.")
