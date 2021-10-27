@@ -1382,9 +1382,9 @@ def matmul(a: Array, b: Array, transpose_a=False, transpose_b=False):
         b : ds-array
             Second matrix.
         transpose_a : bool
-            Input distributed array.
+            Transpose of the first matrix before multiplication.
         transpose_b : any
-            Additional arguments to func.
+            Transpose of the second matrix before multiplication.
 
         Returns
         -------
