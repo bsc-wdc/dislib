@@ -1,7 +1,7 @@
 import os
 
 from dislib.data.array import random_array, apply_along_axis, array, zeros, \
-    full, identity, eye
+    full, identity, eye, matmul
 from dislib.data.io import load_svmlight_file, load_npy_file, load_txt_file, \
     load_mdcrd_file, save_txt
 from dislib.math import kron, svd
@@ -29,5 +29,5 @@ else:
 
 __all__ = ['array', 'random_array', 'zeros', 'full', 'identity', 'eye',
            'load_txt_file', 'load_svmlight_file', 'load_npy_file',
-           'load_mdcrd_file', 'save_txt',
+           'load_mdcrd_file', 'matmul', 'save_txt',
            'apply_along_axis', 'kron', 'svd']
