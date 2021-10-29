@@ -148,7 +148,8 @@ class BaseDecisionTree:
             )
             branch_predictions.append(pred)
         return _merge_branches(
-            None, *branch_predictions, classification=self.n_classes is None
+            None, *branch_predictions,
+            classification=self.n_classes is not None
         )
 
 
