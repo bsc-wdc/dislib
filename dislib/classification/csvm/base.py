@@ -21,7 +21,8 @@ class CascadeSVM(BaseEstimator):
     Implements distributed support vector classification based on
     Graf et al. [1]_. The optimization process is carried out using
     scikit-learn's `SVC <http://scikit-learn.org/stable/modules/generated
-    /sklearn.svm.SVC.html>`_.
+    /sklearn.svm.SVC.html>`_. This method solves binary classification
+    problems.
 
     Parameters
     ----------
