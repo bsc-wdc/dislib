@@ -8,13 +8,11 @@ tests_dir = os.path.join(base_dir, "tests")
 logs_dir = os.path.join(base_dir, "logs")
 scripts_dir = os.path.join(base_dir, "scripts")
 exec_time = 60
-scheduler = "es.bsc.compss.scheduler.fifodatanew.FIFODataScheduler"
 
 
 def main():
     cmd = ("enqueue_compss"
            " --exec_time=" + str(exec_time) +
-           " --scheduler=" + scheduler +
            " --pythonpath=" + scripts_dir + ":" + tests_dir +
            " --lang=python"
            " --worker_in_master_cpus=0"
@@ -26,8 +24,7 @@ def main():
     os.makedirs(logdir, exist_ok=True)
     cmd.append("--master_working_dir=" + logdir)
 
-    gpfs_cmd = cmd + [
-        "--worker_working_dir=/gpfs/scratch/bsc19/compss/COMPSs_Sandbox"]
+    gpfs_cmd = cmd + ["--worker_working_dir=" + logs_dir]
     scratch_cmd = cmd + ["--worker_working_dir=local_disk"]
     dependencies = "afterany"
 
