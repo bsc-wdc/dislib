@@ -336,6 +336,7 @@ class CascadeSVM(BaseEstimator):
         return w
 
     def _check_convergence_and_update_w(self):
+
         self._collect_clf()
 
         vecs = self._hstack_f(self._svs)

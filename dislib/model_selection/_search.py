@@ -11,10 +11,11 @@ from sklearn import clone
 from sklearn.model_selection import ParameterGrid, ParameterSampler
 from numpy.ma import MaskedArray
 from pycompss.api.task import task
+from pycompss.api.parameter import COMMUTATIVE
 
 from dislib.model_selection._split import infer_cv
-from dislib.model_selection._validation import check_scorer, fit_and_score, \
-    validate_score, aggregate_score_dicts, fit_and_score_task, eval_candidates
+from dislib.model_selection._validation import check_scorer, fit_and_score, fit_and_score_task_adapted, \
+    validate_score, aggregate_score_dicts, fit_and_score_task, eval_candidates, check_convergence
 
 
 class BaseSearchCV(ABC):
@@ -69,27 +70,187 @@ class BaseSearchCV(ABC):
             out = compss_wait_on(out)
             all_out.extend(out)
 
-        def evaluate_candidates_with_nesting(candidate_params):
+        def evaluate_candidates_with_nesting_stopping_adapted(candidate_params):
+            """Evaluate some parameters"""
+            from pycompss.api.exceptions import COMPSsException
+            from pycompss.api.api import TaskGroup
+            cand_params = list(candidate_params)
+            out_files = []
+            size_x = x.reg_shape
+            size_y = y.reg_shape
+
+            splits = []
+            out_files_w_index = []
+            try:
+                with TaskGroup("Candidates"):
+                    for params, (train, validation) in product(cand_params, cv.split(x, y)):
+                        train_x, train_y = train
+                        validation_x, validation_y = validation
+                        print("BLOCKS " + str(train_x.blocks))
+                        out = fit_and_score_task_adapted(clone(base_estimator), train_x.blocks, train_y.blocks, validation_x.blocks, validation_y.blocks, train_x.shape, train_y.shape, validation_x.shape, validation_y.shape, params,
+                                                 size_x, size_y,
+                                                 fit_params)
+                        check_convergence(out_files, out)
+            except COMPSsException as e:
+                print("Exception Candidates " + str(e))
+
+            nonlocal n_splits
+            n_splits = cv.get_n_splits()
+
+            all_candidate_params.extend(candidate_params)
+
+            out_files = compss_wait_on(out_files)
+            all_out.extend(out_files)
+            print("ALL OUT " + str(all_out))
+
+
+        def evaluate_candidates_with_nesting_adapted(candidate_params):
             """Evaluate some parameters"""
             cand_params = list(candidate_params)
             out_files = []
+            size_x = x.reg_shape
+            size_y = y.reg_shape
+
+            splits = []
+            out_files_w_index = []
+
             for params, (train, validation) in product(cand_params, cv.split(x, y)):
-                out_files.append(fit_and_score_task(clone(base_estimator), train, validation, scorers, params,
-                  fit_params))
+                train_x, train_y = train
+                train_x = train_x.collect()
+                train_y = train_y.collect()
+                test_x, test_y = validation
+                test_x = test_x.collect()
+                test_y = test_y.collect()
+                splits.append((params, (train_x, train_y, test_x, test_y)))
+
+
+            for params, (train_x, train_y, test_x, test_y) in splits:
+                out_files.append(fit_and_score_task(base_estimator, train_x, train_y, test_x, test_y, scorers, params,
+                                                 size_x, size_y,
+                                                 fit_params))
+
+            nonlocal n_splits
+            n_splits = cv.get_n_splits()
 
             all_candidate_params.extend(candidate_params)
             out = []
             for out_file in out_files:
-                out_f = compss_wait_on(out_file)
-                out.append(out_f)
+                out_file = compss_wait_on(out_file)
+                out.append(out_file)
             all_out.extend(out)
+            print("ALL OUT " + str(out))
 
-        self._run_search(evaluate_candidates_with_nesting)
+        def evaluate_candidates_with_nesting_adapted_2(candidate_params):
+            """Evaluate some parameters"""
+            from pycompss.api.exceptions import COMPSsException
+            from pycompss.api.api import TaskGroup
+            cand_params = list(candidate_params)
+            out_files = []
+            size_x = x.reg_shape
+            size_y = y.reg_shape
+
+            splits = []
+            out_files_w_index = []
+
+            for params, (train, validation) in product(cand_params, cv.split(x, y)):
+                train_x, train_y = train
+                validation_x, validation_y = validation
+                #print("BLOCKS " + str(train_x.blocks))
+                out_c = fit_and_score_task_adapted(clone(base_estimator), train_x.blocks, train_y.blocks, validation_x.blocks, validation_y.blocks, train_x.shape, train_y.shape, validation_x.shape, validation_y.shape, params,
+                                         size_x, size_y,
+                                         fit_params)
+                out_files.append(out_c)
+
+            nonlocal n_splits
+            n_splits = cv.get_n_splits()
+
+            all_candidate_params.extend(candidate_params)
+
+            out = []
+            for out_file in out_files:
+                out_file = compss_wait_on(out_file)
+                out.append(out_file)
+            all_out.extend(out)
+            print("ALL OUT " + str(out))
+
+
+
+        def evaluate_candidates_with_nesting_stopping(candidate_params):
+            """Evaluate some parameters"""
+            from pycompss.api.exceptions import COMPSsException
+            from pycompss.api.api import TaskGroup
+            cand_params = list(candidate_params)
+            out_files = []
+            size_x = x.reg_shape
+            size_y = y.reg_shape
+            splits = []
+            for params, (train, validation) in product(cand_params, cv.split(x, y)):
+                train_x, train_y = train
+                train_x = train_x.collect()
+                train_y = train_y.collect()
+                test_x, test_y = validation
+                test_x = test_x.collect()
+                test_y = test_y.collect()
+                splits.append((params, (train_x, train_y, test_x, test_y)))
+
+            try:
+                with TaskGroup("Candidates"):
+                    for params, (train_x, train_y, test_x, test_y) in splits:
+                        out = fit_and_score_task(base_estimator, train_x, train_y, test_x, test_y, scorers, params,
+                                                 size_x, size_y,
+                                                 fit_params)
+                        check_convergence(out_files, out)
+            except COMPSsException as e:
+                print("Exception Candidates " + str(e))
+
+            nonlocal n_splits
+            n_splits = cv.get_n_splits()
+
+            all_candidate_params.extend(candidate_params)
+
+            out_files = compss_wait_on(out_files)
+            all_out.extend(out_files)
+            print("ALL OUT " + str(all_out))
+
+        def evaluate_candidates_with_nesting_stopping_check(candidate_params):
+            """Evaluate some parameters"""
+            from pycompss.api.exceptions import COMPSsException
+            from pycompss.api.api import TaskGroup
+            cand_params = list(candidate_params)
+            out_files = []
+            size_x = x.reg_shape
+            size_y = y.reg_shape
+            splits = []
+            for params, (train, validation) in product(cand_params, cv.split(x, y)):
+                train_x, train_y = train
+                train_x = train_x.collect()
+                train_y = train_y.collect()
+                test_x, test_y = validation
+                test_x = test_x.collect()
+                test_y = test_y.collect()
+                splits.append((params, (train_x, train_y, test_x, test_y)))
+
+            for params, (train_x, train_y, test_x, test_y) in splits:
+                out_files.append(fit_and_score_task(base_estimator, train_x, train_y, test_x, test_y, params,
+                                          size_x, size_y,
+                                          fit_params))
+
+
+            nonlocal n_splits
+            n_splits = cv.get_n_splits()
+
+            all_candidate_params.extend(candidate_params)
+
+            out_files = compss_wait_on(out_files)
+            all_out.extend(out_files)
+            print("ALL OUT " + str(all_out))
+
+        self._run_search(evaluate_candidates_with_nesting_adapted_2)
 
         for params_result in all_out:
             scores = params_result[0]
             for scorer_name, score in scores.items():
-                score = compss_wait_on(score)
+                #score = compss_wait_on(score)
                 scores[scorer_name] = validate_score(score, scorer_name)
 
         results = self._format_results(all_candidate_params, scorers,
@@ -125,13 +286,12 @@ class BaseSearchCV(ABC):
 
         self.cv_results_ = results
         self.n_splits_ = n_splits
-
         return self
 
     @staticmethod
     def _format_results(candidate_params, scorers, n_splits, out):
         n_candidates = len(candidate_params)
-
+        print("OUUT " + str(out))
         (test_score_dicts,) = zip(*out)
 
         test_scores = aggregate_score_dicts(test_score_dicts)
@@ -140,8 +300,14 @@ class BaseSearchCV(ABC):
 
         def _store(key_name, array, splits=False, rank=False):
             """A small helper to store the scores/times to the cv_results_"""
-            array = np.array(array, dtype=np.float64).reshape(n_candidates,
-                                                              n_splits)
+            if len(array) == n_candidates * n_splits:
+                array = np.array(array, dtype=np.float64).reshape(n_candidates,
+                                                                  n_splits)
+            else:
+                splits = False
+                array = np.array(array, dtype=np.float64).reshape(len(array),
+                                                                  1)
+
             if splits:
                 for split_i in range(n_splits):
                     # Uses closure to alter the results

@@ -4,6 +4,8 @@ import numpy as np
 from pycompss.api.task import task
 from itertools import product
 from sklearn import clone
+from pycompss.api.parameter import COMMUTATIVE, COLLECTION_IN, Type, Depth
+from pycompss.api.exceptions import COMPSsException
 
 @task()
 def eval_candidates(base_estimator, candidate_params, cv, x, y, scorers, fit_params):
@@ -13,35 +15,117 @@ def eval_candidates(base_estimator, candidate_params, cv, x, y, scorers, fit_par
      for parameters, (train, validation)
      in product(candidate_params, cv.split(x, y))]
 
-@task()
 def fit_and_score(estimator, train_ds, validation_ds, scorer, parameters,
                   fit_params):
     if parameters is not None:
         estimator.set_params(**parameters)
+
     x_train, y_train = train_ds
     estimator.fit(x_train, y_train, **fit_params)
     x_test, y_test = validation_ds
     test_scores = _score(estimator, x_test, y_test, scorer)
-
     return [test_scores]
 
+'''
 @task()
 def fit_and_score_task(estimator, train_ds, validation_ds, scorer, parameters,
-                  fit_params):
+                  fit_params, xx, yy):
+    """
     if parameters is not None:
         estimator.set_params(**parameters)
     x_train, y_train = train_ds
+    print("ESTIMATOR " + str(estimator))
+    print("TRAIN " + str(train_ds))
     estimator.fit(x_train, y_train, **fit_params)
+    #compss_barrier()
     x_test, y_test = validation_ds
     test_scores = _score(estimator, x_test, y_test, scorer)
-
+    print("SCORES " + str(test_scores))
     return [test_scores]
+    """
 
+    # train_ds probar de fer que hi hagi dependencia
+    import dislib as ds
+    from dislib.classification import CascadeSVM
+    print("XX " + str(xx[train_ds]))
+    print("YY " + str(yy[train_ds]))
+    x_train = ds.array(xx[train_ds], (30, 4))
+    y_train = ds.array(yy[train_ds], (30, 1))
+    print("SHAPE TRAIN " + str(x_train))
+    print("SHAPE VAL " + str(y_train))
+    svm = CascadeSVM(**parameters)
+    svm.fit(x_train, y_train)
+
+    x_test = ds.array(xx[validation_ds], (30, 4))
+    y_test = ds.array(yy[validation_ds], (30, 1))
+    scores = svm.score(x_test, y_test, True)
+    print("SCORES " + str({scores}))
+    return [{"score": scores}]
+'''
+
+def threshold_stopping(thresh, value):
+    return value >= thresh
+
+def median_stopping(pre_values, value):
+    if len(pre_values) > 3:
+        return value <= median(pre_values)
+    else:
+        return False
+
+@task(out_files=COMMUTATIVE, priority=True)
+def check_convergence(out_files, out):
+    out_files.append(out)
+    print("OUT VAL " + str(out) + " OUT FILES  " + str(out_files))
+    # if threshold_stopping(threshold, out) or median_stopping(out_files, out):
+    #   out_files.append(out)
+    #   raise COMPSsException("XXX Exception " + str(out_files))
+    #    raise COMPSsException("XXX Exception " + str(out_files))
+
+@task()
+def fit_and_score_task(estimator, train_x, train_y, test_x, test_y, scorer, parameters, size_x, size_y,
+                  fit_params):
+    import dislib as ds
+    if parameters is not None:
+        estimator.set_params(**parameters)
+    x_train = ds.array(train_x, size_x)
+    y_train = ds.array(train_y, size_y)
+    print("XTRAIN " + str(x_train))
+    estimator.fit(x_train, y_train, **fit_params)
+
+    x_test = ds.array(test_x, size_x)
+    y_test = ds.array(test_y, size_y)
+    scores = estimator.score(x_test, y_test, True)
+    #test_scores = _score(estimator, x_test, y_test, scorer)
+    print("SCORES " + str(scores))
+    #print("TEST SCORES " + str(test_scores))
+    return [{"score": scores}]
+
+
+@task(is_distributed=True, train_x={Type: COLLECTION_IN, Depth: 4}, train_y={Type: COLLECTION_IN, Depth: 4}, test_x={Type: COLLECTION_IN, Depth: 4}, test_y={Type: COLLECTION_IN, Depth: 4})
+def fit_and_score_task_adapted(estimator, train_x, train_y, test_x, test_y, shape_t_x, shape_t_y, shape_v_x, shape_v_y, parameters, size_x, size_y,
+                  fit_params):
+    from dislib.data.array import reassemblearray
+    if parameters is not None:
+        estimator.set_params(**parameters)
+
+    x_train = reassemblearray(train_x, shape_t_x, size_x)
+    y_train = reassemblearray(train_y, shape_t_y, size_y)
+
+    #print("XTRAIN " + str(x_train))
+
+    estimator.fit(x_train, y_train, **fit_params)
+
+    x_test = reassemblearray(test_x, shape_v_x, size_x)
+    y_test = reassemblearray(test_y, shape_v_y, size_y)
+    scores = estimator.score(x_test, y_test, True)
+    #test_scores = _score(estimator, x_test, y_test, scorer)
+    print("SCORES " + str(scores))
+    #print("TEST SCORES " + str(test_scores))
+    return [{"score": scores}]
 
 def _score(estimator, x, y, scorers):
     """Return a dict of scores"""
     scores = {}
-
     for name, scorer in scorers.items():
         score = scorer(estimator, x, y)
         scores[name] = score

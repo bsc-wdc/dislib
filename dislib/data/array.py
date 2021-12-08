@@ -226,6 +226,20 @@ class Array(object):
         return self._shape
 
     @property
+    def blocks(self):
+        """
+        Total shape of the ds-array
+        """
+        return self._blocks
+
+    @property
+    def reg_shape(self):
+        """
+        Returns regular shape of the ds-array
+        """
+        return self._reg_shape
+
+    @property
     def T(self):
         """ Returns the transpose of this ds-array """
         return self.transpose()
@@ -605,6 +619,7 @@ class Array(object):
                 boundaries = (top, left, bot, right)
                 fb = _filter_block(block=self._blocks[i][j],
                                    boundaries=boundaries)
+
                 out_blocks[out_i][out_j] = fb
 
         # The shape of the top left block of the sliced array depends on the
@@ -1078,6 +1093,28 @@ def array(x, block_size):
     sparse = issparse(x)
     arr = Array(blocks=blocks, top_left_shape=block_size,
                 reg_shape=block_size, shape=x.shape, sparse=sparse)
+
+    return arr
+
+
+def reassemblearray(blocks, shape, block_size):
+    """
+    Loads data into a Distributed Array.
+
+    Parameters
+    ----------
+    x : spmatrix or array-like, shape=(n_samples, n_features)
+        Array of samples.
+    block_size : (int, int)
+        Block sizes in number of samples.
+
+    Returns
+    -------
+    dsarray : ds-array
+        A distributed representation of the data divided in blocks.
+    """
+    arr = Array(blocks=blocks, top_left_shape=block_size,
+                reg_shape=block_size, shape=shape, sparse=False)
 
     return arr
 
