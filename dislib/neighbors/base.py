@@ -1,4 +1,5 @@
 import numpy as np
+from pycompss.api.api import compss_delete_object
 from pycompss.api.constraint import constraint
 from pycompss.api.parameter import Depth, Type, COLLECTION_IN
 from pycompss.api.task import task
@@ -93,6 +94,7 @@ class NearestNeighbors(BaseEstimator):
                 offset += n_samples
 
             dist, ind = _merge_kqueries(n_neighbors, *queries)
+            compss_delete_object(*queries)
             distances.append([dist])
             indices.append([ind])
 
