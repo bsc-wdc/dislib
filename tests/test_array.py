@@ -655,6 +655,30 @@ class ArrayTest(unittest.TestCase):
         x = ds.array(x_np, (bs0, bs1))
         self.assertTrue(_equal_arrays(x.conj().collect(), x_np.conj()))
 
+    def test_matsubtract(self):
+        """ Tests subtraction of two ds-array """
+        x = ds.array([[1, 2, 3], [4, 5, 6], [7, 8, 9], [1, 2, 3],
+                      [4, 5, 6]], (5, 3))
+        y = ds.array([[1, 1, 1], [1, 1, 1], [1, 1, 1], [1, 1, 1],
+                      [1, 1, 1]], (5, 3))
+        solution = np.array([[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 1, 2],
+                             [3, 4, 5]])
+        self.assertTrue(_equal_arrays(ds.data.matsubtract(x, y).collect(),
+                                      solution))
+        x = ds.array([[1, 2, 3], [4, 5, 6], [7, 8, 9], [1, 2, 3],
+                      [4, 5, 6]], (5, 3))
+        y = ds.array([[2, 2, 2], [4, 5, 6], [9, 8, 7], [3, 2, 1],
+                      [6, 5, 4]], (5, 3))
+        solution = np.array([[-1, 0, 1], [0, 0, 0], [-2, 0, 2],
+                             [-2, 0, 2], [-2, 0, 2]])
+        self.assertTrue(_equal_arrays(ds.data.matsubtract(x, y).collect(),
+                                      solution))
+        x = ds.array([[-1, 2, 3], [4, -5, 6]], (2, 3))
+        y = ds.array([[-2, 2, -2], [4, 5, 6]], (2, 3))
+        solution = np.array([[1, 0, 5], [0, -10, 0]])
+        self.assertTrue(_equal_arrays(ds.data.matsubtract(x, y).collect(),
+                                      solution))
+
     @parameterized.expand([((20, 30), (30, 10), False),
                            ((1, 10), (10, 7), False),
                            ((5, 10), (10, 1), False),
