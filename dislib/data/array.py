@@ -1550,6 +1550,7 @@ def _subtract_block_groups(hblock, vblock):
         blocks.append(_block_apply(operator.sub, blocki, blockj))
     return blocks
 
+
 def matadd(a: Array, b: Array):
     """ Addition of two matrices.
         Parameters

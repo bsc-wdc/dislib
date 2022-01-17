@@ -677,7 +677,7 @@ class ArrayTest(unittest.TestCase):
                            (ds.array([[-1, 2, 3], [4, -5, 6]], (2, 3)),
                             ds.array([[-2, 2, -2], [4, 5, 6]], (2, 3)),
                             np.array([[1, 0, 5], [0, -10, 0]]),
-                            ) ])
+                            )])
     def test_matsubtract(self, x, y, z):
         """ Tests subtraction of two ds-array """
         self.assertTrue(_equal_arrays(ds.data.matsubtract(x, y).collect(),
@@ -701,7 +701,7 @@ class ArrayTest(unittest.TestCase):
                                       [6, 5, 4]], (5, 3)),
                             np.array([[1, 0, -1], [8, 10, 12],
                                       [16, 16, 16], [4, 4, 4],
-                                      [10,10,10]]),),
+                                      [10, 10, 10]]), ),
                            (ds.array([[-1, 2, 3], [4, -5, 6]], (2, 3)),
                             ds.array([[-2, 2, -2], [4, 5, 6]], (2, 3)),
                             np.array([[-3, 4, 1], [8, 0, 12]]),
