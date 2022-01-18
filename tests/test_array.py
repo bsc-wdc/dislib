@@ -734,7 +734,7 @@ class ArrayTest(unittest.TestCase):
                                       z))
 
     def test_matadd_error(self):
-        """ Tests the implementation of errors in matsubtract """
+        """ Tests the implementation of errors in matadd """
 
         with self.assertRaises(ValueError):
             x1 = ds.array([[1, 2, 3], [4, 5, 6]], (2, 3))
