@@ -655,6 +655,62 @@ class ArrayTest(unittest.TestCase):
         x = ds.array(x_np, (bs0, bs1))
         self.assertTrue(_equal_arrays(x.conj().collect(), x_np.conj()))
 
+    @parameterized.expand([(ds.array([[1, 2, 3], [4, 5, 6],
+                                      [7, 8, 9], [1, 2, 3],
+                                      [4, 5, 6]], (5, 3)),
+                            ds.array([[1, 1, 1], [1, 1, 1],
+                                      [1, 1, 1], [1, 1, 1],
+                                      [1, 1, 1]], (5, 3)),
+                            np.array([[0, 1, 2], [3, 4, 5],
+                                      [6, 7, 8], [0, 1, 2],
+                                      [3, 4, 5]]),
+                            ),
+                           (ds.array([[1, 2, 3], [4, 5, 6],
+                                      [7, 8, 9], [1, 2, 3],
+                                      [4, 5, 6]], (5, 3)),
+                            ds.array([[2, 2, 2], [4, 5, 6],
+                                      [9, 8, 7], [3, 2, 1],
+                                      [6, 5, 4]], (5, 3)),
+                            np.array([[-1, 0, 1], [0, 0, 0],
+                                      [-2, 0, 2], [-2, 0, 2],
+                                      [-2, 0, 2]]),),
+                           (ds.array([[-1, 2, 3], [4, -5, 6]], (2, 3)),
+                            ds.array([[-2, 2, -2], [4, 5, 6]], (2, 3)),
+                            np.array([[1, 0, 5], [0, -10, 0]]),
+                            )])
+    def test_matsubtract(self, x, y, z):
+        """ Tests subtraction of two ds-array """
+        self.assertTrue(_equal_arrays(ds.data.matsubtract(x, y).collect(),
+                                      z))
+
+    @parameterized.expand([(ds.array([[1, 2, 3], [4, 5, 6],
+                                      [7, 8, 9], [1, 2, 3],
+                                      [4, 5, 6]], (5, 3)),
+                            ds.array([[1, 1, 1], [1, 1, 1],
+                                      [1, 1, 1], [1, 1, 1],
+                                      [1, 1, 1]], (5, 3)),
+                            np.array([[2, 3, 4], [5, 6, 7],
+                                      [8, 9, 10], [2, 3, 4],
+                                      [5, 6, 7]]),
+                            ),
+                           (ds.array([[-1, -2, -3], [4, 5, 6],
+                                      [7, 8, 9], [1, 2, 3],
+                                      [4, 5, 6]], (5, 3)),
+                            ds.array([[2, 2, 2], [4, 5, 6],
+                                      [9, 8, 7], [3, 2, 1],
+                                      [6, 5, 4]], (5, 3)),
+                            np.array([[1, 0, -1], [8, 10, 12],
+                                      [16, 16, 16], [4, 4, 4],
+                                      [10, 10, 10]]),),
+                           (ds.array([[-1, 2, 3], [4, -5, 6]], (2, 3)),
+                            ds.array([[-2, 2, -2], [4, 5, 6]], (2, 3)),
+                            np.array([[-3, 4, 1], [8, 0, 12]]),
+                            )])
+    def test_matadd(self, x, y, z):
+        """ Tests addition of two ds-array """
+        self.assertTrue(_equal_arrays(ds.data.matadd(x, y).collect(),
+                                      z))
+
     @parameterized.expand([((20, 30), (30, 10), False),
                            ((1, 10), (10, 7), False),
                            ((5, 10), (10, 1), False),

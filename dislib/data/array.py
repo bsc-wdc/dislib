@@ -1479,6 +1479,150 @@ def _multiply_block_groups(hblock, vblock, transpose_a=False,
     return blocks[0]
 
 
+def matsubtract(a: Array, b: Array):
+    """ Subtraction of two matrices.
+        Parameters
+        ----------
+        a : ds-array
+            First matrix.
+        b : ds-array
+            Second matrix.
+        Returns
+        -------
+        out : ds-array
+            The output array.
+        Raises
+        ------
+        NotImplementedError
+            If _top_left shape does not match _reg_shape. This case will be
+            implemented in the future.
+        ValueError
+            If any of the block sizes does not match.
+        ValueError
+            If the ds-arrays have different shape.
+        Examples
+        --------
+        >>> import dislib as ds
+        >>>
+        >>>
+        >>> if __name__ == "__main__":
+        >>>     x = ds.random_array((8, 4), block_size=(2, 2))
+        >>>     y = ds.random_array((8, 4), block_size=(2, 2))
+        >>>     result = ds.matsubtract(x, y)
+        >>>     print(result.collect())
+        """
+    if a.shape[0] != b.shape[0] or a.shape[1] != b.shape[1]:
+        raise ValueError(
+            "Cannot subtract ds-arrays of shapes %r and %r" % (
+                a.shape, b.shape))
+    if a._reg_shape != a._top_left_shape:
+        raise NotImplementedError("a._reg_shape != a._top_left_shape")
+
+    if b._reg_shape != b._top_left_shape:
+        raise NotImplementedError("b._reg_shape != b._top_left_shape")
+
+    if a._reg_shape[0] != b._reg_shape[0] or\
+            a._reg_shape[1] != b._reg_shape[1]:
+        raise ValueError("incorrect block sizes for the requested "
+                         f"subtract ({a._reg_shape[0], a._reg_shape[1]} !="
+                         f" {b._reg_shape[0], b._reg_shape[1]})")
+
+    n_blocks = (len(a._blocks), len(a._blocks[0]))
+    blocks = [[] for _ in range(len(a._blocks))]
+    for i in range(n_blocks[0]):
+        blocks[i] = _subtract_block_groups(a._blocks[i], b._blocks[i])
+
+    new_block_size = (
+        a._reg_shape[0],
+        a._reg_shape[1]
+    )
+    new_shape = (
+        a._shape[0],
+        b._shape[1]
+    )
+    return Array(blocks=blocks, top_left_shape=new_block_size,
+                 reg_shape=new_block_size, shape=new_shape, sparse=a._sparse)
+
+
+def _subtract_block_groups(hblock, vblock):
+    blocks = []
+    for blocki, blockj in zip(hblock, vblock):
+        blocks.append(_block_apply(operator.sub, blocki, blockj))
+    return blocks
+
+
+def matadd(a: Array, b: Array):
+    """ Addition of two matrices.
+        Parameters
+        ----------
+        a : ds-array
+            First matrix.
+        b : ds-array
+            Second matrix.
+        Returns
+        -------
+        out : ds-array
+            The output array.
+        Raises
+        ------
+        NotImplementedError
+            If _top_left shape does not match _reg_shape. This case will be
+            implemented in the future.
+        ValueError
+            If any of the block sizes does not match.
+        ValueError
+            If the ds-arrays have different shape.
+        Examples
+        --------
+        >>> import dislib as ds
+        >>>
+        >>>
+        >>> if __name__ == "__main__":
+        >>>     x = ds.random_array((8, 4), block_size=(2, 2))
+        >>>     y = ds.random_array((8, 4), block_size=(2, 2))
+        >>>     result = ds.matadd(x, y)
+        >>>     print(result.collect())
+        """
+    if a.shape[0] != b.shape[0] or a.shape[1] != b.shape[1]:
+        raise ValueError(
+            "Cannot subtract ds-arrays of shapes %r and %r" % (
+                a.shape, b.shape))
+    if a._reg_shape != a._top_left_shape:
+        raise NotImplementedError("a._reg_shape != a._top_left_shape")
+
+    if b._reg_shape != b._top_left_shape:
+        raise NotImplementedError("b._reg_shape != b._top_left_shape")
+
+    if a._reg_shape[0] != b._reg_shape[0] or\
+            a._reg_shape[1] != b._reg_shape[1]:
+        raise ValueError("incorrect block sizes for the requested "
+                         f"subtract ({a._reg_shape[0], a._reg_shape[1]} !="
+                         f" {b._reg_shape[0], b._reg_shape[1]})")
+
+    n_blocks = (len(a._blocks), len(a._blocks[0]))
+    blocks = [[] for _ in range(len(a._blocks))]
+    for i in range(n_blocks[0]):
+        blocks[i] = _add_block_groups(a._blocks[i], b._blocks[i])
+
+    new_block_size = (
+        a._reg_shape[0],
+        a._reg_shape[1]
+    )
+    new_shape = (
+        a._shape[0],
+        b._shape[1]
+    )
+    return Array(blocks=blocks, top_left_shape=new_block_size,
+                 reg_shape=new_block_size, shape=new_shape, sparse=a._sparse)
+
+
+def _add_block_groups(hblock, vblock):
+    blocks = []
+    for blocki, blockj in zip(hblock, vblock):
+        blocks.append(_block_apply(operator.add, blocki, blockj))
+    return blocks
+
+
 def _transpose_blocks(blocks):
     new_blocks = []
     for i in range(len(blocks[0])):
