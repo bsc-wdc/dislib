@@ -1515,17 +1515,17 @@ def matsubtract(a: Array, b: Array):
         raise ValueError(
             "Cannot subtract ds-arrays of shapes %r and %r" % (
                 a.shape, b.shape))
-    if a._reg_shape != a._top_left_shape:
-        raise NotImplementedError("a._reg_shape != a._top_left_shape")
-
-    if b._reg_shape != b._top_left_shape:
-        raise NotImplementedError("b._reg_shape != b._top_left_shape")
 
     if a._reg_shape[0] != b._reg_shape[0] or\
             a._reg_shape[1] != b._reg_shape[1]:
         raise ValueError("incorrect block sizes for the requested "
                          f"subtract ({a._reg_shape[0], a._reg_shape[1]} !="
                          f" {b._reg_shape[0], b._reg_shape[1]})")
+
+    if a._top_left_shape != b._top_left_shape:
+        raise ValueError("Incompatible block sizes of the "
+                         "top left block of the matrices"
+                         "b._top_left_shape != b._top_left_shape")
 
     n_blocks = (len(a._blocks), len(a._blocks[0]))
     blocks = [[] for _ in range(len(a._blocks))]
@@ -1587,17 +1587,17 @@ def matadd(a: Array, b: Array):
         raise ValueError(
             "Cannot subtract ds-arrays of shapes %r and %r" % (
                 a.shape, b.shape))
-    if a._reg_shape != a._top_left_shape:
-        raise NotImplementedError("a._reg_shape != a._top_left_shape")
-
-    if b._reg_shape != b._top_left_shape:
-        raise NotImplementedError("b._reg_shape != b._top_left_shape")
 
     if a._reg_shape[0] != b._reg_shape[0] or\
             a._reg_shape[1] != b._reg_shape[1]:
         raise ValueError("incorrect block sizes for the requested "
                          f"subtract ({a._reg_shape[0], a._reg_shape[1]} !="
                          f" {b._reg_shape[0], b._reg_shape[1]})")
+
+    if a._top_left_shape != b._top_left_shape:
+        raise ValueError("Incompatible block sizes of the "
+                         "top left block of the matrices"
+                         "b._top_left_shape != b._top_left_shape")
 
     n_blocks = (len(a._blocks), len(a._blocks[0]))
     blocks = [[] for _ in range(len(a._blocks))]
