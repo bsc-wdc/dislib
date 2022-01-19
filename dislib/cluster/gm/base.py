@@ -16,16 +16,13 @@ from sklearn.exceptions import ConvergenceWarning
 from sklearn.base import BaseEstimator
 from sklearn.utils import validation
 from sklearn.utils.extmath import row_norms
-from scipy.sparse import csr_matrix
 
 from dislib.cluster import KMeans
 from dislib.data.array import Array
-from dislib.data.util.model import sync_obj, encoder_helper, decoder_helper
+from dislib.data.util import sync_obj, encoder_helper, decoder_helper
 
-try:
-    import cbor2
-except ImportError:
-    cbor2 = None
+import dislib.data.util.model as utilmodel
+
 
 class GaussianMixture(BaseEstimator):
     """Gaussian mixture model.
@@ -556,9 +553,9 @@ class GaussianMixture(BaseEstimator):
 
     def save_model(self, filepath, overwrite=True, save_format="json"):
         """Saves a model to a file.
-                The model is synchronized before saving and can be reinstantiated in the
-                exact same state, without any of the code used for model definition or
-                fitting.
+                The model is synchronized before saving and can be
+                reinstantiated in the exact same state, without any of
+                the code used for model definition or fitting.
                 Parameters
                 ----------
                 filepath : str
@@ -573,9 +570,11 @@ class GaussianMixture(BaseEstimator):
                 >>> from dislib.cluster import KMeans
                 >>> import numpy as np
                 >>> import dislib as ds
-                >>> x = np.array([[1, 2], [1, 4], [1, 0], [4, 2], [4, 4], [4, 0]])
+                >>> x = np.array([[1, 2], [1, 4], [1, 0], [4, 2],
+                >>> [4, 4], [4, 0]])
                 >>> x_train = ds.array(x, (2, 2))
-                >>> model = gm = GaussianMixture(n_components=2, random_state=0)
+                >>> model = gm = GaussianMixture(n_components=2,
+                >>> random_state=0)
                 >>> model.fit(x_train)
                 >>> model.save_model('/tmp/model')
                 >>> loaded_model = gm = GaussianMixture()
@@ -583,7 +582,8 @@ class GaussianMixture(BaseEstimator):
                 >>> x_test = ds.array(np.array([[0, 0], [4, 4]]), (2, 2))
                 >>> model_pred = model.predict(x_test)
                 >>> loaded_model_pred = loaded_model.predict(x_test)
-                >>> assert np.allclose(model_pred.collect(), loaded_model_pred.collect())
+                >>> assert np.allclose(model_pred.collect(),
+                >>> loaded_model_pred.collect())
                 """
 
         # Check overwrite
@@ -599,10 +599,11 @@ class GaussianMixture(BaseEstimator):
             with open(filepath, "w") as f:
                 json.dump(model_metadata, f, default=_encode_helper)
         elif save_format == "cbor":
-            if cbor2 is None:
+            if utilmodel.cbor2 is None:
                 raise ModuleNotFoundError("No module named 'cbor2'")
             with open(filepath, "wb") as f:
-                cbor2.dump(model_metadata, f, default=_encode_helper_cbor)
+                utilmodel.cbor2.dump(model_metadata, f,
+                                     default=_encode_helper_cbor)
         elif save_format == "pickle":
             with open(filepath, "wb") as f:
                 pickle.dump(model_metadata, f)
@@ -611,8 +612,8 @@ class GaussianMixture(BaseEstimator):
 
     def load_model(self, filepath, load_format="json"):
         """Loads a model from a file.
-        The model is reinstantiated in the exact same state in which it was saved,
-        without any of the code used for model definition or fitting.
+        The model is reinstantiated in the exact same state in which it was
+        saved, without any of the code used for model definition or fitting.
         Parameters
         ----------
         filepath : str
@@ -626,25 +627,27 @@ class GaussianMixture(BaseEstimator):
         >>> import dislib as ds
         >>> x = np.array([[1, 2], [1, 4], [1, 0], [4, 2], [4, 4], [4, 0]])
         >>> x_train = ds.array(x, (2, 2))
-        >>> model = KMeans(n_clusters=2, random_state=0)
+        >>> model = gm = GaussianMixture(n_components=2, random_state=0)
         >>> model.fit(x_train)
         >>> model.save_model('/tmp/model')
-        >>> loaded_model = GaussianMixture()
+        >>> loaded_model = gm = GaussianMixture()
         >>> loaded_model.load_model('/tmp/model')
         >>> x_test = ds.array(np.array([[0, 0], [4, 4]]), (2, 2))
         >>> model_pred = model.predict(x_test)
         >>> loaded_model_pred = loaded_model.predict(x_test)
-        >>> assert np.allclose(model_pred.collect(), loaded_model_pred.collect())
+        >>> assert np.allclose(model_pred.collect(),
+        >>> loaded_model_pred.collect())
         """
         # Load model
         if load_format == "json":
             with open(filepath, "r") as f:
                 model_metadata = json.load(f, object_hook=_decode_helper)
         elif load_format == "cbor":
-            if cbor2 is None:
+            if utilmodel.cbor2 is None:
                 raise ModuleNotFoundError("No module named 'cbor2'")
             with open(filepath, "rb") as f:
-                model_metadata = cbor2.load(f, object_hook=_decode_helper_cbor)
+                model_metadata = utilmodel.cbor2.\
+                    load(f, object_hook=_decode_helper_cbor)
         elif load_format == "pickle":
             with open(filepath, "rb") as f:
                 model_metadata = pickle.load(f)
@@ -687,7 +690,8 @@ def _decode_helper(obj):
             random_state.set_state(_decode_helper(obj["items"]))
             return random_state
         else:
-            return GaussianMixture().__dict__.update(_decode_helper(obj["items"]))
+            return GaussianMixture().__dict__.update(
+                _decode_helper(obj["items"]))
     return obj
 
 

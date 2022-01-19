@@ -6,6 +6,7 @@ from scipy.sparse import random as sp_random
 import dislib as ds
 from dislib.regression import LinearRegression
 from dislib.data import random_array
+import dislib.data.util.model as utilmodel
 
 
 class LinearRegressionTest(unittest.TestCase):
@@ -196,7 +197,8 @@ class LinearRegressionTest(unittest.TestCase):
 
         pred = reg2.predict(test_data).collect()
         pred_m = reg2.predict(test_data_m).collect()
-        self.assertTrue(np.allclose(reg2.coef_.collect(), [0.421875, 0.296875]))
+        self.assertTrue(np.allclose(reg2.coef_.collect(),
+                                    [0.421875, 0.296875]))
         self.assertTrue(np.allclose(reg2.intercept_.collect(), 0.240625))
         self.assertTrue(np.allclose(pred, 2.1))
         self.assertTrue(np.allclose(pred_m, [2.1, 3.115625, 1.553125]))
@@ -208,7 +210,8 @@ class LinearRegressionTest(unittest.TestCase):
 
         pred = reg2.predict(test_data).collect()
         pred_m = reg2.predict(test_data_m).collect()
-        self.assertTrue(np.allclose(reg2.coef_.collect(), [0.421875, 0.296875]))
+        self.assertTrue(np.allclose(reg2.coef_.collect(),
+                                    [0.421875, 0.296875]))
         self.assertTrue(np.allclose(reg2.intercept_.collect(), 0.240625))
         self.assertTrue(np.allclose(pred, 2.1))
         self.assertTrue(np.allclose(pred_m, [2.1, 3.115625, 1.553125]))
@@ -220,7 +223,8 @@ class LinearRegressionTest(unittest.TestCase):
 
         pred = reg2.predict(test_data).collect()
         pred_m = reg2.predict(test_data_m).collect()
-        self.assertTrue(np.allclose(reg2.coef_.collect(), [0.421875, 0.296875]))
+        self.assertTrue(np.allclose(reg2.coef_.collect(),
+                                    [0.421875, 0.296875]))
         self.assertTrue(np.allclose(reg2.intercept_.collect(), 0.240625))
         self.assertTrue(np.allclose(pred, 2.1))
         self.assertTrue(np.allclose(pred_m, [2.1, 3.115625, 1.553125]))
@@ -231,6 +235,37 @@ class LinearRegressionTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             reg2 = LinearRegression()
             reg2.load_model("./model_LR", load_format="txt")
+
+        x_data = np.array([[1, 2], [2, 0], [3, 1], [4, 4], [5, 3]])
+        y_data = np.array([4.5, 2, 1, 1, 2])
+
+        bn, bm = 2, 2
+
+        x = ds.array(x=x_data, block_size=(bn, bm))
+        y = ds.array(x=y_data, block_size=(bn, 1))
+
+        reg = LinearRegression()
+        reg.fit(x, y)
+        reg.save_model("./model_LR", overwrite=False)
+
+        reg2 = LinearRegression()
+        reg2.load_model("./model_LR", load_format="pickle")
+
+        pred = reg2.predict(test_data).collect()
+        pred_m = reg2.predict(test_data_m).collect()
+        self.assertTrue(np.allclose(reg2.coef_.collect(),
+                                    [0.421875, 0.296875]))
+        self.assertTrue(np.allclose(reg2.intercept_.collect(), 0.240625))
+        self.assertTrue(np.allclose(pred, 2.1))
+        self.assertTrue(np.allclose(pred_m, [2.1, 3.115625, 1.553125]))
+
+        cbor2_module = utilmodel.cbor2
+        utilmodel.cbor2 = None
+        with self.assertRaises(ModuleNotFoundError):
+            reg.save_model("./model_LR", save_format="cbor")
+        with self.assertRaises(ModuleNotFoundError):
+            reg2.load_model("./model_LR", load_format="cbor")
+        utilmodel.cbor2 = cbor2_module
 
 
 def main():

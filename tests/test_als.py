@@ -5,6 +5,7 @@ from scipy.sparse import csr_matrix
 
 import dislib as ds
 from dislib.recommendation import ALS
+import dislib.data.util.model as utilmodel
 
 
 def load_movielens(train_ratio=0.9):
@@ -135,6 +136,30 @@ class ALSTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             als2 = ALS()
             als2.load_model("model_als", load_format="txt")
+
+        als = ALS(tol=0.01, random_state=666, n_f=5, verbose=False)
+
+        data = np.array([[15, 15, 15], [15, 15, 15], [15, 15, 15]])
+        ratings = csr_matrix(data)
+        train = ds.array(x=ratings, block_size=(1, 1))
+
+        als.fit(train)
+        als.save_model("./model_als", overwrite=False)
+
+        als2 = ALS()
+        als2.load_model("./model_als", load_format="pickle")
+        predictions2 = als2.predict_user(user_id=0)
+        self.assertTrue(2.75 < predictions2[0] < 3.25 and
+                        predictions2[1] < 1 and
+                        predictions2[2] > 4.5)
+
+        cbor2_module = utilmodel.cbor2
+        utilmodel.cbor2 = None
+        with self.assertRaises(ModuleNotFoundError):
+            als.save_model("./model_als", save_format="cbor")
+        with self.assertRaises(ModuleNotFoundError):
+            als2.load_model("./model_als", load_format="cbor")
+        utilmodel.cbor2 = cbor2_module
 
 
 def main():

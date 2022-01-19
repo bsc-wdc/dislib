@@ -8,6 +8,7 @@ from sklearn.datasets import make_classification
 
 import dislib as ds
 from dislib.classification import RandomForestClassifier
+import dislib.data.util.model as utilmodel
 
 
 class RFTest(unittest.TestCase):
@@ -263,9 +264,31 @@ class RFTest(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             rf.save_model("./saved_model", save_format="txt")
+
         with self.assertRaises(ValueError):
             rf2 = RandomForestClassifier(random_state=0, n_estimators=5)
             rf2.load_model("./saved_model", load_format="txt")
+
+        rf = RandomForestClassifier(random_state=0, n_estimators=1)
+        x_train2 = ds.array(x[::2], (300, 10))
+        y_train2 = ds.array(y[::2][:, np.newaxis], (300, 1))
+        rf.fit(x_train2, y_train2)
+        rf.save_model("./saved_model", overwrite=False)
+
+        rf2 = RandomForestClassifier(random_state=0, n_estimators=5)
+        rf2.load_model("./saved_model", load_format="pickle")
+        y_pred = rf2.predict(x_train).collect()
+        accuracy = np.count_nonzero(y_pred == y_train) / len(y_train)
+        self.assertGreater(accuracy, 0.7)
+
+        cbor2_module = utilmodel.cbor2
+        utilmodel.cbor2 = None
+        with self.assertRaises(ModuleNotFoundError):
+            rf.save_model("./saved_model", save_format="cbor")
+        with self.assertRaises(ModuleNotFoundError):
+            rf2.load_model("./saved_model", load_format="cbor")
+        utilmodel.cbor2 = cbor2_module
+
 
 def main():
     unittest.main()

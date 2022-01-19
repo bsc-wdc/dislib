@@ -12,7 +12,7 @@ from pycompss.api.task import task
 from sklearn.base import BaseEstimator
 from sklearn.utils import check_random_state
 
-from dislib.data.util.model import decoder_helper, encoder_helper, sync_obj
+from dislib.data.util import decoder_helper, encoder_helper, sync_obj
 from dislib.trees.decision_tree import (
     DecisionTreeClassifier,
     DecisionTreeRegressor, encode_forest_helper, decode_forest_helper,
@@ -25,10 +25,7 @@ from dislib.trees.data import (
     transform_to_rf_dataset
 )
 
-try:
-    import cbor2
-except ImportError:
-    cbor2 = None
+import dislib.data.util.model as utilmodel
 
 from sklearn.svm import SVC as SklearnSVC
 from sklearn.tree import DecisionTreeClassifier as SklearnDTClassifier
@@ -118,12 +115,11 @@ class BaseRandomForest(BaseEstimator):
 
         return self
 
-
     def save_model(self, filepath, overwrite=True, save_format="json"):
         """Saves a model to a file.
-        The model is synchronized before saving and can be reinstantiated in the
-        exact same state, without any of the code used for model definition or
-        fitting.
+        The model is synchronized before saving and can be reinstantiated in
+        the exact same state, without any of the code used for model
+        definition or fitting.
         Parameters
         ----------
         filepath : str
@@ -147,7 +143,8 @@ class BaseRandomForest(BaseEstimator):
         >>> x_test = ds.array(np.array([[0, 0], [4, 4]]), (2, 2))
         >>> model_pred = model.predict(x_test)
         >>> loaded_model_pred = loaded_model.predict(x_test)
-        >>> assert np.allclose(model_pred.collect(), loaded_model_pred.collect())
+        >>> assert np.allclose(model_pred.collect(),
+        loaded_model_pred.collect())
         """
 
         # Check overwrite
@@ -165,21 +162,22 @@ class BaseRandomForest(BaseEstimator):
             with open(filepath, "w") as f:
                 json.dump(model_metadata, f, default=_encode_helper)
         elif save_format == "cbor":
-            if cbor2 is None:
+            if utilmodel.cbor2 is None:
                 raise ModuleNotFoundError("No module named 'cbor2'")
             with open(filepath, "wb") as f:
-                cbor2.dump(model_metadata, f, default=_encode_helper_cbor)
+                utilmodel.cbor2.dump(model_metadata, f,
+                                     default=_encode_helper_cbor)
         elif save_format == "pickle":
             with open(filepath, "wb") as f:
                 pickle.dump(model_metadata, f)
         else:
             raise ValueError("Wrong save format.")
 
-
     def load_model(self, filepath, load_format="json"):
         """Loads a model from a file.
-        The model is reinstantiated in the exact same state in which it was saved,
-        without any of the code used for model definition or fitting.
+        The model is reinstantiated in the exact same state in which it
+        was saved, without any of the code used for model definition or
+        fitting.
         Parameters
         ----------
         filepath : str
@@ -201,17 +199,19 @@ class BaseRandomForest(BaseEstimator):
         >>> x_test = ds.array(np.array([[0, 0], [4, 4]]), (2, 2))
         >>> model_pred = model.predict(x_test)
         >>> loaded_model_pred = loaded_model.predict(x_test)
-        >>> assert np.allclose(model_pred.collect(), loaded_model_pred.collect())
+        >>> assert np.allclose(model_pred.collect(),
+        loaded_model_pred.collect())
         """
         # Load model
         if load_format == "json":
             with open(filepath, "r") as f:
                 model_metadata = json.load(f, object_hook=_decode_helper)
         elif load_format == "cbor":
-            if cbor2 is None:
+            if utilmodel.cbor2 is None:
                 raise ModuleNotFoundError("No module named 'cbor2'")
             with open(filepath, "rb") as f:
-                model_metadata = cbor2.load(f, object_hook=_decode_helper_cbor)
+                model_metadata = utilmodel.cbor2.\
+                    load(f, object_hook=_decode_helper_cbor)
         elif load_format == "pickle":
             with open(filepath, "rb") as f:
                 model_metadata = pickle.load(f)
@@ -596,7 +596,8 @@ def _encode_helper(obj):
             "n_outputs": obj.n_outputs,
             "items": obj.__getstate__(),
         }
-    elif isinstance(obj, (RandomForestClassifier, RandomForestRegressor, DecisionTreeClassifier, DecisionTreeRegressor)):
+    elif isinstance(obj, (RandomForestClassifier, RandomForestRegressor,
+                          DecisionTreeClassifier, DecisionTreeRegressor)):
         return {
             "class_name": obj.__class__.__name__,
             "module_name": obj.__module__,
@@ -611,7 +612,6 @@ def _encode_helper(obj):
             }
         else:
             return encode_forest_helper(obj)
-    raise TypeError("Not JSON Serializable:", obj)
 
 
 def _decode_helper_cbor(decoder, obj):
@@ -636,18 +636,6 @@ def _decode_helper(obj):
             )
             model.__setstate__(dict_)
             return model
-        elif isinstance(obj, (RandomForestClassifier, RandomForestRegressor)) and "dislib" in obj["module_name"]:
-            dict_ = _decode_helper(obj["items"])
-            model = obj.__name__.__class__(
-                try_features=dict_.pop("try_features"),
-                max_depth=dict_.pop("max_depth"),
-                distr_depth=dict_.pop("distr_depth"),
-                sklearn_max=dict_.pop("sklearn_max"),
-                bootstrap=dict_.pop("bootstrap"),
-                random_state=dict_.pop("random_state"),
-            )
-            model.__dict__.update(_decode_helper(obj["items"]))
-            return model
         elif class_name == "callable":
             if obj["module"] == "numpy":
                 return getattr(np, obj["name"])
@@ -662,7 +650,7 @@ def _decode_helper(obj):
             return model
         else:
             dict_ = _decode_helper(obj["items"])
-            return decode_forest_helper(class_name,dict_)
+            return decode_forest_helper(class_name, dict_)
     return obj
 
 

@@ -9,7 +9,7 @@ from pycompss.api.task import task
 from sklearn.tree import DecisionTreeClassifier as SklearnDTClassifier
 from sklearn.tree import DecisionTreeRegressor as SklearnDTRegressor
 
-from dislib.data.util.model import decoder_helper
+from dislib.data.util import decoder_helper
 from dislib.trees.test_split import test_split
 from dislib.data.array import Array
 
@@ -154,17 +154,6 @@ class BaseDecisionTree:
             None, *branch_predictions,
             classification=self.n_classes is not None
         )
-
-    def toJson(self):
-        return {
-            "class_name": self.__class__.__name__,
-            "module_name": self.__module__,
-            "items": self.__dict__,
-        }
-
-
-    def fromJson(self, obj):
-        return _decode_helper(obj)
 
 
 class DecisionTreeClassifier(BaseDecisionTree):
@@ -371,16 +360,6 @@ class _Node:
         assert len(sample) == 0, "Type not supported"
         return np.empty((0,), dtype=self.predict_dtype)
 
-    def toJson(self):
-        return {
-            "class_name": self.__class__.__name__,
-            "module_name": self.__module__,
-            "items": self.__dict__,
-        }
-
-    def fromJson(self, obj):
-        return _decode_helper(obj)
-
 
 class _ClassificationNode(_Node):
     def __init__(self):
@@ -413,9 +392,6 @@ class _ClassificationNode(_Node):
             "items": self.__dict__,
         }
 
-    def fromJson(self, obj):
-        return _decode_helper(obj)
-
 
 class _RegressionNode(_Node):
     def __init__(self):
@@ -428,24 +404,11 @@ class _RegressionNode(_Node):
             "items": self.__dict__,
         }
 
-    def fromJson(self, obj):
-        return _decode_helper(obj)
-
 
 class _InnerNodeInfo:
     def __init__(self, index=None, value=None):
         self.index = index
         self.value = value
-
-    def toJson(self):
-        return {
-            "class_name": self.__class__.__name__,
-            "module_name": self.__module__,
-            "items": self.__dict__,
-        }
-
-    def fromJson(self, obj):
-        return _decode_helper(obj)
 
 
 class _LeafInfo:
@@ -453,16 +416,6 @@ class _LeafInfo:
         self.size = size
         self.frequencies = frequencies
         self.target = target
-
-    def toJson(self):
-        return {
-            "class_name": self.__class__.__name__,
-            "module_name": self.__module__,
-            "items": self.__dict__,
-        }
-
-    def fromJson(self, obj):
-        return _decode_helper(obj)
 
 
 class _SkTreeWrapper:
@@ -475,9 +428,6 @@ class _SkTreeWrapper:
             "module_name": self.__module__,
             "items": self.__dict__,
         }
-
-    def fromJson(self, obj):
-        return _decode_helper(obj)
 
 
 def _get_sample_attributes(samples_file, indices):
@@ -913,9 +863,9 @@ def _decode_helper(obj):
 
 
 def encode_forest_helper(obj):
-    if isinstance(obj,(DecisionTreeClassifier, DecisionTreeRegressor, _Node,
-                       _ClassificationNode, _RegressionNode, _InnerNodeInfo,
-                       _LeafInfo, _SkTreeWrapper)):
+    if isinstance(obj, (DecisionTreeClassifier, DecisionTreeRegressor, _Node,
+                        _ClassificationNode, _RegressionNode, _InnerNodeInfo,
+                        _LeafInfo, _SkTreeWrapper)):
         return obj.toJson()
 
 
@@ -929,7 +879,7 @@ def decode_forest_helper(class_name, obj):
             bootstrap=obj.pop("bootstrap"),
             random_state=obj.pop("random_state"),
         )
-    elif class_name =='_SkTreeWrapper':
+    elif class_name == '_SkTreeWrapper':
         sk_tree = _decode_helper(obj.pop("sk_tree"))
         model = _SkTreeWrapper(sk_tree)
     else:

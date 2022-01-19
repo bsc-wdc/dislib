@@ -1,8 +1,13 @@
 import numpy as np
-from scipy.sparse import csr_matrix
 from dislib.data.array import Array
 
 from pycompss.api.api import compss_wait_on
+
+try:
+    import cbor2
+except ImportError:
+    cbor2 = None
+
 
 def encoder_helper(obj):
     if isinstance(obj, np.generic):

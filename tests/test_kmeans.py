@@ -7,6 +7,7 @@ from sklearn.datasets import make_blobs
 
 import dislib as ds
 from dislib.cluster import KMeans
+import dislib.data.util.model as utilmodel
 
 
 class KMeansTest(unittest.TestCase):
@@ -180,6 +181,29 @@ class KMeansTest(unittest.TestCase):
             km2 = KMeans()
             km2.load_model("./model_saved_kmeans", load_format="txt")
 
+        p1, p2, p3, p4 = [14, 15], [15, 14], [7, 8], [8, 7]
+
+        arr1 = np.array([p1, p2, p3, p4])
+        x = ds.array(arr1, block_size=(2, 2))
+
+        km = KMeans(n_clusters=2, random_state=666)
+        km.fit(x)
+        km.save_model("./model_saved_kmeans", overwrite=False)
+
+        km2 = KMeans()
+        km2.load_model("./model_saved_kmeans", load_format="pickle")
+        labels = km2.predict(x_test).collect()
+        expected_labels = np.array([0, 0, 1, 1, 0, 1])
+
+        self.assertTrue(np.array_equal(labels, expected_labels))
+
+        cbor2_module = utilmodel.cbor2
+        utilmodel.cbor2 = None
+        with self.assertRaises(ModuleNotFoundError):
+            km.save_model("./model_saved_kmeans", save_format="cbor")
+        with self.assertRaises(ModuleNotFoundError):
+            km2.load_model("./model_saved_kmeans", load_format="cbor")
+        utilmodel.cbor2 = cbor2_module
 
 
 def main():

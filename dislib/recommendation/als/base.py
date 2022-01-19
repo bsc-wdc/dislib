@@ -13,14 +13,9 @@ from sklearn.base import BaseEstimator
 from sklearn.metrics import mean_squared_error
 
 from dislib.data.array import Array
-from dislib.data.util.model import sync_obj, decoder_helper, encoder_helper
+from dislib.data.util import sync_obj, decoder_helper, encoder_helper
 
-from scipy.sparse import csr_matrix
-
-try:
-    import cbor2
-except ImportError:
-    cbor2 = None
+import dislib.data.util.model as utilmodel
 
 
 class ALS(BaseEstimator):
@@ -226,9 +221,9 @@ class ALS(BaseEstimator):
 
     def save_model(self, filepath, overwrite=True, save_format="json"):
         """Saves a model to a file.
-        The model is synchronized before saving and can be reinstantiated in the
-        exact same state, without any of the code used for model definition or
-        fitting.
+        The model is synchronized before saving and can be reinstantiated
+        in the exact same state, without any of the code used for model
+        definition or fitting.
         Parameters
         ----------
         filepath : str
@@ -253,7 +248,8 @@ class ALS(BaseEstimator):
         >>> x_test = ds.array(np.array([[0, 0], [4, 4]]), (2, 2))
         >>> model_pred = model.predict(x_test)
         >>> loaded_model_pred = loaded_model.predict(x_test)
-        >>> assert np.allclose(model_pred.collect(), loaded_model_pred.collect())
+        >>> assert np.allclose(model_pred.collect(),
+        >>> loaded_model_pred.collect())
         """
 
         # Check overwrite
@@ -269,21 +265,22 @@ class ALS(BaseEstimator):
             with open(filepath, "w") as f:
                 json.dump(model_metadata, f, default=_encode_helper)
         elif save_format == "cbor":
-            if cbor2 is None:
+            if utilmodel.cbor2 is None:
                 raise ModuleNotFoundError("No module named 'cbor2'")
             with open(filepath, "wb") as f:
-                cbor2.dump(model_metadata, f, default=_encode_helper_cbor)
+                utilmodel.cbor2.dump(model_metadata, f,
+                                     default=_encode_helper_cbor)
         elif save_format == "pickle":
             with open(filepath, "wb") as f:
                 pickle.dump(model_metadata, f)
         else:
             raise ValueError("Wrong save format.")
 
-
     def load_model(self, filepath, load_format="json"):
         """Loads a model from a file.
-        The model is reinstantiated in the exact same state in which it was saved,
-        without any of the code used for model definition or fitting.
+        The model is reinstantiated in the exact same state in which it
+        was saved, without any of the code used for model definition or
+        fitting.
         Parameters
         ----------
         filepath : str
@@ -305,17 +302,19 @@ class ALS(BaseEstimator):
         >>> x_test = ds.array(np.array([[0, 0], [4, 4]]), (2, 2))
         >>> model_pred = model.predict(x_test)
         >>> loaded_model_pred = loaded_model.predict(x_test)
-        >>> assert np.allclose(model_pred.collect(), loaded_model_pred.collect())
+        >>> assert np.allclose(model_pred.collect(),
+        >>> loaded_model_pred.collect())
         """
         # Load model
         if load_format == "json":
             with open(filepath, "r") as f:
                 model_metadata = json.load(f, object_hook=_decode_helper)
         elif load_format == "cbor":
-            if cbor2 is None:
+            if utilmodel.cbor2 is None:
                 raise ModuleNotFoundError("No module named 'cbor2'")
             with open(filepath, "rb") as f:
-                model_metadata = cbor2.load(f, object_hook=_decode_helper_cbor)
+                model_metadata = utilmodel.cbor2.\
+                    load(f, object_hook=_decode_helper_cbor)
         elif load_format == "pickle":
             with open(filepath, "rb") as f:
                 model_metadata = pickle.load(f)

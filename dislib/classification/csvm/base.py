@@ -15,13 +15,11 @@ from sklearn.base import BaseEstimator
 from sklearn.svm import SVC
 
 from dislib.data.array import Array
-from dislib.data.util.model import sync_obj, encoder_helper, decoder_helper
+from dislib.data.util import sync_obj, encoder_helper, decoder_helper
 from dislib.utils.base import _paired_partition
-from scipy.sparse import csr_matrix
-try:
-    import cbor2
-except ImportError:
-    cbor2 = None
+
+import dislib.data.util.model as utilmodel
+
 
 class CascadeSVM(BaseEstimator):
     """ Cascade Support Vector classification.
@@ -397,9 +395,9 @@ class CascadeSVM(BaseEstimator):
 
     def save_model(self, filepath, overwrite=True, save_format="json"):
         """Saves a model to a file.
-        The model is synchronized before saving and can be reinstantiated in the
-        exact same state, without any of the code used for model definition or
-        fitting.
+        The model is synchronized before saving and can be reinstantiated in
+        the exact same state, without any of the code used for model
+        definition or fitting.
         Parameters
         ----------
         filepath : str
@@ -414,7 +412,8 @@ class CascadeSVM(BaseEstimator):
         >>> from dislib.classification import CascadeSVM
         >>> import numpy as np
         >>> import dislib as ds
-        >>> x = ds.array(np.array([[1, 2], [2, 1], [-1, -2], [-2, -1]]), (2, 2))
+        >>> x = ds.array(np.array([[1, 2], [2, 1], [-1, -2],
+        >>> [-2, -1]]), (2, 2))
         >>> y = ds.array(np.array([0, 1, 1, 0]).reshape(-1, 1), (2, 1))
         >>> model = CascadeSVM(cascade_arity=3, max_iter=10,
         >>>              tol=1e-4, kernel='linear', c=2, gamma=0.1,
@@ -424,10 +423,12 @@ class CascadeSVM(BaseEstimator):
         >>> model.save_model('/tmp/model')
         >>> loaded_model = CascadeSVM()
         >>> loaded_model.load_model('/tmp/model')
-        >>> x_test = ds.array(np.array([[1, 2], [2, 1], [-1, -2], [-2, -1], [1, 1], [-1, -1]]), (2, 2))
+        >>> x_test = ds.array(np.array([[1, 2], [2, 1], [-1, -2], [-2, -1],
+        >>> [1, 1], [-1, -1]]), (2, 2))
         >>> y_pred = model.predict(x_test)
         >>> y_loaded_pred = loaded_model.predict(x_test)
-        >>> assert np.allclose(y_pred.collect(), y_loaded_pred.collect())
+        >>> assert np.allclose(y_pred.collect(),
+        >>> y_loaded_pred.collect())
         """
 
         # Check overwrite
@@ -443,10 +444,11 @@ class CascadeSVM(BaseEstimator):
             with open(filepath, "w") as f:
                 json.dump(model_metadata, f, default=_encode_helper)
         elif save_format == "cbor":
-            if cbor2 is None:
+            if utilmodel.cbor2 is None:
                 raise ModuleNotFoundError("No module named 'cbor2'")
             with open(filepath, "wb") as f:
-                cbor2.dump(model_metadata, f, default=_encode_helper_cbor)
+                utilmodel.cbor2.dump(model_metadata, f,
+                                     default=_encode_helper_cbor)
         elif save_format == "pickle":
             with open(filepath, "wb") as f:
                 pickle.dump(model_metadata, f)
@@ -455,8 +457,8 @@ class CascadeSVM(BaseEstimator):
 
     def load_model(self, filepath, load_format="json"):
         """Loads a model from a file.
-        The model is reinstantiated in the exact same state in which it was saved,
-        without any of the code used for model definition or fitting.
+        The model is reinstantiated in the exact same state in which it was
+        saved, without any of the code used for model definition or fitting.
         Parameters
         ----------
         filepath : str
@@ -468,7 +470,8 @@ class CascadeSVM(BaseEstimator):
         >>> from dislib.classification import CascadeSVM
         >>> import numpy as np
         >>> import dislib as ds
-        >>> x = ds.array(np.array([[1, 2], [2, 1], [-1, -2], [-2, -1]]), (2, 2))
+        >>> x = ds.array(np.array([[1, 2], [2, 1], [-1, -2],
+        >>> [-2, -1]]), (2, 2))
         >>> y = ds.array(np.array([0, 1, 1, 0]).reshape(-1, 1), (2, 1))
         >>> model = CascadeSVM(cascade_arity=3, max_iter=10,
         >>>              tol=1e-4, kernel='linear', c=2, gamma=0.1,
@@ -478,7 +481,8 @@ class CascadeSVM(BaseEstimator):
         >>> model.save_model('/tmp/model')
         >>> loaded_model = CascadeSVM()
         >>> loaded_model.load_model('/tmp/model')
-        >>> x_test = ds.array(np.array([[1, 2], [2, 1], [-1, -2], [-2, -1], [1, 1], [-1, -1]]), (2, 2))
+        >>> x_test = ds.array(np.array([[1, 2], [2, 1], [-1, -2], [-2, -1],
+        >>> [1, 1], [-1, -1]]), (2, 2))
         >>> y_pred = model.predict(x_test)
         >>> y_loaded_pred = loaded_model.predict(x_test)
         >>> assert np.allclose(y_pred.collect(), y_loaded_pred.collect())
@@ -488,10 +492,11 @@ class CascadeSVM(BaseEstimator):
             with open(filepath, "r") as f:
                 model_metadata = json.load(f, object_hook=_decode_helper)
         elif load_format == "cbor":
-            if cbor2 is None:
+            if utilmodel.cbor2 is None:
                 raise ModuleNotFoundError("No module named 'cbor2'")
             with open(filepath, "rb") as f:
-                model_metadata = cbor2.load(f, object_hook=_decode_helper_cbor)
+                model_metadata = utilmodel.cbor2.\
+                    load(f, object_hook=_decode_helper_cbor)
         elif load_format == "pickle":
             with open(filepath, "rb") as f:
                 model_metadata = pickle.load(f)
