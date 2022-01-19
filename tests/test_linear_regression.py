@@ -169,6 +169,69 @@ class LinearRegressionTest(unittest.TestCase):
         with self.assertRaises(NotImplementedError):
             reg.predict(sparse_arr)
 
+    def test_load_save(self):
+        """ Tests LR's methods of save and load for all supported formats
+        and if a ValueError exception raises for non-supported formats."""
+        x_data = np.array([[1, 2], [2, 0], [3, 1], [4, 4], [5, 3]])
+        y_data = np.array([2, 1, 1, 2, 4.5])
+
+        bn, bm = 2, 2
+
+        x = ds.array(x=x_data, block_size=(bn, bm))
+        y = ds.array(x=y_data, block_size=(bn, 1))
+
+        reg = LinearRegression()
+        reg.fit(x, y)
+
+        reg.save_model("./model_LR")
+
+        reg2 = LinearRegression()
+        reg2.load_model("./model_LR")
+
+        x_test = np.array([3, 2])
+        test_data = ds.array(x=x_test, block_size=(1, bm))
+
+        x_test_m = np.array([[3, 2], [4, 4], [1, 3]])
+        test_data_m = ds.array(x=x_test_m, block_size=(bn, bm))
+
+        pred = reg2.predict(test_data).collect()
+        pred_m = reg2.predict(test_data_m).collect()
+        self.assertTrue(np.allclose(reg2.coef_.collect(), [0.421875, 0.296875]))
+        self.assertTrue(np.allclose(reg2.intercept_.collect(), 0.240625))
+        self.assertTrue(np.allclose(pred, 2.1))
+        self.assertTrue(np.allclose(pred_m, [2.1, 3.115625, 1.553125]))
+
+        reg.save_model("./model_LR", save_format="cbor")
+
+        reg2 = LinearRegression()
+        reg2.load_model("./model_LR", load_format="cbor")
+
+        pred = reg2.predict(test_data).collect()
+        pred_m = reg2.predict(test_data_m).collect()
+        self.assertTrue(np.allclose(reg2.coef_.collect(), [0.421875, 0.296875]))
+        self.assertTrue(np.allclose(reg2.intercept_.collect(), 0.240625))
+        self.assertTrue(np.allclose(pred, 2.1))
+        self.assertTrue(np.allclose(pred_m, [2.1, 3.115625, 1.553125]))
+
+        reg.save_model("./model_LR", save_format="pickle")
+
+        reg2 = LinearRegression()
+        reg2.load_model("./model_LR", load_format="pickle")
+
+        pred = reg2.predict(test_data).collect()
+        pred_m = reg2.predict(test_data_m).collect()
+        self.assertTrue(np.allclose(reg2.coef_.collect(), [0.421875, 0.296875]))
+        self.assertTrue(np.allclose(reg2.intercept_.collect(), 0.240625))
+        self.assertTrue(np.allclose(pred, 2.1))
+        self.assertTrue(np.allclose(pred_m, [2.1, 3.115625, 1.553125]))
+
+        with self.assertRaises(ValueError):
+            reg.save_model("./model_LR", save_format="txt")
+
+        with self.assertRaises(ValueError):
+            reg2 = LinearRegression()
+            reg2.load_model("./model_LR", load_format="txt")
+
 
 def main():
     unittest.main()

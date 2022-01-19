@@ -472,6 +472,89 @@ class GaussianMixtureTest(unittest.TestCase):
         gm.fit(x_ds)
         self.assertTrue(gm.converged_)
 
+    def test_save_load(self):
+        """ Tests GaussianMixture's methods of loading and saving the model"""
+        x = np.array([[1, 2], [2, 1], [-3, -3], [-1, -2], [-2, -1], [3, 3]])
+        x_train = ds.array(x, (3, 2))
+        expected_weights = np.array([0.5, 0.5])
+        expected_means = np.array([[-2, -2], [2, 2]])
+        expected_cov = np.array([[[0.66671688, 0.33338255],
+                                  [0.33338255, 0.66671688]],
+
+                                 [[0.66671688, 0.33338255],
+                                  [0.33338255, 0.66671688]]])
+        expected_pc = np.array([[[1.22469875, -0.70714834],
+                                 [0., 1.4141944]],
+
+                                [[1.22469875, -0.70714834],
+                                 [0., 1.4141944]]])
+
+        model = GaussianMixture(n_components=2, random_state=666)
+        model.fit(x_train)
+        model.save_model("./model_saved_gm")
+
+        model_loaded = GaussianMixture()
+        model_loaded.load_model("./model_saved_gm")
+
+        model_loaded.weights_ = compss_wait_on(model_loaded.weights_)
+        model_loaded.means_ = compss_wait_on(model_loaded.means_)
+        model_loaded.covariances_ = compss_wait_on(model_loaded.covariances_)
+        model_loaded.precisions_cholesky_ = compss_wait_on(model_loaded.precisions_cholesky_)
+
+        x_test = ds.array(np.array([[0, 0], [4, 4]]), (2, 2))
+        model_pred = model.predict(x_test)
+        loaded_model_pred = model_loaded.predict(x_test)
+
+        self.assertTrue((np.allclose(model_loaded.weights_, expected_weights)))
+        self.assertTrue((np.allclose(model_loaded.means_, expected_means)))
+        self.assertTrue((np.allclose(model_loaded.covariances_, expected_cov)))
+        self.assertTrue((np.allclose(model_loaded.precisions_cholesky_, expected_pc)))
+        self.assertTrue((np.allclose(model_pred.collect(), loaded_model_pred.collect())))
+
+        model.save_model("./model_saved_gm",save_format="cbor")
+        model_loaded = GaussianMixture()
+        model_loaded.load_model("./model_saved_gm", load_format="cbor")
+
+        model_loaded.weights_ = compss_wait_on(model_loaded.weights_)
+        model_loaded.means_ = compss_wait_on(model_loaded.means_)
+        model_loaded.covariances_ = compss_wait_on(model_loaded.covariances_)
+        model_loaded.precisions_cholesky_ = compss_wait_on(model_loaded.precisions_cholesky_)
+
+        x_test = ds.array(np.array([[0, 0], [4, 4]]), (2, 2))
+        model_pred = model.predict(x_test)
+        loaded_model_pred = model_loaded.predict(x_test)
+
+        self.assertTrue((np.allclose(model_loaded.weights_, expected_weights)))
+        self.assertTrue((np.allclose(model_loaded.means_, expected_means)))
+        self.assertTrue((np.allclose(model_loaded.covariances_, expected_cov)))
+        self.assertTrue((np.allclose(model_loaded.precisions_cholesky_, expected_pc)))
+        self.assertTrue((np.allclose(model_pred.collect(), loaded_model_pred.collect())))
+
+        model.save_model("./model_saved_gm", save_format="pickle")
+        model_loaded = GaussianMixture()
+        model_loaded.load_model("./model_saved_gm", load_format="pickle")
+
+        model_loaded.weights_ = compss_wait_on(model_loaded.weights_)
+        model_loaded.means_ = compss_wait_on(model_loaded.means_)
+        model_loaded.covariances_ = compss_wait_on(model_loaded.covariances_)
+        model_loaded.precisions_cholesky_ = compss_wait_on(model_loaded.precisions_cholesky_)
+
+        x_test = ds.array(np.array([[0, 0], [4, 4]]), (2, 2))
+        model_pred = model.predict(x_test)
+        loaded_model_pred = model_loaded.predict(x_test)
+
+        self.assertTrue((np.allclose(model_loaded.weights_, expected_weights)))
+        self.assertTrue((np.allclose(model_loaded.means_, expected_means)))
+        self.assertTrue((np.allclose(model_loaded.covariances_, expected_cov)))
+        self.assertTrue((np.allclose(model_loaded.precisions_cholesky_, expected_pc)))
+        self.assertTrue((np.allclose(model_pred.collect(), loaded_model_pred.collect())))
+
+        with self.assertRaises(ValueError):
+            model.save_model("./model_saved_gm", save_format="txt")
+        with self.assertRaises(ValueError):
+            model_loaded = GaussianMixture()
+            model_loaded.load_model("./model_saved_gm", load_format="txt")
+
 
 def main():
     unittest.main()

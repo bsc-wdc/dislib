@@ -1,11 +1,22 @@
+import json
+import os
+import pickle
+
 import numpy as np
 from pycompss.api.constraint import constraint
 from pycompss.api.parameter import COLLECTION_IN, Depth, Type
 from pycompss.api.task import task
 from sklearn.base import BaseEstimator
 from sklearn.utils import validation
+from scipy.sparse import csr_matrix
 
 from dislib.data.array import Array
+from dislib.data.util.model import sync_obj, decoder_helper, encoder_helper
+
+try:
+    import cbor2
+except ImportError:
+    cbor2 = None
 
 
 class LinearRegression(BaseEstimator):
@@ -127,6 +138,106 @@ class LinearRegression(BaseEstimator):
                      reg_shape=(x._reg_shape[0], self._n_targets),
                      shape=(x.shape[0], self._n_targets), sparse=x._sparse)
 
+    def save_model(self, filepath, overwrite=True, save_format="json"):
+        """Saves a model to a file.
+        The model is synchronized before saving and can be reinstantiated in the
+        exact same state, without any of the code used for model definition or
+        fitting.
+        Parameters
+        ----------
+        filepath : str
+            Path where to save the model
+        overwrite : bool, optional (default=True)
+            Whether any existing model at the target
+            location should be overwritten.
+        save_format : str, optional (default='json)
+            Format used to save the models.
+        Examples
+        --------
+        >>> from dislib.cluster import KMeans
+        >>> import numpy as np
+        >>> import dislib as ds
+        >>> x = np.array([[1, 2], [1, 4], [1, 0], [4, 2], [4, 4], [4, 0]])
+        >>> x_train = ds.array(x, (2, 2))
+        >>> model = KMeans(n_clusters=2, random_state=0)
+        >>> model.fit(x_train)
+        >>> model.save_model('/tmp/model')
+        >>> loaded_model = KMeans()
+        >>> loaded_model.load_model('/tmp/model')
+        >>> x_test = ds.array(np.array([[0, 0], [4, 4]]), (2, 2))
+        >>> model_pred = model.predict(x_test)
+        >>> loaded_model_pred = loaded_model.predict(x_test)
+        >>> assert np.allclose(model_pred.collect(), loaded_model_pred.collect())
+        """
+
+        # Check overwrite
+        if not overwrite and os.path.isfile(filepath):
+            return
+
+        sync_obj(self.__dict__)
+        model_metadata = self.__dict__
+        model_metadata["model_name"] = "kmeans"
+
+        # Save model
+        if save_format == "json":
+            with open(filepath, "w") as f:
+                json.dump(model_metadata, f, default=_encode_helper)
+        elif save_format == "cbor":
+            if cbor2 is None:
+                raise ModuleNotFoundError("No module named 'cbor2'")
+            with open(filepath, "wb") as f:
+                cbor2.dump(model_metadata, f, default=_encode_helper_cbor)
+        elif save_format == "pickle":
+            with open(filepath, "wb") as f:
+                pickle.dump(model_metadata, f)
+        else:
+            raise ValueError("Wrong save format.")
+
+    def load_model(self, filepath, load_format="json"):
+        """Loads a model from a file.
+        The model is reinstantiated in the exact same state in which it was saved,
+        without any of the code used for model definition or fitting.
+        Parameters
+        ----------
+        filepath : str
+            Path of the saved the model
+        load_format : str, optional (default='json')
+            Format used to load the model.
+        Examples
+        --------
+        >>> from dislib.cluster import KMeans
+        >>> import numpy as np
+        >>> import dislib as ds
+        >>> x = np.array([[1, 2], [1, 4], [1, 0], [4, 2], [4, 4], [4, 0]])
+        >>> x_train = ds.array(x, (2, 2))
+        >>> model = KMeans(n_clusters=2, random_state=0)
+        >>> model.fit(x_train)
+        >>> model.save_model('/tmp/model')
+        >>> loaded_model = KMeans()
+        >>> loaded_model.load_model('/tmp/model')
+        >>> x_test = ds.array(np.array([[0, 0], [4, 4]]), (2, 2))
+        >>> model_pred = model.predict(x_test)
+        >>> loaded_model_pred = loaded_model.predict(x_test)
+        >>> assert np.allclose(model_pred.collect(), loaded_model_pred.collect())
+        """
+        # Load model
+        if load_format == "json":
+            with open(filepath, "r") as f:
+                model_metadata = json.load(f, object_hook=_decode_helper)
+        elif load_format == "cbor":
+            if cbor2 is None:
+                raise ModuleNotFoundError("No module named 'cbor2'")
+            with open(filepath, "rb") as f:
+                model_metadata = cbor2.load(f, object_hook=_decode_helper_cbor)
+        elif load_format == "pickle":
+            with open(filepath, "rb") as f:
+                model_metadata = pickle.load(f)
+        else:
+            raise ValueError("Wrong load format.")
+
+        for key, val in model_metadata.items():
+            setattr(self, key, val)
+
     @property
     def coef_(self):
         validation.check_is_fitted(self, '_coef')
@@ -136,6 +247,30 @@ class LinearRegression(BaseEstimator):
     def intercept_(self):
         validation.check_is_fitted(self, '_intercept')
         return self._intercept
+
+
+def _encode_helper_cbor(encoder, obj):
+    encoder.encode(_encode_helper(obj))
+
+
+def _encode_helper(obj):
+    encoded = encoder_helper(obj)
+    if encoded is not None:
+        return encoded
+
+
+def _decode_helper_cbor(decoder, obj):
+    """Special decoder wrapper for dislib using cbor2."""
+    return _decode_helper(obj)
+
+
+def _decode_helper(obj):
+    if isinstance(obj, dict) and "class_name" in obj:
+        class_name = obj["class_name"]
+        decoded = decoder_helper(class_name, obj)
+        if decoded is not None:
+            return decoded
+    return obj
 
 
 def _compute_ztz(x, fit_intercept, arity):
