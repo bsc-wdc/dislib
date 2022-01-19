@@ -828,40 +828,6 @@ def _merge_branches(n_classes, *predictions, classification):
     return merged_prediction
 
 
-def _decode_helper(obj):
-    if isinstance(obj, dict) and "class_name" in obj:
-        class_name = obj["class_name"]
-        decoded = decoder_helper(class_name, obj)
-        if decoded is not None:
-            return decoded
-        elif class_name == "RandomState":
-            random_state = np.random.RandomState()
-            random_state.set_state(_decode_helper(obj["items"]))
-            return random_state
-        elif class_name == "Tree":
-            dict_ = _decode_helper(obj["items"])
-            model = SklearnTree(
-                obj["n_features"], obj["n_classes"], obj["n_outputs"]
-            )
-            model.__setstate__(dict_)
-            return model
-        elif isinstance(obj, SklearnTree):
-            return {
-                "class_name": obj.__class__.__name__,
-                "n_features": obj.n_features,
-                "n_classes": obj.n_classes,
-                "n_outputs": obj.n_outputs,
-                "items": obj.__getstate__(),
-            }
-        elif isinstance(obj, _SkTreeWrapper):
-            dict_ = _decode_helper(obj["items"])
-            sk_tree = _decode_helper(dict_.pop("sk_tree"))
-            model = _SkTreeWrapper(sk_tree)
-            model.__dict__.update(dict_)
-            return model
-    return obj
-
-
 def encode_forest_helper(obj):
     if isinstance(obj, (DecisionTreeClassifier, DecisionTreeRegressor, _Node,
                         _ClassificationNode, _RegressionNode, _InnerNodeInfo,
@@ -880,7 +846,7 @@ def decode_forest_helper(class_name, obj):
             random_state=obj.pop("random_state"),
         )
     elif class_name == '_SkTreeWrapper':
-        sk_tree = _decode_helper(obj.pop("sk_tree"))
+        sk_tree = obj.pop("sk_tree")
         model = _SkTreeWrapper(sk_tree)
     else:
         model = eval(class_name)()

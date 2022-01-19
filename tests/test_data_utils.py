@@ -141,7 +141,7 @@ class DataUtilsTest(unittest.TestCase):
     def test_sync_obj_exception(self):
         "Test exception included on the syn_obj function"
         with self.assertRaises(TypeError):
-            ra = random_array((2,2), (1,1))
+            ra = random_array((2, 2), (1, 1))
             sync_obj((ra._blocks[0][0]))
 
 
