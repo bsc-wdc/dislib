@@ -365,7 +365,8 @@ class SaveNpyTest(unittest.TestCase):
         """Tests loading chunk by chunk into a folder"""
         array = ds.random_array((7, 2), (2, 2))
         ds.data.save_npy_file(array, 'save_npy_test_folder')
-        loaded_array = ds.data.load_npy_files('save_npy_test_folder', shape=(7, 2))
+        loaded_array = ds.data.load_npy_files('save_npy_test_folder',
+                                              shape=(7, 2))
         self.assertTrue(_equal_arrays(loaded_array.collect(), array.collect()))
 
         with self.assertRaises(ValueError):
