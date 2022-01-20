@@ -567,7 +567,7 @@ class GaussianMixture(BaseEstimator):
                     Format used to save the models.
                 Examples
                 --------
-                >>> from dislib.cluster import KMeans
+                >>> from dislib.cluster import GaussianMixture
                 >>> import numpy as np
                 >>> import dislib as ds
                 >>> x = np.array([[1, 2], [1, 4], [1, 0], [4, 2],
@@ -580,10 +580,7 @@ class GaussianMixture(BaseEstimator):
                 >>> loaded_model = gm = GaussianMixture()
                 >>> loaded_model.load_model('/tmp/model')
                 >>> x_test = ds.array(np.array([[0, 0], [4, 4]]), (2, 2))
-                >>> model_pred = model.predict(x_test)
                 >>> loaded_model_pred = loaded_model.predict(x_test)
-                >>> assert np.allclose(model_pred.collect(),
-                >>> loaded_model_pred.collect())
                 """
 
         # Check overwrite
@@ -622,21 +619,18 @@ class GaussianMixture(BaseEstimator):
             Format used to load the model.
         Examples
         --------
-        >>> from dislib.cluster import KMeans
+        >>> from dislib.cluster import GaussianMixture
         >>> import numpy as np
         >>> import dislib as ds
         >>> x = np.array([[1, 2], [1, 4], [1, 0], [4, 2], [4, 4], [4, 0]])
         >>> x_train = ds.array(x, (2, 2))
-        >>> model = gm = GaussianMixture(n_components=2, random_state=0)
+        >>> model = GaussianMixture(n_components=2, random_state=0)
         >>> model.fit(x_train)
         >>> model.save_model('/tmp/model')
-        >>> loaded_model = gm = GaussianMixture()
-        >>> loaded_model.load_model('/tmp/model')
+        >>> gm = GaussianMixture()
+        >>> gm.load_model('/tmp/model')
         >>> x_test = ds.array(np.array([[0, 0], [4, 4]]), (2, 2))
-        >>> model_pred = model.predict(x_test)
-        >>> loaded_model_pred = loaded_model.predict(x_test)
-        >>> assert np.allclose(model_pred.collect(),
-        >>> loaded_model_pred.collect())
+        >>> loaded_model_pred = gm.predict(x_test)
         """
         # Load model
         if load_format == "json":

@@ -149,21 +149,17 @@ class LinearRegression(BaseEstimator):
             Format used to save the models.
         Examples
         --------
-        >>> from dislib.cluster import KMeans
+        >>> from dislib.regression import LinearRegression
         >>> import numpy as np
         >>> import dislib as ds
-        >>> x = np.array([[1, 2], [1, 4], [1, 0], [4, 2], [4, 4], [4, 0]])
-        >>> x_train = ds.array(x, (2, 2))
-        >>> model = KMeans(n_clusters=2, random_state=0)
-        >>> model.fit(x_train)
-        >>> model.save_model('/tmp/model')
-        >>> loaded_model = KMeans()
-        >>> loaded_model.load_model('/tmp/model')
-        >>> x_test = ds.array(np.array([[0, 0], [4, 4]]), (2, 2))
-        >>> model_pred = model.predict(x_test)
-        >>> loaded_model_pred = loaded_model.predict(x_test)
-        >>> assert np.allclose(model_pred.collect(),
-        >>> loaded_model_pred.collect())
+        >>> x_data = np.array([[1, 2], [2, 0], [3, 1], [4, 4], [5, 3]])
+        >>> y_data = np.array([2, 1, 1, 2, 4.5])
+        >>> bn, bm = 2, 2
+        >>> x = ds.array(x=x_data, block_size=(bn, bm))
+        >>> y = ds.array(x=y_data, block_size=(bn, 1))
+        >>> reg = LinearRegression()
+        >>> reg.fit(x, y)
+        >>> reg.save_model("./model_LR")
         """
 
         # Check overwrite
@@ -202,21 +198,22 @@ class LinearRegression(BaseEstimator):
             Format used to load the model.
         Examples
         --------
-        >>> from dislib.cluster import KMeans
+        >>> from dislib.regression import LinearRegression
         >>> import numpy as np
         >>> import dislib as ds
-        >>> x = np.array([[1, 2], [1, 4], [1, 0], [4, 2], [4, 4], [4, 0]])
-        >>> x_train = ds.array(x, (2, 2))
-        >>> model = KMeans(n_clusters=2, random_state=0)
-        >>> model.fit(x_train)
-        >>> model.save_model('/tmp/model')
-        >>> loaded_model = KMeans()
-        >>> loaded_model.load_model('/tmp/model')
-        >>> x_test = ds.array(np.array([[0, 0], [4, 4]]), (2, 2))
-        >>> model_pred = model.predict(x_test)
-        >>> loaded_model_pred = loaded_model.predict(x_test)
-        >>> assert np.allclose(model_pred.collect(),
-        >>> loaded_model_pred.collect())
+        >>> x_data = np.array([[1, 2], [2, 0], [3, 1], [4, 4], [5, 3]])
+        >>> y_data = np.array([2, 1, 1, 2, 4.5])
+        >>> x_test_m = np.array([[3, 2], [4, 4], [1, 3]])
+        >>> bn, bm = 2, 2
+        >>> x = ds.array(x=x_data, block_size=(bn, bm))
+        >>> y = ds.array(x=y_data, block_size=(bn, 1))
+        >>> test_data_m = ds.array(x=x_test_m, block_size=(bn, bm))
+        >>> reg = LinearRegression()
+        >>> reg.fit(x, y)
+        >>> reg.save_model("./model_LR")
+        >>> reg_loaded = LinearRegression()
+        >>> reg_loaded.load_model("./model_LR")
+        >>> pred = reg_loaded.predict(test_data).collect()
         """
         # Load model
         if load_format == "json":

@@ -238,18 +238,12 @@ class ALS(BaseEstimator):
         >>> from dislib.recommendation import ALS
         >>> import numpy as np
         >>> import dislib as ds
-        >>> x = np.array([[1, 2], [1, 4], [1, 0], [4, 2], [4, 4], [4, 0]])
-        >>> x_train = ds.array(x, (2, 2))
-        >>> model = KMeans(n_clusters=2, random_state=0)
-        >>> model.fit(x_train)
-        >>> model.save_model('/tmp/model')
-        >>> loaded_model = KMeans()
-        >>> loaded_model.load_model('/tmp/model')
-        >>> x_test = ds.array(np.array([[0, 0], [4, 4]]), (2, 2))
-        >>> model_pred = model.predict(x_test)
-        >>> loaded_model_pred = loaded_model.predict(x_test)
-        >>> assert np.allclose(model_pred.collect(),
-        >>> loaded_model_pred.collect())
+        >>>  data = np.array([[0, 0, 5], [3, 0, 5], [3, 1, 2]])
+        >>> ratings = csr_matrix(data)
+        >>> train = ds.array(x=ratings, block_size=(1, 1))
+        >>> als = ALS(tol=0.01, random_state=666, n_f=5, verbose=False)
+        >>> als.fit(train)
+        >>> als.save_model("model_als")
         """
 
         # Check overwrite
@@ -292,18 +286,9 @@ class ALS(BaseEstimator):
         >>> from dislib.recommendation import ALS
         >>> import numpy as np
         >>> import dislib as ds
-        >>> x = np.array([[1, 2], [1, 4], [1, 0], [4, 2], [4, 4], [4, 0]])
-        >>> x_train = ds.array(x, (2, 2))
-        >>> model = KMeans(n_clusters=2, random_state=0)
-        >>> model.fit(x_train)
-        >>> model.save_model('/tmp/model')
-        >>> loaded_model = KMeans()
-        >>> loaded_model.load_model('/tmp/model')
-        >>> x_test = ds.array(np.array([[0, 0], [4, 4]]), (2, 2))
-        >>> model_pred = model.predict(x_test)
-        >>> loaded_model_pred = loaded_model.predict(x_test)
-        >>> assert np.allclose(model_pred.collect(),
-        >>> loaded_model_pred.collect())
+        >>> als2 = ALS()
+        >>> als2.load_model("model_als")
+        >>> predictions2 = als2.predict_user(user_id=0)
         """
         # Load model
         if load_format == "json":

@@ -152,21 +152,12 @@ class Lasso(BaseEstimator):
             Format used to save the models.
         Examples
         --------
-        >>> from dislib.cluster import KMeans
+        >>> from dislib.regression import lasso
         >>> import numpy as np
         >>> import dislib as ds
-        >>> x = np.array([[1, 2], [1, 4], [1, 0], [4, 2], [4, 4], [4, 0]])
-        >>> x_train = ds.array(x, (2, 2))
-        >>> model = KMeans(n_clusters=2, random_state=0)
-        >>> model.fit(x_train)
-        >>> model.save_model('/tmp/model')
-        >>> loaded_model = KMeans()
-        >>> loaded_model.load_model('/tmp/model')
-        >>> x_test = ds.array(np.array([[0, 0], [4, 4]]), (2, 2))
-        >>> model_pred = model.predict(x_test)
-        >>> loaded_model_pred = loaded_model.predict(x_test)
-        >>> assert np.allclose(model_pred.collect(),
-        >>> loaded_model_pred.collect())
+        >>> lasso = Lasso(lmbd=0.1, max_iter=50)
+        >>> lasso.fit(ds.array(X_train, (5, 100)), ds.array(y_train, (5, 1)))
+        >>> lasso.save_model("./lasso_model")
         """
 
         # Check overwrite
@@ -205,21 +196,11 @@ class Lasso(BaseEstimator):
             Format used to load the model.
         Examples
         --------
-        >>> from dislib.cluster import KMeans
-        >>> import numpy as np
+        >>> from dislib.regression import lasso
         >>> import dislib as ds
-        >>> x = np.array([[1, 2], [1, 4], [1, 0], [4, 2], [4, 4], [4, 0]])
-        >>> x_train = ds.array(x, (2, 2))
-        >>> model = KMeans(n_clusters=2, random_state=0)
-        >>> model.fit(x_train)
-        >>> model.save_model('/tmp/model')
-        >>> loaded_model = KMeans()
-        >>> loaded_model.load_model('/tmp/model')
-        >>> x_test = ds.array(np.array([[0, 0], [4, 4]]), (2, 2))
-        >>> model_pred = model.predict(x_test)
-        >>> loaded_model_pred = loaded_model.predict(x_test)
-        >>> assert np.allclose(model_pred.collect(),
-        >>> loaded_model_pred.collect())
+        >>> lasso2 = Lasso()
+        >>> lasso2.load_model("./lasso_model")
+        >>> y_pred_lasso = lasso2.predict(ds.array(X_test, (25, 100)))
         """
         # Load model
         if load_format == "json":
