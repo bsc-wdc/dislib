@@ -13,7 +13,6 @@ from dislib.trees.test_split import test_split
 from dislib.data.array import Array
 
 
-
 class BaseDecisionTree:
     """Base class for distributed decision trees.
 
