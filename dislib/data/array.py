@@ -1616,6 +1616,57 @@ def matadd(a: Array, b: Array):
                  reg_shape=new_block_size, shape=new_shape, sparse=a._sparse)
 
 
+def concat_columns(a: Array, b: Array):
+    """ Matrix concatenation by columns.
+        Parameters
+        ----------
+        a : ds-array
+            First matrix.
+        b : ds-array
+            Second matrix.
+        Returns
+        -------
+        out : ds-array
+            The output array.
+        Raises
+        ------
+        NotImplementedError
+            If _top_left shape does not match _reg_shape. This case will be
+            implemented in the future.
+        ValueError
+            If the arrays do not match in the number of rows.
+        Examples
+        --------
+        >>> import dislib as ds
+        >>>
+        >>>
+        >>> if __name__ == "__main__":
+        >>>     x = ds.random_array((8, 4), block_size=(2, 2))
+        >>>     y = ds.random_array((8, 4), block_size=(2, 2))
+        >>>     result = ds.conc_columns(x, y)
+        >>>     print(result.collect())
+        """
+    if a._shape[0] != b._shape[0]:
+        raise ValueError("incompatible number of rows "
+                         f"subtract ({a._shape[0]} != {b._shape[0]}")
+
+    if a._reg_shape[0] != b._reg_shape[0] or a._reg_shape[1] !=\
+            b._reg_shape[1]:
+        raise ValueError("incorrect block sizes for the requested "
+                         f"subtract ({a._reg_shape[0], a._reg_shape[1]} "
+                         f"!= {b._reg_shape[0], b._reg_shape[1]})")
+
+    for i in range(len(a._blocks)):
+        for j in range(len(b._blocks[0])):
+            a._blocks[i].append(b._blocks[i][j])
+
+    return Array(blocks=a._blocks,
+                 top_left_shape=(a._reg_shape[0], a._reg_shape[1]),
+                 reg_shape=(a._reg_shape[0], a._reg_shape[1]),
+                 shape=(a._shape[0], a._shape[1] + b._shape[1]),
+                 sparse=a._sparse)
+
+
 def _add_block_groups(hblock, vblock):
     blocks = []
     for blocki, blockj in zip(hblock, vblock):
