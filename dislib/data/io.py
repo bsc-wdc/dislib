@@ -339,7 +339,7 @@ def save_npy_file(arr, directory, merge_rows=False):
     else:
         for i, blocks_row in enumerate(arr._blocks):
             for j, block in enumerate(blocks_row):
-                fname = '{}_{}_'.format(i, j)
+                fname = '{}_{}'.format(i, j)
                 path = os.path.join(directory, fname)
                 block = compss_wait_on(block)
                 np.save(path, block)
@@ -378,7 +378,7 @@ def load_npy_files(path, shape=None):
         shape0, order0, dtype0 = format._read_array_header(fid, version)
     blocks = []
     n_blocks0 = int(ceil(shape[0] / shape0[0]))
-    n_blocks1 = int(ceil(shape[1] /shape0[1]))
+    n_blocks1 = int(ceil(shape[1] / shape0[1]))
     for i in range(n_blocks0):
         blocks.append([])
         for j in range(n_blocks1):
@@ -386,7 +386,7 @@ def load_npy_files(path, shape=None):
             file_to_load = os.path.join(path, fname)
             blocks[-1].append(np.load(file_to_load))
     return Array(blocks=blocks, top_left_shape=shape0,
-                    reg_shape=shape0, shape=shape, sparse=False)
+                 reg_shape=shape0, shape=shape, sparse=False)
 
 
 @constraint(computing_units="${ComputingUnits}")
