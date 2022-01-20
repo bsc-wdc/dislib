@@ -9,11 +9,9 @@ from pycompss.api.task import task
 from sklearn.tree import DecisionTreeClassifier as SklearnDTClassifier
 from sklearn.tree import DecisionTreeRegressor as SklearnDTRegressor
 
-from dislib.data.util import decoder_helper
 from dislib.trees.test_split import test_split
 from dislib.data.array import Array
 
-from sklearn.tree._tree import Tree as SklearnTree
 
 
 class BaseDecisionTree:
