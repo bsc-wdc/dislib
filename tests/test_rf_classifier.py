@@ -284,9 +284,9 @@ class RFTest(unittest.TestCase):
         cbor2_module = utilmodel.cbor2
         utilmodel.cbor2 = None
         with self.assertRaises(ModuleNotFoundError):
-            rf.save_model("./saved_model", save_format="cbor")
+            rf.save_model("./saved_model_module", save_format="cbor")
         with self.assertRaises(ModuleNotFoundError):
-            rf2.load_model("./saved_model", load_format="cbor")
+            rf2.load_model("./saved_model_module", load_format="cbor")
         utilmodel.cbor2 = cbor2_module
 
 
