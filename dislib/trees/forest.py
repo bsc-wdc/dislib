@@ -602,8 +602,8 @@ def _encode_helper(obj):
             "module_name": obj.__module__,
             "items": obj.__dict__,
         }
-        else:
-            return encode_forest_helper(obj)
+    else:
+        return encode_forest_helper(obj)
 
 
 def _decode_helper_cbor(decoder, obj):
