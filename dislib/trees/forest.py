@@ -595,19 +595,13 @@ def _encode_helper(obj):
             "items": obj.__getstate__(),
         }
     elif isinstance(obj, (RandomForestClassifier, RandomForestRegressor,
-                          DecisionTreeClassifier, DecisionTreeRegressor)):
+                          DecisionTreeClassifier, DecisionTreeRegressor,
+                          SklearnDTClassifier, SklearnDTRegressor)):
         return {
             "class_name": obj.__class__.__name__,
             "module_name": obj.__module__,
             "items": obj.__dict__,
         }
-    else:
-        if obj.__module__ == "sklearn.tree.tree":
-            return {
-                "class_name": obj.__class__.__name__,
-                "module_name": obj.__module__,
-                "items": obj.__dict__,
-            }
         else:
             return encode_forest_helper(obj)
 
