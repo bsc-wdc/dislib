@@ -768,7 +768,8 @@ class ArrayTest(unittest.TestCase):
                            ])
     def test_concat_columns(self, x, y, z):
         """ Tests concatenation of two ds-arrays by columns"""
-        self.assertTrue(_equal_arrays(ds.data.concat_columns(x, y).collect(), z))
+        self.assertTrue(_equal_arrays(ds.data.concat_columns(x, y).
+                                      collect(), z))
 
     def test_concat_columns_error(self):
         x1 = ds.array([[1, 2, 3], [4, 5, 6]], (1, 3))

@@ -5,6 +5,6 @@ from dislib.data.io import load_txt_file, load_npy_file, load_svmlight_file, \
 
 __all__ = ['load_txt_file', 'load_svmlight_file', 'array', 'random_array',
            'apply_along_axis', 'load_npy_file', 'load_mdcrd_file',
-           'load_hstack_npy_files', 'matmul', 'matsubtract', 'concat_columns'
-           'save_txt', 'zeros', 'full', 'matadd',
-           'identity', 'eye', 'util']
+           'load_hstack_npy_files', 'save_txt', 'matmul', 'matsubtract',
+           'concat_columns', 'save_txt', 'zeros', 'full', 'matadd',
+           'concat_columns', 'identity', 'eye', 'util']
