@@ -364,6 +364,7 @@ class SaveNpyTest(unittest.TestCase):
     def test_load_npy_files(self):
         """Tests loading chunk by chunk into a folder"""
         array = ds.random_array((7, 2), (2, 2))
+        array.collect()
         ds.data.save_npy_file(array, 'save_npy_test_folder')
         loaded_array = ds.data.load_npy_files('save_npy_test_folder',
                                               shape=(7, 2))
