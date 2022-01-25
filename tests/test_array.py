@@ -792,8 +792,8 @@ class ArrayTest(unittest.TestCase):
             ds.data.matadd(x1, x2)
 
         with self.assertRaises(ValueError):
-            x1 = ds.random_array((5, 5), (2, 5))
-            x2 = ds.random_array((3, 5), (2, 5))
+            x1 = ds.random_array((5, 5), (3, 5))
+            x2 = ds.random_array((3, 5), (3, 5))
             ds.data.matadd(x1, x2)
 
         with self.assertRaises(ValueError):
