@@ -1,4 +1,7 @@
+import json
 import math
+import os
+import pickle
 from collections import Counter
 
 import numpy as np
@@ -9,9 +12,10 @@ from pycompss.api.task import task
 from sklearn.base import BaseEstimator
 from sklearn.utils import check_random_state
 
+from dislib.data.util import decoder_helper, encoder_helper, sync_obj
 from dislib.trees.decision_tree import (
     DecisionTreeClassifier,
-    DecisionTreeRegressor,
+    DecisionTreeRegressor, encode_forest_helper, decode_forest_helper,
 )
 from dislib.data.array import Array
 from dislib.utils.base import _paired_partition
@@ -20,6 +24,18 @@ from dislib.trees.data import (
     RfRegressorDataset,
     transform_to_rf_dataset
 )
+
+import dislib.data.util.model as utilmodel
+
+from sklearn.svm import SVC as SklearnSVC
+from sklearn.tree import DecisionTreeClassifier as SklearnDTClassifier
+from sklearn.tree import DecisionTreeRegressor as SklearnDTRegressor
+from sklearn.tree._tree import Tree as SklearnTree
+SKLEARN_CLASSES = {
+    "SVC": SklearnSVC,
+    "DecisionTreeClassifier": SklearnDTClassifier,
+    "DecisionTreeRegressor": SklearnDTRegressor,
+}
 
 
 class BaseRandomForest(BaseEstimator):
@@ -98,6 +114,110 @@ class BaseRandomForest(BaseEstimator):
             tree.fit(dataset)
 
         return self
+
+    def save_model(self, filepath, overwrite=True, save_format="json"):
+        """Saves a model to a file.
+        The model is synchronized before saving and can be reinstantiated in
+        the exact same state, without any of the code used for model
+        definition or fitting.
+        Parameters
+        ----------
+        filepath : str
+            Path where to save the model
+        overwrite : bool, optional (default=True)
+            Whether any existing model at the target
+            location should be overwritten.
+        save_format : str, optional (default='json)
+            Format used to save the models.
+        Examples
+        --------
+        >>> from dislib.cluster import DecisionTreeClassifier
+        >>> import numpy as np
+        >>> import dislib as ds
+        >>> x = np.array([[1, 2], [1, 4], [1, 0], [4, 2], [4, 4], [4, 0]])
+        >>> x_train = ds.array(x, (2, 2))
+        >>> model = DecisionTreeClassifier(n_clusters=2, random_state=0)
+        >>> model.fit(x_train)
+        >>> save_model(model, '/tmp/model')
+        >>> loaded_model = load_model('/tmp/model')
+        >>> x_test = ds.array(np.array([[0, 0], [4, 4]]), (2, 2))
+        >>> model_pred = model.predict(x_test)
+        >>> loaded_model_pred = loaded_model.predict(x_test)
+        >>> assert np.allclose(model_pred.collect(),
+        loaded_model_pred.collect())
+        """
+
+        # Check overwrite
+        if not overwrite and os.path.isfile(filepath):
+            return
+
+        _sync_rf(self)
+
+        sync_obj(self.__dict__)
+        model_metadata = self.__dict__
+        model_metadata["model_name"] = self.__class__.__name__
+
+        # Save model
+        if save_format == "json":
+            with open(filepath, "w") as f:
+                json.dump(model_metadata, f, default=_encode_helper)
+        elif save_format == "cbor":
+            if utilmodel.cbor2 is None:
+                raise ModuleNotFoundError("No module named 'cbor2'")
+            with open(filepath, "wb") as f:
+                utilmodel.cbor2.dump(model_metadata, f,
+                                     default=_encode_helper_cbor)
+        elif save_format == "pickle":
+            with open(filepath, "wb") as f:
+                pickle.dump(model_metadata, f)
+        else:
+            raise ValueError("Wrong save format.")
+
+    def load_model(self, filepath, load_format="json"):
+        """Loads a model from a file.
+        The model is reinstantiated in the exact same state in which it
+        was saved, without any of the code used for model definition or
+        fitting.
+        Parameters
+        ----------
+        filepath : str
+            Path of the saved the model
+        load_format : str, optional (default='json')
+            Format used to load the model.
+        Examples
+        --------
+        >>> from dislib.cluster import DecisionTreeClassifier
+        >>> import numpy as np
+        >>> import dislib as ds
+        >>> x = np.array([[1, 2], [1, 4], [1, 0], [4, 2], [4, 4], [4, 0]])
+        >>> x_train = ds.array(x, (2, 2))
+        >>> model = DecisionTreeClassifier(n_clusters=2, random_state=0)
+        >>> model.fit(x_train)
+        >>> save_model(model, '/tmp/model')
+        >>> loaded_model = load_model('/tmp/model')
+        >>> x_test = ds.array(np.array([[0, 0], [4, 4]]), (2, 2))
+        >>> model_pred = model.predict(x_test)
+        >>> loaded_model_pred = loaded_model.predict(x_test)
+        >>> assert np.allclose(model_pred.collect(),
+        """
+        # Load model
+        if load_format == "json":
+            with open(filepath, "r") as f:
+                model_metadata = json.load(f, object_hook=_decode_helper)
+        elif load_format == "cbor":
+            if utilmodel.cbor2 is None:
+                raise ModuleNotFoundError("No module named 'cbor2'")
+            with open(filepath, "rb") as f:
+                model_metadata = utilmodel.cbor2.\
+                    load(f, object_hook=_decode_helper_cbor)
+        elif load_format == "pickle":
+            with open(filepath, "rb") as f:
+                model_metadata = pickle.load(f)
+        else:
+            raise ValueError("Wrong load format.")
+
+        for key, val in model_metadata.items():
+            setattr(self, key, val)
 
 
 class RandomForestClassifier(BaseRandomForest):
@@ -450,6 +570,91 @@ def _base_hard_vote(classes, *predictions):
         mode[sample_i] = Counter(votes).most_common(1)[0][0]
     labels = classes[mode]
     return labels
+
+
+def _encode_helper_cbor(encoder, obj):
+    encoder.encode(_encode_helper(obj))
+
+
+def _encode_helper(obj):
+    encoded = encoder_helper(obj)
+    if encoded is not None:
+        return encoded
+    elif callable(obj):
+        return {
+            "class_name": "callable",
+            "module": obj.__module__,
+            "name": obj.__name__,
+        }
+    elif isinstance(obj, SklearnTree):
+        return {
+            "class_name": obj.__class__.__name__,
+            "n_features": obj.n_features,
+            "n_classes": obj.n_classes,
+            "n_outputs": obj.n_outputs,
+            "items": obj.__getstate__(),
+        }
+    elif isinstance(obj, (RandomForestClassifier, RandomForestRegressor,
+                          DecisionTreeClassifier, DecisionTreeRegressor,
+                          SklearnDTClassifier, SklearnDTRegressor)):
+        return {
+            "class_name": obj.__class__.__name__,
+            "module_name": obj.__module__,
+            "items": obj.__dict__,
+        }
+    else:
+        return encode_forest_helper(obj)
+
+
+def _decode_helper_cbor(decoder, obj):
+    """Special decoder wrapper for dislib using cbor2."""
+    return _decode_helper(obj)
+
+
+def _decode_helper(obj):
+    if isinstance(obj, dict) and "class_name" in obj:
+        class_name = obj["class_name"]
+        decoded = decoder_helper(class_name, obj)
+        if decoded is not None:
+            return decoded
+        elif class_name == "RandomState":
+            random_state = np.random.RandomState()
+            random_state.set_state(_decode_helper(obj["items"]))
+            return random_state
+        elif class_name == "Tree":
+            dict_ = _decode_helper(obj["items"])
+            model = SklearnTree(
+                obj["n_features"], obj["n_classes"], obj["n_outputs"]
+            )
+            model.__setstate__(dict_)
+            return model
+        elif class_name == "callable":
+            if obj["module"] == "numpy":
+                return getattr(np, obj["name"])
+            return None
+        elif (
+                class_name in SKLEARN_CLASSES.keys()
+                and "sklearn" in obj["module_name"]
+        ):
+            dict_ = _decode_helper(obj["items"])
+            model = SKLEARN_CLASSES[obj["class_name"]]()
+            model.__dict__.update(dict_)
+            return model
+        else:
+            dict_ = _decode_helper(obj["items"])
+            return decode_forest_helper(class_name, dict_)
+    return obj
+
+
+def _sync_rf(rf):
+    """Sync the `try_features` and `n_classes` attribute of the different trees
+    since they cannot be synced recursively.
+    """
+    try_features = compss_wait_on(rf.trees[0].try_features)
+    n_classes = compss_wait_on(rf.trees[0].n_classes)
+    for tree in rf.trees:
+        tree.try_features = try_features
+        tree.n_classes = n_classes
 
 
 @constraint(computing_units="${ComputingUnits}")
