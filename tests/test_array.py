@@ -328,6 +328,52 @@ class SaveTxtTest(unittest.TestCase):
         self.assertTrue(_equal_arrays(np.vstack(h_blocks), x_np))
 
 
+class SaveNpyTest(unittest.TestCase):
+    folder = 'save_npy_test_folder'
+
+    def tearDown(self):
+        shutil.rmtree(self.folder)
+
+    @parameterized.expand([_gen_random_arrays('dense'),
+                           _gen_irregular_arrays('dense')])
+    def test_save_npy(self, x, x_np):
+        """Tests saving chunk by chunk into a folder"""
+        ds.data.save_npy_file(x, 'save_npy_test_folder')
+        blocks = []
+        for i in range(x._n_blocks[0]):
+            blocks.append([])
+            for j in range(x._n_blocks[1]):
+                fname = '{}_{}.npy'.format(i, j)
+                path = os.path.join('save_npy_test_folder', fname)
+                blocks[-1].append(np.load(path))
+
+        self.assertTrue(_equal_arrays(np.block(blocks), x_np))
+
+    @parameterized.expand([_gen_random_arrays('dense'),
+                           _gen_irregular_arrays('dense')])
+    def test_save_npy_merge_rows(self, x, x_np):
+        """Tests saving chunk by chunk into a folder"""
+        ds.data.save_npy_file(x, 'save_npy_test_folder', merge_rows=True)
+        h_blocks = []
+        for i in range(x._n_blocks[0]):
+            path = os.path.join('save_npy_test_folder', str(i)+'.npy')
+            h_blocks.append(np.load(path))
+
+        self.assertTrue(_equal_arrays(np.vstack(h_blocks), x_np))
+
+    def test_load_npy_files(self):
+        """Tests loading chunk by chunk into a folder"""
+        array = ds.random_array((7, 2), (2, 2))
+        array.collect()
+        ds.data.save_npy_file(array, 'save_npy_test_folder')
+        loaded_array = ds.data.load_npy_files('save_npy_test_folder',
+                                              shape=(7, 2))
+        self.assertTrue(_equal_arrays(loaded_array.collect(), array.collect()))
+
+        with self.assertRaises(ValueError):
+            ds.data.load_npy_files('save_npy_test_folder')
+
+
 class ArrayTest(unittest.TestCase):
 
     @parameterized.expand([_gen_random_arrays("dense"),
