@@ -756,6 +756,30 @@ class ArrayTest(unittest.TestCase):
             x2 = ds.random_array((5, 5), (1, 5))
             ds.data.matadd(x1, x2)
 
+    @parameterized.expand([((ds.array([[1, 2, 3], [4, 5, 6]], (1, 3)),
+                            ds.array([[1, 1, 1, 2, 3, 4], [1, 1, 1, 8, 2, 3]],
+                                     (1, 3)),
+                            np.array([[1, 2, 3, 1, 1, 1, 2, 3, 4],
+                                      [4, 5, 6, 1, 1, 1, 8, 2, 3]]), )),
+                           ((ds.array([[1, 2, 3, 4], [4, 5, 6, 8]], (1, 2)),
+                             ds.array([[1, 1], [1, 1]], (1, 2)),
+                             np.array([[1, 2, 3, 4, 1, 1],
+                                       [4, 5, 6, 8, 1, 1]]), )),
+                           ])
+    def test_concat_columns(self, x, y, z):
+        """ Tests concatenation of two ds-arrays by columns"""
+        self.assertTrue(_equal_arrays(ds.data.concat_columns(x, y).collect(), z))
+
+    def test_concat_columns_error(self):
+        x1 = ds.array([[1, 2, 3], [4, 5, 6]], (1, 3))
+        x2 = ds.array([[1, 1, 1, 2], [1, 1, 1, 8], [1, 1, 1, 8]], (1, 4))
+        with self.assertRaises(ValueError):
+            ds.data.concat_columns(x1, x2)
+        x1 = ds.array([[1, 2, 3], [4, 5, 6]], (1, 3))
+        x2 = ds.array([[4, 4, 4, 4], [2, 3, 4, 5]], (1, 4))
+        with self.assertRaises(ValueError):
+            ds.data.concat_columns(x1, x2)
+
     @parameterized.expand([((20, 30), (30, 10), False),
                            ((1, 10), (10, 7), False),
                            ((5, 10), (10, 1), False),
