@@ -319,6 +319,76 @@ def save_txt(arr, dir, merge_rows=False):
                 np.savetxt(path, block)
 
 
+def save_npy_file(arr, directory, merge_rows=False):
+    """
+    Save a ds-array by blocks to a directory in npy format.
+    Parameters
+    ----------
+    arr : ds-array
+        Array data to be saved.
+    dir : str
+        Directory into which the data is saved.
+    merge_rows : boolean, default=False
+        Merge blocks along rows before saving.
+    """
+    os.makedirs(directory, exist_ok=True)
+    if merge_rows:
+        for i, h_block in enumerate(arr._iterator(0)):
+            path = os.path.join(directory, str(i))
+            np.save(path, h_block.collect())
+    else:
+        for i, blocks_row in enumerate(arr._blocks):
+            for j, block in enumerate(blocks_row):
+                fname = '{}_{}'.format(i, j)
+                path = os.path.join(directory, fname)
+                block = compss_wait_on(block)
+                np.save(path, block)
+
+
+def load_npy_files(path, shape=None):
+    """ Loads the .npy files in a directory into a ds-array, stacking them
+       in a way that the returned ds-array has the same shape as the one
+       specified on array_shape. The order of concatenation is alphanumeric.
+       At least 1 valid .npy file must exist in the directory, and every .npy
+       file must contain a valid array. Every array must have the same dtype,
+       order, and number of rows.
+       The blocks of the returned ds-array will have the same number of rows
+       as the input arrays, and cols_per_block columns, which defaults to the
+       number of columns of the first array.
+       Parameters
+       ----------
+       path : string
+           Folder path.
+       shape : tuple (int, int)
+           Number of rows and columns that the returned ds-array will have.
+       Returns
+       -------
+       x : ds-array
+           A distributed representation (ds-array) of the stacked arrays.
+       """
+    if shape is None:
+        raise ValueError("The shape of the final dsarray must be specified")
+    dirlist = os.listdir(path)
+    folder_paths = [os.path.join(path, name) for name in sorted(dirlist)]
+    files = [pth for pth in folder_paths
+             if os.path.isfile(pth) and pth[-4:] == '.npy']
+    with open(files[0], "rb") as fid:
+        version = format.read_magic(fid)
+        format._check_version(version)
+        shape0, order0, dtype0 = format._read_array_header(fid, version)
+    blocks = []
+    n_blocks0 = int(ceil(shape[0] / shape0[0]))
+    n_blocks1 = int(ceil(shape[1] / shape0[1]))
+    for i in range(n_blocks0):
+        blocks.append([])
+        for j in range(n_blocks1):
+            fname = '{}_{}.npy'.format(i, j)
+            file_to_load = os.path.join(path, fname)
+            blocks[-1].append(np.load(file_to_load))
+    return Array(blocks=blocks, top_left_shape=shape0,
+                 reg_shape=shape0, shape=shape, sparse=False)
+
+
 @constraint(computing_units="${ComputingUnits}")
 @task(out_blocks=COLLECTION_OUT)
 def _read_from_buffer(data, dtype, shape, block_size, out_blocks):
