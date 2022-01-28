@@ -6,6 +6,7 @@ from pycompss.api.api import compss_wait_on
 
 import dislib as ds
 from dislib.classification import CascadeSVM
+import dislib.data.util.model as utilmodel
 
 
 class CSVMTest(unittest.TestCase):
@@ -247,6 +248,96 @@ class CSVMTest(unittest.TestCase):
 
         csvm._collect_clf()
         self.assertEqual(csvm._clf.support_vectors_.shape[0], 6)
+
+    def test_save_load(self):
+        """
+        Tests that the save and load methods of the C-SVM work properly with
+        the implemented formats and that an exception is retuned when the
+        requested format is not supported.
+        """
+        seed = 666
+
+        # negative points belong to class 1, positives to 0
+        p1, p2, p3, p4 = [1, 2], [2, 1], [-1, -2], [-2, -1]
+
+        x = ds.array(np.array([p1, p4, p3, p2]), (2, 2))
+        y = ds.array(np.array([0, 1, 1, 0]).reshape(-1, 1), (2, 1))
+
+        csvm = CascadeSVM(cascade_arity=3, max_iter=10,
+                          tol=1e-4, kernel='linear', c=2, gamma=0.1,
+                          check_convergence=False,
+                          random_state=seed, verbose=False)
+
+        csvm.fit(x, y)
+        csvm.save_model("./saved_csvm")
+        csvm2 = CascadeSVM()
+        csvm2.load_model("./saved_csvm")
+        p5, p6 = np.array([1, 1]), np.array([-1, -1])
+
+        x_test = ds.array(np.array([p1, p2, p3, p4, p5, p6]), (2, 2))
+
+        y_pred = csvm2.predict(x_test)
+
+        l1, l2, l3, l4, l5, l6 = y_pred.collect()
+        self.assertTrue(l1 == l2 == l5 == 0)
+        self.assertTrue(l3 == l4 == l6 == 1)
+
+        csvm.save_model("./saved_csvm", save_format="cbor")
+        csvm2 = CascadeSVM()
+        csvm2.load_model("./saved_csvm", load_format="cbor")
+
+        y_pred = csvm2.predict(x_test)
+
+        l1, l2, l3, l4, l5, l6 = y_pred.collect()
+        self.assertTrue(l1 == l2 == l5 == 0)
+        self.assertTrue(l3 == l4 == l6 == 1)
+
+        csvm.save_model("./saved_csvm", save_format="pickle")
+        csvm2 = CascadeSVM()
+        csvm2.load_model("./saved_csvm", load_format="pickle")
+
+        y_pred = csvm2.predict(x_test)
+
+        l1, l2, l3, l4, l5, l6 = y_pred.collect()
+        self.assertTrue(l1 == l2 == l5 == 0)
+        self.assertTrue(l3 == l4 == l6 == 1)
+
+        with self.assertRaises(ValueError):
+            csvm.save_model("./saved_csvm", save_format="txt")
+
+        with self.assertRaises(ValueError):
+            csvm2 = CascadeSVM()
+            csvm2.load_model("./saved_csvm", load_format="txt")
+
+        p1, p2, p3, p4 = [-1, -2], [-2, -1], [1, 2], [2, 1]
+
+        x = ds.array(np.array([p1, p4, p3, p2]), (2, 2))
+        y = ds.array(np.array([0, 1, 1, 0]).reshape(-1, 1), (2, 1))
+
+        csvm = CascadeSVM(cascade_arity=3, max_iter=10,
+                          tol=1e-4, kernel='linear', c=2, gamma=0.1,
+                          check_convergence=False,
+                          random_state=seed, verbose=False)
+
+        csvm.fit(x, y)
+        csvm.save_model("./saved_csvm", overwrite=False)
+
+        csvm2 = CascadeSVM()
+        csvm2.load_model("./saved_csvm", load_format="pickle")
+
+        y_pred = csvm2.predict(x_test)
+
+        l1, l2, l3, l4, l5, l6 = y_pred.collect()
+        self.assertTrue(l1 == l2 == l5 == 0)
+        self.assertTrue(l3 == l4 == l6 == 1)
+
+        cbor2_module = utilmodel.cbor2
+        utilmodel.cbor2 = None
+        with self.assertRaises(ModuleNotFoundError):
+            csvm.save_model("./saved_csvm", save_format="cbor")
+        with self.assertRaises(ModuleNotFoundError):
+            csvm2.load_model("./saved_csvm", load_format="cbor")
+        utilmodel.cbor2 = cbor2_module
 
 
 def main():

@@ -4,7 +4,7 @@ import numpy as np
 from parameterized import parameterized
 from dislib.data.array import random_array
 from dislib.data.util import pad, pad_last_blocks_with_zeros, \
-    compute_bottom_right_shape, remove_last_columns
+    compute_bottom_right_shape, remove_last_columns, sync_obj
 
 
 class DataUtilsTest(unittest.TestCase):
@@ -137,6 +137,12 @@ class DataUtilsTest(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             remove_last_columns(a, 8)
+
+    def test_sync_obj_exception(self):
+        "Test exception included on the syn_obj function"
+        with self.assertRaises(TypeError):
+            ra = random_array((2, 2), (1, 1))
+            sync_obj((ra._blocks[0][0]))
 
 
 def main():

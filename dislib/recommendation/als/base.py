@@ -1,3 +1,6 @@
+import json
+import os
+import pickle
 from math import sqrt
 
 import numpy as np
@@ -10,6 +13,9 @@ from sklearn.base import BaseEstimator
 from sklearn.metrics import mean_squared_error
 
 from dislib.data.array import Array
+from dislib.data.util import sync_obj, decoder_helper, encoder_helper
+
+import dislib.data.util.model as utilmodel
 
 
 class ALS(BaseEstimator):
@@ -212,6 +218,120 @@ class ALS(BaseEstimator):
             return np.full([self.items.shape[1]], np.nan)
 
         return self.users[user_id].dot(self.items.T)
+
+    def save_model(self, filepath, overwrite=True, save_format="json"):
+        """Saves a model to a file.
+        The model is synchronized before saving and can be reinstantiated
+        in the exact same state, without any of the code used for model
+        definition or fitting.
+        Parameters
+        ----------
+        filepath : str
+            Path where to save the model
+        overwrite : bool, optional (default=True)
+            Whether any existing model at the target
+            location should be overwritten.
+        save_format : str, optional (default='json)
+            Format used to save the models.
+        Examples
+        --------
+        >>> from dislib.recommendation import ALS
+        >>> import numpy as np
+        >>> import dislib as ds
+        >>>  data = np.array([[0, 0, 5], [3, 0, 5], [3, 1, 2]])
+        >>> ratings = csr_matrix(data)
+        >>> train = ds.array(x=ratings, block_size=(1, 1))
+        >>> als = ALS(tol=0.01, random_state=666, n_f=5, verbose=False)
+        >>> als.fit(train)
+        >>> als.save_model("model_als")
+        """
+
+        # Check overwrite
+        if not overwrite and os.path.isfile(filepath):
+            return
+
+        sync_obj(self.__dict__)
+        model_metadata = self.__dict__
+        model_metadata["model_name"] = "kmeans"
+
+        # Save model
+        if save_format == "json":
+            with open(filepath, "w") as f:
+                json.dump(model_metadata, f, default=_encode_helper)
+        elif save_format == "cbor":
+            if utilmodel.cbor2 is None:
+                raise ModuleNotFoundError("No module named 'cbor2'")
+            with open(filepath, "wb") as f:
+                utilmodel.cbor2.dump(model_metadata, f,
+                                     default=_encode_helper_cbor)
+        elif save_format == "pickle":
+            with open(filepath, "wb") as f:
+                pickle.dump(model_metadata, f)
+        else:
+            raise ValueError("Wrong save format.")
+
+    def load_model(self, filepath, load_format="json"):
+        """Loads a model from a file.
+        The model is reinstantiated in the exact same state in which it
+        was saved, without any of the code used for model definition or
+        fitting.
+        Parameters
+        ----------
+        filepath : str
+            Path of the saved the model
+        load_format : str, optional (default='json')
+            Format used to load the model.
+        Examples
+        --------
+        >>> from dislib.recommendation import ALS
+        >>> import numpy as np
+        >>> import dislib as ds
+        >>> als2 = ALS()
+        >>> als2.load_model("model_als")
+        >>> predictions2 = als2.predict_user(user_id=0)
+        """
+        # Load model
+        if load_format == "json":
+            with open(filepath, "r") as f:
+                model_metadata = json.load(f, object_hook=_decode_helper)
+        elif load_format == "cbor":
+            if utilmodel.cbor2 is None:
+                raise ModuleNotFoundError("No module named 'cbor2'")
+            with open(filepath, "rb") as f:
+                model_metadata = utilmodel.cbor2.\
+                    load(f, object_hook=_decode_helper_cbor)
+        elif load_format == "pickle":
+            with open(filepath, "rb") as f:
+                model_metadata = pickle.load(f)
+        else:
+            raise ValueError("Wrong load format.")
+
+        for key, val in model_metadata.items():
+            setattr(self, key, val)
+
+
+def _encode_helper_cbor(encoder, obj):
+    encoder.encode(_encode_helper(obj))
+
+
+def _encode_helper(obj):
+    encoded = encoder_helper(obj)
+    if encoded is not None:
+        return encoded
+
+
+def _decode_helper_cbor(decoder, obj):
+    """Special decoder wrapper for dislib using cbor2."""
+    return _decode_helper(obj)
+
+
+def _decode_helper(obj):
+    if isinstance(obj, dict) and "class_name" in obj:
+        class_name = obj["class_name"]
+        decoded = decoder_helper(class_name, obj)
+        if decoded is not None:
+            return decoded
+    return obj
 
 
 def _mean(dataset):
