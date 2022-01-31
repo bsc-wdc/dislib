@@ -10,7 +10,7 @@ import numpy as np
 from sys import float_info
 from pycompss.api.api import compss_wait_on
 
-DIRPATH = "tests/files/saving"
+DIRPATH = "tests/datasets/saving"
 
 
 class RFDatasetTest(unittest.TestCase):

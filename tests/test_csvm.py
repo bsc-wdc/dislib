@@ -41,7 +41,7 @@ class CSVMTest(unittest.TestCase):
         c = 2
         gamma = 0.1
         seed = 666
-        file_ = "tests/files/libsvm/2"
+        file_ = "tests/datasets/libsvm/2"
 
         x, y = ds.load_svmlight_file(file_, (10, 300), 780, False)
         csvm = CascadeSVM(kernel=kernel, c=c, gamma=gamma, random_state=seed)
@@ -62,7 +62,7 @@ class CSVMTest(unittest.TestCase):
 
     def test_fit(self):
         seed = 666
-        file_ = "tests/files/libsvm/2"
+        file_ = "tests/datasets/libsvm/2"
 
         x, y = ds.load_svmlight_file(file_, (10, 300), 780, False)
 
@@ -88,7 +88,7 @@ class CSVMTest(unittest.TestCase):
         """ Tests that the fit method converges when using gamma=auto on a
         toy dataset """
         seed = 666
-        file_ = "tests/files/libsvm/2"
+        file_ = "tests/datasets/libsvm/2"
 
         x, y = ds.load_svmlight_file(file_, (10, 300), 780, False)
 
@@ -209,7 +209,7 @@ class CSVMTest(unittest.TestCase):
         """ Tests that C-SVM produces the same results with sparse and dense
         data"""
         seed = 666
-        train = "tests/files/libsvm/3"
+        train = "tests/datasets/libsvm/3"
 
         x_sp, y_sp = ds.load_svmlight_file(train, (10, 300), 780, True)
         x_d, y_d = ds.load_svmlight_file(train, (10, 300), 780, False)
