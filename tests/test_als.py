@@ -9,7 +9,7 @@ import dislib.data.util.model as utilmodel
 
 
 def load_movielens(train_ratio=0.9):
-    file = 'tests/files/sample_movielens_ratings.csv'
+    file = 'tests/datasets/sample_movielens_ratings.csv'
 
     # 'user_id', 'movie_id', 'rating', 'timestamp'
 

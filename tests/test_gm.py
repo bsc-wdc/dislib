@@ -186,7 +186,7 @@ class GaussianMixtureTest(unittest.TestCase):
     def test_sparse(self):
         """ Tests GaussianMixture produces the same results using dense and
         sparse data structures """
-        file_ = "tests/files/libsvm/2"
+        file_ = "tests/datasets/libsvm/2"
 
         x_sparse, _ = ds.load_svmlight_file(file_, (10, 780), 780, True)
         x_dense, _ = ds.load_svmlight_file(file_, (10, 780), 780, False)
