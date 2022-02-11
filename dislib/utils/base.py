@@ -21,6 +21,9 @@ def train_test_split(x, y=None, test_size=None, train_size=None,
     if test_size > 1 or train_size > 1:
         raise ValueError("test_size and train_size arguments should be a "
                          "float between 0 and 1")
+    if (test_size + train_size > 1):
+        raise ValueError("test_size and train_size should add up to one"
+                         "as maximum value")
     if y:
         if isinstance(x, Array) and isinstance(y, Array):
             return _make_splits(x=x, y=y, test_size=test_size,
@@ -159,7 +162,7 @@ def _make_splits(x, y=None, test_size=None, train_size=None,
             blocks_train_y = [object() for _ in range(y._n_blocks[1])]
             blocks_test_y = [object() for _ in range(y._n_blocks[1])]
             if index <= len(x._blocks) - 2:
-                _compute_splits_x_y(blocks_x[0], blocks_x[1], x._reg_shape,
+                _compute_splits_x_y(blocks_x[0], blocks_x[1],
                                     blocks_train_x, blocks_test_x,
                                     blocks_train_y, blocks_test_y,
                                     test_size=test_size,
@@ -168,8 +171,6 @@ def _make_splits(x, y=None, test_size=None, train_size=None,
             elif index == len(x._blocks) - 1:
                 if x.shape[0] % x._reg_shape[0] != 0:
                     _compute_splits_x_y(blocks_x[0], blocks_x[1],
-                                        (x.shape[0] % x._reg_shape[0],
-                                         x.shape[1] % x._reg_shape[1]),
                                         blocks_train_x, blocks_test_x,
                                         blocks_train_y, blocks_test_y,
                                         test_size=test_size,
@@ -177,9 +178,8 @@ def _make_splits(x, y=None, test_size=None, train_size=None,
                                         random_state=random_state)
                 else:
                     _compute_splits_x_y(blocks_x[0], blocks_x[1],
-                                        x._reg_shape, blocks_train_x,
-                                        blocks_test_x, blocks_train_y,
-                                        blocks_test_y,
+                                        blocks_train_x, blocks_test_x,
+                                        blocks_train_y, blocks_test_y,
                                         test_size=test_size,
                                         train_size=train_size,
                                         random_state=random_state)
@@ -222,24 +222,22 @@ def _make_splits(x, y=None, test_size=None, train_size=None,
         blocks_test_x = [object() for _ in range(x._n_blocks[1])]
         if index <= len(x._blocks) - 2:
             print(blocks_x)
-            _compute_splits_x(blocks_x, x._reg_shape, blocks_train_x,
+            _compute_splits_x(blocks_x, blocks_train_x,
                               blocks_test_x, test_size=test_size,
                               train_size=train_size,
                               random_state=random_state)
         elif index == len(x._blocks) - 1:
             if x.shape[0] % x._reg_shape[0] != 0:
-                _compute_splits_x(blocks_x, (x.shape[0] % x._reg_shape[0],
-                                             x.shape[1] % x._reg_shape[1]),
+                _compute_splits_x(blocks_x,
                                   blocks_train_x, blocks_test_x,
                                   test_size=test_size,
                                   train_size=train_size,
                                   random_state=random_state)
             else:
-                _compute_splits_x(blocks_x, x._reg_shape, blocks_train_x,
+                _compute_splits_x(blocks_x, blocks_train_x,
                                   blocks_test_x, test_size=test_size,
                                   train_size=train_size,
                                   random_state=random_state)
-        print(blocks_train_x)
         train_x_blocks_split.append(blocks_train_x)
         test_x_blocks_split.append(blocks_test_x)
     block_size_x = (int(x._reg_shape[0] * train_size),
@@ -260,7 +258,7 @@ def _make_splits(x, y=None, test_size=None, train_size=None,
               sparse=False)
 
 
-@task(returns=2)
+# @task(returns=2)
 def apply_splits_to_blocks(x, indexes_train, indexes_test):
     train_block = np.take(x, indexes_train, axis=0)
     test_block = np.take(x, indexes_test, axis=0)
@@ -270,11 +268,11 @@ def apply_splits_to_blocks(x, indexes_train, indexes_test):
 @task(x={Type: COLLECTION_IN, Depth: 1},
       blocks_train_x={Type: COLLECTION_OUT, Depth: 1},
       blocks_test_x={Type: COLLECTION_OUT, Depth: 1})
-def _compute_splits_x(x, shape, blocks_train_x, blocks_test_x, test_size=None,
+def _compute_splits_x(x, blocks_train_x, blocks_test_x, test_size=None,
                       train_size=None, random_state=None):
     rs = ShuffleSplit(n_splits=1, train_size=train_size, test_size=test_size,
                       random_state=random_state)
-    for train_index, test_index in rs.split(X=np.empty(shape)):
+    for train_index, test_index in rs.split(X=np.block(x[0])):
         for index, block in enumerate(x):
             train_block, test_block = apply_splits_to_blocks(block,
                                                              train_index,
@@ -288,12 +286,12 @@ def _compute_splits_x(x, shape, blocks_train_x, blocks_test_x, test_size=None,
       blocks_test_x={Type: COLLECTION_OUT, Depth: 1},
       blocks_train_y={Type: COLLECTION_OUT, Depth: 1},
       blocks_test_y={Type: COLLECTION_OUT, Depth: 1})
-def _compute_splits_x_y(x, y, shape, blocks_train_x, blocks_test_x,
+def _compute_splits_x_y(x, y, blocks_train_x, blocks_test_x,
                         blocks_train_y, blocks_test_y, test_size=None,
                         train_size=None, random_state=None):
     rs = ShuffleSplit(n_splits=1, train_size=train_size, test_size=test_size,
                       random_state=random_state)
-    for train_index, test_index in rs.split(X=np.empty(shape)):
+    for train_index, test_index in rs.split(X=np.block(x[0])):
         for index, block in enumerate(x):
             train_block, test_block = apply_splits_to_blocks(block,
                                                              train_index,
