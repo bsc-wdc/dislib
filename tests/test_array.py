@@ -283,15 +283,23 @@ class LoadBlocksRechunkTest(unittest.TestCase):
     def test_rechunk(self):
         """ Tests load_blocks_rechunk function """
         array = ds.random_array((20, 20), (2, 2))
+        array_aux = array.copy()
         blocks = []
         for block in array._blocks:
             for block_block in block:
                 blocks.append(block_block)
         x1 = ds.data.load_blocks_rechunk(blocks, (20, 20), (2, 2), (10, 10))
+        array_collected = array_aux.collect()
+        self.assertTrue(_equal_arrays(x1.collect(), array_collected))
+        array = ds.random_array((20, 20), (2, 2))
+        array_aux = array.copy()
+        blocks = []
+        for block in array._blocks:
+            for block_block in block:
+                blocks.append(block_block)
         x2 = ds.data.load_blocks_rechunk(blocks, (40, 10), (2, 2), (10, 10))
         x3 = x2.collect()
-        array_collected = array.collect()
-        self.assertTrue(_equal_arrays(x1.collect(), array_collected))
+        array_collected = array_aux.collect()
         self.assertTrue(_equal_arrays(x3[0:2], array_collected[0:2, 0:10]))
         self.assertTrue(_equal_arrays(x3[2:4],
                                       array_collected[0:2, 10:20]))
@@ -308,7 +316,7 @@ class LoadBlocksRechunkTest(unittest.TestCase):
             for block_block in block:
                 blocks.append(block_block)
         with self.assertRaises(ValueError):
-            ds.data.load_blocks_rechunk(blocks, (20, 20), (3, 3), (5, 5))
+            ds.data.load_blocks_rechunk(blocks, (20, 20), (25, 25), (5, 5))
 
 
 class LoadHStackNpyFilesTest(unittest.TestCase):
