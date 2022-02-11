@@ -424,10 +424,7 @@ def load_blocks_rechunk(blocks, shape, block_size, new_block_size):
     actual_col = 0
     for i in range(number_rows):
         for col in range(number_cols):
-            if col == number_cols:
-                break
-            else:
-                final_blocks[i].append(blocks[actual_col])
+            final_blocks[i].append(blocks[actual_col])
             actual_col = actual_col + 1
     arr = _load_blocks_array(final_blocks, shape, block_size)
     return arr.rechunk(new_block_size)
