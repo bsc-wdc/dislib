@@ -55,10 +55,10 @@ def train_test_split(x, y=None, test_size=None, train_size=None,
     if test_size > 1 or train_size > 1:
         raise ValueError("test_size and train_size arguments should be a "
                          "float between 0 and 1")
-    if (test_size + train_size > 1):
+    if (test_size + train_size) > 1:
         raise ValueError("test_size and train_size should add up to one"
                          "as maximum value")
-    if y:
+    if y is not None:
         if isinstance(x, Array) and isinstance(y, Array):
             return _make_splits(x=x, y=y, test_size=test_size,
                                 train_size=train_size,
@@ -255,7 +255,6 @@ def _make_splits(x, y=None, test_size=None, train_size=None,
         blocks_train_x = [object() for _ in range(x._n_blocks[1])]
         blocks_test_x = [object() for _ in range(x._n_blocks[1])]
         if index <= len(x._blocks) - 2:
-            print(blocks_x)
             _compute_splits_x(blocks_x, blocks_train_x,
                               blocks_test_x, test_size=test_size,
                               train_size=train_size,
