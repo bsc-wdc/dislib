@@ -267,6 +267,58 @@ class DataLoadingTest(unittest.TestCase):
         self.assertTrue(_validate_array(x))
 
 
+class LoadBlocksRechunkTest(unittest.TestCase):
+    def test_rechunk_new_block_size_exception(self):
+        """ Tests that load_blocks_rechunk function throws an exception
+        when the block_size returned of the rechunk is greater than the shape
+        of the array."""
+        array = ds.random_array((20, 20), (2, 2))
+        blocks = []
+        for block in array._blocks:
+            for block_block in block:
+                blocks.append(block_block)
+        with self.assertRaises(ValueError):
+            ds.data.load_blocks_rechunk(blocks, (20, 20), (2, 2), (21, 21))
+
+    def test_rechunk(self):
+        """ Tests load_blocks_rechunk function """
+        array = ds.random_array((20, 20), (2, 2))
+        array_aux = array.copy()
+        blocks = []
+        for block in array._blocks:
+            for block_block in block:
+                blocks.append(block_block)
+        x1 = ds.data.load_blocks_rechunk(blocks, (20, 20), (2, 2), (10, 10))
+        array_collected = array_aux.collect()
+        self.assertTrue(_equal_arrays(x1.collect(), array_collected))
+        array = ds.random_array((20, 20), (2, 2))
+        array_aux = array.copy()
+        blocks = []
+        for block in array._blocks:
+            for block_block in block:
+                blocks.append(block_block)
+        x2 = ds.data.load_blocks_rechunk(blocks, (40, 10), (2, 2), (10, 10))
+        x3 = x2.collect()
+        array_collected = array_aux.collect()
+        self.assertTrue(_equal_arrays(x3[0:2], array_collected[0:2, 0:10]))
+        self.assertTrue(_equal_arrays(x3[2:4],
+                                      array_collected[0:2, 10:20]))
+        self.assertTrue(_equal_arrays(x3[10:12],
+                                      array_collected[4:6, 10:20]))
+        self.assertTrue(_equal_arrays(x3[38:], array_collected[18:20, 10:20]))
+
+    def test_rechunk_block_size_exception(self):
+        """ Tests that load_blocks_rechunk throws an exception when
+        the block_size specified is greater than the real block size"""
+        array = ds.random_array((20, 20), (2, 2))
+        blocks = []
+        for block in array._blocks:
+            for block_block in block:
+                blocks.append(block_block)
+        with self.assertRaises(ValueError):
+            ds.data.load_blocks_rechunk(blocks, (20, 20), (25, 25), (5, 5))
+
+
 class LoadHStackNpyFilesTest(unittest.TestCase):
     folder = 'load_hstack_npy_files_test_folder'
     arrays = [np.random.rand(3, 4) for _ in range(5)]
