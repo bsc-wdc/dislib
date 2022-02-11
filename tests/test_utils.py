@@ -33,7 +33,7 @@ class TrainTestSplitTest(unittest.TestCase):
                     found = True
             self.assertTrue(found)
 
-    def test_train_test_split_x(self):
+    def test_train_test_split_x_reg_shape(self):
         x = np.random.rand(40, 40)
         x_ds = ds.array(x, (8, 8))
         train, test = ds.utils.train_test_split(x_ds)
@@ -57,7 +57,7 @@ class TrainTestSplitTest(unittest.TestCase):
                     found = True
             self.assertTrue(found)
 
-    def test_train_test_split_xy(self):
+    def test_train_test_split_xy_reg_shape(self):
         np.random.seed(0)
         x = np.random.rand(40, 40)
         y = np.random.rand(40, 1)
@@ -206,10 +206,11 @@ class TrainTestSplitTest(unittest.TestCase):
             ds.utils.train_test_split(x, y, test_size=0.95, train_size=0.1)
         with self.assertRaises(ValueError):
             ds.utils.train_test_split(x, y=np.zeros((2, 2)), test_size=0.95,
-                                     train_size=0.1)
+                                      train_size=0.1)
         with self.assertRaises(ValueError):
             ds.utils.train_test_split(x=np.zeros((2, 2)), test_size=0.95,
-                                     train_size=0.1)
+                                      train_size=0.1)
+
 
 class UtilsTest(unittest.TestCase):
 
