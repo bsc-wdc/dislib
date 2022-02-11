@@ -414,18 +414,21 @@ def load_blocks_rechunk(blocks, shape, block_size, new_block_size):
                of blocks, with the corresponding shape and with a reg_shape
                set to new_block_size.
            """
+
     if shape[0] < new_block_size[0] or shape[1] < new_block_size[1]:
         raise ValueError("The block size requested for rechunk"
                          "is greater than the ds-array")
     number_rows = int(shape[0] / block_size[0])
     number_cols = int(shape[1] / block_size[1])
     final_blocks = [[] for _ in range(number_rows)]
+    actual_col = 0
     for i in range(number_rows):
-        for col, block in enumerate(blocks):
+        for col in range(number_cols):
             if col == number_cols:
                 break
             else:
-                final_blocks[i].append(block)
+                final_blocks[i].append(blocks[actual_col])
+            actual_col = actual_col + 1
     arr = _load_blocks_array(final_blocks, shape, block_size)
     return arr.rechunk(new_block_size)
 
