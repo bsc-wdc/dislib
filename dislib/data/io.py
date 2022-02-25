@@ -84,6 +84,11 @@ def load_txt_file(path, block_size, discard_first_row=False,
         File path.
     block_size : tuple (int, int)
         Size of the blocks of the array.
+    discard_first_row : bool
+        Boolean that indicates if the first row should be discarded.
+    col_of_index : bool
+        Boolean that indicates if the first column is a column
+        of indexes and therefore it should be discarded.
     delimiter : string, optional (default=",")
         String that separates columns in the file.
 
