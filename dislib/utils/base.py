@@ -1,3 +1,5 @@
+import math
+
 import numpy as np
 from pycompss.api.api import compss_delete_object
 from pycompss.api.constraint import constraint
@@ -222,16 +224,16 @@ def _make_splits(x, y=None, test_size=None, train_size=None,
             train_y_blocks_split.append(blocks_train_y)
             test_y_blocks_split.append(blocks_test_y)
         block_size_x = (int(x._reg_shape[0] * train_size),
-                        int(x._reg_shape[1] * train_size))
+                        int(x._reg_shape[1]))
         block_size_test_x = (int(x._reg_shape[0] * test_size),
-                             int(x._reg_shape[1] * test_size))
+                             int(x._reg_shape[1]))
         top_train_shape_x = (int(x._top_left_shape[0] * train_size),
-                             int(x._top_left_shape[1] * train_size))
+                             int(x._top_left_shape[1]))
         top_test_shape_x = (int(x._top_left_shape[0] * test_size),
-                            int(x._top_left_shape[1] * test_size))
-        shape_x = (int(x.shape[0] * train_size), int(x.shape[1] * train_size))
-        shape_test_x = (int(x.shape[0] * test_size),
-                        int(x.shape[1] * test_size))
+                            int(x._top_left_shape[1]))
+        shape_x = (int(x.shape[0] * train_size), int(x.shape[1]))
+        shape_test_x = (math.ceil(x.shape[0] * test_size),
+                        int(x.shape[1]))
         return Array(blocks=train_x_blocks_split,
                      top_left_shape=top_train_shape_x,
                      reg_shape=block_size_x, shape=shape_x,
@@ -274,15 +276,15 @@ def _make_splits(x, y=None, test_size=None, train_size=None,
         train_x_blocks_split.append(blocks_train_x)
         test_x_blocks_split.append(blocks_test_x)
     block_size_x = (int(x._reg_shape[0] * train_size),
-                    int(x._reg_shape[1] * train_size))
+                    int(x._reg_shape[1]))
     block_size_test_x = (int(x._reg_shape[0] * test_size),
-                         int(x._reg_shape[1] * test_size))
+                         int(x._reg_shape[1]))
     top_train_shape_x = (int(x._top_left_shape[0] * train_size),
-                         int(x._top_left_shape[1] * train_size))
+                         int(x._top_left_shape[1]))
     top_test_shape_x = (int(x._top_left_shape[0] * test_size),
-                        int(x._top_left_shape[1] * test_size))
-    shape_x = (int(x.shape[0] * train_size), int(x.shape[1] * train_size))
-    shape_test_x = (int(x.shape[0] * test_size), int(x.shape[1] * test_size))
+                        int(x._top_left_shape[1]))
+    shape_x = (int(x.shape[0] * train_size), int(x.shape[1]))
+    shape_test_x = (math.ceil(x.shape[0] * test_size), int(x.shape[1]))
     return Array(blocks=train_x_blocks_split,
                  top_left_shape=top_train_shape_x,
                  reg_shape=block_size_x, shape=shape_x, sparse=False),\
