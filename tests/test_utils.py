@@ -210,6 +210,10 @@ class TrainTestSplitTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             ds.utils.train_test_split(x=np.zeros((2, 2)), test_size=0.95,
                                       train_size=0.1)
+        with self.assertRaises(ValueError):
+            ds.utils.train_test_split(x, y=np.zeros((2, 2)), test_size=0.95)
+        with self.assertRaises(ValueError):
+            ds.utils.train_test_split(x=np.zeros((2, 2)), test_size=0.95)
 
 
 class UtilsTest(unittest.TestCase):
