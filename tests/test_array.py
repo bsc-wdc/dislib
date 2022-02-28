@@ -250,7 +250,7 @@ class DataLoadingTest(unittest.TestCase):
         feature_cols = ["sepallength", "sepalwidth", "petallength",
                         "petalwidth", "class"]
         csv_x = csv[feature_cols]
-        csv_x = csv_x.to_numpy()
+        csv_x = csv_x.values
         self.assertEqual(data._top_left_shape, (20, 5))
         self.assertEqual(data._reg_shape, (20, 5))
         self.assertEqual(data.shape, (150, 5))
