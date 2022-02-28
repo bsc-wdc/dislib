@@ -117,6 +117,14 @@ class CSVMTest(unittest.TestCase):
         self.assertFalse(csvm.converged)
         self.assertEqual(csvm.iterations, 1)
 
+        csvm = CascadeSVM(cascade_arity=3, max_iter=1,
+                          tol=1e-4, kernel='rbf', c=2, gamma=0.1,
+                          check_convergence=True,
+                          random_state=seed, verbose=True)
+
+        csvm.fit(x_train, y_train)
+        self.assertTrue(csvm.converged)
+
     def test_predict_multiclass(self):
         seed = 666
 
@@ -435,6 +443,29 @@ class CSVMTest(unittest.TestCase):
         with self.assertRaises(ModuleNotFoundError):
             csvm2.load_model("./saved_csvm", load_format="cbor")
         utilmodel.cbor2 = cbor2_module
+
+    def test_fit_multiclass(self):
+        seed = 666
+        x, y = make_classification(
+            n_samples=2400,
+            n_features=13,
+            n_classes=1,
+            n_informative=3,
+            n_redundant=1,
+            n_repeated=2,
+            n_clusters_per_class=1,
+            shuffle=True,
+            random_state=0,
+        )
+        x_train = ds.array(x[::2], (50, 13))
+        y_train = ds.array(y[::2][:, np.newaxis], (50, 1))
+
+        csvm = CascadeSVM(cascade_arity=3, max_iter=15,
+                          tol=1e-6, kernel='rbf', c=1, gamma=0.05,
+                          check_convergence=True,
+                          random_state=seed, verbose=False)
+        with self.assertRaises(ValueError):
+            csvm.fit(x_train, y_train)
 
 
 def main():
