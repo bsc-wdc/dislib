@@ -444,7 +444,7 @@ class CSVMTest(unittest.TestCase):
             csvm2.load_model("./saved_csvm", load_format="cbor")
         utilmodel.cbor2 = cbor2_module
 
-    def test_fit_multiclass(self):
+    def test_csvm_error(self):
         seed = 666
         x, y = make_classification(
             n_samples=2400,
