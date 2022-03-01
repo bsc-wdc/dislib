@@ -91,8 +91,8 @@ class CSVMTest(unittest.TestCase):
 
         csvm.fit(x, y)
         self.assertTrue(csvm.converged)
-        csvm = CascadeSVM(cascade_arity=3, max_iter=1,
-                          tol=1e-4, kernel='rbf', c=2, gamma=0.1,
+        csvm = CascadeSVM(cascade_arity=3, max_iter=2,
+                          tol=1e-7, kernel='rbf', c=1, gamma=0.01,
                           check_convergence=True,
                           random_state=seed, verbose=True)
 
