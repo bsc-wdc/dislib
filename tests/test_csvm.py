@@ -91,6 +91,13 @@ class CSVMTest(unittest.TestCase):
 
         csvm.fit(x, y)
         self.assertTrue(csvm.converged)
+        csvm = CascadeSVM(cascade_arity=3, max_iter=1,
+                          tol=1e-4, kernel='rbf', c=2, gamma=0.1,
+                          check_convergence=True,
+                          random_state=seed, verbose=True)
+
+        csvm.fit(x, y)
+        self.assertFalse(csvm.converged)
 
     def test_fit_multiclass(self):
         seed = 666
