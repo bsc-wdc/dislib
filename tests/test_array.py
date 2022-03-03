@@ -6,7 +6,7 @@ import numpy as np
 from parameterized import parameterized
 from scipy import sparse as sp
 from sklearn.datasets import load_svmlight_file
-
+import pandas as pd
 import dislib as ds
 from math import ceil
 
@@ -239,6 +239,34 @@ class DataLoadingTest(unittest.TestCase):
         csv = np.loadtxt(csv_f, delimiter=",")
 
         self.assertTrue(_equal_arrays(data.collect(), csv))
+
+    def test_load_csv_file_without_first_row_and_col(self):
+        """ Tests loading a CSV file removing the first row and column. """
+        csv_f = "tests/datasets/csv/iris_csv.csv"
+
+        data = ds.load_txt_file(csv_f, discard_first_row=True,
+                                block_size=(20, 5))
+        csv = pd.read_csv(csv_f, delimiter=",")
+        feature_cols = ["sepallength", "sepalwidth", "petallength",
+                        "petalwidth", "class"]
+        csv_x = csv[feature_cols]
+        csv_x = csv_x.values
+        self.assertEqual(data._top_left_shape, (20, 5))
+        self.assertEqual(data._reg_shape, (20, 5))
+        self.assertEqual(data.shape, (150, 5))
+        self.assertEqual(data._n_blocks, (8, 1))
+        self.assertTrue(np.array_equal(data.collect(), csv_x))
+
+        csv_f = "tests/datasets/csv/iris_csv.csv"
+        data = ds.load_txt_file(csv_f, discard_first_row=True,
+                                col_of_index=True, block_size=(20, 4))
+        csv = pd.read_csv(csv_f, delimiter=",")
+
+        self.assertEqual(data._top_left_shape, (20, 4))
+        self.assertEqual(data._reg_shape, (20, 4))
+        self.assertEqual(data.shape, (150, 4))
+
+        self.assertFalse(np.array_equal(data.collect(), csv[:][1:]))
 
     def test_load_npy_file(self):
         """ Tests loading an npy file """
