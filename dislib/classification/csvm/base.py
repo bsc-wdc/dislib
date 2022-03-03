@@ -337,8 +337,6 @@ class CascadeSVM(BaseEstimator):
             for _ in range(len(set_sl) - 2):
                 new_sl.append(labels.copy())
                 vectors_def = np.concatenate((vectors_def, vectors))
-        elif len(set_sl) < 1:
-            raise ValueError("There should be at least two classes.")
         else:
             new_sl = labels.copy()
             new_sl[labels == 0] = -1
