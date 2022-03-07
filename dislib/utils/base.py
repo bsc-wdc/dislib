@@ -342,7 +342,7 @@ def _compute_splits_x_y(x, y, blocks_train_x, blocks_test_x,
 
 
 @constraint(computing_units="${ComputingUnits}")
-@task(part_out_subsamples={Type:COLLECTION_IN, Depth:2},
+@task(part_out_subsamples={Type: COLLECTION_IN, Depth: 2},
       part_out_x_blocks=COLLECTION_OUT,
       returns=1)
 def _merge_shuffle_x(seed, part_out_subsamples, part_out_x_blocks,
@@ -362,7 +362,7 @@ def _merge_shuffle_x(seed, part_out_subsamples, part_out_x_blocks,
 
 
 @constraint(computing_units="${ComputingUnits}")
-@task(part_out_subsamples={Type:COLLECTION_IN, Depth:2},
+@task(part_out_subsamples={Type: COLLECTION_IN, Depth: 2},
       part_out_x_blocks=COLLECTION_OUT,
       part_out_y_blocks=COLLECTION_OUT,
       returns=1)
