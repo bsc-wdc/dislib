@@ -11,7 +11,7 @@
          alt="Documentation Status"/>
   </a>  
   <a href="https://github.com/bsc-wdc/dislib">
-    <img src="https://img.shields.io/github/checks-status/bsc-wdc/dislib/master?label=build"
+    <img src="https://compss.bsc.es/jenkins/buildStatus/icon?job=dislib_multibranch%2Fmaster"
          alt="Build Status">
   </a> 
   <a href="https://codecov.io/gh/bsc-wdc/dislib">
