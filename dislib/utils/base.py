@@ -126,7 +126,7 @@ def shuffle(x, y=None, random_state=None):
         part_out_subsamples = [part_in_subsamples[j] for part_in_subsamples
                                in mapped_subsamples]
         seed = np.random.randint(np.iinfo(np.int32).max)
-        #TODO: change object() for None when COMPSs version support it
+        # TODO: change object() for None when COMPSs version support it
         part_out_x_blocks = [object() for _ in range(x._n_blocks[1])]
         if y is None:
             _merge_shuffle_x(seed, part_out_subsamples, part_out_x_blocks,
