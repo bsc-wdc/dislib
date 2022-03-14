@@ -1158,6 +1158,28 @@ def array(x, block_size):
     return arr
 
 
+def _empty_array(shape, block_size):
+    '''
+    Returns an empty ds-array with the specified block_size and shape.
+    Useful for constructing ds-arrays on some algorithms without the
+    need of allocating memory for the blocks (as for example happens with
+    the random_array operation).
+    Parameters
+    ----------
+    shape : tuple of two ints
+        Shape of the output ds-array.
+    block_size : tuple of two ints
+        Size of the ds-array blocks.
+
+    Returns
+    -------
+    x : ds-array
+        Distributed array with value None in the blocks.
+    '''
+    return Array(blocks=[[None]], top_left_shape=block_size,
+                 reg_shape=block_size, shape=shape, sparse=False)
+
+
 def random_array(shape, block_size, random_state=None):
     """ Returns a distributed array of random floats in the open interval [0.0,
     1.0). Values are from the "continuous uniform" distribution over the
