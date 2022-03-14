@@ -126,12 +126,13 @@ def shuffle(x, y=None, random_state=None):
         part_out_subsamples = [part_in_subsamples[j] for part_in_subsamples
                                in mapped_subsamples]
         seed = np.random.randint(np.iinfo(np.int32).max)
-        part_out_x_blocks = [{} for _ in range(x._n_blocks[1])]
+        # TODO: change object() for None when COMPSs version support it
+        part_out_x_blocks = [object() for _ in range(x._n_blocks[1])]
         if y is None:
             _merge_shuffle_x(seed, part_out_subsamples, part_out_x_blocks,
                              x._reg_shape[1])
         else:
-            part_out_y_blocks = [{} for _ in range(y._n_blocks[1])]
+            part_out_y_blocks = [object() for _ in range(y._n_blocks[1])]
             _merge_shuffle_xy(seed, part_out_subsamples, part_out_x_blocks,
                               part_out_y_blocks, x._reg_shape[1],
                               y._reg_shape[1])
@@ -175,7 +176,7 @@ def _partition_arrays(part_in, sizes_out):
         subsample_sizes[j] = n_selected
         n_rows -= n_selected
 
-    subsamples = [{} for _ in range(n_parts_out)]
+    subsamples = [object() for _ in range(n_parts_out)]
     seed = np.random.randint(np.iinfo(np.int32).max)
     if y is None:
         _choose_and_assign_rows_x(x._blocks, subsample_sizes, subsamples, seed)
@@ -342,7 +343,7 @@ def _compute_splits_x_y(x, y, blocks_train_x, blocks_test_x,
 
 
 @constraint(computing_units="${ComputingUnits}")
-@task(part_out_subsamples=COLLECTION_IN,
+@task(part_out_subsamples={Type: COLLECTION_IN, Depth: 2},
       part_out_x_blocks=COLLECTION_OUT,
       returns=1)
 def _merge_shuffle_x(seed, part_out_subsamples, part_out_x_blocks,
@@ -362,7 +363,7 @@ def _merge_shuffle_x(seed, part_out_subsamples, part_out_x_blocks,
 
 
 @constraint(computing_units="${ComputingUnits}")
-@task(part_out_subsamples=COLLECTION_IN,
+@task(part_out_subsamples={Type: COLLECTION_IN, Depth: 2},
       part_out_x_blocks=COLLECTION_OUT,
       part_out_y_blocks=COLLECTION_OUT,
       returns=1)
