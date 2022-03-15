@@ -1,8 +1,9 @@
 import operator
 from collections import defaultdict, deque
 from math import ceil
-
+import dislib
 import numpy as np
+import cupy as cp
 from pycompss.api.api import compss_wait_on, compss_delete_object
 from pycompss.api.constraint import constraint
 from pycompss.api.parameter import Type, COLLECTION_IN, Depth, \
@@ -1454,24 +1455,57 @@ def matmul(a: Array, b: Array, transpose_a=False, transpose_b=False):
                  reg_shape=new_block_size, shape=new_shape, sparse=a._sparse)
 
 
+@constraint(computing_units="${ComputingUnits}")
+@task(returns=np.array)
 def _matmul_with_transpose(a, b, transpose_a, transpose_b):
     return (a.T if transpose_a else a) @ (b.T if transpose_b else b)
 
+@constraint(processors=[
+                {"processorType": "CPU", "computingUnits": "1"},
+                {"processorType": "GPU", "computingUnits": "1"},
+            ]
+)
+@task(returns=np.array)
+def _add_gpu(block1, block2):
+    res = cp.add(cp.asarray(block1), cp.asarray(block2))
+    return cp.asnumpy(res)
+
+@constraint(computing_units="${ComputingUnits}")
+@task(returns=np.array)
+def _add_cpu(block1, block2):
+    return block1 + block2
+
+@constraint(processors=[
+                {"processorType": "CPU", "computingUnits": "1"},
+                {"processorType": "GPU", "computingUnits": "1"},
+            ]
+)
+@task(returns=np.array)
+def _matmul_gpu(a, b, transpose_a, transpose_b):
+    res = cp.matmul(cp.asarray(a), cp.asarray(b))
+    return cp.asnumpy(res)
 
 def _multiply_block_groups(hblock, vblock, transpose_a=False,
                            transpose_b=False):
     blocks = deque()
 
+    if dislib.__gpu_available__:
+        matmul_func = _matmul_gpu
+        add_func = _add_gpu
+    else:
+        matmul_func = _matmul_with_transpose
+        add_func = _add_cpu
+
     for blocki, blockj in zip(hblock, vblock):
         blocks.append(
-            _block_apply(_matmul_with_transpose, blocki, blockj,
+            matmul_func(blocki, blockj,
                          transpose_a, transpose_b)
         )
 
     while len(blocks) > 1:
         block1 = blocks.popleft()
         block2 = blocks.popleft()
-        blocks.append(_block_apply(operator.add, block1, block2))
+        blocks.append(add_func(block1, block2))
 
         compss_delete_object(block1)
         compss_delete_object(block2)
@@ -1544,10 +1578,32 @@ def matsubtract(a: Array, b: Array):
                  reg_shape=new_block_size, shape=new_shape, sparse=a._sparse)
 
 
+@constraint(processors=[
+                {"processorType": "CPU", "computingUnits": "1"},
+                {"processorType": "GPU", "computingUnits": "1"},
+            ]
+)
+@task(returns=np.array)
+def _subtract_gpu(block1, block2):
+    res = cp.subtract(cp.asarray(block1), cp.asarray(block2))
+    return cp.asnumpy(res)
+
+@constraint(computing_units="${ComputingUnits}")
+@task(returns=np.array)
+def _subtract(block1, block2):
+    return block1 - block2
+
+
 def _subtract_block_groups(hblock, vblock):
     blocks = []
+
+    if dislib.__gpu_available__:
+        subtract_func = _subtract_gpu
+    else:
+        subtract_func = _subtract
+
     for blocki, blockj in zip(hblock, vblock):
-        blocks.append(_block_apply(operator.sub, blocki, blockj))
+        blocks.append(subtract_func(blocki, blockj))
     return blocks
 
 
@@ -1669,8 +1725,14 @@ def concat_columns(a: Array, b: Array):
 
 def _add_block_groups(hblock, vblock):
     blocks = []
+
+    if dislib.__gpu_available__ == 'gpu':
+        add_func = _add_gpu
+    else:
+        add_func = _add_cpu
+
     for blocki, blockj in zip(hblock, vblock):
-        blocks.append(_block_apply(operator.add, blocki, blockj))
+        blocks.append(add_func(blocki, blockj))
     return blocks
 
 
@@ -1840,7 +1902,7 @@ def _transpose(blocks, out_blocks):
 @task(returns=np.array)
 def _random_block(shape, seed):
     np.random.seed(seed)
-    return np.random.random(shape)
+    return np.random.random(shape).astype(np.float64)
 
 
 @constraint(computing_units="${ComputingUnits}")
@@ -1892,7 +1954,6 @@ def _block_apply_axis(func, axis, blocks, *args, **kwargs):
 @task(returns=1)
 def _block_apply(func, block, *args, **kwargs):
     return func(block, *args, **kwargs)
-
 
 @constraint(computing_units="${ComputingUnits}")
 @task(block=INOUT)

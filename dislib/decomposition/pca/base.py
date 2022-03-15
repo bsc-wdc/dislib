@@ -1,5 +1,9 @@
 import numpy as np
+import cupyx
+cupyx.seterr(linalg='raise')
+import cupy as cp
 from pycompss.api.constraint import constraint
+from pycompss.api.api import compss_wait_on
 from pycompss.api.parameter import COLLECTION_IN, Depth, Type, COLLECTION_OUT
 from pycompss.api.task import task
 from scipy.sparse import issparse, csr_matrix
@@ -8,6 +12,7 @@ from sklearn.base import BaseEstimator
 from dislib.data.array import Array
 from dislib.math.base import svd
 from math import ceil
+import dislib
 
 
 class PCA(BaseEstimator):
@@ -145,7 +150,12 @@ class PCA(BaseEstimator):
         val_blocks = Array._get_out_blocks((1, n_blocks))
         vec_blocks = Array._get_out_blocks((n_blocks, x._n_blocks[1]))
 
-        _decompose(cov_matrix, self.n_components, x._reg_shape[1],
+        if dislib.__gpu_available__:
+            decompose_func = _decompose_gpu
+        else:
+            decompose_func = _decompose
+
+        decompose_func(cov_matrix, self.n_components, x._reg_shape[1],
                    val_blocks,
                    vec_blocks)
 
@@ -178,9 +188,14 @@ class PCA(BaseEstimator):
         div, mod = divmod(n_components, reg_shape)
         n_col_blocks = div + (1 if mod else 0)
 
+        if dislib.__gpu_available__:
+            subset_trans_func = _subset_transform_gpu
+        else:
+            subset_trans_func = _subset_transform
+
         for rows in x._iterator('rows'):
             out_blocks = [object() for _ in range(n_col_blocks)]
-            _subset_transform(rows._blocks, self.mean_._blocks,
+            subset_trans_func(rows._blocks, self.mean_._blocks,
                               self.components_._blocks, reg_shape, out_blocks)
             new_blocks.append(out_blocks)
 
@@ -191,8 +206,14 @@ class PCA(BaseEstimator):
 
 def _scatter_matrix(x, arity):
     partials = []
+
+    if dislib.__gpu_available__:
+        scatter_func = _subset_scatter_matrix_gpu
+    else:
+        scatter_func = _subset_scatter_matrix
+
     for rows in x._iterator('rows'):
-        partials.append(_subset_scatter_matrix(rows._blocks))
+        partials.append(scatter_func(rows._blocks))
     return _reduce_scatter_matrix(partials, arity)
 
 
@@ -205,6 +226,21 @@ def _subset_scatter_matrix(blocks):
         data = data.toarray()
 
     return np.dot(data.T, data)
+
+@constraint(processors=[
+                {"processorType": "CPU", "computingUnits": "1"},
+                {"processorType": "GPU", "computingUnits": "1"},
+            ])
+@task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
+def _subset_scatter_matrix_gpu(blocks):
+    data = Array._merge_blocks(blocks)
+
+    if issparse(data):
+        data = data.toarray()
+
+    data_gpu = cp.asarray(data)
+
+    return cp.asnumpy(cp.dot(data_gpu.T, data_gpu))
 
 
 def _reduce_scatter_matrix(partials, arity):
@@ -254,6 +290,37 @@ def _decompose(covariance_matrix, n_components, bsize, val_blocks, vec_blocks):
             vec_blocks[i][j] = \
                 eig_vec[i * bsize:(i + 1) * bsize, j * bsize:(j + 1) * bsize]
 
+@constraint(processors=[
+                {"processorType": "CPU", "computingUnits": "1"},
+                {"processorType": "GPU", "computingUnits": "1"},
+            ])
+@task(val_blocks={Type: COLLECTION_OUT, Depth: 2},
+      vec_blocks={Type: COLLECTION_OUT, Depth: 2})
+def _decompose_gpu(covariance_matrix, n_components, bsize, val_blocks, vec_blocks):
+    eig_val_gpu, eig_vec_gpu = cp.linalg.eigh(cp.asarray(covariance_matrix))
+
+    if n_components is None:
+        n_components = len(eig_val_gpu)
+
+    # first n_components eigenvalues in descending order:
+    eig_val_gpu = eig_val_gpu[::-1][:n_components]
+
+    # first n_components eigenvectors in rows, with the corresponding order:
+    eig_vec_gpu = eig_vec_gpu.T[::-1][:n_components]
+
+    # normalize eigenvectors sign to ensure deterministic output
+    max_abs_cols = cp.argmax(cp.abs(eig_vec_gpu), axis=1)
+    signs_gpu = cp.sign(eig_vec_gpu[list(range(len(eig_vec_gpu))), max_abs_cols])
+    eig_vec, signs, eig_val = cp.asnumpy(eig_vec_gpu), cp.asnumpy(signs_gpu), cp.asnumpy(eig_val_gpu)
+    eig_vec *= signs[:, np.newaxis]
+
+    for i in range(len(vec_blocks)):
+        val_blocks[0][i] = eig_val[i * bsize:(i + 1) * bsize]
+
+        for j in range(len(vec_blocks[i])):
+            vec_blocks[i][j] = \
+                eig_vec[i * bsize:(i + 1) * bsize, j * bsize:(j + 1) * bsize]
+
 
 @constraint(computing_units="${ComputingUnits}")
 @task(blocks={Type: COLLECTION_IN, Depth: 2},
@@ -270,6 +337,35 @@ def _subset_transform(blocks, u_blocks, c_blocks, reg_shape, out_blocks):
         mean = mean.toarray()
 
     res = (np.matmul(data - mean, components.T))
+
+    if issparse(data):
+        res = csr_matrix(res)
+
+    for j in range(0, len(blocks[0])):
+        out_blocks[j] = res[:, j * reg_shape:(j + 1) * reg_shape]
+
+
+@constraint(processors=[
+                {"processorType": "CPU", "computingUnits": "1"},
+                {"processorType": "GPU", "computingUnits": "1"},
+            ])
+@task(blocks={Type: COLLECTION_IN, Depth: 2},
+      u_blocks={Type: COLLECTION_IN, Depth: 2},
+      c_blocks={Type: COLLECTION_IN, Depth: 2},
+      out_blocks={Type: COLLECTION_OUT, Depth: 1})
+def _subset_transform_gpu(blocks, u_blocks, c_blocks, reg_shape, out_blocks):
+    data = Array._merge_blocks(blocks)
+    mean = Array._merge_blocks(u_blocks)
+    components = Array._merge_blocks(c_blocks)
+
+    if issparse(data):
+        data = data.toarray()
+        mean = mean.toarray()
+
+    data_sub_mean = cp.subtract(cp.asarray(data), cp.asarray(mean))
+
+    matmul_gpu_res = cp.matmul(data_sub_mean, cp.asarray(components).T)
+    res = (cp.asnumpy(matmul_gpu_res))
 
     if issparse(data):
         res = csr_matrix(res)

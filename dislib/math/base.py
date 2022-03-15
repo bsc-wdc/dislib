@@ -1,6 +1,7 @@
 import itertools
 
 import numpy as np
+import cupy as cp
 from pycompss.api.api import compss_delete_object, compss_wait_on
 from pycompss.api.constraint import constraint
 from pycompss.api.parameter import COLLECTION_OUT, Type, Depth, \
@@ -8,6 +9,7 @@ from pycompss.api.parameter import COLLECTION_OUT, Type, Depth, \
 from pycompss.api.task import task
 
 from dislib.data.array import Array, identity
+import dislib
 
 
 def kron(a, b, block_size=None):
@@ -41,6 +43,14 @@ def kron(a, b, block_size=None):
     # times. This is why we need to rechunk it at the end.
     offseti = 0
 
+    if dislib.__gpu_available__:
+        kron_func = _kron_gpu
+        print('GPU')
+    else:
+        kron_func = _kron
+        print('CPU')
+
+
     for i in range(a._n_blocks[0]):
         offsetj = 0
 
@@ -50,7 +60,7 @@ def kron(a, b, block_size=None):
             for k in range(b._n_blocks[0]):
                 for q in range(b._n_blocks[1]):
                     out_blocks = Array._get_out_blocks(bshape_a)
-                    _kron(a._blocks[i][j], b._blocks[k][q], out_blocks)
+                    kron_func(a._blocks[i][j], b._blocks[k][q], out_blocks)
 
                     for m in range(bshape_a[0]):
                         for n in range(bshape_a[1]):
@@ -441,3 +451,23 @@ def _kron(block1, block2, out_blocks):
     for i in range(block1.shape[0]):
         for j in range(block1.shape[1]):
             out_blocks[i][j] = block1[i, j] * block2
+
+
+@constraint(processors=[
+                {"processorType": "CPU", "computingUnits": "1"},
+                {"processorType": "GPU", "computingUnits": "1"},
+            ])
+@task(out_blocks={Type: COLLECTION_OUT, Depth: 2})
+def _kron_gpu(block1, block2, out_blocks):
+    gpu_res = cp.kron(cp.asarray(block1), cp.asarray(block2))
+    cpu_res = cp.asnumpy(gpu_res)
+
+    m,n = cpu_res.shape
+    M,N = block1.shape
+    cpu_res = cpu_res.reshape(m//M, M, n//N, N) \
+                     .swapaxes(1,2) \
+                     .reshape(-1,M,N)
+
+    for i in range(block1.shape[0]):
+        for j in range(block1.shape[1]):
+            out_blocks[i][j] = cpu_res[i * block1.shape[0] + j]
