@@ -5,11 +5,7 @@ import numpy as np
 from numpy.linalg import qr
 
 from pycompss.api.task import task
-<<<<<<< HEAD
 from pycompss.api.parameter import Type, COLLECTION_IN, COLLECTION_OUT, Depth
-=======
-from pycompss.api.parameter import Type, COLLECTION_IN, COLLECTION_INOUT, Depth
->>>>>>> 0a95dec4fd457cff461f1318fb44338b33209fc6
 
 
 def tsqr(a: Array, n_reduction=2):
@@ -92,11 +88,7 @@ def tsqr(a: Array, n_reduction=2):
     return q, r
 
 
-<<<<<<< HEAD
 @task(blocks={Type: COLLECTION_OUT, Depth: 3})
-=======
-@task(blocks={Type: COLLECTION_INOUT, Depth: 3})
->>>>>>> 0a95dec4fd457cff461f1318fb44338b33209fc6
 def _construct_blocks(blocks, array_to_place, block_shape):
     for idx, block in enumerate(blocks):
         blocks[idx][0] = array_to_place[idx*block_shape[0]:
