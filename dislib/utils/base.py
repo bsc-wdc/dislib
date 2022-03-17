@@ -232,9 +232,24 @@ def _make_splits(x, y=None, test_size=None, train_size=None,
                              int(x._top_left_shape[1]))
         top_test_shape_x = (int(x._top_left_shape[0] * test_size),
                             int(x._top_left_shape[1]))
-        shape_x = (int(x.shape[0] * train_size), int(x.shape[1]))
-        shape_test_x = (math.ceil(x.shape[0] * test_size),
-                        int(x.shape[1]))
+        if x.shape[0] % x._reg_shape[0] == 0:
+            shape_x = (block_size_x[0] * (len(train_x_blocks_split)) +
+                       math.floor((x.shape[0] % x._reg_shape[0]) * train_size),
+                       int(x.shape[1]))
+            shape_test_x = (math.ceil(block_size_test_x[0] *
+                                      (len(test_x_blocks_split)) +
+                                      math.ceil((x.shape[0] %
+                                                 x._reg_shape[0]) *
+                                                test_size)), int(x.shape[1]))
+        else:
+            shape_x = (block_size_x[0] * (len(train_x_blocks_split) - 1) +
+                       math.floor((x.shape[0] % x._reg_shape[0]) * train_size),
+                       int(x.shape[1]))
+            shape_test_x = (math.ceil(block_size_test_x[0] *
+                                      (len(test_x_blocks_split) - 1) +
+                                      math.ceil((x.shape[0] %
+                                                 x._reg_shape[0]) *
+                                                test_size)), int(x.shape[1]))
         return Array(blocks=train_x_blocks_split,
                      top_left_shape=top_train_shape_x,
                      reg_shape=block_size_x, shape=shape_x,
@@ -284,8 +299,22 @@ def _make_splits(x, y=None, test_size=None, train_size=None,
                          int(x._top_left_shape[1]))
     top_test_shape_x = (int(x._top_left_shape[0] * test_size),
                         int(x._top_left_shape[1]))
-    shape_x = (int(x.shape[0] * train_size), int(x.shape[1]))
-    shape_test_x = (math.ceil(x.shape[0] * test_size), int(x.shape[1]))
+    if x.shape[0] % x._reg_shape[0] == 0:
+        shape_x = (block_size_x[0] * (len(train_x_blocks_split)) +
+                   math.floor((x.shape[0] % x._reg_shape[0]) * train_size),
+                   int(x.shape[1]))
+        shape_test_x = (math.ceil(block_size_test_x[0] *
+                                  (len(test_x_blocks_split)) +
+                                  math.ceil((x.shape[0] % x._reg_shape[0]) *
+                                            test_size)), int(x.shape[1]))
+    else:
+        shape_x = (block_size_x[0] * (len(train_x_blocks_split) - 1) +
+                   math.floor((x.shape[0] % x._reg_shape[0]) * train_size),
+                   int(x.shape[1]))
+        shape_test_x = (math.ceil(block_size_test_x[0] *
+                                  (len(test_x_blocks_split) - 1) +
+                                  math.ceil((x.shape[0] % x._reg_shape[0]) *
+                                            test_size)), int(x.shape[1]))
     return Array(blocks=train_x_blocks_split,
                  top_left_shape=top_train_shape_x,
                  reg_shape=block_size_x, shape=shape_x, sparse=False),\
