@@ -128,11 +128,11 @@ class TrainTestSplitTest(unittest.TestCase):
         self.assertTrue(train._reg_shape[1] == int(9))
         self.assertTrue(test._reg_shape[1] == int(9))
         self.assertTrue(y_train.shape[0] == int((math.floor(9 * 0.75) *
-                                               (train._n_blocks[0] - 1))
-                                              + 4 * 0.75))
+                                                 (train._n_blocks[0] - 1))
+                                                + 4 * 0.75))
         self.assertTrue(y_test.shape[0] == int((math.floor(9 * 0.25) *
-                                              (train._n_blocks[0] - 1))
-                                             + 4 * 0.25))
+                                                (train._n_blocks[0] - 1))
+                                               + 4 * 0.25))
         self.assertTrue(y_train.shape[1] == 1)
         self.assertTrue(y_test.shape[1] == 1)
         self.assertTrue(y_train._reg_shape[0] == int(9 * 0.75))
