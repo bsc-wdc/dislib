@@ -5,6 +5,7 @@ from scipy import sparse
 
 import dislib as ds
 from dislib.utils import shuffle
+import math
 
 
 class TrainTestSplitTest(unittest.TestCase):
@@ -13,8 +14,12 @@ class TrainTestSplitTest(unittest.TestCase):
         x = np.random.rand(40, 40)
         x_ds = ds.array(x, (9, 9))
         train, test = ds.utils.train_test_split(x_ds)
-        self.assertTrue(train.shape[0] == int(40 * 0.75))
-        self.assertTrue(test.shape[0] == int(40 * 0.25))
+        self.assertTrue(train.shape[0] == int((math.floor(9 * 0.75) *
+                                               (train._n_blocks[0] - 1))
+                                              + 4 * 0.75))
+        self.assertTrue(test.shape[0] == int((math.floor(9 * 0.25) *
+                                              (train._n_blocks[0] - 1))
+                                             + 4 * 0.25))
         self.assertTrue(train.shape[1] == int(40))
         self.assertTrue(test.shape[1] == int(40))
         self.assertTrue(train._reg_shape[0] == int(9 * 0.75))
@@ -110,16 +115,24 @@ class TrainTestSplitTest(unittest.TestCase):
         x_ds = ds.array(x, (9, 9))
         y_ds = ds.array(y, (9, 1))
         train, test, y_train, y_test = ds.utils.train_test_split(x_ds, y_ds)
-        self.assertTrue(train.shape[0] == int(40 * 0.75))
-        self.assertTrue(test.shape[0] == int(40 * 0.25))
+        self.assertTrue(train.shape[0] == int((math.floor(9 * 0.75) *
+                                               (train._n_blocks[0] - 1))
+                                              + 4 * 0.75))
+        self.assertTrue(test.shape[0] == int((math.floor(9 * 0.25) *
+                                              (train._n_blocks[0] - 1))
+                                             + 4 * 0.25))
         self.assertTrue(train.shape[1] == int(40))
         self.assertTrue(test.shape[1] == int(40))
         self.assertTrue(train._reg_shape[0] == int(9 * 0.75))
         self.assertTrue(test._reg_shape[0] == int(9 * 0.25))
         self.assertTrue(train._reg_shape[1] == int(9))
         self.assertTrue(test._reg_shape[1] == int(9))
-        self.assertTrue(y_train.shape[0] == int(40 * 0.75))
-        self.assertTrue(y_test.shape[0] == int(40 * 0.25))
+        self.assertTrue(y_train.shape[0] == int((math.floor(9 * 0.75) *
+                                               (train._n_blocks[0] - 1))
+                                              + 4 * 0.75))
+        self.assertTrue(y_test.shape[0] == int((math.floor(9 * 0.25) *
+                                              (train._n_blocks[0] - 1))
+                                             + 4 * 0.25))
         self.assertTrue(y_train.shape[1] == 1)
         self.assertTrue(y_test.shape[1] == 1)
         self.assertTrue(y_train._reg_shape[0] == int(9 * 0.75))
