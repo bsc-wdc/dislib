@@ -502,6 +502,8 @@ class ArrayTest(unittest.TestCase):
             x["sss"]
         with self.assertRaises(NotImplementedError):
             x[:, 4]
+        with self.assertRaises(NotImplementedError):
+            x[-3:-1, 2]
 
     @parameterized.expand([_gen_random_arrays("dense"),
                            _gen_random_arrays("dense", (33, 34), (2, 33)),
