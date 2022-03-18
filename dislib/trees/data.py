@@ -307,7 +307,7 @@ def transform_to_rf_dataset(
     blocks = []
     for idx, y_row in enumerate(row_blocks_iterator):
         blocks.extend(y_row._blocks)
-        if idx != 0 and idx % 20 == 0 or len(y._blocks) - 2 == idx:
+        if idx != 0 and idx % 20 == 0 or len(y._blocks) - 3 == idx:
             _fill_targets_file(targets_path, blocks)
             blocks = []
     if len(blocks) > 0:
