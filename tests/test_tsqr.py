@@ -97,7 +97,7 @@ class QRTest(unittest.TestCase):
         self.assertEqual(assigned_r_shape, r.shape)
         # check if R matrix is upper triangular
         self.assertTrue(np.allclose(np.triu(r), r))
-        self.assertTrue(q.shape==(q.shape[0], 3))
+        self.assertTrue(q.shape == (q.shape[0], 3))
 
     @parameterized.expand([
         (2, 1, 64, 36), (4, 1, 32, 36), (16, 1, 20, 10),
@@ -146,7 +146,8 @@ class QRTest(unittest.TestCase):
     @parameterized.expand([
         (2, 1, 64, 36), (4, 1, 32, 36), (16, 1, 20, 10),
     ])
-    def test_tsqr_reduced_inverse_indexes(self, m_size, n_size, b_size_r, b_size_c):
+    def test_tsqr_reduced_inverse_indexes(self, m_size, n_size,
+                                          b_size_r, b_size_c):
         """Tests tsqr"""
 
         shape = (m_size * b_size_r, n_size * b_size_c)
@@ -163,7 +164,7 @@ class QRTest(unittest.TestCase):
         self.assertTrue(np.allclose(np.triu(r), r))
         # check if the product Q columns retrived are equal to the ones in the
         # Q computed with numpy
-        self.assertTrue(q.shape==(q.shape[0], 3))
+        self.assertTrue(q.shape == (q.shape[0], 3))
 
     @parameterized.expand([
         (2, 1, 64, 36), (4, 1, 32, 36), (16, 1, 20, 10),
