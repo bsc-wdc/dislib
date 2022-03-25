@@ -17,6 +17,14 @@ def tsqr(a: Array, n_reduction=2, mode="complete", indexes=None):
             Input ds-array.
         n_reduction : int
             Number of row of blocks used in each reduction operation.
+        mode: basestring
+            Mode of execution of the tsqr. The options are:
+            - complete: q=mxm, r=mxn computed from beginning to end
+            - complete_inverse: q=mxm, r=mxn computed from end to beginning
+            - reduced: q=mxn, r=nxn computed from beginning to end
+            - reduced_inverse: q=mxn, r=nxn computed from end to beginning
+            - r_complete: returns only r. This r is mxn
+            - r_reduced: returns only r. This r is nxn
 
         Returns
         -------
@@ -24,6 +32,7 @@ def tsqr(a: Array, n_reduction=2, mode="complete", indexes=None):
             The q of the matrix, it is an orthonormal matrix,
             multiplying it by r will return the initial
             matrix
+            In r_complete and r_reduced modes this will not be returned
         r : ds-array
             The r of the matrix, it is the upper triangular matrix,
             being multiplied by q it will return the
@@ -35,6 +44,12 @@ def tsqr(a: Array, n_reduction=2, mode="complete", indexes=None):
             If top left shape is different than regular
             or
             If m < n
+            or
+            If the mode is complete_inverse and the number of blocks
+            is not a power of the reduction number
+            or
+            If the mode is reduced_inverse and the number of blocks is
+            not a power of the reduction number
 
         UserWarning
             If the decomposed ds-array contains more than one block columns.
