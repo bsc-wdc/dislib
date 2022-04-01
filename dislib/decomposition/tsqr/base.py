@@ -325,8 +325,8 @@ def _is_not_power(n_reduction, number_blocks):
     return 1 if (res1 != res2) else 0
 
 
-@task(q={Type: COLLECTION_IN, Depth: 3},
-      to_multiply={Type: COLLECTION_IN, Depth: 3}, returns=np.array)
+@task(q={Type: COLLECTION_IN, Depth: 2},
+      to_multiply={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
 def _multiply(q, to_multiply, index_start=None, index_end=None):
     if index_start is not None and index_end is not None:
         return np.dot(q, to_multiply[index_start*q.shape[1]:
@@ -335,7 +335,7 @@ def _multiply(q, to_multiply, index_start=None, index_end=None):
         return np.dot(q, to_multiply)
 
 
-@task(matrices={Type: COLLECTION_IN, Depth: 4}, returns=np.array)
+@task(matrices={Type: COLLECTION_IN, Depth: 3}, returns=np.array)
 def _stack_matrices(matrices):
     return np.vstack(reversed(matrices))
 
@@ -346,14 +346,14 @@ def _construct_identity(indexes, shape):
     return identity[:, indexes]
 
 
-@task(blocks={Type: COLLECTION_OUT, Depth: 3})
+@task(blocks={Type: COLLECTION_OUT, Depth: 2})
 def _construct_blocks(blocks, array_to_place, block_shape):
     for idx, block in enumerate(blocks):
         blocks[idx][0] = array_to_place[idx*block_shape[0]:
                                         (idx+1)*block_shape[0]]
 
 
-@task(qs={Type: COLLECTION_IN, Depth: 3}, returns=np.array)
+@task(qs={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
 def _compute_q_from_qs(qs, new_q, qsaux):
     if len(qs) > 1:
         final_q = []
