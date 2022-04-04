@@ -335,7 +335,7 @@ def _multiply(q, to_multiply, index_start=None, index_end=None):
         return np.dot(q, to_multiply)
 
 
-@task(matrices={Type: COLLECTION_IN, Depth: 3}, returns=np.array)
+@task(matrices={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
 def _stack_matrices(matrices):
     return np.vstack(reversed(matrices))
 
@@ -365,7 +365,7 @@ def _compute_q_from_qs(qs, new_q, qsaux):
         return np.dot(qs[0], new_q[:qsaux.shape[1]])
 
 
-@task(rs={Type: COLLECTION_IN, Depth: 3}, returns=(np.array, np.array))
+@task(rs={Type: COLLECTION_IN, Depth: 2}, returns=(np.array, np.array))
 def _compute_reduction_qr(rs, mode):
     if mode == "complete":
         if len(rs) > 1:
@@ -381,7 +381,7 @@ def _compute_reduction_qr(rs, mode):
         return q, r
 
 
-@task(block={Type: COLLECTION_IN, Depth: 3}, returns=(np.array, np.array))
+@task(block={Type: COLLECTION_IN, Depth: 2}, returns=(np.array, np.array))
 def _compute_qr(block, mode):
     if mode == "complete":
         if len(block[0]) > 1:
