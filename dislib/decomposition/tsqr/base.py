@@ -325,8 +325,7 @@ def _is_not_power(n_reduction, number_blocks):
     return 1 if (res1 != res2) else 0
 
 
-@task(q={Type: COLLECTION_IN, Depth: 2},
-      to_multiply={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
+@task(returns=np.array)
 def _multiply(q, to_multiply, index_start=None, index_end=None):
     if index_start is not None and index_end is not None:
         return np.dot(q, to_multiply[index_start*q.shape[1]:
