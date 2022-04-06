@@ -11,6 +11,7 @@ from pycompss.api.task import task
 from scipy import sparse as sp
 from scipy.sparse import issparse, csr_matrix
 from sklearn.utils import check_random_state
+import math
 
 
 class Array(object):
@@ -1177,7 +1178,7 @@ def _empty_array(shape, block_size):
         Distributed array with value None in the blocks.
     '''
     return Array(blocks=[[None] for _ in range(math.ceil(shape[0] /
-                                                   block_size[0]))],
+                                                         block_size[0]))],
                  top_left_shape=block_size,
                  reg_shape=block_size, shape=shape, sparse=False)
 
