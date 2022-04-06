@@ -1176,7 +1176,7 @@ def _empty_array(shape, block_size):
     x : ds-array
         Distributed array with value None in the blocks.
     '''
-    return Array(blocks=[[None] for _ in range(int(shape[0] /
+    return Array(blocks=[[None] for _ in range(math.ceil(shape[0] /
                                                    block_size[0]))],
                  top_left_shape=block_size,
                  reg_shape=block_size, shape=shape, sparse=False)
