@@ -98,7 +98,7 @@ def tsqr(a: Array, n_reduction=2, mode="complete", indexes=None):
             matrix_indices = _construct_identity(indexes, a.shape[0])
             q = _multiply(q, matrix_indices)
         q_blocks = [[object()] for _ in range(math.ceil(a.shape[0] /
-                                                  a._reg_shape[0]))]
+                                                        a._reg_shape[0]))]
         r_blocks = [[object()]]
         _construct_blocks(r_blocks, r, (a.shape[0], a.shape[1]))
         if indexes is not None:
@@ -149,7 +149,7 @@ def tsqr(a: Array, n_reduction=2, mode="complete", indexes=None):
         else:
             q = _construct_q_from_the_end(qs, n_reduction)
         q_blocks = [[object()] for _ in range(math.ceil(a.shape[0] /
-                                                  a._reg_shape[0]))]
+                                                        a._reg_shape[0]))]
         r_blocks = [[object()]]
         _construct_blocks(r_blocks, r, (a.shape[0], a.shape[1]))
         if indexes is not None:
@@ -187,7 +187,7 @@ def tsqr(a: Array, n_reduction=2, mode="complete", indexes=None):
                 qs.append(q)
                 rs.append(r)
         q_blocks = [[object()] for _ in range(math.ceil(a.shape[0] /
-                                                  a._reg_shape[0]))]
+                                                        a._reg_shape[0]))]
         r_blocks = [[object()]]
         _construct_blocks(q_blocks, q, (a._reg_shape[0], a.shape[1]))
         _construct_blocks(r_blocks, r, (a.shape[1], a.shape[1]))
@@ -231,7 +231,7 @@ def tsqr(a: Array, n_reduction=2, mode="complete", indexes=None):
         else:
             q = _construct_q_from_the_end(qs, n_reduction)
         q_blocks = [[object()] for _ in range(math.ceil(a.shape[0] /
-                                                  a._reg_shape[0]))]
+                                                        a._reg_shape[0]))]
         r_blocks = [[object()]]
         _construct_blocks(r_blocks, r, (a.shape[1], a.shape[1]))
         if indexes is not None:
