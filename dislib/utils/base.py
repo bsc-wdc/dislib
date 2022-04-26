@@ -28,7 +28,7 @@ def train_test_split(x, y=None, test_size=None, train_size=None,
         train_size : float
             Number between 0 and 1 that defines the percentage of rows used as
             train data
-        random_state : int or RandomState, optional (default=None)
+        random_state : int or RandomState, optional (default = None)
             Seed or numpy.random.RandomState instance to use in the generation
             of splits in the blocks.
 
