@@ -11,6 +11,7 @@ from pycompss.api.task import task
 from scipy import sparse as sp
 from scipy.sparse import issparse, csr_matrix
 from sklearn.utils import check_random_state
+import math
 
 
 class Array(object):
@@ -1156,6 +1157,29 @@ def array(x, block_size):
                 reg_shape=block_size, shape=x.shape, sparse=sparse)
 
     return arr
+
+
+def _empty_array(shape, block_size):
+    '''
+    Returns an empty ds-array with the specified block_size and shape.
+    Useful for constructing ds-arrays on some algorithms without the
+    need of allocating memory for the blocks (as for example happens with
+    the random_array operation).
+    Parameters
+    ----------
+    shape : tuple of two ints
+        Shape of the output ds-array.
+    block_size : tuple of two ints
+        Size of the ds-array blocks.
+    Returns
+    -------
+    x : ds-array
+        Distributed array with value None in the blocks.
+    '''
+    return Array(blocks=[[None] for _ in range(math.ceil(shape[0] /
+                                                         block_size[0]))],
+                 top_left_shape=block_size,
+                 reg_shape=block_size, shape=shape, sparse=False)
 
 
 def random_array(shape, block_size, random_state=None):
