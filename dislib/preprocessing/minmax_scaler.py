@@ -90,7 +90,8 @@ class MinMaxScaler(object):
 
     def inverse_transform(self, x):
         """
-        Returns data to its original values.
+        Returns data to its original values. The Scaler should be fitted
+        before using this function.
 
         Parameters
         ----------
