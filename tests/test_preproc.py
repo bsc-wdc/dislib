@@ -44,7 +44,7 @@ class MinMaxScalerTest(unittest.TestCase):
     def test_inverse_transform(self, feature_range):
         """ Tests inverse_transform against scikit-learn.
         """
-        n_samples = 1500
+        n_samples = 500
         x, y = make_blobs(n_samples=n_samples, random_state=170)
         transformation = [[0.6, -0.6], [-0.4, 0.8]]
         x = np.dot(x, transformation)
@@ -106,7 +106,7 @@ class MinMaxScalerTest(unittest.TestCase):
                            ((-1, 1),)])
     def test_sparse_inverse_transform(self, feature_range):
         """ Tests inverse_transform with sparse data"""
-        n_samples = 1500
+        n_samples = 500
         x, y = make_blobs(n_samples=n_samples, random_state=170)
         transformation = [[0.6, -0.6], [-0.4, 0.8]]
         x = np.dot(x, transformation)
@@ -195,7 +195,7 @@ class StandardScalerTest(unittest.TestCase):
     def test_inverse_transform(self):
         """ Tests inverse_transform against scikit-learn.
         """
-        n_samples = 1500
+        n_samples = 500
         x, y = make_blobs(n_samples=n_samples, random_state=170)
         transformation = [[0.6, -0.6], [-0.4, 0.8]]
         x = np.dot(x, transformation)
@@ -253,7 +253,7 @@ class StandardScalerTest(unittest.TestCase):
 
     def test_sparse_inverse_transform(self):
         """ Tests inverse_transform with sparse data"""
-        n_samples = 1500
+        n_samples = 500
         x, y = make_blobs(n_samples=n_samples, random_state=170)
         transformation = [[0.6, -0.6], [-0.4, 0.8]]
         x = np.dot(x, transformation)
