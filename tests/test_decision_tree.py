@@ -6,7 +6,7 @@ from pycompss.api.api import compss_wait_on
 import dislib as ds
 import dislib.trees.decision_tree as dt
 from dislib.trees import RfClassifierDataset, transform_to_rf_dataset
-
+from dislib.trees.decision_tree import _InnerNodeInfo, _LeafInfo
 
 class DecisionTreeTest(unittest.TestCase):
     def test_decision_tree(self):
@@ -161,6 +161,13 @@ class DecisionTreeTest(unittest.TestCase):
         tree.fit(data1)
         y_pred = compss_wait_on(tree.predict(x2_ds))
         self.assertTrue(np.array_equal(y_pred, y2))
+
+    def test_to_json(self):
+        node_info = _InnerNodeInfo(0, 0)
+        self.assertTrue(isinstance(node_info.toJson(), dict))
+
+        leaf_info = _LeafInfo(3, None, np.mean([0, 2, 4]))
+        self.assertTrue(isinstance(leaf_info.toJson(), dict))
 
 
 def main():
