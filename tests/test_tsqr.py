@@ -51,6 +51,7 @@ class QRTest(unittest.TestCase):
         self.assertEqual(assigned_r_shape, r.shape)
         # check if R matrix is upper triangular
         self.assertTrue(np.allclose(np.triu(r), r))
+        # check if the Q matrix contains the number of specified indexes
         self.assertTrue(q.shape == (q.shape[0], 3))
 
     @parameterized.expand([
