@@ -164,6 +164,7 @@ class DecisionTreeTest(unittest.TestCase):
         self.assertTrue(np.array_equal(y_pred, y2))
 
     def test_to_json(self):
+        """Tests toJson method of _InnerNodeInfo and _LeafInfo"""
         node_info = _InnerNodeInfo(0, 0)
         self.assertTrue(isinstance(node_info.toJson(), dict))
 
