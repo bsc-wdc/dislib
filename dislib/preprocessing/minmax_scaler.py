@@ -175,3 +175,4 @@ def _inverse_transform(blocks, min_blocks, max_blocks, out_blocks,
     for i, block in enumerate(blocks[0]):
         end += block.shape[1]
         out_blocks[i] = constructor_func(x[:, start:end])
+        start += block.shape[1]
