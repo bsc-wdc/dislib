@@ -11,13 +11,16 @@ from sklearn.preprocessing import MinMaxScaler as SkMinMaxScaler
 import dislib as ds
 from dislib.preprocessing import StandardScaler, MinMaxScaler
 
+
 class ScalerTest(unittest.TestCase):
     def setUp(self) -> None:
-        self.x, _ = make_blobs(n_samples=1500, n_features=8, random_state=170, cluster_std=33)
-        block_size=(300, 2) 
+        self.x, _ = make_blobs(n_samples=1500, n_features=8,
+                               random_state=170, cluster_std=33)
+        block_size = (300, 2)
         self.ds_arr = ds.array(self.x, block_size=block_size)
         self.sparse_arr = ds.array(csr_matrix(self.x), block_size=block_size)
         return super().setUp()
+
 
 class MinMaxScalerTest(ScalerTest):
 
@@ -38,7 +41,8 @@ class MinMaxScalerTest(ScalerTest):
         self.assertEqual(ds_scaled._top_left_shape,
                          ds_scaled._blocks[0][0].shape)
         self.assertEqual(self.ds_arr._reg_shape, ds_scaled._reg_shape)
-        self.assertEqual(self.ds_arr._top_left_shape, ds_scaled._top_left_shape)
+        self.assertEqual(self.ds_arr._top_left_shape,
+                         ds_scaled._top_left_shape)
         self.assertEqual(self.ds_arr.shape, ds_scaled.shape)
         self.assertEqual(self.ds_arr._n_blocks, ds_scaled._n_blocks)
 
@@ -110,7 +114,8 @@ class StandardScalerTest(ScalerTest):
         self.assertEqual(ds_scaled._top_left_shape,
                          ds_scaled._blocks[0][0].shape)
         self.assertEqual(self.ds_arr._reg_shape, ds_scaled._reg_shape)
-        self.assertEqual(self.ds_arr._top_left_shape, ds_scaled._top_left_shape)
+        self.assertEqual(self.ds_arr._top_left_shape,
+                         ds_scaled._top_left_shape)
         self.assertEqual(self.ds_arr.shape, ds_scaled.shape)
         self.assertEqual(self.ds_arr._n_blocks, ds_scaled._n_blocks)
 
