@@ -88,6 +88,38 @@ class MinMaxScaler(object):
                      reg_shape=x._reg_shape, shape=x.shape,
                      sparse=x._sparse)
 
+    def inverse_transform(self, x):
+        """
+        Returns data to its original values. The Scaler should be fitted
+        before using this function.
+
+        Parameters
+        ----------
+        x : ds-array, shape=(n_samples, n_features)
+
+        Returns
+        -------
+        x_new : ds-array, shape=(n_samples, n_features)
+            Original valued data.
+        """
+        if self.data_min_ is None or self.data_max_ is None:
+            raise Exception("Model has not been initialized.")
+
+        n_blocks = x._n_blocks[1]
+        blocks = []
+        min_blocks = self.data_min_._blocks
+        max_blocks = self.data_max_._blocks
+
+        for row in x._iterator(axis=0):
+            out_blocks = [object() for _ in range(n_blocks)]
+            _inverse_transform(row._blocks, min_blocks, max_blocks, out_blocks,
+                               self._feature_range[0], self._feature_range[1])
+            blocks.append(out_blocks)
+
+        return Array(blocks, top_left_shape=x._top_left_shape,
+                     reg_shape=x._reg_shape, shape=x.shape,
+                     sparse=x._sparse)
+
 
 @constraint(computing_units="${ComputingUnits}")
 @task(blocks={Type: COLLECTION_IN, Depth: 2},
@@ -115,3 +147,32 @@ def _transform(blocks, min_blocks, max_blocks, out_blocks,
     for i, block in enumerate(blocks[0]):
         end += block.shape[1]
         out_blocks[i] = constructor_func(scaled_x[:, start:end])
+
+
+@constraint(computing_units="${ComputingUnits}")
+@task(blocks={Type: COLLECTION_IN, Depth: 2},
+      min_blocks={Type: COLLECTION_IN, Depth: 2},
+      max_blocks={Type: COLLECTION_IN, Depth: 2},
+      out_blocks=COLLECTION_OUT)
+def _inverse_transform(blocks, min_blocks, max_blocks, out_blocks,
+                       range_min, range_max):
+    x = Array._merge_blocks(blocks)
+    min_val = Array._merge_blocks(min_blocks)
+    max_val = Array._merge_blocks(max_blocks)
+    sparse = issparse(x)
+
+    if sparse:
+        x = x.toarray()
+        min_val = min_val.toarray()
+        max_val = max_val.toarray()
+
+    x = (x - range_min) / (range_max - range_min)
+    x = x * (max_val - min_val) + min_val
+
+    constructor_func = np.array if not sparse else csr_matrix
+    start, end = 0, 0
+
+    for i, block in enumerate(blocks[0]):
+        end += block.shape[1]
+        out_blocks[i] = constructor_func(x[:, start:end])
+        start += block.shape[1]

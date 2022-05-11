@@ -407,12 +407,26 @@ class _InnerNodeInfo:
         self.index = index
         self.value = value
 
+    def toJson(self):
+        return {
+            "class_name": self.__class__.__name__,
+            "module_name": self.__module__,
+            "items": self.__dict__,
+        }
+
 
 class _LeafInfo:
     def __init__(self, size=None, frequencies=None, target=None):
         self.size = size
         self.frequencies = frequencies
         self.target = target
+
+    def toJson(self):
+        return {
+            "class_name": self.__class__.__name__,
+            "module_name": self.__module__,
+            "items": self.__dict__,
+        }
 
 
 class _SkTreeWrapper:
