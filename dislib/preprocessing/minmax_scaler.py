@@ -150,7 +150,6 @@ def _transform(blocks, min_blocks, max_blocks, out_blocks,
         start += block.shape[1]
 
 
-
 @constraint(computing_units="${ComputingUnits}")
 @task(blocks={Type: COLLECTION_IN, Depth: 2},
       min_blocks={Type: COLLECTION_IN, Depth: 2},
@@ -178,4 +177,3 @@ def _inverse_transform(blocks, min_blocks, max_blocks, out_blocks,
         end += block.shape[1]
         out_blocks[i] = constructor_func(x[:, start:end])
         start += block.shape[1]
-        

@@ -175,7 +175,7 @@ def _transform(blocks, m_blocks, v_blocks, out_blocks):
         out_blocks[i] = constructor_func(scaled_x[:, start:end])
         start += block.shape[1]
 
-        
+
 @constraint(computing_units="${ComputingUnits}")
 @task(blocks={Type: COLLECTION_IN, Depth: 2},
       m_blocks={Type: COLLECTION_IN, Depth: 2},
