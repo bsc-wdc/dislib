@@ -1,5 +1,4 @@
 import numpy as np
-import cupy as cp
 from collections import deque
 import operator
 import time
@@ -451,6 +450,29 @@ def _dot_task(a, b, transpose_result=False, transpose_a=False,
         return np.transpose(np.dot(a, b))
     return np.dot(a, b)
 
+@constraint(processors=[
+                {"processorType": "CPU", "computingUnits": "1"},
+                {"processorType": "GPU", "computingUnits": "1"},
+            ]
+)
+@task(returns=np.array)
+def _dot_task_gpu(a, b, transpose_result=False, transpose_a=False,
+              transpose_b=False):
+    import cupy as cp
+    
+    a_gpu, b_gpu = cp.asarray(a), cp.asarray(b)
+    if transpose_a:
+        a_gpu = np.transpose(a_gpu)
+    if transpose_b:
+        b_gpu = np.transpose(b_gpu)
+
+    dot_gpu = cp.dot(a_gpu, b_gpu)
+    
+    if transpose_result:
+        dot_gpu = cp.transpose(dot_gpu)
+    
+    return cp.asnumpy(dot_gpu)
+
 
 @constraint(computing_units="${ComputingUnits}")
 @task(returns=(np.array, np.array))
@@ -476,12 +498,15 @@ def _empty_block(shape):
     return np.full(shape, 0, dtype=np.uint8)
 
 
-@constraint(computing_units="${ComputingUnits}")
-@task(returns=(np.array, np.array))
 def _dot(a, a_type, b, b_type, b_size, transpose_result=False,
          transpose_a=False, transpose_b=False):
 
-    result = _dot_task(
+    if dislib.__gpu_available__:
+        dot_func = _dot_task_gpu
+    else:
+        dot_func = _dot_task
+
+    result = dot_func(
         a,
         b,
         transpose_result=transpose_result,
@@ -544,6 +569,8 @@ def _matmul_with_transpose(a, b, transpose_a, transpose_b):
 )
 @task(returns=np.array)
 def _add_gpu(block1, block2):
+    import cupy as cp
+
     res = cp.add(cp.asarray(block1), cp.asarray(block2))
     return cp.asnumpy(res)
 
@@ -560,6 +587,8 @@ def _add_cpu(block1, block2):
 )
 @task(returns=np.array)
 def _matmul_gpu(a, b, transpose_a, transpose_b):
+    import cupy as cp
+
     a_gpu, b_gpu = cp.asarray(a), cp.asarray(b)
     if transpose_a:
         a_gpu = a_gpu.T
@@ -602,7 +631,9 @@ def _multiply_block_groups(hblock, vblock, transpose_a=False,
             ])
 @task(returns=(np.array, np.array))
 def _qr_task_gpu(a, a_type, b_size, mode='reduced', t=False):
+    import cupy as cp
     from cupy.linalg import qr
+
     a_gpu = cp.asarray(a)
     if type(a_type) is object or a_type[0, 0] == OTHER:
         q, r = qr(a_gpu, mode=mode)                             
@@ -631,6 +662,8 @@ def _qr(a, a_type, b_size, mode='reduced', t=False):
             ])
 @task(returns=(np.array, np.array, np.array, np.array, np.array, np.array))
 def _little_qr_task_gpu(a, type_a, b, type_b, b_size, transpose=False):
+    import cupy as cp
+
     regular_b_size = b_size[0]
     
     curr_a = np.bmat([[a], [b]])

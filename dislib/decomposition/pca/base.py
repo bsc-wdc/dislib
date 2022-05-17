@@ -1,7 +1,4 @@
 import numpy as np
-import cupyx
-cupyx.seterr(linalg='raise')
-import cupy as cp
 from pycompss.api.constraint import constraint
 from pycompss.api.api import compss_wait_on
 from pycompss.api.parameter import COLLECTION_IN, Depth, Type, COLLECTION_OUT
@@ -233,6 +230,8 @@ def _subset_scatter_matrix(blocks):
             ])
 @task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
 def _subset_scatter_matrix_gpu(blocks):
+    import cupy as cp
+
     data = Array._merge_blocks(blocks)
 
     if issparse(data):
@@ -297,6 +296,8 @@ def _decompose(covariance_matrix, n_components, bsize, val_blocks, vec_blocks):
 @task(val_blocks={Type: COLLECTION_OUT, Depth: 2},
       vec_blocks={Type: COLLECTION_OUT, Depth: 2})
 def _decompose_gpu(covariance_matrix, n_components, bsize, val_blocks, vec_blocks):
+    import cupy as cp
+
     eig_val_gpu, eig_vec_gpu = cp.linalg.eigh(cp.asarray(covariance_matrix))
 
     if n_components is None:
@@ -354,6 +355,8 @@ def _subset_transform(blocks, u_blocks, c_blocks, reg_shape, out_blocks):
       c_blocks={Type: COLLECTION_IN, Depth: 2},
       out_blocks={Type: COLLECTION_OUT, Depth: 1})
 def _subset_transform_gpu(blocks, u_blocks, c_blocks, reg_shape, out_blocks):
+    import cupy as cp
+
     data = Array._merge_blocks(blocks)
     mean = Array._merge_blocks(u_blocks)
     components = Array._merge_blocks(c_blocks)
@@ -365,7 +368,7 @@ def _subset_transform_gpu(blocks, u_blocks, c_blocks, reg_shape, out_blocks):
     data_sub_mean = cp.subtract(cp.asarray(data), cp.asarray(mean))
 
     matmul_gpu_res = cp.matmul(data_sub_mean, cp.asarray(components).T)
-    res = (cp.asnumpy(matmul_gpu_res))
+    res = cp.asnumpy(matmul_gpu_res)
 
     if issparse(data):
         res = csr_matrix(res)
