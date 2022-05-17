@@ -3,12 +3,15 @@ import numbers
 import numpy as np
 
 
-def fit_and_score(estimator, train_ds, validation_ds, scorer, parameters,
-                  fit_params):
+def fit(estimator, train_ds, parameters, fit_params):
     if parameters is not None:
         estimator.set_params(**parameters)
     x_train, y_train = train_ds
     estimator.fit(x_train, y_train, **fit_params)
+    return estimator
+
+
+def score_func(estimator, validation_ds, scorer):
     x_test, y_test = validation_ds
     test_scores = _score(estimator, x_test, y_test, scorer)
 

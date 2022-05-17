@@ -11,6 +11,7 @@ from pycompss.api.task import task
 from scipy import sparse as sp
 from scipy.sparse import issparse, csr_matrix
 from sklearn.utils import check_random_state
+import math
 
 
 class Array(object):
@@ -1158,6 +1159,29 @@ def array(x, block_size):
     return arr
 
 
+def _empty_array(shape, block_size):
+    '''
+    Returns an empty ds-array with the specified block_size and shape.
+    Useful for constructing ds-arrays on some algorithms without the
+    need of allocating memory for the blocks (as for example happens with
+    the random_array operation).
+    Parameters
+    ----------
+    shape : tuple of two ints
+        Shape of the output ds-array.
+    block_size : tuple of two ints
+        Size of the ds-array blocks.
+    Returns
+    -------
+    x : ds-array
+        Distributed array with value None in the blocks.
+    '''
+    return Array(blocks=[[None] for _ in range(math.ceil(shape[0] /
+                                                         block_size[0]))],
+                 top_left_shape=block_size,
+                 reg_shape=block_size, shape=shape, sparse=False)
+
+
 def random_array(shape, block_size, random_state=None):
     """ Returns a distributed array of random floats in the open interval [0.0,
     1.0). Values are from the "continuous uniform" distribution over the
@@ -1477,6 +1501,201 @@ def _multiply_block_groups(hblock, vblock, transpose_a=False,
         compss_delete_object(block2)
 
     return blocks[0]
+
+
+def matsubtract(a: Array, b: Array):
+    """ Subtraction of two matrices.
+        Parameters
+        ----------
+        a : ds-array
+            First matrix.
+        b : ds-array
+            Second matrix.
+        Returns
+        -------
+        out : ds-array
+            The output array.
+        Raises
+        ------
+        NotImplementedError
+            If _top_left shape does not match _reg_shape. This case will be
+            implemented in the future.
+        ValueError
+            If any of the block sizes does not match.
+        ValueError
+            If the ds-arrays have different shape.
+        Examples
+        --------
+        >>> import dislib as ds
+        >>>
+        >>>
+        >>> if __name__ == "__main__":
+        >>>     x = ds.random_array((8, 4), block_size=(2, 2))
+        >>>     y = ds.random_array((8, 4), block_size=(2, 2))
+        >>>     result = ds.matsubtract(x, y)
+        >>>     print(result.collect())
+        """
+    if a.shape[0] != b.shape[0] or a.shape[1] != b.shape[1]:
+        raise ValueError(
+            "Cannot subtract ds-arrays of shapes %r and %r" % (
+                a.shape, b.shape))
+
+    if a._reg_shape[0] != b._reg_shape[0] or\
+            a._reg_shape[1] != b._reg_shape[1]:
+        raise ValueError("incorrect block sizes for the requested "
+                         f"subtract ({a._reg_shape[0], a._reg_shape[1]} !="
+                         f" {b._reg_shape[0], b._reg_shape[1]})")
+
+    if a._top_left_shape != b._top_left_shape:
+        raise ValueError("Incompatible block sizes of the "
+                         "top left block of the matrices"
+                         "b._top_left_shape != b._top_left_shape")
+
+    n_blocks = (len(a._blocks), len(a._blocks[0]))
+    blocks = [[] for _ in range(len(a._blocks))]
+    for i in range(n_blocks[0]):
+        blocks[i] = _subtract_block_groups(a._blocks[i], b._blocks[i])
+
+    new_block_size = (
+        a._reg_shape[0],
+        a._reg_shape[1]
+    )
+    new_shape = (
+        a._shape[0],
+        b._shape[1]
+    )
+    return Array(blocks=blocks, top_left_shape=new_block_size,
+                 reg_shape=new_block_size, shape=new_shape, sparse=a._sparse)
+
+
+def _subtract_block_groups(hblock, vblock):
+    blocks = []
+    for blocki, blockj in zip(hblock, vblock):
+        blocks.append(_block_apply(operator.sub, blocki, blockj))
+    return blocks
+
+
+def matadd(a: Array, b: Array):
+    """ Addition of two matrices.
+        Parameters
+        ----------
+        a : ds-array
+            First matrix.
+        b : ds-array
+            Second matrix.
+        Returns
+        -------
+        out : ds-array
+            The output array.
+        Raises
+        ------
+        NotImplementedError
+            If _top_left shape does not match _reg_shape. This case will be
+            implemented in the future.
+        ValueError
+            If any of the block sizes does not match.
+        ValueError
+            If the ds-arrays have different shape.
+        Examples
+        --------
+        >>> import dislib as ds
+        >>>
+        >>>
+        >>> if __name__ == "__main__":
+        >>>     x = ds.random_array((8, 4), block_size=(2, 2))
+        >>>     y = ds.random_array((8, 4), block_size=(2, 2))
+        >>>     result = ds.matadd(x, y)
+        >>>     print(result.collect())
+        """
+    if a.shape[0] != b.shape[0] or a.shape[1] != b.shape[1]:
+        raise ValueError(
+            "Cannot subtract ds-arrays of shapes %r and %r" % (
+                a.shape, b.shape))
+
+    if a._reg_shape[0] != b._reg_shape[0] or\
+            a._reg_shape[1] != b._reg_shape[1]:
+        raise ValueError("incorrect block sizes for the requested "
+                         f"subtract ({a._reg_shape[0], a._reg_shape[1]} !="
+                         f" {b._reg_shape[0], b._reg_shape[1]})")
+
+    if a._top_left_shape != b._top_left_shape:
+        raise ValueError("Incompatible block sizes of the "
+                         "top left block of the matrices"
+                         "b._top_left_shape != b._top_left_shape")
+
+    n_blocks = (len(a._blocks), len(a._blocks[0]))
+    blocks = [[] for _ in range(len(a._blocks))]
+    for i in range(n_blocks[0]):
+        blocks[i] = _add_block_groups(a._blocks[i], b._blocks[i])
+
+    new_block_size = (
+        a._reg_shape[0],
+        a._reg_shape[1]
+    )
+    new_shape = (
+        a._shape[0],
+        b._shape[1]
+    )
+    return Array(blocks=blocks, top_left_shape=new_block_size,
+                 reg_shape=new_block_size, shape=new_shape, sparse=a._sparse)
+
+
+def concat_columns(a: Array, b: Array):
+    """ Matrix concatenation by columns.
+        Parameters
+        ----------
+        a : ds-array
+            First matrix.
+        b : ds-array
+            Second matrix.
+        Returns
+        -------
+        out : ds-array
+            The output array.
+        Raises
+        ------
+        NotImplementedError
+            If _top_left shape does not match _reg_shape. This case will be
+            implemented in the future.
+        ValueError
+            If the arrays do not match in the number of rows.
+        Examples
+        --------
+        >>> import dislib as ds
+        >>>
+        >>>
+        >>> if __name__ == "__main__":
+        >>>     x = ds.random_array((8, 4), block_size=(2, 2))
+        >>>     y = ds.random_array((8, 4), block_size=(2, 2))
+        >>>     result = ds.conc_columns(x, y)
+        >>>     print(result.collect())
+        """
+    if a._shape[0] != b._shape[0]:
+        raise ValueError("incompatible number of rows "
+                         f"subtract ({a._shape[0]} != {b._shape[0]}")
+
+    if a._reg_shape[0] != b._reg_shape[0] or a._reg_shape[1] !=\
+            b._reg_shape[1]:
+        raise ValueError("incorrect block sizes for the requested "
+                         f"subtract ({a._reg_shape[0], a._reg_shape[1]} "
+                         f"!= {b._reg_shape[0], b._reg_shape[1]})")
+
+    for i in range(len(a._blocks)):
+        for j in range(len(b._blocks[0])):
+            a._blocks[i].append(b._blocks[i][j])
+
+    return Array(blocks=a._blocks,
+                 top_left_shape=(a._reg_shape[0], a._reg_shape[1]),
+                 reg_shape=(a._reg_shape[0], a._reg_shape[1]),
+                 shape=(a._shape[0], a._shape[1] + b._shape[1]),
+                 sparse=a._sparse)
+
+
+def _add_block_groups(hblock, vblock):
+    blocks = []
+    for blocki, blockj in zip(hblock, vblock):
+        blocks.append(_block_apply(operator.add, blocki, blockj))
+    return blocks
 
 
 def _transpose_blocks(blocks):

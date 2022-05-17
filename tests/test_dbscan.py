@@ -133,7 +133,7 @@ class ArrangeTest(unittest.TestCase):
     def test_arrange_sparse(self):
         """ Tests that arrange produces the same results with sparse and
         dense data structures."""
-        file_ = "tests/files/libsvm/2"
+        file_ = "tests/datasets/libsvm/2"
 
         sparse, _ = ds.load_svmlight_file(file_, (10, 300), 780, True)
         dense, _ = ds.load_svmlight_file(file_, (10, 200), 780, False)

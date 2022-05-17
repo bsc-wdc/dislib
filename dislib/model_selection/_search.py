@@ -12,8 +12,8 @@ from sklearn.model_selection import ParameterGrid, ParameterSampler
 from numpy.ma import MaskedArray
 
 from dislib.model_selection._split import infer_cv
-from dislib.model_selection._validation import check_scorer, fit_and_score, \
-    validate_score, aggregate_score_dicts
+from dislib.model_selection._validation import check_scorer, \
+    validate_score, aggregate_score_dicts, fit, score_func
 
 
 class BaseSearchCV(ABC):
@@ -59,11 +59,16 @@ class BaseSearchCV(ABC):
             """Evaluate some parameters"""
             candidate_params = list(candidate_params)
 
-            out = [fit_and_score(clone(base_estimator), train, validation,
-                                 scorer=scorers, parameters=parameters,
-                                 fit_params=fit_params)
-                   for parameters, (train, validation)
-                   in product(candidate_params, cv.split(x, y))]
+            validation_data = []
+            fits = []
+            for parameters, (train, validation) in product(candidate_params,
+                                                           cv.split(x, y)):
+                validation_data.append(validation)
+                fits.append(fit(clone(base_estimator), train,
+                                parameters=parameters,
+                                fit_params=fit_params))
+            out = [score_func(estimator, validation, scorer=scorers) for
+                   estimator, validation in zip(fits, validation_data)]
 
             nonlocal n_splits
             n_splits = cv.get_n_splits()
