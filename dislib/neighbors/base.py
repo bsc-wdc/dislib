@@ -90,7 +90,8 @@ class NearestNeighbors(BaseEstimator):
             offset = 0
 
             for sknnstruct, n_samples in self._fit_data:
-                queries.append(_get_kneighbors(sknnstruct, q_row._blocks, n_neighbors, offset))
+                queries.append(_get_kneighbors(sknnstruct, q_row._blocks,
+                                               n_neighbors, offset))
                 offset += n_samples
 
             dist, ind = _merge_kqueries(n_neighbors, *queries)
@@ -153,7 +154,7 @@ def _merge_kqueries(k, *queries):
     aggr_ind = np.hstack(ind)
 
     # Final indexes of the indexes (sic)
-    final_ii = np.argsort(aggr_dist)[:,:k]
+    final_ii = np.argsort(aggr_dist)[:, :k]
 
     # Final results
     final_dist = np.take_along_axis(aggr_dist, final_ii, 1)
