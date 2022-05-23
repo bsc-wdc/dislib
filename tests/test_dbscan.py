@@ -11,9 +11,10 @@ from sklearn.preprocessing import StandardScaler
 import dislib as ds
 from dislib.cluster import DBSCAN
 from dislib.cluster.dbscan.base import _arrange_samples, _rearrange_labels
+from tests import DislibTestCase
 
 
-class ArrangeTest(unittest.TestCase):
+class ArrangeTest(DislibTestCase):
 
     def test_arrange(self):
         """ Tests the arrange method with toy data."""
@@ -133,7 +134,7 @@ class ArrangeTest(unittest.TestCase):
     def test_arrange_sparse(self):
         """ Tests that arrange produces the same results with sparse and
         dense data structures."""
-        file_ = "tests/datasets/libsvm/2"
+        file_ = "tests/files/libsvm/2"
 
         sparse, _ = ds.load_svmlight_file(file_, (10, 300), 780, True)
         dense, _ = ds.load_svmlight_file(file_, (10, 200), 780, False)
@@ -160,7 +161,7 @@ class ArrangeTest(unittest.TestCase):
             self.assertTrue(np.array_equal(samples_sp, samples_d))
 
 
-class DBSCANTest(unittest.TestCase):
+class DBSCANTest(DislibTestCase):
     def test_n_clusters_blobs(self):
         """ Tests that DBSCAN finds the correct number of clusters with blob
         data.
