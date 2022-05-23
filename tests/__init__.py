@@ -1,6 +1,7 @@
 import unittest
 from time import time
 
+
 class DislibTestCase(unittest.TestCase):
     def setUp(self) -> None:
         self.start_time = time()

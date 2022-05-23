@@ -45,7 +45,8 @@ class QRTest(DislibTestCase):
         self.assertTrue(np.allclose(q.dot(r), m2b))
 
     @parameterized.expand([
-        ((750, 600), (250, 250)), ((1000, 500), (250, 250)), ((1200, 900), (300, 300)),
+        ((750, 600), (250, 250)), ((1000, 500), (250, 250)),
+        ((1200, 900), (300, 300)),
     ])
     def test_qr_with_padding(self, m_shape, b_shape):
         """Tests qr_blocked with padding"""
