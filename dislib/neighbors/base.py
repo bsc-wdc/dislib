@@ -95,7 +95,9 @@ class NearestNeighbors(BaseEstimator):
                 offset += n_samples
 
             dist, ind = _merge_kqueries(n_neighbors, *queries)
-            compss_delete_object(*queries)
+            for q in queries:
+                compss_delete_object(q)
+
             distances.append([dist])
             indices.append([ind])
 
