@@ -20,11 +20,7 @@ from dislib.decomposition.qr.base import (
 class QRTest(unittest.TestCase):
 
     @parameterized.expand([
-        (1, 1, 2), (1, 1, 4), (2, 2, 2), (2, 2, 4),
-        (3, 3, 3), (3, 3, 4), (4, 4, 2), (4, 4, 3),
-        (4, 4, 4), (6, 6, 6), (8, 8, 8), (2, 1, 2),
-        (2, 1, 4), (3, 2, 2), (3, 2, 4), (4, 3, 3),
-        (4, 3, 4), (5, 4, 2), (10, 6, 6), (10, 6, 6),
+        (4, 3, 400), (5, 4, 700),
     ])
     def test_qr(self, m_size, n_size, b_size):
         """Tests qr_blocked full mode"""
@@ -48,8 +44,8 @@ class QRTest(unittest.TestCase):
         self.assertTrue(np.allclose(q.dot(r), m2b))
 
     @parameterized.expand([
-        ((7, 6), (3, 3)), ((7, 5), (2, 2)), ((10, 4), (3, 3)),
-        ((4, 4), (3, 3)), ((6, 4), (3, 3)), ((6, 5), (2, 2)),
+        ((750, 600), (250, 250)), ((1000, 500), (250, 250)),
+        ((1200, 900), (300, 300)),
     ])
     def test_qr_with_padding(self, m_shape, b_shape):
         """Tests qr_blocked with padding"""
@@ -88,11 +84,7 @@ class QRTest(unittest.TestCase):
         self.assertTrue(r.shape == (m_shape[1], m_shape[1]))
 
     @parameterized.expand([
-        (1, 1, 2), (1, 1, 4), (2, 2, 2), (2, 2, 4),
-        (3, 3, 3), (3, 3, 4), (4, 4, 2), (4, 4, 3),
-        (4, 4, 4), (6, 6, 6), (8, 8, 8), (2, 1, 2),
-        (2, 1, 4), (3, 2, 2), (3, 2, 4), (4, 3, 3),
-        (4, 3, 4), (5, 4, 2), (10, 6, 6), (10, 6, 6),
+        (4, 3, 400), (5, 4, 700),
     ])
     def test_qr_economic(self, m_size, n_size, b_size):
         """Tests qr_blocked economic mode"""
@@ -120,11 +112,7 @@ class QRTest(unittest.TestCase):
         self.assertTrue(r.shape == (n_size * b_size, n_size * b_size))
 
     @parameterized.expand([
-        (1, 1, 2), (1, 1, 4), (2, 2, 2), (2, 2, 4),
-        (3, 3, 3), (3, 3, 4), (4, 4, 2), (4, 4, 3),
-        (4, 4, 4), (6, 6, 6), (8, 8, 8), (2, 1, 2),
-        (2, 1, 4), (3, 2, 2), (3, 2, 4), (4, 3, 3),
-        (4, 3, 4), (5, 4, 2), (10, 6, 6), (10, 6, 6),
+        (4, 3, 400), (5, 4, 700),
     ])
     def test_qr_r(self, m_size, n_size, b_size):
         """Tests qr_blocked r mode"""
