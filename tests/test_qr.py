@@ -21,7 +21,7 @@ from tests import DislibTestCase
 class QRTest(DislibTestCase):
 
     @parameterized.expand([
-        (4, 3, 400), (5, 4, 700), (8, 6, 1000), (7, 7, 2000),
+        (4, 3, 400), (5, 4, 700),
     ])
     def test_qr(self, m_size, n_size, b_size):
         """Tests qr_blocked full mode"""
@@ -85,7 +85,7 @@ class QRTest(DislibTestCase):
         self.assertTrue(r.shape == (m_shape[1], m_shape[1]))
 
     @parameterized.expand([
-        (4, 3, 400), (5, 4, 700), (8, 6, 1000), (7, 7, 2000),
+        (4, 3, 400), (5, 4, 700),
     ])
     def test_qr_economic(self, m_size, n_size, b_size):
         """Tests qr_blocked economic mode"""
@@ -113,7 +113,7 @@ class QRTest(DislibTestCase):
         self.assertTrue(r.shape == (n_size * b_size, n_size * b_size))
 
     @parameterized.expand([
-        (4, 3, 400), (5, 4, 700), (8, 6, 1000), (7, 7, 2000),
+        (4, 3, 400), (5, 4, 700),
     ])
     def test_qr_r(self, m_size, n_size, b_size):
         """Tests qr_blocked r mode"""
