@@ -13,6 +13,7 @@ from dislib.preprocessing import StandardScaler, MinMaxScaler
 
 from tests import BaseTimedTestCase
 
+
 class ScalerTest(BaseTimedTestCase):
     def setUp(self) -> None:
         self.x, _ = make_blobs(n_samples=1500, n_features=8,

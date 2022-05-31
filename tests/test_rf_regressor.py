@@ -10,6 +10,7 @@ import dislib.data.util.model as utilmodel
 
 from tests import BaseTimedTestCase
 
+
 def _determination_coefficient(y_true, y_pred):
     u = np.sum(np.square(y_true - y_pred))
     v = np.sum(np.square(y_true - np.mean(y_true)))

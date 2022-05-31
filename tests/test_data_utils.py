@@ -8,6 +8,7 @@ from dislib.data.util import pad, pad_last_blocks_with_zeros, \
 
 from tests import BaseTimedTestCase
 
+
 class DataUtilsTest(BaseTimedTestCase):
 
     @parameterized.expand([

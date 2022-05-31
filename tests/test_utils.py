@@ -8,7 +8,6 @@ from dislib.utils import shuffle
 import math
 
 from tests import BaseTimedTestCase
-from tests import BaseTimedTestCase
 
 
 class TrainTestSplitTest(BaseTimedTestCase):

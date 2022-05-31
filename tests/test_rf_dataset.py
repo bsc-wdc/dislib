@@ -9,10 +9,11 @@ from dislib.data.array import Array
 import numpy as np
 from sys import float_info
 from pycompss.api.api import compss_wait_on
+from tests import BaseTimedTestCase
+
 
 DIRPATH = "tests/datasets/saving"
 
-from tests import BaseTimedTestCase
 
 class RFDatasetTest(BaseTimedTestCase):
     def setUp(self) -> None:

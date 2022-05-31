@@ -1,4 +1,3 @@
-import unittest
 import scipy.stats as stats
 import numpy as np
 

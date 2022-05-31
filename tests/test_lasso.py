@@ -1,5 +1,3 @@
-import unittest
-
 import numpy as np
 from sklearn.metrics import r2_score
 

@@ -18,6 +18,7 @@ from dislib.decomposition.qr.base import (
 
 from tests import BaseTimedTestCase
 
+
 class QRTest(BaseTimedTestCase):
 
     @parameterized.expand([
