@@ -12,8 +12,9 @@ from pycompss.api.api import compss_wait_on
 
 DIRPATH = "tests/datasets/saving"
 
+from tests import BaseTimedTestCase
 
-class RFDatasetTest(unittest.TestCase):
+class RFDatasetTest(BaseTimedTestCase):
     def setUp(self) -> None:
         os.makedirs(DIRPATH, exist_ok=True)
         return super().setUp()

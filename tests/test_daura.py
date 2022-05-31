@@ -4,9 +4,10 @@ import numpy as np
 
 import dislib as ds
 from dislib.cluster import Daura
+from tests import BaseTimedTestCase
 
 
-class GaussianMixtureTest(unittest.TestCase):
+class GaussianMixtureTest(BaseTimedTestCase):
 
     def test_init_params(self):
         """Tests that Daura fit_predict"""

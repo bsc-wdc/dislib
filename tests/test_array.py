@@ -9,6 +9,7 @@ from sklearn.datasets import load_svmlight_file
 import pandas as pd
 import dislib as ds
 from math import ceil
+from tests import BaseTimedTestCase
 
 
 def _sum_and_mult(arr, a=0, axis=0, b=1):
@@ -91,7 +92,7 @@ def _gen_irregular_arrays(fmt, shape=None, block_size=None):
         return x[1:, 1:], x_sp[1:, 1:]
 
 
-class DataLoadingTest(unittest.TestCase):
+class DataLoadingTest(BaseTimedTestCase):
 
     @parameterized.expand([(_gen_random_arrays("dense", (6, 10), (4, 3))
                             + ((6, 10), (4, 3))),
@@ -295,7 +296,7 @@ class DataLoadingTest(unittest.TestCase):
         self.assertTrue(_validate_array(x))
 
 
-class LoadBlocksRechunkTest(unittest.TestCase):
+class LoadBlocksRechunkTest(BaseTimedTestCase):
     def test_rechunk_new_block_size_exception(self):
         """ Tests that load_blocks_rechunk function throws an exception
         when the block_size returned of the rechunk is greater than the shape
@@ -347,7 +348,7 @@ class LoadBlocksRechunkTest(unittest.TestCase):
             ds.data.load_blocks_rechunk(blocks, (20, 20), (25, 25), (5, 5))
 
 
-class LoadHStackNpyFilesTest(unittest.TestCase):
+class LoadHStackNpyFilesTest(BaseTimedTestCase):
     folder = 'load_hstack_npy_files_test_folder'
     arrays = [np.random.rand(3, 4) for _ in range(5)]
 
@@ -372,7 +373,7 @@ class LoadHStackNpyFilesTest(unittest.TestCase):
         self.assertTrue(np.allclose(x.collect(), np.hstack(self.arrays)))
 
 
-class SaveTxtTest(unittest.TestCase):
+class SaveTxtTest(BaseTimedTestCase):
     folder = 'save_txt_test_folder'
 
     def tearDown(self):
@@ -408,7 +409,7 @@ class SaveTxtTest(unittest.TestCase):
         self.assertTrue(_equal_arrays(np.vstack(h_blocks), x_np))
 
 
-class SaveNpyTest(unittest.TestCase):
+class SaveNpyTest(BaseTimedTestCase):
     folder = 'save_npy_test_folder'
 
     def tearDown(self):
@@ -454,7 +455,7 @@ class SaveNpyTest(unittest.TestCase):
             ds.data.load_npy_files('save_npy_test_folder')
 
 
-class ArrayTest(unittest.TestCase):
+class ArrayTest(BaseTimedTestCase):
 
     @parameterized.expand([_gen_random_arrays("dense"),
                            _gen_random_arrays("sparse")])
@@ -1086,7 +1087,7 @@ class ArrayTest(unittest.TestCase):
             x_csr.median()
 
 
-class MathTest(unittest.TestCase):
+class MathTest(BaseTimedTestCase):
 
     @parameterized.expand([((21, 33), (10, 15), False),
                            ((5, 10), (8, 1), False),

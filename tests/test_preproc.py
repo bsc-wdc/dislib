@@ -11,8 +11,9 @@ from sklearn.preprocessing import MinMaxScaler as SkMinMaxScaler
 import dislib as ds
 from dislib.preprocessing import StandardScaler, MinMaxScaler
 
+from tests import BaseTimedTestCase
 
-class ScalerTest(unittest.TestCase):
+class ScalerTest(BaseTimedTestCase):
     def setUp(self) -> None:
         self.x, _ = make_blobs(n_samples=1500, n_features=8,
                                random_state=170, cluster_std=33)

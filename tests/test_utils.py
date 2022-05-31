@@ -7,8 +7,11 @@ import dislib as ds
 from dislib.utils import shuffle
 import math
 
+from tests import BaseTimedTestCase
+from tests import BaseTimedTestCase
 
-class TrainTestSplitTest(unittest.TestCase):
+
+class TrainTestSplitTest(BaseTimedTestCase):
 
     def test_train_test_split_x(self):
         x = np.random.rand(40, 40)
@@ -229,7 +232,7 @@ class TrainTestSplitTest(unittest.TestCase):
             ds.utils.train_test_split(x=np.zeros((2, 2)), test_size=0.95)
 
 
-class UtilsTest(unittest.TestCase):
+class UtilsTest(BaseTimedTestCase):
 
     def test_shuffle_x(self):
         """ Tests shuffle for given x and random_state. Tests that the

@@ -13,9 +13,10 @@ from dislib.recommendation import ALS
 from dislib.regression import LinearRegression
 from dislib.model_selection import GridSearchCV, KFold
 from dislib.utils import shuffle
+from tests import BaseTimedTestCase
 
 
-class GridSearchCVTest(unittest.TestCase):
+class GridSearchCVTest(BaseTimedTestCase):
 
     def test_estimators_compatibility(self):
         """Tests that dislib estimators are compatible with GridSearchCV.

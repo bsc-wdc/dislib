@@ -6,9 +6,10 @@ import numpy as np
 from parameterized import parameterized
 
 from dislib.decomposition.tsqr.base import _is_not_power_of_two
+from tests import BaseTimedTestCase
 
 
-class QRTest(unittest.TestCase):
+class QRTest(BaseTimedTestCase):
     @parameterized.expand([
         (2, 1, 64, 36), (4, 1, 32, 36), (16, 1, 20, 10),
     ])

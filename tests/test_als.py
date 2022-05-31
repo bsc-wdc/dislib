@@ -6,6 +6,7 @@ from scipy.sparse import csr_matrix
 import dislib as ds
 from dislib.recommendation import ALS
 import dislib.data.util.model as utilmodel
+from tests import BaseTimedTestCase
 
 
 def load_movielens(train_ratio=0.9):
@@ -42,7 +43,7 @@ def load_movielens(train_ratio=0.9):
     return train_arr, test_arr
 
 
-class ALSTest(unittest.TestCase):
+class ALSTest(BaseTimedTestCase):
     def test_init_params(self):
         # Test all parameters
         seed = 666

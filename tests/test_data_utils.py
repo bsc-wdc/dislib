@@ -6,8 +6,9 @@ from dislib.data.array import random_array
 from dislib.data.util import pad, pad_last_blocks_with_zeros, \
     compute_bottom_right_shape, remove_last_columns, sync_obj
 
+from tests import BaseTimedTestCase
 
-class DataUtilsTest(unittest.TestCase):
+class DataUtilsTest(BaseTimedTestCase):
 
     @parameterized.expand([
         ((3, 4), (3, 3), (3, 1)),
