@@ -202,24 +202,6 @@ class Tensor(object):
         self.tensors = compss_wait_on(self.tensors)
         return self.tensors
 
-    def from_pt_tensor(self, tensor, shape=None):
-        if not torch.istensor(tensor):
-            raise ValueError("The method expects to receive a numpy array.")
-        if shape:
-            if len(shape) == 2 and shape[0] >= 1 and shape[1] >= 1:
-                elements_per_tensor = tensor.shape[:2] / shape
-                new_tensors = _place_elements_in_tensors(tensor, shape, elements_per_tensor)
-                elements_per_tensor.extend(tensor.shape[2:])
-                return Tensor(tensors=new_tensors, tensor_shape=elements_per_tensor, shape=tuple(shape), dtype=tensor.dtype)
-            raise ValueError("The shape should contain two values greater "
-                             "than 0")
-        else:
-            shape_ds_tensor = (tensor.shape[0], tensor.shape[1])
-            new_tensors = Tensor._get_out_tensors(shape_ds_tensor)
-            _reallocate_tensors(tensor, new_tensors)
-            return Tensor(tensors=new_tensors, tensor_shape=tensor.shape[2:], shape=shape_ds_tensor,
-                          dtype=tensor.dtype)
-
     @staticmethod
     def _subtract(a, b):
         if isinstance(a, np.ndarray) and isinstance(b, np.ndarray):
@@ -250,7 +232,7 @@ class Tensor(object):
         if isinstance(tensors[0][0], np.ndarray):
             return np.concatenate((tensors), axis=axis_to_merge)
         elif torch.is_tensor(tensors[0][0]):
-            return torch.concatenate((tensors), axis=axis_to_merge)
+            return torch.cat(*tensors, axis=axis_to_merge)
         raise ValueError("Type of tensors not supported.")
 
     @staticmethod
@@ -486,6 +468,25 @@ def from_array(np_array, shape=None):
         return Tensor(tensors=new_tensors, tensor_shape=np_array.shape[2:], shape=shape_ds_tensor, dtype=np_array.dtype)
 
 
+def from_pt_tensor(tensor, shape=None):
+    if not torch.is_tensor(tensor):
+        raise ValueError("The method expects to receive a numpy array.")
+    if shape:
+        if len(shape) == 2 and shape[0] >= 1 and shape[1] >= 1:
+            elements_per_tensor = (int(tensor.shape[0] / shape[0]), int(tensor.shape[1]/shape[1]))
+            new_tensors = _place_elements_in_tensors(tensor, shape, elements_per_tensor)
+            elements_per_tensor = (*elements_per_tensor, *tensor.shape[2:])
+            return Tensor(tensors=new_tensors, tensor_shape=elements_per_tensor, shape=tuple(shape), dtype=tensor.dtype)
+        raise ValueError("The shape should contain two values greater "
+                         "than 0")
+    else:
+        shape_ds_tensor = (tensor.shape[0], tensor.shape[1])
+        new_tensors = Tensor._get_out_tensors(shape_ds_tensor)
+        _reallocate_tensors(tensor, new_tensors)
+        return Tensor(tensors=new_tensors, tensor_shape=tensor.shape[2:], shape=shape_ds_tensor,
+                        dtype=tensor.dtype)
+
+
 def cat(tensors, dimension):
     if len(tensors) <= 1:
         raise ValueError("There should be at least two tensors to concatenate")
@@ -645,11 +646,17 @@ def _random_tensor_wrapper(tensor_type, shape, dtype):
         for _ in range(shape[0]):
             col_tensor = []
             for _ in range(shape[1]):
-                col_tensor.append(_create_numpy_tensor(np.random.rand, shape[2:]))
+                col_tensor.append(_create_random_tensor(np.random.rand, shape[2:]))
             tensors.append(col_tensor)
         return Tensor(tensors=tensors, tensor_shape=shape[2:], dtype=dtype)
     elif tensor_type == "torch":
-        pass
+        tensors = []
+        for _ in range(shape[0]):
+            col_tensor = []
+            for _ in range(shape[1]):
+                col_tensor.append(_create_random_tensor(torch.rand, shape[2:]))
+            tensors.append(col_tensor)
+        return Tensor(tensors=tensors, tensor_shape=shape[2:], dtype=dtype)
     else:
         raise NotImplementedError("Type of tensor not supported")
 
@@ -719,13 +726,7 @@ def _read_tensor_from_pt(file_path, tensors, elements_per_tensor):
 
 @constraint(computing_units="${ComputingUnits}")
 @task(returns=1)
-def _random_tensor(func, shape):
-    return func(shape)
-
-
-@constraint(computing_units="${ComputingUnits}")
-@task(returns=1)
-def _create_numpy_tensor(func, shape):#TODO: DE VERDAD SE TIENE QUE LLAMAR ASI??
+def _create_random_tensor(func, shape):#TODO: DE VERDAD SE TIENE QUE LLAMAR ASI??
     shape = tuple(shape)
     return func(*shape)
 
