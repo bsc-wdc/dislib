@@ -55,7 +55,7 @@ class KNeighborsClassifier(BaseEstimator):
 
         out_blocks = Array._get_out_blocks(self.y._n_blocks)
 
-        indices_to_classes(ind._blocks, self.y._blocks,
+        _indices_to_classes(ind._blocks, self.y._blocks,
                            dist._blocks, out_blocks, self.weights)
 
         return Array(blocks=out_blocks, top_left_shape=self.y._top_left_shape,
@@ -92,7 +92,7 @@ class KNeighborsClassifier(BaseEstimator):
       y_blocks={Type: COLLECTION_IN, Depth: 2},
       dist_blocks={Type: COLLECTION_IN, Depth: 2},
       out_blocks={Type: COLLECTION_OUT, Depth: 2})
-def indices_to_classes(ind_blocks, y_blocks, dist_blocks, out_blocks, weights):
+def _indices_to_classes(ind_blocks, y_blocks, dist_blocks, out_blocks, weights):
     ind = Array._merge_blocks(ind_blocks)
     y = Array._merge_blocks(y_blocks).flatten()
     dist = Array._merge_blocks(dist_blocks)
