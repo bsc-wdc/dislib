@@ -9,7 +9,7 @@ import dislib as ds
 from dislib.classification import KNeighborsClassifier
 
 
-class NearestNeighborsTest(unittest.TestCase):
+class KNearestNeighborsTest(unittest.TestCase):
     def test_kneighbors(self):
         """ Tests kneighbors against scikit-learn """
 
