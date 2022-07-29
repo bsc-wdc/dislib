@@ -41,18 +41,19 @@ class Tensor(object):
                 if value.shape != self.tensor_shape:
                     raise ValueError("The tensor has different shape than "
                                      "the expected on this ds-tensor")
-                if isinstance(value, type(np)) or isinstance(value,
-                                                             type(torch)):
+                if isinstance(value, (np.ndarray, np.generic)) or \
+                        torch.is_tensor(value) or isinstance(value, list):
                     if all(isinstance(v, int) for v in key):
                         if key[0] >= self.shape[0] or key[1] >= self.shape[1] \
                                 or key[0] < 0 or key[1] < 0:
                             raise IndexError("Index %r is out of bounds for "
                                              "ds-tensor with shape %r." %
                                              (key, self.shape))
-                        self.tensors[key[0], key[1]] = value
+                        self.tensors[key[0]][key[1]] = value
                     elif all(isinstance(v, list) for v in key):
-                        if any(key[idx] >= self.shape[idx] for idx in
-                               range(key)):
+                        if any(idx >= self.shape[0] for idx in
+                               key[0]) or any(idx >= self.shape[1] for idx in
+                               key[1]):
                             raise IndexError("Index %r is out of bounds for "
                                              "ds-tensor "
                                              "with shape %r." %
@@ -63,14 +64,14 @@ class Tensor(object):
                 else:
                     raise ValueError("The type of tensor being tried "
                                      "to assign is not supported.")
-            if all(isinstance(v, int) for v in key):
+            elif all(isinstance(v, int) for v in key):
                 if key[0] >= self.shape[0] or key[1] >= self.shape[1] or \
                         key[0] < 0 or key[1] < 0:
                     raise IndexError("Index %r is out of bounds for "
                                      "ds-tensor with shape %r." %
                                      (key, self.shape))
-                if any(key[idx] >= self.tensor_shape[idx] for idx in
-                       range(key)):
+                if any(value >= self.tensor_shape[idx] for idx, value in
+                       enumerate(key[2:])):
                     raise IndexError("Index %r is out of bounds for tensors "
                                      "inside ds-tensor with shape %r." %
                                      (key, self.tensor_shape))
@@ -88,7 +89,7 @@ class Tensor(object):
                         raise IndexError("Index %r is out of bounds for "
                                          "ds-tensor with shape %r." %
                                          (key, self.shape))
-                    if any(key[1] >= self.shape[1]):
+                    if any(value >=self.shape[1] for value in key[1]):
                         raise IndexError("At least one index of tensor in "
                                          "axis=1 is out of bounds")
                     for col in key[1]:
@@ -98,16 +99,16 @@ class Tensor(object):
                         raise IndexError("Index %r is out of bounds for "
                                          "ds-tensor with shape %r." %
                                          (key, self.shape))
-                    if any(key[0] >= self.shape[0]):
+                    if any(value >=self.shape[0] for value in key[0]):
                         raise IndexError("At least one index of tensor "
                                          "in axis=0 is out of bounds")
                     for row in key[0]:
                         _set_value(self.tensors[row][key[1]], key[2:], value)
                 elif isinstance(key[0], list) and isinstance(key[1], list):
-                    if any(key[0] >= self.shape[0]):
+                    if any(value >=self.shape[0] for value in key[0]):
                         raise IndexError("At least one index of tensor "
                                          "in axis=0 is out of bounds")
-                    if any(key[1] >= self.shape[1]):
+                    if any(value >=self.shape[1] for value in key[1]):
                         raise IndexError("At least one index of tensor "
                                          "in axis=1 is out of bounds")
                     for row in key[0]:
@@ -253,7 +254,7 @@ class Tensor(object):
             return torch.pow(a, power)
 
     @staticmethod
-    def _merge_tensors(tensors, axis_to_merge=1):
+    def _merge_tensors(tensors, axis_to_merge=0):
         """
         Helper function that merges the tensors attribute of a ds-tensor into
         a single ndarray / pytorch tensor
@@ -278,37 +279,12 @@ class Tensor(object):
         Return the tensors in i rows or/and j cols
         """
         if i is not None and j is None:
-            if len(i) == 1:
-                if i[0] > self.shape[0]:
-                    raise IndexError("Rows shape is ", self.shape[0])
-                tensor = self.tensors[i[0]]
-                return Tensor(tensors=[tensor],
-                              tensor_shape=self.tensor_shape,
-                              dtype=self.dtype)
-            else:
-                if any(index > self.shape[0] for index in i):
-                    raise IndexError("Rows shape is", self.shape[0])
-                tensor = [self.tensors[idx] for idx in i]
-                return Tensor(tensors=tensor,
-                              tensor_shape=self.tensor_shape,
-                              dtype=self.dtype)
-        elif j is not None and i is None:
-            if len(j) == 1:
-                if j[0] > self.shape[1]:
-                    raise IndexError("Columns shape is ", self.shape[1])
-                tensor = self.tensors[:][j[0]]
-                # returns an list containing a single element
-                # return tensor
-                return Tensor(tensors=[tensor],
-                              tensor_shape=self.tensor_shape,
-                              dtype=self.dtype)
-            else:
-                if any(index > self.shape[1] for index in j):
-                    raise IndexError("Columns shape is ", self.shape[1])
-                tensor = [self.tensors[:][idx] for idx in j]
-                return Tensor(tensors=tensor,
-                              tensor_shape=self.tensor_shape,
-                              dtype=self.dtype)
+            if any(index > self.shape[0] for index in i):
+                raise IndexError("Rows shape is", self.shape[0])
+            tensor = [self.tensors[idx] for idx in i]
+            return Tensor(tensors=tensor,
+                          tensor_shape=self.tensor_shape,
+                          dtype=self.dtype)
         else:
             if len(i) == 1 and i[0] > self.shape[0]:
                 raise IndexError("Shape is ", self.shape)
@@ -335,8 +311,8 @@ class Tensor(object):
             raise IndexError("Rows shape is ", self.shape[0])
         if any(index > self.shape[1] for index in j):
             raise IndexError("Columns shape is ", self.shape[1])
-        tensor = [[self.tensors[idx][idx2] for idx in i] for idx2 in j]
-        if len(positions) > len(self.shape):
+        tensor = [[self.tensors[idx][idx2] for idx2 in j] for idx in i]
+        if len(positions) > len(self.tensor_shape):
             raise IndexError("The index specified has more dimensions "
                              "than the tensor shape.")
         new_shape = []
@@ -354,7 +330,7 @@ class Tensor(object):
                 tensor_out.append(_obtain_indexes_from_tensor(tensor_col,
                                                               positions))
             definitive_tensors.append(tensor_out)
-        return Tensor(tensors=definitive_tensors, tensor_shape=new_shape,
+        return Tensor(tensors=definitive_tensors, tensor_shape=tuple(new_shape),
                       dtype=self.dtype)
 
     def _get_single_tensor(self, i, j):
@@ -448,6 +424,7 @@ class Tensor(object):
                                      specific_slice.start)
                 elif isinstance(specific_slice, list):
                     new_shape.append(len(specific_slice))
+                    break
                 else:
                     new_shape.append(1)
             definitive_tensors = []
@@ -472,7 +449,7 @@ class Tensor(object):
         # iterate through columns
         elif axis == 1 or axis == 'columns':
             for j in range(self.shape[1]):
-                yield self._get_various_tensor([j])
+                yield self._get_various_tensor(i=[*range(self.shape[0])], j=[j])
         else:
             raise Exception(
                 "Axis must be [0|'rows'] or [1|'columns']. Got: %s" % axis)
@@ -482,14 +459,14 @@ class Tensor(object):
         """
         Applies the specified function to the tensor in (i, j)
         """
-        func(self.tensors[i][j])
+        self.tensors[i][j] = func(self.tensors[i][j])
 
     def apply_to_tensors(self, func):
         """
         Applies the specified function to the all the tensors
         """
-        for i in range(self.n_tensors[0]):
-            for j in range(self.n_tensors[1]):
+        for i in range(self.shape[0]):
+            for j in range(self.shape[1]):
                 self.apply_to_tensor(func, i, j)
 
 
@@ -518,11 +495,10 @@ def from_array(np_array, shape=None):
             if shape[0] * shape[1] > len(np_array):
                 raise ValueError("The number of tensors specified is higher "
                                  "than the number of elements")
-            elements_per_tensor = (int(np_array.shape[0] / shape[0]),
-                                   int(np_array.shape[1] / shape[1]))
+            elements_per_tensor = (int(np_array.shape[0] / (shape[0]*shape[1])))
             new_tensors = _place_elements_in_tensors(np_array, shape,
                                                      elements_per_tensor)
-            elements_per_tensor = (*elements_per_tensor, *np_array.shape[2:])
+            elements_per_tensor = (elements_per_tensor, *np_array.shape[1:])
             return Tensor(tensors=new_tensors,
                           tensor_shape=elements_per_tensor,
                           shape=tuple(shape),
@@ -559,11 +535,13 @@ def from_pt_tensor(tensor, shape=None):
         raise ValueError("The method expects to receive a pytorch tensor.")
     if shape:
         if len(shape) == 2 and shape[0] >= 1 and shape[1] >= 1:
-            elements_per_tensor = (int(tensor.shape[0] / shape[0]),
-                                   int(tensor.shape[1] / shape[1]))
+            if shape[0] * shape[1] > len(tensor):
+                raise ValueError("The number of tensors specified is higher "
+                                 "than the number of elements")
+            elements_per_tensor = (int(tensor.shape[0] / (shape[0]*shape[1])))
             new_tensors = _place_elements_in_tensors(tensor, shape,
                                                      elements_per_tensor)
-            elements_per_tensor = (*elements_per_tensor, *tensor.shape[2:])
+            elements_per_tensor = (elements_per_tensor, *tensor.shape[1:])
             return Tensor(tensors=new_tensors,
                           tensor_shape=elements_per_tensor,
                           shape=tuple(shape), dtype=tensor.dtype)
@@ -652,7 +630,7 @@ def change_shape(tensor, new_shape):
                   dtype=tensor.dtype)
 
 
-def _empty_tensor(shape, tensor_shape, dtype=np.float32):
+def _empty_tensor(shape, tensor_shape, dtype=np.float64):
     return Tensor(tensors=[[None for _ in range(shape[1])] for _ in
                            range(shape[0])], tensor_shape=tensor_shape,
                   shape=shape, dtype=dtype)
@@ -794,7 +772,7 @@ def create_ds_tensor(tensors, tensors_shape, shape=None, dtype=np.float64):
                   shape=shape, dtype=dtype)
 
 
-def random_tensors(tensors_type, shape, dtype):
+def random_tensors(tensors_type, shape, dtype=None):
     """
     Function that generates a ds-tensor with random data inside it.
 
@@ -816,7 +794,7 @@ def random_tensors(tensors_type, shape, dtype):
     return _random_tensor_wrapper(tensors_type, shape, dtype)
 
 
-def _random_tensor_wrapper(tensor_type, shape, dtype):
+def _random_tensor_wrapper(tensor_type, shape, dtype=None):
     """
     Function that generates a ds-tensor with random data inside it.
 
@@ -843,6 +821,8 @@ def _random_tensor_wrapper(tensor_type, shape, dtype):
                 col_tensor.append(_create_random_tensor(np.random.rand,
                                                         shape[2:]))
             tensors.append(col_tensor)
+        if dtype is None:
+            dtype = np.float64
         return Tensor(tensors=tensors, tensor_shape=shape[2:], dtype=dtype)
     elif tensor_type == "torch":
         tensors = []
@@ -852,6 +832,8 @@ def _random_tensor_wrapper(tensor_type, shape, dtype):
                 col_tensor.append(_create_random_tensor(torch.rand,
                                                         shape[2:]))
             tensors.append(col_tensor)
+        if dtype is None:
+            dtype = torch.float64
         return Tensor(tensors=tensors, tensor_shape=shape[2:], dtype=dtype)
     else:
         raise NotImplementedError("Type of tensor not supported")
@@ -911,9 +893,12 @@ def load_dataset(number_tensors_per_file, path):
                 _read_tensor_from_pt(path + "/" + file, tensors_row,
                                      elements_per_tensor)
                 tensors.append(tensors_row)
-        return Tensor(tensors=tensors, tensor_shape=(elements_per_tensor,
-                                                     *x_train.shape[1:]),
-                      dtype="torch." + str(x_train.dtype))
+            return Tensor(tensors=tensors, tensor_shape=(elements_per_tensor,
+                                                         *x_train.shape[1:]),
+                          dtype="torch." + str(x_train.dtype))
+        else:
+            raise NotImplementedError("Only supported numpy arrays or pytorch"
+                                      " tensors")
 
 
 def shuffle(x, y=None, random_state=None):
@@ -964,7 +949,7 @@ def shuffle(x, y=None, random_state=None):
         seed = np.random.randint(np.iinfo(np.int32).max)
         if y is None:
             part_x = [object() for _ in range(x.shape[1])]
-            part_x = _merge_shuffle_x(seed, row_col_subsamples,
+            _merge_shuffle_x(seed, row_col_subsamples,
                                       x.tensor_shape[0], part_x)
             part_out_x_tensors.append(part_x)
         else:
@@ -1069,12 +1054,12 @@ def _merge_shuffle_xy(seed, part_out_subsamples, size, part_x, part_y):
 def _choose_and_assign_tensors_x(x, subsamples, subsample_sizes,
                                  cols, n_tensors, seed):
     np.random.seed(seed)
-    for j, col in enumerate(cols):
+    for j in range(cols):
         indices = np.random.permutation(x[0][j].shape[0])
         start = 0
-        for i in range(n_tensors):
-            end = start + subsample_sizes[i]
-            subsamples[i + j * cols] = x[0][col][
+        for i in range(int(n_tensors / cols)):
+            end = start + subsample_sizes[j]
+            subsamples[i + j * int(n_tensors / cols)] = x[0][j][
                 indices[start:end]]
             start = end
 
@@ -1145,10 +1130,8 @@ def _place_elements_in_tensors(tensors, shape, elements_per_tensor):
 @constraint(computing_units="${ComputingUnits}")
 @task(returns=1)
 def _get_specific_elements_tensor(tensors, elements_per_tensor, i, j):
-    return tensors[int(i * elements_per_tensor[0]):
-                   int(i * elements_per_tensor[0] + elements_per_tensor[0]),
-                   int(j * elements_per_tensor[1]):
-                   int(j * elements_per_tensor[1] + elements_per_tensor[1])]
+    return tensors[int(i * elements_per_tensor):
+                   int(i * elements_per_tensor + elements_per_tensor)]
 
 
 @constraint(computing_units="${ComputingUnits}")

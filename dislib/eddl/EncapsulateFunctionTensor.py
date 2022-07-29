@@ -8,50 +8,41 @@ import math
 from ds_tensor import shuffle
 
 
-def net_parametersToNumpy(parameters):
-    np_params = list()
+def net_numpy_parameters(parameters):
+    numpy_parameters = list()
 
-    for i in range(0, len(parameters)):
+    for i in range(len(parameters)):
 
         params = list()
 
-        for j in range(0, len(parameters[i])):
+        for j in range(len(parameters[i])):
             v = np.array(parameters[i][j], copy=True).astype(np.float32)
-            # print("V: ", v)
-            # v = eddlT.getdata(parameters[i][j])
             params.append(v)
 
-        np_params.append(params)
+        numpy_parameters.append(params)
 
     return np_params
 
 
-def net_aggregateParameters(workers_parameters):
-    NUM_WORKERS = len(workers_parameters)
+def aggregate_net_parameters(workers_parameters):
+    number_workers = len(workers_parameters)
     recv_weights = workers_parameters
 
     final_weights = recv_weights[0]
 
-    for i in range(0, len(final_weights)):
-
+    for i in range(len(final_weights)):
         layer_final = final_weights[i]
-
         if len(layer_final) > 0:
-
-            for j in range(1, NUM_WORKERS):
+            for j in range(1, number_workers):
                 layer_recv = recv_weights[j][i]
                 layer_final[0] = np.add(layer_final[0], layer_recv[0])
-
                 if len(layer_final) > 1:
                     layer_final[1] = np.add(layer_final[1], layer_recv[1])
 
-            layer_final[0] = np.divide(layer_final[0], NUM_WORKERS)
+            layer_final[0] = np.divide(layer_final[0], number_workers)
 
             if len(layer_final) > 1:
-                layer_final[1] = np.divide(layer_final[1], NUM_WORKERS)
-
-        # print("Final weights[i]: ", final_weights[i])
-        # print("Layer final", layer_final)
+                layer_final[1] = np.divide(layer_final[1], number_workers)
 
     return final_weights
 
@@ -122,7 +113,7 @@ class EncapsulatedFunctionsTensor(object):
         self.compss_object.build(net, optimizer, loss, metric,
                                  num_gpu, gpu=np.arange(num_gpu))
         model_parameters, gradients = net_getParameters(net)
-        self.model_parameters = net_parametersToNumpy(model_parameters)
+        self.model_parameters = net_numpy_parameters(model_parameters)
 
     def get_parameters(self):
         """
@@ -192,12 +183,12 @@ class EncapsulatedFunctionsTensor(object):
                 parameters_for_workers = compss_wait_on(
                     parameters_for_workers)
                 self.model_parameters = \
-                    net_aggregateParameters(parameters_for_workers)
+                    aggregate_net_parameters(parameters_for_workers)
                 parameters_for_workers = [self.model_parameters for _
                                           in
                                           range(len(parameters_for_workers))]
         parameters_for_workers = compss_wait_on(parameters_for_workers)
-        self.model_parameters = net_aggregateParameters(
+        self.model_parameters = aggregate_net_parameters(
             parameters_for_workers)
         return self.model_parameters
 
@@ -270,12 +261,12 @@ class EncapsulatedFunctionsTensor(object):
             if (i + 1) % n_epocs_sync == 0:
                 parameters_for_workers = compss_wait_on(
                     parameters_for_workers)
-                self.model_parameters = net_aggregateParameters(
+                self.model_parameters = aggregate_net_parameters(
                     parameters_for_workers)
                 parameters_for_workers = [self.model_parameters for _
                                           in range(self.num_workers)]
         parameters_for_workers = compss_wait_on(parameters_for_workers)
-        self.model_parameters = net_aggregateParameters(
+        self.model_parameters = aggregate_net_parameters(
             parameters_for_workers)
         return self.model_parameters
 
@@ -341,7 +332,7 @@ class EncapsulatedFunctionsTensor(object):
                     if j == self.num_workers:
                         j = 0
             parameters_for_workers = compss_wait_on(parameters_for_workers)
-            self.model_parameters = net_aggregateParameters(
+            self.model_parameters = aggregate_net_parameters(
                 parameters_for_workers)
         return self.model_parameters
 
@@ -399,11 +390,11 @@ class EncapsulatedFunctionsTensor(object):
                         j = 0
             parameters_for_workers = compss_wait_on(parameters_for_workers)
             self.model_parameters = \
-                net_aggregateParameters(parameters_for_workers)
+                aggregate_net_parameters(parameters_for_workers)
             parameters_for_workers = [self.model_parameters for _
                                       in range(self.num_workers)]
         parameters_for_workers = compss_wait_on(parameters_for_workers)
-        self.model_parameters = net_aggregateParameters(
+        self.model_parameters = aggregate_net_parameters(
             parameters_for_workers)
         return self.model_parameters
 
@@ -624,7 +615,7 @@ class EncapsulatedFunctionsTensor(object):
                         if j == self.num_workers:
                             j = 0
         parameters_for_workers = compss_wait_on(parameters_for_workers)
-        self.model_parameters = net_aggregateParameters(
+        self.model_parameters = aggregate_net_parameters(
             parameters_for_workers)
         return self.model_parameters
 
@@ -691,7 +682,7 @@ class EncapsulatedFunctionsTensor(object):
                             parameters_for_workers[j],
                             (1 / self.num_workers))
         parameters_for_workers = compss_wait_on(parameters_for_workers)
-        self.model_parameters = net_aggregateParameters(
+        self.model_parameters = aggregate_net_parameters(
             parameters_for_workers)
         return self.model_parameters
 
