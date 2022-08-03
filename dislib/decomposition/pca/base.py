@@ -153,10 +153,10 @@ class PCA(BaseEstimator):
 
         self.components_ = Array(vec_blocks, bshape, bshape,
                                  (shape1, x.shape[1]), False)
-                                 
+
         ex_var_bshape = (1, bshape)
-        self.explained_variance_ = Array(val_blocks, ex_var_bshape, ex_var_bshape,
-                                         (1, shape1), False)
+        self.explained_variance_ = Array(val_blocks, ex_var_bshape,
+                                         ex_var_bshape, (1, shape1), False)
 
         return self
 
