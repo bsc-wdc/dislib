@@ -5,7 +5,7 @@ COPY . dislib/
 
 ENV PYTHONPATH=$PYTHONPATH:/dislib
 ENV LC_ALL=C.UTF-8
-RUN pip3 install -r /dislib/requirements.txt
+RUN pip3 install --upgrade -r /dislib/requirements.txt
 
 ENV COMPSS_LOAD_SOURCE false
 
