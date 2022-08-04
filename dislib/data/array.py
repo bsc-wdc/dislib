@@ -11,6 +11,7 @@ from pycompss.api.task import task
 from scipy import sparse as sp
 from scipy.sparse import issparse, csr_matrix
 from sklearn.utils import check_random_state
+import math
 
 
 class Array(object):
@@ -1158,6 +1159,29 @@ def array(x, block_size):
     return arr
 
 
+def _empty_array(shape, block_size):
+    '''
+    Returns an empty ds-array with the specified block_size and shape.
+    Useful for constructing ds-arrays on some algorithms without the
+    need of allocating memory for the blocks (as for example happens with
+    the random_array operation).
+    Parameters
+    ----------
+    shape : tuple of two ints
+        Shape of the output ds-array.
+    block_size : tuple of two ints
+        Size of the ds-array blocks.
+    Returns
+    -------
+    x : ds-array
+        Distributed array with value None in the blocks.
+    '''
+    return Array(blocks=[[None] for _ in range(math.ceil(shape[0] /
+                                                         block_size[0]))],
+                 top_left_shape=block_size,
+                 reg_shape=block_size, shape=shape, sparse=False)
+
+
 def random_array(shape, block_size, random_state=None):
     """ Returns a distributed array of random floats in the open interval [0.0,
     1.0). Values are from the "continuous uniform" distribution over the
@@ -1337,9 +1361,12 @@ def apply_along_axis(func, axis, x, *args, **kwargs):
     --------
     >>> import dislib as ds
     >>> import numpy as np
-    >>> x = ds.random_array((100, 100), block_size=(25, 25))
-    >>> mean = ds.apply_along_axis(np.mean, 0, x)
-    >>> print(mean.collect())
+    >>>
+    >>>
+    >>> if __name__ == '__main__':
+    >>>     x = ds.random_array((100, 100), block_size=(25, 25))
+    >>>     mean = ds.apply_along_axis(np.mean, 0, x)
+    >>>     print(mean.collect())
     """
     if axis != 0 and axis != 1:
         raise ValueError("Axis must be 0 or 1.")
@@ -1369,11 +1396,101 @@ def apply_along_axis(func, axis, x, *args, **kwargs):
                  shape=out_shape, sparse=x._sparse)
 
 
-def _multiply_block_groups(hblock, vblock):
+def matmul(a: Array, b: Array, transpose_a=False, transpose_b=False):
+    """ Matrix multiplication with a possible transpose of the input.
+
+        Parameters
+        ----------
+        a : ds-array
+            First matrix.
+        b : ds-array
+            Second matrix.
+        transpose_a : bool
+            Transpose of the first matrix before multiplication.
+        transpose_b : any
+            Transpose of the second matrix before multiplication.
+
+        Returns
+        -------
+        out : ds-array
+            The output array.
+
+        Raises
+        ------
+        NotImplementedError
+            If _top_left shape does not match _reg_shape. This case will be
+            implemented in the future.
+        ValueError
+            If any of the block sizes does not match.
+
+        Examples
+        --------
+        >>> import dislib as ds
+        >>>
+        >>>
+        >>> if __name__ == "__main__":
+        >>>     x = ds.random_array((8, 4), block_size=(2, 2))
+        >>>     y = ds.random_array((5, 8), block_size=(2, 2))
+        >>>     result = ds.matmul(x, y, transpose_a=True, transpose_b=True)
+        >>>     print(result.collect())
+        """
+    if a._reg_shape != a._top_left_shape:
+        raise NotImplementedError("a._reg_shape != a._top_left_shape")
+
+    if b._reg_shape != b._top_left_shape:
+        raise NotImplementedError("b._reg_shape != b._top_left_shape")
+
+    checks = [
+        (False, False, a._reg_shape[1], b._reg_shape[0]),
+        (True, False, a._reg_shape[0], b._reg_shape[0]),
+        (False, True, a._reg_shape[1], b._reg_shape[1]),
+        (True, True, a._reg_shape[0], b._reg_shape[1])
+    ]
+    for ta, tb, size1, size2 in checks:
+        if ta == transpose_a and tb == transpose_b and size1 != size2:
+            raise ValueError("incorrect block sizes for the requested "
+                             f"multiplication ({size1} != {size2})")
+
+    a_blocks = _transpose_blocks(a._blocks) if transpose_a else a._blocks
+    b_blocks = _transpose_blocks(b._blocks) if transpose_b else b._blocks
+
+    n_blocks = (len(a_blocks), len(b_blocks[0]))
+    blocks = Array._get_out_blocks(n_blocks)
+
+    for i in range(n_blocks[0]):
+        for j in range(n_blocks[1]):
+            hblock = a_blocks[i]
+            vblock = [b_blocks[k][j] for k in range(len(b_blocks))]
+
+            blocks[i][j] = _multiply_block_groups(hblock, vblock,
+                                                  transpose_a, transpose_b)
+
+    new_block_size = (
+        a._reg_shape[1] if transpose_a else a._reg_shape[0],
+        b._reg_shape[0] if transpose_b else b._reg_shape[1]
+    )
+    new_shape = (
+        a._shape[1] if transpose_a else a._shape[0],
+        b._shape[0] if transpose_b else b._shape[1]
+    )
+
+    return Array(blocks=blocks, top_left_shape=new_block_size,
+                 reg_shape=new_block_size, shape=new_shape, sparse=a._sparse)
+
+
+def _matmul_with_transpose(a, b, transpose_a, transpose_b):
+    return (a.T if transpose_a else a) @ (b.T if transpose_b else b)
+
+
+def _multiply_block_groups(hblock, vblock, transpose_a=False,
+                           transpose_b=False):
     blocks = deque()
 
     for blocki, blockj in zip(hblock, vblock):
-        blocks.append(_block_apply(operator.matmul, blocki, blockj))
+        blocks.append(
+            _block_apply(_matmul_with_transpose, blocki, blockj,
+                         transpose_a, transpose_b)
+        )
 
     while len(blocks) > 1:
         block1 = blocks.popleft()
@@ -1384,6 +1501,210 @@ def _multiply_block_groups(hblock, vblock):
         compss_delete_object(block2)
 
     return blocks[0]
+
+
+def matsubtract(a: Array, b: Array):
+    """ Subtraction of two matrices.
+        Parameters
+        ----------
+        a : ds-array
+            First matrix.
+        b : ds-array
+            Second matrix.
+        Returns
+        -------
+        out : ds-array
+            The output array.
+        Raises
+        ------
+        NotImplementedError
+            If _top_left shape does not match _reg_shape. This case will be
+            implemented in the future.
+        ValueError
+            If any of the block sizes does not match.
+        ValueError
+            If the ds-arrays have different shape.
+        Examples
+        --------
+        >>> import dislib as ds
+        >>>
+        >>>
+        >>> if __name__ == "__main__":
+        >>>     x = ds.random_array((8, 4), block_size=(2, 2))
+        >>>     y = ds.random_array((8, 4), block_size=(2, 2))
+        >>>     result = ds.matsubtract(x, y)
+        >>>     print(result.collect())
+        """
+    if a.shape[0] != b.shape[0] or a.shape[1] != b.shape[1]:
+        raise ValueError(
+            "Cannot subtract ds-arrays of shapes %r and %r" % (
+                a.shape, b.shape))
+
+    if a._reg_shape[0] != b._reg_shape[0] or\
+            a._reg_shape[1] != b._reg_shape[1]:
+        raise ValueError("incorrect block sizes for the requested "
+                         f"subtract ({a._reg_shape[0], a._reg_shape[1]} !="
+                         f" {b._reg_shape[0], b._reg_shape[1]})")
+
+    if a._top_left_shape != b._top_left_shape:
+        raise ValueError("Incompatible block sizes of the "
+                         "top left block of the matrices"
+                         "b._top_left_shape != b._top_left_shape")
+
+    n_blocks = (len(a._blocks), len(a._blocks[0]))
+    blocks = [[] for _ in range(len(a._blocks))]
+    for i in range(n_blocks[0]):
+        blocks[i] = _subtract_block_groups(a._blocks[i], b._blocks[i])
+
+    new_block_size = (
+        a._reg_shape[0],
+        a._reg_shape[1]
+    )
+    new_shape = (
+        a._shape[0],
+        b._shape[1]
+    )
+    return Array(blocks=blocks, top_left_shape=new_block_size,
+                 reg_shape=new_block_size, shape=new_shape, sparse=a._sparse)
+
+
+def _subtract_block_groups(hblock, vblock):
+    blocks = []
+    for blocki, blockj in zip(hblock, vblock):
+        blocks.append(_block_apply(operator.sub, blocki, blockj))
+    return blocks
+
+
+def matadd(a: Array, b: Array):
+    """ Addition of two matrices.
+        Parameters
+        ----------
+        a : ds-array
+            First matrix.
+        b : ds-array
+            Second matrix.
+        Returns
+        -------
+        out : ds-array
+            The output array.
+        Raises
+        ------
+        NotImplementedError
+            If _top_left shape does not match _reg_shape. This case will be
+            implemented in the future.
+        ValueError
+            If any of the block sizes does not match.
+        ValueError
+            If the ds-arrays have different shape.
+        Examples
+        --------
+        >>> import dislib as ds
+        >>>
+        >>>
+        >>> if __name__ == "__main__":
+        >>>     x = ds.random_array((8, 4), block_size=(2, 2))
+        >>>     y = ds.random_array((8, 4), block_size=(2, 2))
+        >>>     result = ds.matadd(x, y)
+        >>>     print(result.collect())
+        """
+    if a.shape[0] != b.shape[0] or a.shape[1] != b.shape[1]:
+        raise ValueError(
+            "Cannot subtract ds-arrays of shapes %r and %r" % (
+                a.shape, b.shape))
+
+    if a._reg_shape[0] != b._reg_shape[0] or\
+            a._reg_shape[1] != b._reg_shape[1]:
+        raise ValueError("incorrect block sizes for the requested "
+                         f"subtract ({a._reg_shape[0], a._reg_shape[1]} !="
+                         f" {b._reg_shape[0], b._reg_shape[1]})")
+
+    if a._top_left_shape != b._top_left_shape:
+        raise ValueError("Incompatible block sizes of the "
+                         "top left block of the matrices"
+                         "b._top_left_shape != b._top_left_shape")
+
+    n_blocks = (len(a._blocks), len(a._blocks[0]))
+    blocks = [[] for _ in range(len(a._blocks))]
+    for i in range(n_blocks[0]):
+        blocks[i] = _add_block_groups(a._blocks[i], b._blocks[i])
+
+    new_block_size = (
+        a._reg_shape[0],
+        a._reg_shape[1]
+    )
+    new_shape = (
+        a._shape[0],
+        b._shape[1]
+    )
+    return Array(blocks=blocks, top_left_shape=new_block_size,
+                 reg_shape=new_block_size, shape=new_shape, sparse=a._sparse)
+
+
+def concat_columns(a: Array, b: Array):
+    """ Matrix concatenation by columns.
+        Parameters
+        ----------
+        a : ds-array
+            First matrix.
+        b : ds-array
+            Second matrix.
+        Returns
+        -------
+        out : ds-array
+            The output array.
+        Raises
+        ------
+        NotImplementedError
+            If _top_left shape does not match _reg_shape. This case will be
+            implemented in the future.
+        ValueError
+            If the arrays do not match in the number of rows.
+        Examples
+        --------
+        >>> import dislib as ds
+        >>>
+        >>>
+        >>> if __name__ == "__main__":
+        >>>     x = ds.random_array((8, 4), block_size=(2, 2))
+        >>>     y = ds.random_array((8, 4), block_size=(2, 2))
+        >>>     result = ds.conc_columns(x, y)
+        >>>     print(result.collect())
+        """
+    if a._shape[0] != b._shape[0]:
+        raise ValueError("incompatible number of rows "
+                         f"subtract ({a._shape[0]} != {b._shape[0]}")
+
+    if a._reg_shape[0] != b._reg_shape[0] or a._reg_shape[1] !=\
+            b._reg_shape[1]:
+        raise ValueError("incorrect block sizes for the requested "
+                         f"subtract ({a._reg_shape[0], a._reg_shape[1]} "
+                         f"!= {b._reg_shape[0], b._reg_shape[1]})")
+
+    for i in range(len(a._blocks)):
+        for j in range(len(b._blocks[0])):
+            a._blocks[i].append(b._blocks[i][j])
+
+    return Array(blocks=a._blocks,
+                 top_left_shape=(a._reg_shape[0], a._reg_shape[1]),
+                 reg_shape=(a._reg_shape[0], a._reg_shape[1]),
+                 shape=(a._shape[0], a._shape[1] + b._shape[1]),
+                 sparse=a._sparse)
+
+
+def _add_block_groups(hblock, vblock):
+    blocks = []
+    for blocki, blockj in zip(hblock, vblock):
+        blocks.append(_block_apply(operator.add, blocki, blockj))
+    return blocks
+
+
+def _transpose_blocks(blocks):
+    new_blocks = []
+    for i in range(len(blocks[0])):
+        new_blocks.append([])
+        for j in range(len(blocks)):
+            new_blocks[i].append(blocks[j][i])
+    return new_blocks
 
 
 def _full(shape, block_size, sparse, func, *args, **kwargs):

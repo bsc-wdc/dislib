@@ -6,7 +6,7 @@ import numpy as np
 from parameterized import parameterized
 from scipy import sparse as sp
 from sklearn.datasets import load_svmlight_file
-
+import pandas as pd
 import dislib as ds
 from math import ceil
 
@@ -196,7 +196,7 @@ class DataLoadingTest(unittest.TestCase):
 
     def test_load_svmlight_file(self):
         """ Tests loading a LibSVM file  """
-        file_ = "tests/files/libsvm/1"
+        file_ = "tests/datasets/libsvm/1"
 
         x_np, y_np = load_svmlight_file(file_, n_features=780)
 
@@ -216,7 +216,7 @@ class DataLoadingTest(unittest.TestCase):
 
     def test_load_csv_file(self):
         """ Tests loading a CSV file. """
-        csv_f = "tests/files/csv/1"
+        csv_f = "tests/datasets/csv/1"
 
         data = ds.load_txt_file(csv_f, block_size=(300, 50))
         csv = np.loadtxt(csv_f, delimiter=",")
@@ -228,21 +228,49 @@ class DataLoadingTest(unittest.TestCase):
 
         self.assertTrue(np.array_equal(data.collect(), csv))
 
-        csv_f = "tests/files/other/4"
+        csv_f = "tests/datasets/other/4"
         data = ds.load_txt_file(csv_f, block_size=(1000, 122), delimiter=" ")
         csv = np.loadtxt(csv_f, delimiter=" ")
 
         self.assertTrue(np.array_equal(data.collect(), csv))
 
-        csv_f = "tests/files/csv/4"
+        csv_f = "tests/datasets/csv/4"
         data = ds.load_txt_file(csv_f, block_size=(1, 2))
         csv = np.loadtxt(csv_f, delimiter=",")
 
         self.assertTrue(_equal_arrays(data.collect(), csv))
 
+    def test_load_csv_file_without_first_row_and_col(self):
+        """ Tests loading a CSV file removing the first row and column. """
+        csv_f = "tests/datasets/csv/iris_csv.csv"
+
+        data = ds.load_txt_file(csv_f, discard_first_row=True,
+                                block_size=(20, 5))
+        csv = pd.read_csv(csv_f, delimiter=",")
+        feature_cols = ["sepallength", "sepalwidth", "petallength",
+                        "petalwidth", "class"]
+        csv_x = csv[feature_cols]
+        csv_x = csv_x.values
+        self.assertEqual(data._top_left_shape, (20, 5))
+        self.assertEqual(data._reg_shape, (20, 5))
+        self.assertEqual(data.shape, (150, 5))
+        self.assertEqual(data._n_blocks, (8, 1))
+        self.assertTrue(np.array_equal(data.collect(), csv_x))
+
+        csv_f = "tests/datasets/csv/iris_csv.csv"
+        data = ds.load_txt_file(csv_f, discard_first_row=True,
+                                col_of_index=True, block_size=(20, 4))
+        csv = pd.read_csv(csv_f, delimiter=",")
+
+        self.assertEqual(data._top_left_shape, (20, 4))
+        self.assertEqual(data._reg_shape, (20, 4))
+        self.assertEqual(data.shape, (150, 4))
+
+        self.assertFalse(np.array_equal(data.collect(), csv[:][1:]))
+
     def test_load_npy_file(self):
         """ Tests loading an npy file """
-        path = "tests/files/npy/1.npy"
+        path = "tests/datasets/npy/1.npy"
 
         x = ds.load_npy_file(path, block_size=(3, 9))
         x_np = np.load(path)
@@ -254,17 +282,69 @@ class DataLoadingTest(unittest.TestCase):
             ds.load_npy_file(path, block_size=(1000, 1000))
 
         with self.assertRaises(ValueError):
-            ds.load_npy_file("tests/files/npy/3d.npy", block_size=(3, 3))
+            ds.load_npy_file("tests/datasets/npy/3d.npy", block_size=(3, 3))
 
     def test_load_mdcrd_file(self):
         """ Tests loading an mdcrd file """
-        path = "tests/files/traj10samples_12atoms.mdcrd"
+        path = "tests/datasets/traj10samples_12atoms.mdcrd"
 
         x = ds.load_mdcrd_file(path, block_size=(4, 5), n_atoms=12)
         self.assertTrue(_validate_array(x))
 
         x = ds.load_mdcrd_file(path, block_size=(5, 4), n_atoms=12, copy=True)
         self.assertTrue(_validate_array(x))
+
+
+class LoadBlocksRechunkTest(unittest.TestCase):
+    def test_rechunk_new_block_size_exception(self):
+        """ Tests that load_blocks_rechunk function throws an exception
+        when the block_size returned of the rechunk is greater than the shape
+        of the array."""
+        array = ds.random_array((20, 20), (2, 2))
+        blocks = []
+        for block in array._blocks:
+            for block_block in block:
+                blocks.append(block_block)
+        with self.assertRaises(ValueError):
+            ds.data.load_blocks_rechunk(blocks, (20, 20), (2, 2), (21, 21))
+
+    def test_rechunk(self):
+        """ Tests load_blocks_rechunk function """
+        array = ds.random_array((20, 20), (2, 2))
+        array_aux = array.copy()
+        blocks = []
+        for block in array._blocks:
+            for block_block in block:
+                blocks.append(block_block)
+        x1 = ds.data.load_blocks_rechunk(blocks, (20, 20), (2, 2), (10, 10))
+        array_collected = array_aux.collect()
+        self.assertTrue(_equal_arrays(x1.collect(), array_collected))
+        array = ds.random_array((20, 20), (2, 2))
+        array_aux = array.copy()
+        blocks = []
+        for block in array._blocks:
+            for block_block in block:
+                blocks.append(block_block)
+        x2 = ds.data.load_blocks_rechunk(blocks, (40, 10), (2, 2), (10, 10))
+        x3 = x2.collect()
+        array_collected = array_aux.collect()
+        self.assertTrue(_equal_arrays(x3[0:2], array_collected[0:2, 0:10]))
+        self.assertTrue(_equal_arrays(x3[2:4],
+                                      array_collected[0:2, 10:20]))
+        self.assertTrue(_equal_arrays(x3[10:12],
+                                      array_collected[4:6, 10:20]))
+        self.assertTrue(_equal_arrays(x3[38:], array_collected[18:20, 10:20]))
+
+    def test_rechunk_block_size_exception(self):
+        """ Tests that load_blocks_rechunk throws an exception when
+        the block_size specified is greater than the real block size"""
+        array = ds.random_array((20, 20), (2, 2))
+        blocks = []
+        for block in array._blocks:
+            for block_block in block:
+                blocks.append(block_block)
+        with self.assertRaises(ValueError):
+            ds.data.load_blocks_rechunk(blocks, (20, 20), (25, 25), (5, 5))
 
 
 class LoadHStackNpyFilesTest(unittest.TestCase):
@@ -328,6 +408,52 @@ class SaveTxtTest(unittest.TestCase):
         self.assertTrue(_equal_arrays(np.vstack(h_blocks), x_np))
 
 
+class SaveNpyTest(unittest.TestCase):
+    folder = 'save_npy_test_folder'
+
+    def tearDown(self):
+        shutil.rmtree(self.folder)
+
+    @parameterized.expand([_gen_random_arrays('dense'),
+                           _gen_irregular_arrays('dense')])
+    def test_save_npy(self, x, x_np):
+        """Tests saving chunk by chunk into a folder"""
+        ds.data.save_npy_file(x, 'save_npy_test_folder')
+        blocks = []
+        for i in range(x._n_blocks[0]):
+            blocks.append([])
+            for j in range(x._n_blocks[1]):
+                fname = '{}_{}.npy'.format(i, j)
+                path = os.path.join('save_npy_test_folder', fname)
+                blocks[-1].append(np.load(path))
+
+        self.assertTrue(_equal_arrays(np.block(blocks), x_np))
+
+    @parameterized.expand([_gen_random_arrays('dense'),
+                           _gen_irregular_arrays('dense')])
+    def test_save_npy_merge_rows(self, x, x_np):
+        """Tests saving chunk by chunk into a folder"""
+        ds.data.save_npy_file(x, 'save_npy_test_folder', merge_rows=True)
+        h_blocks = []
+        for i in range(x._n_blocks[0]):
+            path = os.path.join('save_npy_test_folder', str(i)+'.npy')
+            h_blocks.append(np.load(path))
+
+        self.assertTrue(_equal_arrays(np.vstack(h_blocks), x_np))
+
+    def test_load_npy_files(self):
+        """Tests loading chunk by chunk into a folder"""
+        array = ds.random_array((7, 2), (2, 2))
+        array.collect()
+        ds.data.save_npy_file(array, 'save_npy_test_folder')
+        loaded_array = ds.data.load_npy_files('save_npy_test_folder',
+                                              shape=(7, 2))
+        self.assertTrue(_equal_arrays(loaded_array.collect(), array.collect()))
+
+        with self.assertRaises(ValueError):
+            ds.data.load_npy_files('save_npy_test_folder')
+
+
 class ArrayTest(unittest.TestCase):
 
     @parameterized.expand([_gen_random_arrays("dense"),
@@ -376,6 +502,8 @@ class ArrayTest(unittest.TestCase):
             x["sss"]
         with self.assertRaises(NotImplementedError):
             x[:, 4]
+        with self.assertRaises(NotImplementedError):
+            x[-3:-1, 2]
 
     @parameterized.expand([_gen_random_arrays("dense"),
                            _gen_random_arrays("dense", (33, 34), (2, 33)),
@@ -654,6 +782,132 @@ class ArrayTest(unittest.TestCase):
 
         x = ds.array(x_np, (bs0, bs1))
         self.assertTrue(_equal_arrays(x.conj().collect(), x_np.conj()))
+
+    @parameterized.expand([(ds.array([[1, 2, 3], [4, 5, 6],
+                                      [7, 8, 9], [1, 2, 3],
+                                      [4, 5, 6]], (5, 3)),
+                            ds.array([[1, 1, 1], [1, 1, 1],
+                                      [1, 1, 1], [1, 1, 1],
+                                      [1, 1, 1]], (5, 3)),
+                            np.array([[0, 1, 2], [3, 4, 5],
+                                      [6, 7, 8], [0, 1, 2],
+                                      [3, 4, 5]]),
+                            ),
+                           (ds.array([[1, 2, 3], [4, 5, 6],
+                                      [7, 8, 9], [1, 2, 3],
+                                      [4, 5, 6]], (5, 3)),
+                            ds.array([[2, 2, 2], [4, 5, 6],
+                                      [9, 8, 7], [3, 2, 1],
+                                      [6, 5, 4]], (5, 3)),
+                            np.array([[-1, 0, 1], [0, 0, 0],
+                                      [-2, 0, 2], [-2, 0, 2],
+                                      [-2, 0, 2]]),),
+                           (ds.array([[-1, 2, 3], [4, -5, 6]], (2, 3)),
+                            ds.array([[-2, 2, -2], [4, 5, 6]], (2, 3)),
+                            np.array([[1, 0, 5], [0, -10, 0]]),
+                            )])
+    def test_matsubtract(self, x, y, z):
+        """ Tests subtraction of two ds-array """
+        self.assertTrue(_equal_arrays(ds.data.matsubtract(x, y).collect(),
+                                      z))
+
+    def test_matsubtract_error(self):
+        """ Tests the implementation of errors in matsubtract """
+
+        with self.assertRaises(ValueError):
+            x1 = ds.array([[1, 2, 3], [4, 5, 6]], (2, 3))
+            x1.__init__([[1, 2, 3], [4, 5, 6], [7, 8, 9], [1, 2, 3],
+                        [4, 5, 6]], top_left_shape=(1, 3), reg_shape=(2, 3),
+                        shape=(5, 3), sparse=False)
+            x2 = ds.array([[1, 1, 1], [1, 1, 1], [1, 1, 1],
+                           [1, 1, 1], [1, 1, 1]], (2, 3))
+            ds.data.matsubtract(x1, x2)
+
+        with self.assertRaises(ValueError):
+            x1 = ds.random_array((5, 5), (2, 5))
+            x2 = ds.random_array((3, 5), (2, 5))
+            ds.data.matsubtract(x1, x2)
+
+        with self.assertRaises(ValueError):
+            x1 = ds.random_array((5, 5), (2, 5))
+            x2 = ds.random_array((5, 5), (1, 5))
+            ds.data.matsubtract(x1, x2)
+
+    @parameterized.expand([(ds.array([[1, 2, 3], [4, 5, 6],
+                                      [7, 8, 9], [1, 2, 3],
+                                      [4, 5, 6]], (1, 3)),
+                            ds.array([[1, 1, 1], [1, 1, 1],
+                                      [1, 1, 1], [1, 1, 1],
+                                      [1, 1, 1]], (1, 3)),
+                            np.array([[2, 3, 4], [5, 6, 7],
+                                      [8, 9, 10], [2, 3, 4],
+                                      [5, 6, 7]]),
+                            ),
+                           (ds.array([[-1, -2, -3], [4, 5, 6],
+                                      [7, 8, 9], [1, 2, 3],
+                                      [4, 5, 6]], (2, 3)),
+                            ds.array([[2, 2, 2], [4, 5, 6],
+                                      [9, 8, 7], [3, 2, 1],
+                                      [6, 5, 4]], (2, 3)),
+                            np.array([[1, 0, -1], [8, 10, 12],
+                                      [16, 16, 16], [4, 4, 4],
+                                      [10, 10, 10]]),),
+                           (ds.array([[-1, 2, 3], [4, -5, 6]], (2, 3)),
+                            ds.array([[-2, 2, -2], [4, 5, 6]], (2, 3)),
+                            np.array([[-3, 4, 1], [8, 0, 12]]),
+                            )])
+    def test_matadd(self, x, y, z):
+        """ Tests addition of two ds-array """
+        self.assertTrue(_equal_arrays(ds.data.matadd(x, y).collect(),
+                                      z))
+
+    def test_matadd_error(self):
+        """ Tests the implementation of errors in matadd """
+
+        with self.assertRaises(ValueError):
+            x1 = ds.array([[1, 2, 3], [4, 5, 6]], (2, 3))
+            x1.__init__([[1, 2, 3], [4, 5, 6], [7, 8, 9], [1, 2, 3],
+                        [4, 5, 6]], top_left_shape=(1, 3),
+                        reg_shape=(2, 3), shape=(5, 3), sparse=False)
+            x2 = ds.array([[1, 1, 1], [1, 1, 1],
+                                      [1, 1, 1], [1, 1, 1],
+                                      [1, 1, 1]], (2, 3))
+            ds.data.matadd(x1, x2)
+
+        with self.assertRaises(ValueError):
+            x1 = ds.random_array((5, 5), (3, 5))
+            x2 = ds.random_array((3, 5), (3, 5))
+            ds.data.matadd(x1, x2)
+
+        with self.assertRaises(ValueError):
+            x1 = ds.random_array((5, 5), (2, 5))
+            x2 = ds.random_array((5, 5), (1, 5))
+            ds.data.matadd(x1, x2)
+
+    @parameterized.expand([((ds.array([[1, 2, 3], [4, 5, 6]], (1, 3)),
+                            ds.array([[1, 1, 1, 2, 3, 4], [1, 1, 1, 8, 2, 3]],
+                                     (1, 3)),
+                            np.array([[1, 2, 3, 1, 1, 1, 2, 3, 4],
+                                      [4, 5, 6, 1, 1, 1, 8, 2, 3]]), )),
+                           ((ds.array([[1, 2, 3, 4], [4, 5, 6, 8]], (1, 2)),
+                             ds.array([[1, 1], [1, 1]], (1, 2)),
+                             np.array([[1, 2, 3, 4, 1, 1],
+                                       [4, 5, 6, 8, 1, 1]]), )),
+                           ])
+    def test_concat_columns(self, x, y, z):
+        """ Tests concatenation of two ds-arrays by columns"""
+        self.assertTrue(_equal_arrays(ds.data.concat_columns(x, y).
+                                      collect(), z))
+
+    def test_concat_columns_error(self):
+        x1 = ds.array([[1, 2, 3], [4, 5, 6]], (1, 3))
+        x2 = ds.array([[1, 1, 1, 2], [1, 1, 1, 8], [1, 1, 1, 8]], (1, 4))
+        with self.assertRaises(ValueError):
+            ds.data.concat_columns(x1, x2)
+        x1 = ds.array([[1, 2, 3], [4, 5, 6]], (1, 3))
+        x2 = ds.array([[4, 4, 4, 4], [2, 3, 4, 5]], (1, 4))
+        with self.assertRaises(ValueError):
+            ds.data.concat_columns(x1, x2)
 
     @parameterized.expand([((20, 30), (30, 10), False),
                            ((1, 10), (10, 7), False),

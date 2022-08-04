@@ -1,3 +1,7 @@
+import json
+import os
+import pickle
+
 import numpy as np
 from pycompss.api.constraint import constraint
 from pycompss.api.parameter import COLLECTION_IN, Depth, Type
@@ -6,6 +10,8 @@ from sklearn.base import BaseEstimator
 from sklearn.utils import validation
 
 from dislib.data.array import Array
+from dislib.data.util import sync_obj, decoder_helper, encoder_helper
+import dislib.data.util.model as utilmodel
 
 
 class LinearRegression(BaseEstimator):
@@ -36,26 +42,29 @@ class LinearRegression(BaseEstimator):
 
     Examples
     --------
-    >>> import numpy as np
     >>> import dislib as ds
     >>> from dislib.regression import LinearRegression
+    >>> import numpy as np
     >>> from pycompss.api.api import compss_wait_on
-    >>> x_data = np.array([[1, 2], [2, 0], [3, 1], [4, 4], [5, 3]])
-    >>> y_data = np.array([2, 1, 1, 2, 4.5])
-    >>> bn, bm = 2, 2
-    >>> x = ds.array(x=x_data, block_size=(bn, bm))
-    >>> y = ds.array(x=y_data, block_size=(bn, 1))
-    >>> reg = LinearRegression()
-    >>> reg.fit(x, y)
-    >>> reg.coef_.collect()
-    array([0.421875, 0.296875])
-    >>> reg.intercept_.collect()
-    0.240625
-    >>> x_test = np.array([[3, 2], [4, 4]])
-    >>> test_data = ds.array(x=x_test, block_size=(bn, bm))
-    >>> pred = reg.predict(test_data).collect()
-    >>> pred
-    array([2.1, 3.115625])
+    >>>
+    >>>
+    >>> if __name__ == '__main__':
+    >>>     x_data = np.array([[1, 2], [2, 0], [3, 1], [4, 4], [5, 3]])
+    >>>     y_data = np.array([2, 1, 1, 2, 4.5])
+    >>>     bn, bm = 2, 2
+    >>>     x = ds.array(x=x_data, block_size=(bn, bm))
+    >>>     y = ds.array(x=y_data, block_size=(bn, 1))
+    >>>     reg = LinearRegression()
+    >>>     reg.fit(x, y)
+    >>>     reg.coef_.collect()
+        array([0.421875, 0.296875])
+    >>>     reg.intercept_.collect()
+        0.240625
+    >>>     x_test = np.array([[3, 2], [4, 4]])
+    >>>     test_data = ds.array(x=x_test, block_size=(bn, bm))
+    >>>     pred = reg.predict(test_data).collect()
+    >>>     pred
+        array([2.1, 3.115625])
     """
 
     def __init__(self, fit_intercept=True, arity=50):
@@ -124,6 +133,107 @@ class LinearRegression(BaseEstimator):
                      reg_shape=(x._reg_shape[0], self._n_targets),
                      shape=(x.shape[0], self._n_targets), sparse=x._sparse)
 
+    def save_model(self, filepath, overwrite=True, save_format="json"):
+        """Saves a model to a file.
+        The model is synchronized before saving and can be reinstantiated in
+        the exact same state, without any of the code used for model
+        definition or fitting.
+        Parameters
+        ----------
+        filepath : str
+            Path where to save the model
+        overwrite : bool, optional (default=True)
+            Whether any existing model at the target
+            location should be overwritten.
+        save_format : str, optional (default='json)
+            Format used to save the models.
+        Examples
+        --------
+        >>> from dislib.regression import LinearRegression
+        >>> import numpy as np
+        >>> import dislib as ds
+        >>> x_data = np.array([[1, 2], [2, 0], [3, 1], [4, 4], [5, 3]])
+        >>> y_data = np.array([2, 1, 1, 2, 4.5])
+        >>> bn, bm = 2, 2
+        >>> x = ds.array(x=x_data, block_size=(bn, bm))
+        >>> y = ds.array(x=y_data, block_size=(bn, 1))
+        >>> reg = LinearRegression()
+        >>> reg.fit(x, y)
+        >>> reg.save_model("./model_LR")
+        """
+
+        # Check overwrite
+        if not overwrite and os.path.isfile(filepath):
+            return
+
+        sync_obj(self.__dict__)
+        model_metadata = self.__dict__
+        model_metadata["model_name"] = "kmeans"
+
+        # Save model
+        if save_format == "json":
+            with open(filepath, "w") as f:
+                json.dump(model_metadata, f, default=_encode_helper)
+        elif save_format == "cbor":
+            if utilmodel.cbor2 is None:
+                raise ModuleNotFoundError("No module named 'cbor2'")
+            with open(filepath, "wb") as f:
+                utilmodel.cbor2.dump(model_metadata, f,
+                                     default=_encode_helper_cbor)
+        elif save_format == "pickle":
+            with open(filepath, "wb") as f:
+                pickle.dump(model_metadata, f)
+        else:
+            raise ValueError("Wrong save format.")
+
+    def load_model(self, filepath, load_format="json"):
+        """Loads a model from a file.
+        The model is reinstantiated in the exact same state in which it was
+        saved, without any of the code used for model definition or fitting.
+        Parameters
+        ----------
+        filepath : str
+            Path of the saved the model
+        load_format : str, optional (default='json')
+            Format used to load the model.
+        Examples
+        --------
+        >>> from dislib.regression import LinearRegression
+        >>> import numpy as np
+        >>> import dislib as ds
+        >>> x_data = np.array([[1, 2], [2, 0], [3, 1], [4, 4], [5, 3]])
+        >>> y_data = np.array([2, 1, 1, 2, 4.5])
+        >>> x_test_m = np.array([[3, 2], [4, 4], [1, 3]])
+        >>> bn, bm = 2, 2
+        >>> x = ds.array(x=x_data, block_size=(bn, bm))
+        >>> y = ds.array(x=y_data, block_size=(bn, 1))
+        >>> test_data_m = ds.array(x=x_test_m, block_size=(bn, bm))
+        >>> reg = LinearRegression()
+        >>> reg.fit(x, y)
+        >>> reg.save_model("./model_LR")
+        >>> reg_loaded = LinearRegression()
+        >>> reg_loaded.load_model("./model_LR")
+        >>> pred = reg_loaded.predict(test_data).collect()
+        """
+        # Load model
+        if load_format == "json":
+            with open(filepath, "r") as f:
+                model_metadata = json.load(f, object_hook=_decode_helper)
+        elif load_format == "cbor":
+            if utilmodel.cbor2 is None:
+                raise ModuleNotFoundError("No module named 'cbor2'")
+            with open(filepath, "rb") as f:
+                model_metadata = utilmodel.cbor2.\
+                    load(f, object_hook=_decode_helper_cbor)
+        elif load_format == "pickle":
+            with open(filepath, "rb") as f:
+                model_metadata = pickle.load(f)
+        else:
+            raise ValueError("Wrong load format.")
+
+        for key, val in model_metadata.items():
+            setattr(self, key, val)
+
     @property
     def coef_(self):
         validation.check_is_fitted(self, '_coef')
@@ -133,6 +243,30 @@ class LinearRegression(BaseEstimator):
     def intercept_(self):
         validation.check_is_fitted(self, '_intercept')
         return self._intercept
+
+
+def _encode_helper_cbor(encoder, obj):
+    encoder.encode(_encode_helper(obj))
+
+
+def _encode_helper(obj):
+    encoded = encoder_helper(obj)
+    if encoded is not None:
+        return encoded
+
+
+def _decode_helper_cbor(decoder, obj):
+    """Special decoder wrapper for dislib using cbor2."""
+    return _decode_helper(obj)
+
+
+def _decode_helper(obj):
+    if isinstance(obj, dict) and "class_name" in obj:
+        class_name = obj["class_name"]
+        decoded = decoder_helper(class_name, obj)
+        if decoded is not None:
+            return decoded
+    return obj
 
 
 def _compute_ztz(x, fit_intercept, arity):

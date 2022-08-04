@@ -7,6 +7,7 @@ from sklearn.datasets import make_blobs
 
 import dislib as ds
 from dislib.cluster import KMeans
+import dislib.data.util.model as utilmodel
 
 
 class KMeansTest(unittest.TestCase):
@@ -85,7 +86,7 @@ class KMeansTest(unittest.TestCase):
     def test_sparse(self):
         """ Tests K-means produces the same results using dense and sparse
         data structures. """
-        file_ = "tests/files/libsvm/2"
+        file_ = "tests/datasets/libsvm/2"
 
         x_sp, _ = ds.load_svmlight_file(file_, (10, 300), 780, True)
         x_ds, _ = ds.load_svmlight_file(file_, (10, 300), 780, False)
@@ -126,6 +127,83 @@ class KMeansTest(unittest.TestCase):
 
         self.assertTrue(np.array_equal(km.init.toarray(), init.toarray()))
         self.assertFalse(np.array_equal(km.centers.toarray(), init.toarray()))
+
+    def test_load_save(self):
+        """
+        Tests that the save and load methods work properly with the three
+        expected formats and that an exception is raised when a non-supported
+        format is provided.
+        """
+        p1, p2, p3, p4 = [1, 2], [2, 1], [-1, -2], [-2, -1]
+
+        arr1 = np.array([p1, p2, p3, p4])
+        x = ds.array(arr1, block_size=(2, 2))
+
+        km = KMeans(n_clusters=2, random_state=666)
+        km.fit(x)
+        km.save_model("./model_saved_kmeans")
+
+        p5, p6 = [10, 10], [-10, -10]
+
+        arr2 = np.array([p1, p2, p3, p4, p5, p6])
+        x_test = ds.array(arr2, block_size=(2, 2))
+
+        km2 = KMeans()
+        km2.load_model("./model_saved_kmeans")
+
+        labels = km2.predict(x_test).collect()
+        expected_labels = np.array([0, 0, 1, 1, 0, 1])
+
+        self.assertTrue(np.array_equal(labels, expected_labels))
+
+        km.save_model("./model_saved_kmeans", save_format="cbor")
+
+        km2 = KMeans()
+        km2.load_model("./model_saved_kmeans", load_format="cbor")
+
+        labels = km2.predict(x_test).collect()
+
+        self.assertTrue(np.array_equal(labels, expected_labels))
+
+        km.save_model("./model_saved_kmeans", save_format="pickle")
+
+        km2 = KMeans()
+        km2.load_model("./model_saved_kmeans", load_format="pickle")
+
+        labels = km2.predict(x_test).collect()
+
+        self.assertTrue(np.array_equal(labels, expected_labels))
+
+        with self.assertRaises(ValueError):
+            km.save_model("./model_saved_kmeans", save_format="txt")
+
+        with self.assertRaises(ValueError):
+            km2 = KMeans()
+            km2.load_model("./model_saved_kmeans", load_format="txt")
+
+        p1, p2, p3, p4 = [14, 15], [15, 14], [7, 8], [8, 7]
+
+        arr1 = np.array([p1, p2, p3, p4])
+        x = ds.array(arr1, block_size=(2, 2))
+
+        km = KMeans(n_clusters=2, random_state=666)
+        km.fit(x)
+        km.save_model("./model_saved_kmeans", overwrite=False)
+
+        km2 = KMeans()
+        km2.load_model("./model_saved_kmeans", load_format="pickle")
+        labels = km2.predict(x_test).collect()
+        expected_labels = np.array([0, 0, 1, 1, 0, 1])
+
+        self.assertTrue(np.array_equal(labels, expected_labels))
+
+        cbor2_module = utilmodel.cbor2
+        utilmodel.cbor2 = None
+        with self.assertRaises(ModuleNotFoundError):
+            km.save_model("./model_saved_kmeans", save_format="cbor")
+        with self.assertRaises(ModuleNotFoundError):
+            km2.load_model("./model_saved_kmeans", load_format="cbor")
+        utilmodel.cbor2 = cbor2_module
 
 
 def main():

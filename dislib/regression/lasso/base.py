@@ -7,6 +7,12 @@ ADMM Lasso
 This work is supported by the I-BiDaaS project, funded by the European
 Commission under Grant Agreement No. 780787.
 """
+import json
+import os
+import pickle
+
+from dislib.data.util import sync_obj, decoder_helper, encoder_helper
+
 try:
     import cvxpy as cp
 except ImportError:
@@ -14,6 +20,8 @@ except ImportError:
     warnings.warn('Cannot import cvxpy module. Lasso estimator will not work.')
 from sklearn.base import BaseEstimator
 from dislib.optimization import ADMM
+
+import dislib.data.util.model as utilmodel
 
 
 class Lasso(BaseEstimator):
@@ -127,3 +135,112 @@ class Lasso(BaseEstimator):
             Predicted values.
         """
         return self.fit(x).predict(x)
+
+    def save_model(self, filepath, overwrite=True, save_format="json"):
+        """Saves a model to a file.
+        The model is synchronized before saving and can be reinstantiated in
+        the exact same state, without any of the code used for model
+        definition or fitting.
+        Parameters
+        ----------
+        filepath : str
+            Path where to save the model
+        overwrite : bool, optional (default=True)
+            Whether any existing model at the target
+            location should be overwritten.
+        save_format : str, optional (default='json)
+            Format used to save the models.
+        Examples
+        --------
+        >>> from dislib.regression import lasso
+        >>> import numpy as np
+        >>> import dislib as ds
+        >>> lasso = Lasso(lmbd=0.1, max_iter=50)
+        >>> lasso.fit(ds.array(X_train, (5, 100)), ds.array(y_train, (5, 1)))
+        >>> lasso.save_model("./lasso_model")
+        """
+
+        # Check overwrite
+        if not overwrite and os.path.isfile(filepath):
+            return
+
+        sync_obj(self.__dict__)
+        model_metadata = self.__dict__
+        model_metadata["model_name"] = "kmeans"
+
+        # Save model
+        if save_format == "json":
+            with open(filepath, "w") as f:
+                json.dump(model_metadata, f, default=_encode_helper)
+        elif save_format == "cbor":
+            if utilmodel.cbor2 is None:
+                raise ModuleNotFoundError("No module named 'cbor2'")
+            with open(filepath, "wb") as f:
+                utilmodel.cbor2.dump(model_metadata, f,
+                                     default=_encode_helper_cbor)
+        elif save_format == "pickle":
+            with open(filepath, "wb") as f:
+                pickle.dump(model_metadata, f)
+        else:
+            raise ValueError("Wrong save format.")
+
+    def load_model(self, filepath, load_format="json"):
+        """Loads a model from a file.
+        The model is reinstantiated in the exact same state in which it was
+        saved, without any of the code used for model definition or fitting.
+        Parameters
+        ----------
+        filepath : str
+            Path of the saved the model
+        load_format : str, optional (default='json')
+            Format used to load the model.
+        Examples
+        --------
+        >>> from dislib.regression import lasso
+        >>> import dislib as ds
+        >>> lasso2 = Lasso()
+        >>> lasso2.load_model("./lasso_model")
+        >>> y_pred_lasso = lasso2.predict(ds.array(X_test, (25, 100)))
+        """
+        # Load model
+        if load_format == "json":
+            with open(filepath, "r") as f:
+                model_metadata = json.load(f, object_hook=_decode_helper)
+        elif load_format == "cbor":
+            if utilmodel.cbor2 is None:
+                raise ModuleNotFoundError("No module named 'cbor2'")
+            with open(filepath, "rb") as f:
+                model_metadata = utilmodel.cbor2.\
+                    load(f, object_hook=_decode_helper_cbor)
+        elif load_format == "pickle":
+            with open(filepath, "rb") as f:
+                model_metadata = pickle.load(f)
+        else:
+            raise ValueError("Wrong load format.")
+
+        for key, val in model_metadata.items():
+            setattr(self, key, val)
+
+
+def _encode_helper_cbor(encoder, obj):
+    encoder.encode(_encode_helper(obj))
+
+
+def _encode_helper(obj):
+    encoded = encoder_helper(obj)
+    if encoded is not None:
+        return encoded
+
+
+def _decode_helper_cbor(decoder, obj):
+    """Special decoder wrapper for dislib using cbor2."""
+    return _decode_helper(obj)
+
+
+def _decode_helper(obj):
+    if isinstance(obj, dict) and "class_name" in obj:
+        class_name = obj["class_name"]
+        decoded = decoder_helper(class_name, obj)
+        if decoded is not None:
+            return decoded
+    return obj

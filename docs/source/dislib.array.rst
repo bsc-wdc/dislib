@@ -23,6 +23,8 @@ Array creation routines
 
 .. autofunction:: dislib.identity
 
+.. autofunction:: dislib.matmul
+
 .. autofunction:: dislib.load_txt_file
 
 .. autofunction:: dislib.load_svmlight_file

@@ -148,7 +148,8 @@ class BaseDecisionTree:
             )
             branch_predictions.append(pred)
         return _merge_branches(
-            None, *branch_predictions, classification=self.n_classes is None
+            None, *branch_predictions,
+            classification=self.n_classes is not None
         )
 
 
@@ -381,16 +382,37 @@ class _ClassificationNode(_Node):
         assert len(sample) == 0, "Type not supported"
         return np.empty((0, n_classes), dtype=np.float64)
 
+    def toJson(self):
+        return {
+            "class_name": self.__class__.__name__,
+            "module_name": self.__module__,
+            "items": self.__dict__,
+        }
+
 
 class _RegressionNode(_Node):
     def __init__(self):
         super().__init__(is_classifier=False)
+
+    def toJson(self):
+        return {
+            "class_name": self.__class__.__name__,
+            "module_name": self.__module__,
+            "items": self.__dict__,
+        }
 
 
 class _InnerNodeInfo:
     def __init__(self, index=None, value=None):
         self.index = index
         self.value = value
+
+    def toJson(self):
+        return {
+            "class_name": self.__class__.__name__,
+            "module_name": self.__module__,
+            "items": self.__dict__,
+        }
 
 
 class _LeafInfo:
@@ -399,10 +421,24 @@ class _LeafInfo:
         self.frequencies = frequencies
         self.target = target
 
+    def toJson(self):
+        return {
+            "class_name": self.__class__.__name__,
+            "module_name": self.__module__,
+            "items": self.__dict__,
+        }
+
 
 class _SkTreeWrapper:
     def __init__(self, tree):
         self.sk_tree = tree
+
+    def toJson(self):
+        return {
+            "class_name": self.__class__.__name__,
+            "module_name": self.__module__,
+            "items": self.__dict__,
+        }
 
 
 def _get_sample_attributes(samples_file, indices):
@@ -801,3 +837,29 @@ def _merge_branches(n_classes, *predictions, classification):
     for selected, prediction in predictions:
         merged_prediction[selected] = prediction
     return merged_prediction
+
+
+def encode_forest_helper(obj):
+    if isinstance(obj, (DecisionTreeClassifier, DecisionTreeRegressor, _Node,
+                        _ClassificationNode, _RegressionNode, _InnerNodeInfo,
+                        _LeafInfo, _SkTreeWrapper)):
+        return obj.toJson()
+
+
+def decode_forest_helper(class_name, obj):
+    if class_name in ('DecisionTreeClassifier', 'DecisionTreeRegressor'):
+        model = eval(class_name)(
+            try_features=obj.pop("try_features"),
+            max_depth=obj.pop("max_depth"),
+            distr_depth=obj.pop("distr_depth"),
+            sklearn_max=obj.pop("sklearn_max"),
+            bootstrap=obj.pop("bootstrap"),
+            random_state=obj.pop("random_state"),
+        )
+    elif class_name == '_SkTreeWrapper':
+        sk_tree = obj.pop("sk_tree")
+        model = _SkTreeWrapper(sk_tree)
+    else:
+        model = eval(class_name)()
+    model.__dict__.update(obj)
+    return model

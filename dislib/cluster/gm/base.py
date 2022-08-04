@@ -1,3 +1,6 @@
+import json
+import os
+import pickle
 import warnings
 
 import numpy as np
@@ -16,6 +19,9 @@ from sklearn.utils.extmath import row_norms
 
 from dislib.cluster import KMeans
 from dislib.data.array import Array
+from dislib.data.util import sync_obj, encoder_helper, decoder_helper
+
+import dislib.data.util.model as utilmodel
 
 
 class GaussianMixture(BaseEstimator):
@@ -122,17 +128,21 @@ class GaussianMixture(BaseEstimator):
 
     Examples
     --------
-    >>> from pycompss.api.api import compss_wait_on
-    >>> from dislib.cluster import GaussianMixture
     >>> import dislib as ds
-    >>> x = ds.array([[1, 2], [1, 4], [1, 0], [4, 2], [4, 4], [4, 0]], (3, 2))
-    >>> gm = GaussianMixture(n_components=2, random_state=0)
-    >>> labels = gm.fit_predict(x).collect()
-    >>> print(labels)
-    >>> x_test = ds.array([[0, 0], [4, 4]], (2, 2))
-    >>> labels_test = gm.predict(x_test).collect()
-    >>> print(labels_test)
-    >>> print(compss_wait_on(gm.means_))
+    >>> from dislib.cluster import GaussianMixture
+    >>> from pycompss.api.api import compss_wait_on
+    >>>
+    >>>
+    >>> if __name__ == '__main__':
+    >>>     x = ds.array([[1, 2], [1, 4], [1, 0], [4, 2], [4, 4], [4, 0]],
+    >>>                  (3, 2))
+    >>>     gm = GaussianMixture(n_components=2, random_state=0)
+    >>>     labels = gm.fit_predict(x).collect()
+    >>>     print(labels)
+    >>>     x_test = ds.array([[0, 0], [4, 4]], (2, 2))
+    >>>     labels_test = gm.predict(x_test).collect()
+    >>>     print(labels_test)
+    >>>     print(compss_wait_on(gm.means_))
     """
 
     def __init__(self, n_components=1, covariance_type='full',
@@ -540,6 +550,143 @@ class GaussianMixture(BaseEstimator):
 
             for resp_block in resp._blocks:
                 compss_delete_object(resp_block)
+
+    def save_model(self, filepath, overwrite=True, save_format="json"):
+        """Saves a model to a file.
+                The model is synchronized before saving and can be
+                reinstantiated in the exact same state, without any of
+                the code used for model definition or fitting.
+                Parameters
+                ----------
+                filepath : str
+                    Path where to save the model
+                overwrite : bool, optional (default=True)
+                    Whether any existing model at the target
+                    location should be overwritten.
+                save_format : str, optional (default='json)
+                    Format used to save the models.
+                Examples
+                --------
+                >>> from dislib.cluster import GaussianMixture
+                >>> import numpy as np
+                >>> import dislib as ds
+                >>> x = np.array([[1, 2], [1, 4], [1, 0], [4, 2],
+                >>> [4, 4], [4, 0]])
+                >>> x_train = ds.array(x, (2, 2))
+                >>> model = gm = GaussianMixture(n_components=2,
+                >>> random_state=0)
+                >>> model.fit(x_train)
+                >>> model.save_model('/tmp/model')
+                >>> loaded_model = gm = GaussianMixture()
+                >>> loaded_model.load_model('/tmp/model')
+                >>> x_test = ds.array(np.array([[0, 0], [4, 4]]), (2, 2))
+                >>> loaded_model_pred = loaded_model.predict(x_test)
+                """
+
+        # Check overwrite
+        if not overwrite and os.path.isfile(filepath):
+            return
+
+        sync_obj(self.__dict__)
+        model_metadata = self.__dict__
+        model_metadata["model_name"] = "kmeans"
+
+        # Save model
+        if save_format == "json":
+            with open(filepath, "w") as f:
+                json.dump(model_metadata, f, default=_encode_helper)
+        elif save_format == "cbor":
+            if utilmodel.cbor2 is None:
+                raise ModuleNotFoundError("No module named 'cbor2'")
+            with open(filepath, "wb") as f:
+                utilmodel.cbor2.dump(model_metadata, f,
+                                     default=_encode_helper_cbor)
+        elif save_format == "pickle":
+            with open(filepath, "wb") as f:
+                pickle.dump(model_metadata, f)
+        else:
+            raise ValueError("Wrong save format.")
+
+    def load_model(self, filepath, load_format="json"):
+        """Loads a model from a file.
+        The model is reinstantiated in the exact same state in which it was
+        saved, without any of the code used for model definition or fitting.
+        Parameters
+        ----------
+        filepath : str
+            Path of the saved the model
+        load_format : str, optional (default='json')
+            Format used to load the model.
+        Examples
+        --------
+        >>> from dislib.cluster import GaussianMixture
+        >>> import numpy as np
+        >>> import dislib as ds
+        >>> x = np.array([[1, 2], [1, 4], [1, 0], [4, 2], [4, 4], [4, 0]])
+        >>> x_train = ds.array(x, (2, 2))
+        >>> model = GaussianMixture(n_components=2, random_state=0)
+        >>> model.fit(x_train)
+        >>> model.save_model('/tmp/model')
+        >>> gm = GaussianMixture()
+        >>> gm.load_model('/tmp/model')
+        >>> x_test = ds.array(np.array([[0, 0], [4, 4]]), (2, 2))
+        >>> loaded_model_pred = gm.predict(x_test)
+        """
+        # Load model
+        if load_format == "json":
+            with open(filepath, "r") as f:
+                model_metadata = json.load(f, object_hook=_decode_helper)
+        elif load_format == "cbor":
+            if utilmodel.cbor2 is None:
+                raise ModuleNotFoundError("No module named 'cbor2'")
+            with open(filepath, "rb") as f:
+                model_metadata = utilmodel.cbor2.\
+                    load(f, object_hook=_decode_helper_cbor)
+        elif load_format == "pickle":
+            with open(filepath, "rb") as f:
+                model_metadata = pickle.load(f)
+        else:
+            raise ValueError("Wrong load format.")
+
+        for key, val in model_metadata.items():
+            setattr(self, key, val)
+
+
+def _encode_helper_cbor(encoder, obj):
+    encoder.encode(_encode_helper(obj))
+
+
+def _encode_helper(obj):
+    encoded = encoder_helper(obj)
+    if encoded is not None:
+        return encoded
+    else:
+        return {
+            "class_name": "GaussianMixture",
+            "module_name": "cluster",
+            "items": obj.__dict__,
+        }
+
+
+def _decode_helper_cbor(decoder, obj):
+    """Special decoder wrapper for dislib using cbor2."""
+    return _decode_helper(obj)
+
+
+def _decode_helper(obj):
+    if isinstance(obj, dict) and "class_name" in obj:
+        class_name = obj["class_name"]
+        decoded = decoder_helper(class_name, obj)
+        if decoded is not None:
+            return decoded
+        elif class_name == "RandomState":
+            random_state = np.random.RandomState()
+            random_state.set_state(_decode_helper(obj["items"]))
+            return random_state
+        else:
+            return GaussianMixture().__dict__.update(
+                _decode_helper(obj["items"]))
+    return obj
 
 
 @constraint(computing_units="${ComputingUnits}")

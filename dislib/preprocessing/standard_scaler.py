@@ -96,6 +96,37 @@ class StandardScaler(object):
                      reg_shape=x._reg_shape, shape=x.shape,
                      sparse=x._sparse)
 
+    def inverse_transform(self, x):
+        """
+        Returns data to its original values. The Scaler should be fitted
+        before using this function.
+
+        Parameters
+        ----------
+        x : ds-array, shape=(n_samples, n_features)
+
+        Returns
+        -------
+        x_new : ds-array, shape=(n_samples, n_features)
+            Original valued data.
+        """
+        if self.mean_ is None or self.var_ is None:
+            raise Exception("Model has not been initialized.")
+
+        n_blocks = x._n_blocks[1]
+        blocks = []
+        m_blocks = self.mean_._blocks
+        v_blocks = self.var_._blocks
+
+        for row in x._iterator(axis=0):
+            out_blocks = [object() for _ in range(n_blocks)]
+            _inverse_transform(row._blocks, m_blocks, v_blocks, out_blocks)
+            blocks.append(out_blocks)
+
+        return Array(blocks, top_left_shape=x._top_left_shape,
+                     reg_shape=x._reg_shape, shape=x.shape,
+                     sparse=x._sparse)
+
 
 @constraint(computing_units="${ComputingUnits}")
 @task(blocks={Type: COLLECTION_IN, Depth: 2},
@@ -142,3 +173,31 @@ def _transform(blocks, m_blocks, v_blocks, out_blocks):
     for i, block in enumerate(blocks[0]):
         end += block.shape[1]
         out_blocks[i] = constructor_func(scaled_x[:, start:end])
+        start += block.shape[1]
+
+
+@constraint(computing_units="${ComputingUnits}")
+@task(blocks={Type: COLLECTION_IN, Depth: 2},
+      m_blocks={Type: COLLECTION_IN, Depth: 2},
+      v_blocks={Type: COLLECTION_IN, Depth: 2},
+      out_blocks=COLLECTION_OUT)
+def _inverse_transform(blocks, m_blocks, v_blocks, out_blocks):
+    x = Array._merge_blocks(blocks)
+    mean = Array._merge_blocks(m_blocks)
+    var = Array._merge_blocks(v_blocks)
+    sparse = issparse(x)
+
+    if sparse:
+        x = x.toarray()
+        mean = mean.toarray()
+        var = var.toarray()
+
+    x = x * np.sqrt(var) + mean
+
+    constructor_func = np.array if not sparse else csr_matrix
+    start, end = 0, 0
+
+    for i, block in enumerate(blocks[0]):
+        end += block.shape[1]
+        out_blocks[i] = constructor_func(x[:, start:end])
+        start += block.shape[1]
