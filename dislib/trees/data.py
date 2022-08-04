@@ -285,9 +285,15 @@ def transform_to_rf_dataset(
     top_row = next(row_blocks_iterator)
     _fill_samples_file(samples_path, top_row._blocks, start_idx)
     start_idx += x._top_left_shape[0]
-    for x_row in row_blocks_iterator:
-        _fill_samples_file(samples_path, x_row._blocks, start_idx)
-        start_idx += x._reg_shape[0]
+    blocks = []
+    for idx, x_row in enumerate(row_blocks_iterator):
+        blocks.extend(x_row._blocks)
+        if idx != 0 and idx % 20 == 0 or len(x._blocks) - 3 == idx:
+            _fill_samples_file(samples_path, blocks, start_idx)
+            start_idx += x._reg_shape[0] * len(blocks)
+            blocks = []
+    if len(blocks) > 0:
+        _fill_samples_file(samples_path, blocks, start_idx)
 
     # Targets
     targets_file = tempfile.NamedTemporaryFile(
@@ -295,8 +301,17 @@ def transform_to_rf_dataset(
     )
     targets_path = targets_file.name
     targets_file.close()
-    for y_row in y._iterator(axis=0):
-        _fill_targets_file(targets_path, y_row._blocks)
+    row_blocks_iterator = y._iterator(axis=0)
+    top_row = next(row_blocks_iterator)
+    _fill_targets_file(targets_path, top_row._blocks)
+    blocks = []
+    for idx, y_row in enumerate(row_blocks_iterator):
+        blocks.extend(y_row._blocks)
+        if idx != 0 and idx % 20 == 0 or len(y._blocks) - 3 == idx:
+            _fill_targets_file(targets_path, blocks)
+            blocks = []
+    if len(blocks) > 0:
+        _fill_targets_file(targets_path, blocks)
 
     # Features
     if features_file:
@@ -398,25 +413,25 @@ def _allocate_features_file(samples_path, n_samples, n_features):
 
 
 @constraint(computing_units="${ComputingUnits}")
-@task(samples_path=FILE_INOUT, row_blocks={Type: COLLECTION_IN, Depth: 2})
+@task(samples_path=FILE_INOUT, row_blocks={Type: COLLECTION_IN, Depth: 3})
 def _fill_samples_file(samples_path, row_blocks, start_idx):
+    samples = np.lib.format.open_memmap(samples_path, mode="r+")
     rows_samples = Array._merge_blocks(row_blocks)
     rows_samples = rows_samples.astype(dtype="float32", casting="same_kind")
-    samples = np.lib.format.open_memmap(samples_path, mode="r+")
     samples[start_idx: start_idx + rows_samples.shape[0]] = rows_samples
 
 
 @constraint(computing_units="${ComputingUnits}")
-@task(samples_path=FILE_INOUT, row_blocks={Type: COLLECTION_IN, Depth: 2})
+@task(samples_path=FILE_INOUT, row_blocks={Type: COLLECTION_IN, Depth: 3})
 def _fill_features_file(samples_path, row_blocks, start_idx):
+    samples = np.lib.format.open_memmap(samples_path, mode="r+")
     rows_samples = Array._merge_blocks(row_blocks)
     rows_samples = rows_samples.astype(dtype="float32", casting="same_kind")
-    samples = np.lib.format.open_memmap(samples_path, mode="r+")
     samples[:, start_idx: start_idx + rows_samples.shape[0]] = rows_samples.T
 
 
 @constraint(computing_units="${ComputingUnits}")
-@task(targets_path=FILE_INOUT, row_blocks={Type: COLLECTION_IN, Depth: 2})
+@task(targets_path=FILE_INOUT, row_blocks={Type: COLLECTION_IN, Depth: 3})
 def _fill_targets_file(targets_path, row_blocks):
     rows_targets = Array._merge_blocks(row_blocks)
     with open(targets_path, "at") as f:
