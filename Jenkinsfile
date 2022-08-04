@@ -18,9 +18,6 @@ pipeline {
             label 'Docker'
         }
     }
-    environment {
-        COMPSS_LOAD_SOURCE = 'false'
-    }
     stages {
         stage('build') {
             steps {
