@@ -6,7 +6,7 @@ import numpy as np
 from parameterized import parameterized
 from scipy import sparse as sp
 from sklearn.datasets import load_svmlight_file
-
+import pandas as pd
 import dislib as ds
 from math import ceil
 
@@ -240,6 +240,34 @@ class DataLoadingTest(unittest.TestCase):
 
         self.assertTrue(_equal_arrays(data.collect(), csv))
 
+    def test_load_csv_file_without_first_row_and_col(self):
+        """ Tests loading a CSV file removing the first row and column. """
+        csv_f = "tests/datasets/csv/iris_csv.csv"
+
+        data = ds.load_txt_file(csv_f, discard_first_row=True,
+                                block_size=(20, 5))
+        csv = pd.read_csv(csv_f, delimiter=",")
+        feature_cols = ["sepallength", "sepalwidth", "petallength",
+                        "petalwidth", "class"]
+        csv_x = csv[feature_cols]
+        csv_x = csv_x.values
+        self.assertEqual(data._top_left_shape, (20, 5))
+        self.assertEqual(data._reg_shape, (20, 5))
+        self.assertEqual(data.shape, (150, 5))
+        self.assertEqual(data._n_blocks, (8, 1))
+        self.assertTrue(np.array_equal(data.collect(), csv_x))
+
+        csv_f = "tests/datasets/csv/iris_csv.csv"
+        data = ds.load_txt_file(csv_f, discard_first_row=True,
+                                col_of_index=True, block_size=(20, 4))
+        csv = pd.read_csv(csv_f, delimiter=",")
+
+        self.assertEqual(data._top_left_shape, (20, 4))
+        self.assertEqual(data._reg_shape, (20, 4))
+        self.assertEqual(data.shape, (150, 4))
+
+        self.assertFalse(np.array_equal(data.collect(), csv[:][1:]))
+
     def test_load_npy_file(self):
         """ Tests loading an npy file """
         path = "tests/datasets/npy/1.npy"
@@ -265,6 +293,58 @@ class DataLoadingTest(unittest.TestCase):
 
         x = ds.load_mdcrd_file(path, block_size=(5, 4), n_atoms=12, copy=True)
         self.assertTrue(_validate_array(x))
+
+
+class LoadBlocksRechunkTest(unittest.TestCase):
+    def test_rechunk_new_block_size_exception(self):
+        """ Tests that load_blocks_rechunk function throws an exception
+        when the block_size returned of the rechunk is greater than the shape
+        of the array."""
+        array = ds.random_array((20, 20), (2, 2))
+        blocks = []
+        for block in array._blocks:
+            for block_block in block:
+                blocks.append(block_block)
+        with self.assertRaises(ValueError):
+            ds.data.load_blocks_rechunk(blocks, (20, 20), (2, 2), (21, 21))
+
+    def test_rechunk(self):
+        """ Tests load_blocks_rechunk function """
+        array = ds.random_array((20, 20), (2, 2))
+        array_aux = array.copy()
+        blocks = []
+        for block in array._blocks:
+            for block_block in block:
+                blocks.append(block_block)
+        x1 = ds.data.load_blocks_rechunk(blocks, (20, 20), (2, 2), (10, 10))
+        array_collected = array_aux.collect()
+        self.assertTrue(_equal_arrays(x1.collect(), array_collected))
+        array = ds.random_array((20, 20), (2, 2))
+        array_aux = array.copy()
+        blocks = []
+        for block in array._blocks:
+            for block_block in block:
+                blocks.append(block_block)
+        x2 = ds.data.load_blocks_rechunk(blocks, (40, 10), (2, 2), (10, 10))
+        x3 = x2.collect()
+        array_collected = array_aux.collect()
+        self.assertTrue(_equal_arrays(x3[0:2], array_collected[0:2, 0:10]))
+        self.assertTrue(_equal_arrays(x3[2:4],
+                                      array_collected[0:2, 10:20]))
+        self.assertTrue(_equal_arrays(x3[10:12],
+                                      array_collected[4:6, 10:20]))
+        self.assertTrue(_equal_arrays(x3[38:], array_collected[18:20, 10:20]))
+
+    def test_rechunk_block_size_exception(self):
+        """ Tests that load_blocks_rechunk throws an exception when
+        the block_size specified is greater than the real block size"""
+        array = ds.random_array((20, 20), (2, 2))
+        blocks = []
+        for block in array._blocks:
+            for block_block in block:
+                blocks.append(block_block)
+        with self.assertRaises(ValueError):
+            ds.data.load_blocks_rechunk(blocks, (20, 20), (25, 25), (5, 5))
 
 
 class LoadHStackNpyFilesTest(unittest.TestCase):
@@ -422,6 +502,8 @@ class ArrayTest(unittest.TestCase):
             x["sss"]
         with self.assertRaises(NotImplementedError):
             x[:, 4]
+        with self.assertRaises(NotImplementedError):
+            x[-3:-1, 2]
 
     @parameterized.expand([_gen_random_arrays("dense"),
                            _gen_random_arrays("dense", (33, 34), (2, 33)),

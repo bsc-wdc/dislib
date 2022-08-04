@@ -74,7 +74,8 @@ def load_svmlight_file(path, block_size, n_features, store_sparse):
     return x, y
 
 
-def load_txt_file(path, block_size, delimiter=","):
+def load_txt_file(path, block_size, discard_first_row=False,
+                  col_of_index=False, delimiter=","):
     """ Loads a text file into a distributed array.
 
     Parameters
@@ -83,6 +84,11 @@ def load_txt_file(path, block_size, delimiter=","):
         File path.
     block_size : tuple (int, int)
         Size of the blocks of the array.
+    discard_first_row : bool
+        Boolean that indicates if the first row should be discarded.
+    col_of_index : bool
+        Boolean that indicates if the first column is a column
+        of indexes and therefore it should be discarded.
     delimiter : string, optional (default=",")
         String that separates columns in the file.
 
@@ -102,20 +108,27 @@ def load_txt_file(path, block_size, delimiter=","):
     n_lines = 0
 
     with open(path, "r") as f:
+        if discard_first_row:
+            f.readline()
         for line in f:
             n_lines += 1
             lines.append(line.encode())
 
             if len(lines) == block_size[0]:
                 out_blocks = [object() for _ in range(n_blocks)]
-                _read_lines(lines, block_size[1], delimiter, out_blocks)
+                _read_lines(lines, block_size[1], delimiter, out_blocks,
+                            col_of_index=col_of_index)
                 blocks.append(out_blocks)
                 lines = []
 
     if lines:
         out_blocks = [object() for _ in range(n_blocks)]
-        _read_lines(lines, block_size[1], delimiter, out_blocks)
+        _read_lines(lines, block_size[1], delimiter, out_blocks,
+                    col_of_index=col_of_index)
         blocks.append(out_blocks)
+
+    if col_of_index:
+        n_cols = n_cols - 1
 
     return Array(blocks, top_left_shape=block_size, reg_shape=block_size,
                  shape=(n_lines, n_cols), sparse=False)
@@ -389,6 +402,47 @@ def load_npy_files(path, shape=None):
                  reg_shape=shape0, shape=shape, sparse=False)
 
 
+def load_blocks_rechunk(blocks, shape, block_size, new_block_size):
+    """ Loads the blocks contained in the parameter blocks into
+    an ds-array with reg_shape equal to the block_size specified.
+    The blocks are loaded respecting the specified shape for the array.
+    Finally a rechunk is performed on the ds-array in order to return
+    a ds-array with the block size specified in the parameter new_block_size
+           Parameters
+           ----------
+           blocks : list()
+               List of the blocks to be set on the ds-array (They should be
+               Future objects).
+           shape : tuple (int, int)
+               Number of rows and columns that the returned ds-array will have.
+           block_size : tuple (int, int)
+               Number of rows and columns that each block will contain.
+           new_block_size : tuple (int, int)
+               Number of rows and columns that will contain each block after
+               the rechunk operation.
+           Returns
+           -------
+           x : ds-array
+               A distributed representation (ds-array) build with the list
+               of blocks, with the corresponding shape and with a reg_shape
+               set to new_block_size.
+           """
+
+    if shape[0] < new_block_size[0] or shape[1] < new_block_size[1]:
+        raise ValueError("The block size requested for rechunk"
+                         "is greater than the ds-array")
+    number_rows = int(shape[0] / block_size[0])
+    number_cols = int(shape[1] / block_size[1])
+    final_blocks = [[] for _ in range(number_rows)]
+    actual_col = 0
+    for i in range(number_rows):
+        for col in range(number_cols):
+            final_blocks[i].append(blocks[actual_col])
+            actual_col = actual_col + 1
+    arr = _load_blocks_array(final_blocks, shape, block_size)
+    return arr.rechunk(new_block_size)
+
+
 @constraint(computing_units="${ComputingUnits}")
 @task(out_blocks=COLLECTION_OUT)
 def _read_from_buffer(data, dtype, shape, block_size, out_blocks):
@@ -401,14 +455,18 @@ def _read_from_buffer(data, dtype, shape, block_size, out_blocks):
 
 @constraint(computing_units="${ComputingUnits}")
 @task(out_blocks=COLLECTION_OUT)
-def _read_lines(lines, block_size, delimiter, out_blocks):
+def _read_lines(lines, block_size, delimiter, out_blocks, col_of_index=False):
     samples = np.genfromtxt(lines, delimiter=delimiter)
 
     if len(samples.shape) == 1:
         samples = samples.reshape(1, -1)
 
-    for i, j in enumerate(range(0, samples.shape[1], block_size)):
-        out_blocks[i] = samples[:, j:j + block_size]
+    if col_of_index:
+        for i, j in enumerate(range(0, samples.shape[1], block_size)):
+            out_blocks[i] = samples[:, j + 1:j + block_size + 1]
+    else:
+        for i, j in enumerate(range(0, samples.shape[1], block_size)):
+            out_blocks[i] = samples[:, j:j + block_size]
 
 
 @constraint(computing_units="${ComputingUnits}")
@@ -434,6 +492,13 @@ def _read_svmlight(lines, out_blocks, col_size, n_features, store_sparse):
 
     # Position 1 contains the y block
     out_blocks[1][0] = y.reshape(-1, 1)
+
+
+def _load_blocks_array(blocks, shape, block_size):
+    if shape[0] < block_size[0] or shape[1] < block_size[1]:
+        raise ValueError("The block size is greater than the ds-array")
+    return Array(blocks, shape=shape, top_left_shape=block_size,
+                 reg_shape=block_size, sparse=False)
 
 
 def _load_mdcrd_copy(path, block_size, n_cols, n_hblocks, bytes_per_snap,
