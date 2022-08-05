@@ -7,9 +7,10 @@ import dislib as ds
 import dislib.trees.decision_tree as dt
 from dislib.trees import RfClassifierDataset, transform_to_rf_dataset
 from dislib.trees.decision_tree import _InnerNodeInfo, _LeafInfo
+from tests import BaseTimedTestCase
 
 
-class DecisionTreeTest(unittest.TestCase):
+class DecisionTreeTest(BaseTimedTestCase):
     def test_decision_tree(self):
         x1 = np.array(
             [

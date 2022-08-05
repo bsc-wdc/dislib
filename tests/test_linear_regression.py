@@ -7,9 +7,10 @@ import dislib as ds
 from dislib.regression import LinearRegression
 from dislib.data import random_array
 import dislib.data.util.model as utilmodel
+from tests import BaseTimedTestCase
 
 
-class LinearRegressionTest(unittest.TestCase):
+class LinearRegressionTest(BaseTimedTestCase):
 
     def test_univariate(self):
         """Tests fit() and predict(), univariate."""
