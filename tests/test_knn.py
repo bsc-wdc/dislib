@@ -6,9 +6,10 @@ from sklearn.neighbors import NearestNeighbors as SKNearestNeighbors
 
 import dislib as ds
 from dislib.neighbors import NearestNeighbors
+from tests import BaseTimedTestCase
 
 
-class NearestNeighborsTest(unittest.TestCase):
+class NearestNeighborsTest(BaseTimedTestCase):
     def test_kneighbors(self):
         """ Tests kneighbors against scikit-learn """
         x = np.random.random((1500, 5))

@@ -1,14 +1,13 @@
-import unittest
-
 import numpy as np
 from sklearn.metrics import r2_score
 
 import dislib as ds
 from dislib.regression import Lasso
 import dislib.data.util.model as utilmodel
+from tests import BaseTimedTestCase
 
 
-class LassoTest(unittest.TestCase):
+class LassoTest(BaseTimedTestCase):
 
     def test_fit_predict(self):
         """ Tests fit and predicts methods """

@@ -5,6 +5,7 @@ from parameterized import parameterized
 from scipy import sparse as sp
 
 import dislib as ds
+from tests import BaseTimedTestCase
 
 
 def _validate_array(x):
@@ -43,7 +44,7 @@ def _equal_arrays(x1, x2):
     return np.allclose(x1, x2)
 
 
-class MatmulTest(unittest.TestCase):
+class MatmulTest(BaseTimedTestCase):
 
     @parameterized.expand([((20, 30), (30, 10), False),
                            ((1, 10), (10, 7), False),
