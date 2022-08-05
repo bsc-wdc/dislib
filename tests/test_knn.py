@@ -10,6 +10,7 @@ from dislib.classification import KNeighborsClassifier
 
 
 class KNearestNeighborsTest(unittest.TestCase):
+
     def test_kneighbors(self):
         """ Tests kneighbors against scikit-learn """
 

@@ -8,6 +8,8 @@ import dislib as ds
 from dislib.regression import RandomForestRegressor
 import dislib.data.util.model as utilmodel
 
+from tests import BaseTimedTestCase
+
 
 def _determination_coefficient(y_true, y_pred):
     u = np.sum(np.square(y_true - y_pred))
@@ -15,7 +17,7 @@ def _determination_coefficient(y_true, y_pred):
     return 1 - u / v
 
 
-class RandomForestRegressorTest(unittest.TestCase):
+class RandomForestRegressorTest(BaseTimedTestCase):
     def test_make_regression(self):
         """Tests RandomForestRegressor fit and score with default params."""
         x, y = make_regression(

@@ -9,9 +9,10 @@ from sklearn.datasets import make_classification
 import dislib as ds
 from dislib.classification import RandomForestClassifier
 import dislib.data.util.model as utilmodel
+from tests import BaseTimedTestCase
 
 
-class RFTest(unittest.TestCase):
+class RFTest(BaseTimedTestCase):
     def test_make_classification_score(self):
         """Tests RandomForestClassifier fit and score with default params."""
         x, y = make_classification(
