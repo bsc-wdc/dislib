@@ -20,6 +20,7 @@ class KNearestNeighborsTest(unittest.TestCase):
         knn = KNeighborsClassifier(n_neighbors=3)
         knn.fit(x, y)
         ds_y_hat = knn.predict(x)
+        knn.score(x, y)
 
         sknn = skKNeighborsClassifier(n_neighbors=3)
         sknn.fit(X, Y)
@@ -33,7 +34,7 @@ class KNearestNeighborsTest(unittest.TestCase):
         X, Y = csr_matrix(X), Y
         x, y = ds.array(X, (50, 5)), ds.array(Y, (50, 1))
 
-        knn = KNeighborsClassifier(n_neighbors=3)
+        knn = KNeighborsClassifier(n_neighbors=3, weights='')
         knn.fit(x, y)
         ds_y_hat = knn.predict(x)
 
