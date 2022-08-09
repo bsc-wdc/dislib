@@ -12,6 +12,56 @@ from collections import defaultdict
 
 
 class KNeighborsClassifier(BaseEstimator):
+    """Classifier implementing the k-nearest neighbors vote.
+    Parameters
+    ----------
+    n_neighbors : int, default=5
+        Number of neighbors to use by default for :meth:`kneighbors` queries.
+    weights : {'uniform', 'distance'} or callable, default='uniform'
+        Weight function used in prediction.  Possible values:
+        - 'uniform' : uniform weights.  All points in each neighborhood
+          are weighted equally.
+        - 'distance' : weight points by the inverse of their distance.
+          in this case, closer neighbors of a query point will have a
+          greater influence than neighbors which are further away.
+        - [callable] : a user-defined function which accepts an
+          array of distances, and returns an array of the same shape
+          containing the weights.
+    random_state : int, RandomState instance or None, optional (default=None)
+        The seed of the pseudo random number generator used when shuffling the
+        data for probability estimates. If int, random_state is the seed used
+        by the random number generator; If RandomState instance, random_state
+        is the random number generator; If None, the random number generator is
+        the RandomState instance used by np.random.
+    Notes
+    -----
+    See :ref:`Nearest Neighbors <neighbors>` in the online documentation
+    for a discussion of the choice of ``algorithm`` and ``leaf_size``.
+    .. warning::
+       Regarding the Nearest Neighbors algorithms, if it is found that two
+       neighbors, neighbor `k+1` and `k`, have identical distances
+       but different labels, the results will depend on the ordering of the
+       training data.
+    https://en.wikipedia.org/wiki/K-nearest_neighbor_algorithm
+    Examples
+    --------
+    >>> import dislib as ds
+    >>> from dislib.classification import KNeighborsClassifier
+    >>> import numpy as np
+    >>>
+    >>>
+    >>> if __name__ == '__main__':
+    >>>     x = np.array([[-1, -1], [-2, -1], [1, 1], [2, 1]])
+    >>>     y = np.array([1, 1, 2, 2])
+    >>>     train_data = ds.array(x, block_size=(4, 2))
+    >>>     train_labels = ds.array(y, block_size=(1, 2))
+    >>>     knn = KNeighborsClassifier(n_neighbors=3)
+    >>>     knn.fit(train_data, train_labels)
+    >>>     test_data = ds.array(np.array([[-0.8, -1]]), block_size=(1, 2))
+    >>>     y_pred = knn.predict(test_data)
+    >>>     print(y_pred)
+    """
+
     def __init__(self, n_neighbors: int = 5, weights: str = 'uniform',
                  random_state=None):
 
@@ -103,13 +153,15 @@ def _indices_to_classes(ind_blocks, y_blocks, dist_blocks,
     final_class = []
     for crow, drow in zip(classes, dist):
         d = defaultdict(int)
+        crow = crow.flatten()
         for j in range(ind.shape[1]):
 
             if weights == 'uniform':
                 w = 1
             else:
                 w = (drow[j] + np.finfo(drow.dtype).eps)
-            d[crow.flatten()[j]] += 1/w
+
+            d[crow[j]] += 1/w
 
         final_class.append(max(d, key=d.get))
 

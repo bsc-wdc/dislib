@@ -38,7 +38,7 @@ class KNearestNeighborsTest(unittest.TestCase):
         knn.fit(x, y)
         ds_y_hat = knn.predict(x)
 
-        sknn = skKNeighborsClassifier(n_neighbors=3)
+        sknn = skKNeighborsClassifier(n_neighbors=3, weights='distance')
         sknn.fit(X, Y)
         sk_y_hat = sknn.predict(X)
 
