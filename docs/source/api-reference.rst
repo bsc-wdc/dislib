@@ -78,6 +78,9 @@ dislib.classification: Classification
 :class:`classification.CascadeSVM <dislib.classification.csvm.base.CascadeSVM>`
 - Distributed support vector classification using a cascade of classifiers.
 
+:class:`classification.KNeighborsClassifier <dislib.classification.knn.base.KNeighborsClassifier>`
+- Distributed K neighbors classification using partial classifiers.
+
 
 dislib.cluster: Clustering
 --------------------------
