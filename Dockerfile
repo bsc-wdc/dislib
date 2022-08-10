@@ -5,7 +5,9 @@ COPY . dislib/
 
 ENV PYTHONPATH=$PYTHONPATH:/dislib
 ENV LC_ALL=C.UTF-8
-RUN pip3 install -r /dislib/requirements.txt
+RUN python3 -m pip install --upgrade -r /dislib/requirements.txt
+
+ENV COMPSS_LOAD_SOURCE false
 
 # Expose SSH port and run SSHD
 EXPOSE 22

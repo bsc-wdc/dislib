@@ -12,9 +12,10 @@ from sklearn.exceptions import ConvergenceWarning
 import dislib as ds
 from dislib.cluster import GaussianMixture
 import dislib.data.util.model as utilmodel
+from tests import BaseTimedTestCase
 
 
-class GaussianMixtureTest(unittest.TestCase):
+class GaussianMixtureTest(BaseTimedTestCase):
 
     def test_init_params(self):
         """Tests that GaussianMixture params are set"""

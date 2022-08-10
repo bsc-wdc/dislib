@@ -481,7 +481,7 @@ def _read_svmlight(lines, out_blocks, col_size, n_features, store_sparse):
     tmp_file.writelines(lines)
     tmp_file.seek(0)
 
-    x, y = load_svmlight_file(tmp_file, n_features)
+    x, y = load_svmlight_file(tmp_file, n_features=n_features)
     if not store_sparse:
         x = x.toarray()
 

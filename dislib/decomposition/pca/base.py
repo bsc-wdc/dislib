@@ -153,8 +153,10 @@ class PCA(BaseEstimator):
 
         self.components_ = Array(vec_blocks, bshape, bshape,
                                  (shape1, x.shape[1]), False)
-        self.explained_variance_ = Array(val_blocks, bshape, bshape,
-                                         (1, shape1), False)
+
+        ex_var_bshape = (1, bshape)
+        self.explained_variance_ = Array(val_blocks, ex_var_bshape,
+                                         ex_var_bshape, (1, shape1), False)
 
         return self
 
@@ -247,8 +249,11 @@ def _decompose(covariance_matrix, n_components, bsize, val_blocks, vec_blocks):
     signs = np.sign(eig_vec[range(len(eig_vec)), max_abs_cols])
     eig_vec *= signs[:, np.newaxis]
 
+    if len(eig_val.shape) == 1:
+        eig_val = np.expand_dims(eig_val, axis=0)
+
     for i in range(len(vec_blocks)):
-        val_blocks[0][i] = eig_val[i * bsize:(i + 1) * bsize]
+        val_blocks[0][i] = eig_val[:, i * bsize:(i + 1) * bsize]
 
         for j in range(len(vec_blocks[i])):
             vec_blocks[i][j] = \

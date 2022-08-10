@@ -8,9 +8,10 @@ from sklearn.datasets import make_classification
 import dislib as ds
 from dislib.classification import CascadeSVM
 import dislib.data.util.model as utilmodel
+from tests import BaseTimedTestCase
 
 
-class CSVMTest(unittest.TestCase):
+class CSVMTest(BaseTimedTestCase):
     def test_init_params(self):
         """ Test constructor parameters"""
         cascade_arity = 3
