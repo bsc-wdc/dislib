@@ -5,4 +5,4 @@ numpydoc==0.8.0
 cvxpy
 m2r
 docutils<0.18
-mistune==0.8.4
+mistune==2.0.3
