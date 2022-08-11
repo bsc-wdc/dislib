@@ -3,11 +3,29 @@
 # Default process per worker
 export ComputingUnits=1
 
-# Run the tests/__main__.py file which calls all the tests named test_*.py
-runcompss \
-    --pythonpath=$(pwd) \
-    --python_interpreter=python3 \
-    ./tests/__main__.py &> >(tee output.log)
+declare -a tests_group=("test_lasso" 
+                "test_array test_pca test_daura"
+                "test_gm test_preproc test_decision_tree"
+                "test_qr test_kmeans test_knn"
+                "test_gridsearch test_tsqr test_linear_regression"
+                "test_dbscan test_matmul test_als"
+                "test_rf_classifier test_randomizedsearch test_data_utils test_kfold"
+                "test_csvm test_rf_regressor test_utils test_rf_dataset"
+                )
+
+port=43001
+
+for t in "${tests_group[@]}"
+do
+    port=$((port + 1))
+    runcompss \
+        --pythonpath=$(pwd) \
+        --python_interpreter=python3 \
+        --master_port=$port \
+        ./tests/__main__.py $t &> >(tee output.log) &
+
+    sleep 10
+done
 
 # Check the unittest output because PyCOMPSs exits with code 0 even if there
 # are failed tests (the execution itself is successful)
