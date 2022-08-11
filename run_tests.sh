@@ -1,7 +1,7 @@
 #!/bin/bash -e
 
 # Default process per worker
-export ComputingUnits=4
+export ComputingUnits=1
 
 # Run the tests/__main__.py file which calls all the tests named test_*.py
 runcompss \
