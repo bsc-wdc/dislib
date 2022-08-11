@@ -1,5 +1,4 @@
 import unittest
-import multiprocessing as mp
 from concurrent.futures import ThreadPoolExecutor
 
 T = [["test_lasso"],
@@ -31,5 +30,5 @@ if __name__ == '__main__':
                     ttt.append(test_case)
         tests_to_run.append(ttt)
 
-    with ThreadPoolExecutor(max_workers=mp.cpu_count) as exec:
+    with ThreadPoolExecutor(max_workers=16) as exec:
         exec.map(run_tests, tests_to_run)
