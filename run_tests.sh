@@ -13,7 +13,7 @@ declare -a tests_group=("test_lasso"
                 "test_csvm test_rf_regressor test_utils test_rf_dataset"
                 )
 
-port=43001
+port=44001
 
 for t in "${tests_group[@]}"
 do
