@@ -16,10 +16,12 @@ if __name__ == '__main__':
             if t.lower() in str(test_case).lower():
                 tests_to_run.append(test_case)
 
-    print(f'WORKER {args.id} START TEST AT', datetime.datetime.now(), flush=True)
+    print(f'WORKER {args.id} START TEST AT',
+          datetime.datetime.now(), flush=True)
 
     test_suite = unittest.TestSuite()
     test_suite.addTests(tests_to_run)
     unittest.TextTestRunner(verbosity=2).run(test_suite)
 
-    print(f'WORKER {args.id} END TEST AT', datetime.datetime.now(), flush=True)
+    print(f'WORKER {args.id} END TEST AT',
+          datetime.datetime.now(), flush=True)
