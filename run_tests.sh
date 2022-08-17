@@ -16,7 +16,7 @@ declare -a tests_group=("test_lasso"
 declare -a pids
 
 port=43000
-workerid=0
+workerid=1
 
 for t in "${tests_group[@]}"
 do
