@@ -1,7 +1,7 @@
 #!/bin/bash -e
 
 # Default process per worker
-export ComputingUnits=8
+export ComputingUnits=1
 
 declare -a tests_group=("test_lasso" 
                 "test_array test_pca test_daura"
