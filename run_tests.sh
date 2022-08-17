@@ -1,16 +1,14 @@
 #!/bin/bash -e
 
 # Default process per worker
-export ComputingUnits=1
+export ComputingUnits=2
 
 declare -a tests_group=("test_lasso" 
-                "test_array test_pca test_daura"
-                "test_gm test_preproc test_decision_tree"
-                "test_qr test_kmeans test_knn"
-                "test_gridsearch test_tsqr test_linear_regression"
-                "test_dbscan test_matmul test_als"
-                "test_rf_classifier test_randomizedsearch test_data_utils test_kfold"
-                "test_csvm test_rf_regressor test_utils test_rf_dataset"
+                "test_array test_pca test_daura test_rf_classifier"
+                "test_gm test_preproc test_decision_tree test_csvm test_randomizedsearch"
+                "test_qr test_kmeans test_knn test_rf_regressor test_data_utils"
+                "test_gridsearch test_tsqr test_linear_regression test_utils"
+                "test_dbscan test_matmul test_als test_rf_dataset test_kfold"
                 )
 
 declare -a pids
