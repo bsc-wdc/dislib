@@ -10,6 +10,10 @@ if __name__ == '__main__':
     parser.add_argument('-id', type=int)
 
     args = parser.parse_args()
+
+    print(f'WORKER {args.id} FIND TESTS',
+          datetime.datetime.now(), flush=True)
+
     tests_to_run = []
     for t in args.tests:
         for test_case in suite:
