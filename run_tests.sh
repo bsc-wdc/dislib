@@ -13,6 +13,8 @@ declare -a tests_group=("test_lasso"
                 "test_csvm test_rf_regressor test_utils test_rf_dataset"
                 )
 
+declare -a pids
+
 port=43000
 
 for t in "${tests_group[@]}"
@@ -30,9 +32,13 @@ do
         --master_port=$port \
         ./tests/__main__.py $t &> >(tee output.log) &
 
+    pids+=($!)
+
     port=$((port + 2))
     sleep 10
 done
+
+wait ${pids[@]}
 
 # Check the unittest output because PyCOMPSs exits with code 0 even if there
 # are failed tests (the execution itself is successful)
