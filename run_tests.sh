@@ -16,6 +16,7 @@ declare -a tests_group=("test_lasso"
 declare -a pids
 
 port=43000
+workerid=0
 
 for t in "${tests_group[@]}"
 do
@@ -26,13 +27,16 @@ do
     sed -i "s/<MaxPort>43002<\/MaxPort>/<MaxPort>$nextport<\/MaxPort>/g" /tmp/resources-$port.xml
 
     runcompss \
+        --log_level=debug \
         --pythonpath=$(pwd) \
         --python_interpreter=python3 \
         --resources=/tmp/resources-$port.xml \
         --master_port=$port \
-        ./tests/__main__.py $t &> >(tee output.log) &
+        ./tests/__main__.py $t -id $workerid &> >(tee output.log) &
 
     pids+=($!)
+
+    workerid=$((workerid + 1))
 
     port=$((port + 2))
     sleep 10
