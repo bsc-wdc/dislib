@@ -1,5 +1,5 @@
 <h1 align="center">  
-    <img src="docs/logos/dislib-logo-full.png" alt="The Distributed 
+    <img src="https://github.com/bsc-wdc/dislib/raw/master/docs/logos/dislib-logo-full.png" alt="The Distributed 
     Computing Library" height="90px">    
 </h1>
 
