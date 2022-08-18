@@ -6,9 +6,10 @@ from sklearn.datasets import make_blobs
 
 import dislib as ds
 from dislib.decomposition import PCA
+from tests import BaseTimedTestCase
 
 
-class PCATest(unittest.TestCase):
+class PCATest(BaseTimedTestCase):
 
     @parameterized.expand([("eig"),
                            ("svd")])
@@ -86,7 +87,7 @@ class PCATest(unittest.TestCase):
     def test_sparse(self):
         """ Tests PCA produces the same results using dense and sparse
         data structures. """
-        file_ = "tests/files/libsvm/2"
+        file_ = "tests/datasets/libsvm/2"
         x_sp, _ = ds.load_svmlight_file(file_, (10, 300), 780, True)
         x_ds, _ = ds.load_svmlight_file(file_, (10, 300), 780, False)
 

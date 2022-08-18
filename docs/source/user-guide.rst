@@ -33,17 +33,18 @@ clustering with dislib is as follows:
     import dislib as ds
     from dislib.cluster import KMeans
 
-    # load data into a ds-array
-    x = ds.load_txt_file("/path/to/file", block_size=(100, 100))
+    if __name__ == '__main__':
+        # load data into a ds-array
+        x = ds.load_txt_file("/path/to/file", block_size=(100, 100))
 
-    # create estimator object
-    kmeans = KMeans(n_clusters=10)
+        # create estimator object
+        kmeans = KMeans(n_clusters=10)
 
-    # fit estimator
-    kmeans.fit(x)
+        # fit estimator
+        kmeans.fit(x)
 
-    # get information from the model
-    cluster_centers = kmeans.centers
+        # get information from the model
+        cluster_centers = kmeans.centers
 
 It is worth noting that, although the code above looks completely sequential,
 all dislib algorithms and operations are paralellized using `PyCOMPSs
@@ -91,8 +92,8 @@ All operations on ds-arrays are internally parallelized with PyCOMPSs. The
 degree of parallelization is controlled using the array's block size. Block
 size defines the number of rows and columns of each block in a ds-array.
 Sometimes a ds-array cannot be completely split into uniform blocks of a
-given size. In these cases, some blocks of the ds-array will be slightly
-smaller than the defined block size. Choosing the right block size is essential
+given size. In these cases, the bottom and right blocks will be smaller than
+the specified regular block size. Choosing the right block size is essential
 to be able to exploit dislib's full potential.
 
 Choosing the right block size
@@ -175,6 +176,22 @@ Nevertheless, these are the main ideas when choosing your block size:
 3. For small ds-arrays, it might be better to use N < number of processors
    and increase granularity at the cost of reducing parallelism.
 
+Irregular blocks
+................
+
+Usually a ds-array cannot be divided into blocks of equal size. In this case,
+bottom-most blocks can be shorter than the regular block size, and right-most blocks
+can be narrower. When both dimension are not divisible by the desired block height/weight,
+bottom-right block is both shorter and narrower.
+
+However, there is also a special case for sliced ds-arrays. If the performed slicing begins
+in middle of the block, this block is sliced and its new dimensions are kept as
+the top-left block instead of re-chunking the whole array. The resulting ds-array would then have the top
+and the left blocks smaller than the regular size blocks. Furthermore, it could also have
+the bottom and the right blocks smaller as well, depending on the original shape of the matrix,
+and the bottom/right bounds used in slicing. This optimization helps to avoid unnecessary
+and costly re-chunking of the ds-array.
+
 Creating arrays
 ...............
 
@@ -226,8 +243,20 @@ Currently, these are the supported slicing methods:
 ``x[i:j, k:m]``
   returns a set of elements, where i, j, m, and n are optional.
 
-Other operations
-................
+Resource allocation
+--------------
+
+All dislib tasks are allocated a specific number of computational resources.
+By default, each task receives one CPU. This number can be adjusted according
+to the specific needs of the program by setting the environment
+variable ComputingUnits before executing the script:
+
+``export ComputingUnits=8``
+
+The above example sets the number of CPUs available for each task to 8. This
+is specifically useful for algorithms (for example those implemented in NumPy)
+that automatically take advantage of fine-grained parallelism facilitated by a
+higher number of computing units.
 
 Classification
 --------------
@@ -294,7 +323,7 @@ scalability of the estimator is limited by the reduction phase of the cascade.
 Random forest classifier
 ........................
 
-:class:`RandomForestClassifier <dislib.classification.rf.forest.RandomForestClassifier>`
+:class:`RandomForestClassifier <dislib.trees.forest.RandomForestClassifier>`
 is a classifier that uses an ensemble of decision trees and aggregates their
 predictions. The process of building each decision tree includes some
 randomization in order to make them different. The accuracy of the joint
@@ -564,6 +593,76 @@ shape ``(n_features, n_features)`` and process it as a single block.
 (To have scalability for big numbers of features, we would need to integrate
 this with a distributed implementation of a method for solving a system of
 linear equations.)
+
+
+Random forest regressor
+........................
+
+:class:`RandomForestRegressor <dislib.trees.forest.RandomForestRegressor>`
+is a regressor that uses an ensemble of decision trees and aggregates their
+predictions. The process of building each decision tree includes some
+randomization in order to make them different. The accuracy of the joint
+prediction can be greater than that of individual decision trees. One advantage
+of Random Forests is that you cannot overfit by increasing the number of
+trees. Several variations of random forests have been proposed and implemented.
+A fundamental paper that has been cited extensively is [Bre01]_, which
+describes a method for classification problems that can be adapted to regression
+problems:
+
+    For building each tree, the original sample set is replaced by a set of the
+    same size, obtained by drawing with replacement (this method is called
+    bootstrap aggregating or bagging). At each tree node, a certain number of
+    random features is selected (random feature selection). The sample set
+    is splitted in two according to the values of these features, and a
+    metric called 'Mean Squared Error' is computed for every split. The MSE
+    measures the squared residuals with respect to the average value of the 
+    target variables, which could be interpreted as a measure of the sample 
+    variance. The split with the lowest MSE value is selected, and
+    the subsamples are propagated to the children nodes. The trees grown are
+    not pruned.
+
+Ensemble estimators can be implemented in an embarrassingly parallel pattern.
+You can do this with scikit-learn's RandomForestClassifier using a
+``joblib.parallel_backend`` and setting the ``n_jobs`` parameter. However, you
+need to be able to load your data into memory for each processor or to use
+memory mapped arrays, which can be tricky specially with a distributed backend.
+
+In our implementation, the samples as a whole are written into a binary file
+and accessed using memory maps (the COMPSs runtime manages the transfers to
+other nodes when needed). We used this approach because the performance penalty
+of using distributed data was too large. Storing the samples file and saving
+the decision trees introduces a big load to the disk storage of all nodes. If
+your execution fails because you reach your disk storage limits, you can try
+reducing the number of trees or reducing their size by setting the
+``max_depth`` parameter. If this is not enough, you may consider reducing
+the samples.
+
+In order to get further parallelism, each decision tree is not necessarily
+built in a single task: there are tasks for building just a subtree, just a
+node or even just part of a node. You can use the ``distr_depth`` parameter to
+control the number of tasks used for each tree. However, be aware that the
+number of tasks grows exponentially when you increase ``distr_depth``, and that
+the task loads become very unbalanced. The fitted decision trees are not
+synchronized, so the prediction is equally distributed.
+
+The results of the RandomForestRegressor can vary in every execution, due to
+its random nature. To get reproducible results, a RandomState (pseudorandom
+number generator) or an int can be provided to the ``random_state``
+parameter of the constructor. This works by passing a seed (generated by the
+master's RandomState) to each task that uses randomness, and creating a new
+RandomState inside the task.
+
+.. topic:: References:
+
+  .. [Chan79] `Updating Formulae and a Pairwise Algorithm for Computing Sample Variances.
+     <http://i.stanford.edu/pub/cstr/reports/cs/tr/79/773/CS-TR-79-773.pdf>`_
+      T. F. Chan, G. H. Golub, R. J. LeVeque, 1979
+      Technical Report STAN-CS-79-773, Department of Computer Science, Stanford University.
+  .. [Tor99] `Inductive Learning of Tree-based Regression Models
+     <https://www.dcc.fc.up.pt/~ltorgo/PhD/th3.pdf>`_
+     L. Torgo, 1999
+     Chapter 3, PhD Thesis, Faculdade de Ciências da Universidade do Porto
+
 
 Decomposition
 -------------

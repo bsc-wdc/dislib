@@ -47,7 +47,7 @@ If applicable, add screenshots to help explain your problem.
 **Environment (please complete the following information):**
  - OS: [e.g. linux mint]
  - Version [e.g. 18]
- - COMPSs version [e.g. 2.7]
+ - COMPSs version [e.g. 2.8]
  - Dislib version [e.g. 0.1.0]
  - Java / Python versions [e.g. java 8 / python 3.6.4]
 

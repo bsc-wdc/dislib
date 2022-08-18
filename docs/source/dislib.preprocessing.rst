@@ -1,10 +1,7 @@
 dislib.preprocessing
 ====================
 
-Classes
--------
-
-.. automodule:: dislib.preprocessing.classes
+.. automodule:: dislib.preprocessing
     :members:
     :undoc-members:
     :show-inheritance:

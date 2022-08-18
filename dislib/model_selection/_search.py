@@ -9,11 +9,11 @@ from pycompss.api.api import compss_wait_on
 from scipy.stats import rankdata
 from sklearn import clone
 from sklearn.model_selection import ParameterGrid, ParameterSampler
-from sklearn.utils.fixes import MaskedArray
+from numpy.ma import MaskedArray
 
 from dislib.model_selection._split import infer_cv
-from dislib.model_selection._validation import check_scorer, fit_and_score, \
-    validate_score, aggregate_score_dicts
+from dislib.model_selection._validation import check_scorer, \
+    validate_score, aggregate_score_dicts, fit, score_func
 
 
 class BaseSearchCV(ABC):
@@ -59,11 +59,16 @@ class BaseSearchCV(ABC):
             """Evaluate some parameters"""
             candidate_params = list(candidate_params)
 
-            out = [fit_and_score(clone(base_estimator), train, validation,
-                                 scorer=scorers, parameters=parameters,
-                                 fit_params=fit_params)
-                   for parameters, (train, validation)
-                   in product(candidate_params, cv.split(x, y))]
+            validation_data = []
+            fits = []
+            for parameters, (train, validation) in product(candidate_params,
+                                                           cv.split(x, y)):
+                validation_data.append(validation)
+                fits.append(fit(clone(base_estimator), train,
+                                parameters=parameters,
+                                fit_params=fit_params))
+            out = [score_func(estimator, validation, scorer=scorers) for
+                   estimator, validation in zip(fits, validation_data)]
 
             nonlocal n_splits
             n_splits = cv.get_n_splits()
@@ -253,18 +258,21 @@ class GridSearchCV(BaseSearchCV):
     Examples
     --------
     >>> import dislib as ds
-    >>> import numpy as np
     >>> from dislib.model_selection import GridSearchCV
     >>> from dislib.classification import RandomForestClassifier
+    >>> import numpy as np
     >>> from sklearn import datasets
-    >>> x_np, y_np = datasets.load_iris(return_X_y=True)
-    >>> x = ds.array(x_np, (30, 4))
-    >>> y = ds.array(y_np[:, np.newaxis], (30, 1))
-    >>> param_grid = {'n_estimators': (2, 4), 'max_depth': range(3, 5)}
-    >>> rf = RandomForestClassifier()
-    >>> searcher = GridSearchCV(rf, param_grid)
-    >>> searcher.fit(x, y)
-    >>> searcher.cv_results_
+    >>>
+    >>>
+    >>> if __name__ == '__main__':
+    >>>     x_np, y_np = datasets.load_iris(return_X_y=True)
+    >>>     x = ds.array(x_np, (30, 4))
+    >>>     y = ds.array(y_np[:, np.newaxis], (30, 1))
+    >>>     param_grid = {'n_estimators': (2, 4), 'max_depth': range(3, 5)}
+    >>>     rf = RandomForestClassifier()
+    >>>     searcher = GridSearchCV(rf, param_grid)
+    >>>     searcher.fit(x, y)
+    >>>     searcher.cv_results_
 
     Attributes
     ----------
@@ -456,21 +464,25 @@ class RandomizedSearchCV(BaseSearchCV):
     Examples
     --------
     >>> import dislib as ds
-    >>> import numpy as np
     >>> from dislib.model_selection import RandomizedSearchCV
     >>> from dislib.classification import CascadeSVM
-    >>> from sklearn import datasets
+    >>> import numpy as np
     >>> import scipy.stats as stats
-    >>> x_np, y_np = datasets.load_iris(return_X_y=True)
-    >>> p = np.random.permutation(len(x_np))  # Pre-shuffling required for CSVM
-    >>> x = ds.array(x_np[p], (30, 4))
-    >>> y = ds.array((y_np[p] == 0)[:, np.newaxis], (30, 1))
-    >>> param_distributions = {'c': stats.expon(scale=0.5),
-    >>>                        'gamma': stats.expon(scale=10)}
-    >>> csvm = CascadeSVM()
-    >>> searcher = RandomizedSearchCV(csvm, param_distributions, n_iter=10)
-    >>> searcher.fit(x, y)
-    >>> searcher.cv_results_
+    >>> from sklearn import datasets
+    >>>
+    >>>
+    >>> if __name__ == '__main__':
+    >>>     x_np, y_np = datasets.load_iris(return_X_y=True)
+    >>>     # Pre-shuffling required for CSVM
+    >>>     p = np.random.permutation(len(x_np))
+    >>>     x = ds.array(x_np[p], (30, 4))
+    >>>     y = ds.array((y_np[p] == 0)[:, np.newaxis], (30, 1))
+    >>>     param_distributions = {'c': stats.expon(scale=0.5),
+    >>>                            'gamma': stats.expon(scale=10)}
+    >>>     csvm = CascadeSVM()
+    >>>     searcher = RandomizedSearchCV(csvm, param_distributions, n_iter=10)
+    >>>     searcher.fit(x, y)
+    >>>     searcher.cv_results_
 
     Attributes
     ----------

@@ -2,6 +2,7 @@ import itertools
 
 import numpy as np
 from pycompss.api.api import compss_delete_object, compss_wait_on
+from pycompss.api.constraint import constraint
 from pycompss.api.parameter import COLLECTION_OUT, Type, Depth, \
     COLLECTION_INOUT, COLLECTION_IN
 from pycompss.api.task import task
@@ -136,14 +137,17 @@ def svd(a, compute_uv=True, sort=True, copy=True, eps=1e-9):
 
     Examples
     --------
-    >>> import numpy as np
     >>> import dislib as ds
-    >>> x = ds.random_array((10, 6), (2, 2), random_state=7)
-    >>> u, s, v = ds.svd(x)
-    >>> u = u.collect()
-    >>> s = np.diag(s.collect())
-    >>> v = v.collect()
-    >>> print(np.allclose(x.collect(), u @ s @ v.T))
+    >>> import numpy as np
+    >>>
+    >>>
+    >>> if __name__ == '__main__':
+    >>>     x = ds.random_array((10, 6), (2, 2), random_state=7)
+    >>>     u, s, v = ds.svd(x)
+    >>>     u = u.collect()
+    >>>     s = np.diag(s.collect())
+    >>>     v = v.collect()
+    >>>     print(np.allclose(x.collect(), u @ s @ v.T))
     """
     if a._n_blocks[1] < 2:
         raise ValueError("Not enough column blocks to compute SVD.")
@@ -162,25 +166,23 @@ def svd(a, compute_uv=True, sort=True, copy=True, eps=1e-9):
     if compute_uv:
         v = identity(x.shape[1], (x._reg_shape[1], x._reg_shape[1]))
 
-    checks = True
+    checks = [True]
 
     while not _check_convergence_svd(checks):
         checks = []
 
-        pairings = itertools.product(range(x._n_blocks[1]),
-                                     range(x._n_blocks[1]))
+        pairings = itertools.combinations(
+            range(x._n_blocks[1]), 2
+        )
 
         for i, j in pairings:
-            if i >= j:
-                continue
-
             coli_x = x._get_col_block(i)
             colj_x = x._get_col_block(j)
 
-            rot, check = _compute_rotation(coli_x._blocks, colj_x._blocks, eps)
+            rot, check = _compute_rotation_and_rotate(
+                coli_x._blocks, colj_x._blocks, eps
+            )
             checks.append(check)
-
-            _rotate(coli_x._blocks, colj_x._blocks, rot)
 
             if compute_uv:
                 coli_v = v._get_col_block(i)
@@ -205,8 +207,11 @@ def svd(a, compute_uv=True, sort=True, copy=True, eps=1e-9):
 
 
 def _check_convergence_svd(checks):
-    checks = compss_wait_on(checks)
-    return not np.array(checks).any()
+    for i in range(len(checks)):
+        if compss_wait_on(checks[i]):
+            return False
+
+    return True
 
 
 def _compute_u(a):
@@ -278,6 +283,7 @@ def _sort_v(v, sorting):
                  v._sparse)
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(s_blocks={Type: COLLECTION_INOUT, Depth: 2}, returns=1)
 def _sort_s(s_blocks):
     s = Array._merge_blocks(s_blocks)
@@ -292,6 +298,7 @@ def _sort_s(s_blocks):
     return sorting
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(a_block={Type: COLLECTION_IN, Depth: 2},
       u_block={Type: COLLECTION_OUT, Depth: 1})
 def _compute_u_block(a_block, u_block):
@@ -311,6 +318,7 @@ def _compute_u_block(a_block, u_block):
         u_block[i] = u_col[i * block_size: (i + 1) * block_size]
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(a_block={Type: COLLECTION_IN, Depth: 2},
       u_block={Type: COLLECTION_OUT, Depth: 1})
 def _compute_u_block_sorted(a_block, index, bsize, sorting, u_block):
@@ -338,6 +346,7 @@ def _compute_u_block_sorted(a_block, index, bsize, sorting, u_block):
             u_block[i] = np.vstack(u_block[i])
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(block={Type: COLLECTION_IN, Depth: 1},
       out_blocks={Type: COLLECTION_OUT, Depth: 1})
 def _merge_svd_block(block, index, hbsize, vbsize, sorting, out_blocks):
@@ -355,6 +364,7 @@ def _merge_svd_block(block, index, hbsize, vbsize, sorting, out_blocks):
         out_blocks[i] = col[i * vbsize: (i + 1) * vbsize]
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(v_block={Type: COLLECTION_IN, Depth: 2},
       out_blocks={Type: COLLECTION_OUT, Depth: 1})
 def _sort_v_block(v_block, index, bsize, sorting, out_blocks):
@@ -370,10 +380,11 @@ def _sort_v_block(v_block, index, bsize, sorting, out_blocks):
             out_blocks[i] = np.vstack(out_blocks[i])
 
 
-@task(coli_blocks={Type: COLLECTION_IN, Depth: 2},
-      colj_blocks={Type: COLLECTION_IN, Depth: 2},
+@constraint(computing_units="${ComputingUnits}")
+@task(coli_blocks={Type: COLLECTION_INOUT, Depth: 2},
+      colj_blocks={Type: COLLECTION_INOUT, Depth: 2},
       returns=2)
-def _compute_rotation(coli_blocks, colj_blocks, eps):
+def _compute_rotation_and_rotate(coli_blocks, colj_blocks, eps):
     coli = Array._merge_blocks(coli_blocks)
     colj = Array._merge_blocks(colj_blocks)
 
@@ -393,9 +404,11 @@ def _compute_rotation(coli_blocks, colj_blocks, eps):
     else:
         b = np.block([[bii, bij], [bij.T, bjj]])
         j, _, _ = np.linalg.svd(b)
+        _rotate(coli_blocks, colj_blocks, j)
         return j, True
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(coli_blocks={Type: COLLECTION_INOUT, Depth: 2},
       colj_blocks={Type: COLLECTION_INOUT, Depth: 2})
 def _rotate(coli_blocks, colj_blocks, j):
@@ -420,6 +433,7 @@ def _kron_shape_f(i, j, b):
     return b._get_block_shape(i % b._n_blocks[0], j % b._n_blocks[1])
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(out_blocks={Type: COLLECTION_OUT, Depth: 2})
 def _kron(block1, block2, out_blocks):
     """ Computes the kronecker product of two blocks and returns one ndarray

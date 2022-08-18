@@ -1,4 +1,5 @@
 import numpy as np
+from pycompss.api.constraint import constraint
 from pycompss.api.parameter import COLLECTION_IN, Depth, Type, COLLECTION_OUT
 from pycompss.api.task import task
 from scipy.sparse import issparse, csr_matrix
@@ -44,17 +45,20 @@ class PCA(BaseEstimator):
 
     Examples
     --------
+    >>> import dislib as ds
     >>> from dislib.decomposition import PCA
     >>> import numpy as np
-    >>> import dislib as ds
-    >>> x = np.array([[1, 2], [1, 4], [1, 0], [4, 2], [4, 4], [4, 0]])
-    >>> bn, bm = 2, 2
-    >>> data = ds.array(x=x, block_size=(bn, bm))
-    >>> pca = PCA()
-    >>> transformed_data = pca.fit_transform(data)
-    >>> print(transformed_data)
-    >>> print(pca.components_.collect())
-    >>> print(pca.explained_variance_.collect())
+    >>>
+    >>>
+    >>> if __name__ == '__main__':
+    >>>     x = np.array([[1, 2], [1, 4], [1, 0], [4, 2], [4, 4], [4, 0]])
+    >>>     bn, bm = 2, 2
+    >>>     data = ds.array(x=x, block_size=(bn, bm))
+    >>>     pca = PCA()
+    >>>     transformed_data = pca.fit_transform(data)
+    >>>     print(transformed_data)
+    >>>     print(pca.components_.collect())
+    >>>     print(pca.explained_variance_.collect())
     """
 
     def __init__(self, n_components=None, arity=50, method="eig", eps=1e-9):
@@ -149,8 +153,10 @@ class PCA(BaseEstimator):
 
         self.components_ = Array(vec_blocks, bshape, bshape,
                                  (shape1, x.shape[1]), False)
-        self.explained_variance_ = Array(val_blocks, bshape, bshape,
-                                         (1, shape1), False)
+
+        ex_var_bshape = (1, bshape)
+        self.explained_variance_ = Array(val_blocks, ex_var_bshape,
+                                         ex_var_bshape, (1, shape1), False)
 
         return self
 
@@ -192,6 +198,7 @@ def _scatter_matrix(x, arity):
     return _reduce_scatter_matrix(partials, arity)
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=1)
 def _subset_scatter_matrix(blocks):
     data = Array._merge_blocks(blocks)
@@ -210,16 +217,19 @@ def _reduce_scatter_matrix(partials, arity):
     return partials[0]
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(returns=1)
 def _merge_partial_scatter_matrix(*partials):
     return sum(partials)
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(returns=1)
 def _estimate_covariance(scatter_matrix, n_samples):
     return scatter_matrix / (n_samples - 1)
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(val_blocks={Type: COLLECTION_OUT, Depth: 2},
       vec_blocks={Type: COLLECTION_OUT, Depth: 2})
 def _decompose(covariance_matrix, n_components, bsize, val_blocks, vec_blocks):
@@ -239,14 +249,18 @@ def _decompose(covariance_matrix, n_components, bsize, val_blocks, vec_blocks):
     signs = np.sign(eig_vec[range(len(eig_vec)), max_abs_cols])
     eig_vec *= signs[:, np.newaxis]
 
+    if len(eig_val.shape) == 1:
+        eig_val = np.expand_dims(eig_val, axis=0)
+
     for i in range(len(vec_blocks)):
-        val_blocks[0][i] = eig_val[i * bsize:(i + 1) * bsize]
+        val_blocks[0][i] = eig_val[:, i * bsize:(i + 1) * bsize]
 
         for j in range(len(vec_blocks[i])):
             vec_blocks[i][j] = \
                 eig_vec[i * bsize:(i + 1) * bsize, j * bsize:(j + 1) * bsize]
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(blocks={Type: COLLECTION_IN, Depth: 2},
       u_blocks={Type: COLLECTION_IN, Depth: 2},
       c_blocks={Type: COLLECTION_IN, Depth: 2},

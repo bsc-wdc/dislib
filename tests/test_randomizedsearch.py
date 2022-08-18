@@ -1,4 +1,3 @@
-import unittest
 import scipy.stats as stats
 import numpy as np
 
@@ -7,9 +6,10 @@ from sklearn import datasets
 import dislib as ds
 from dislib.classification import CascadeSVM
 from dislib.model_selection import RandomizedSearchCV
+from tests import BaseTimedTestCase
 
 
-class RandomizedSearchCVTest(unittest.TestCase):
+class RandomizedSearchCVTest(BaseTimedTestCase):
     def test_fit(self):
         """Tests RandomizedSearchCV fit()."""
         x_np, y_np = datasets.load_iris(return_X_y=True)

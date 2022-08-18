@@ -1,8 +1,12 @@
+import json
+import os
+import pickle
 from uuid import uuid4
 
 import numpy as np
 from pycompss.api.api import compss_delete_object
 from pycompss.api.api import compss_wait_on
+from pycompss.api.constraint import constraint
 from pycompss.api.parameter import COLLECTION_IN, Depth, Type
 from pycompss.api.task import task
 from scipy.sparse import hstack as hstack_sp
@@ -11,7 +15,10 @@ from sklearn.base import BaseEstimator
 from sklearn.svm import SVC
 
 from dislib.data.array import Array
+from dislib.data.util import sync_obj, encoder_helper, decoder_helper
 from dislib.utils.base import _paired_partition
+
+import dislib.data.util.model as utilmodel
 
 
 class CascadeSVM(BaseEstimator):
@@ -20,7 +27,8 @@ class CascadeSVM(BaseEstimator):
     Implements distributed support vector classification based on
     Graf et al. [1]_. The optimization process is carried out using
     scikit-learn's `SVC <http://scikit-learn.org/stable/modules/generated
-    /sklearn.svm.SVC.html>`_.
+    /sklearn.svm.SVC.html>`_. This method solves binary classification
+    problems.
 
     Parameters
     ----------
@@ -72,18 +80,21 @@ class CascadeSVM(BaseEstimator):
 
     Examples
     --------
-    >>> import numpy as np
-    >>> x = np.array([[-1, -1], [-2, -1], [1, 1], [2, 1]])
-    >>> y = np.array([1, 1, 2, 2])
     >>> import dislib as ds
-    >>> train_data = ds.array(x, block_size=(4, 2))
-    >>> train_labels = ds.array(y, block_size=(4, 2))
     >>> from dislib.classification import CascadeSVM
-    >>> svm = CascadeSVM()
-    >>> svm.fit(train_data, train_labels)
-    >>> test_data = ds.array(np.array([[-0.8, -1]]), block_size=(1, 2))
-    >>> y_pred = svm.predict(test_data)
-    >>> print(y_pred)
+    >>> import numpy as np
+    >>>
+    >>>
+    >>> if __name__ == '__main__':
+    >>>     x = np.array([[-1, -1], [-2, -1], [1, 1], [2, 1]])
+    >>>     y = np.array([1, 1, 2, 2])
+    >>>     train_data = ds.array(x, block_size=(4, 2))
+    >>>     train_labels = ds.array(y, block_size=(4, 2))
+    >>>     svm = CascadeSVM()
+    >>>     svm.fit(train_data, train_labels)
+    >>>     test_data = ds.array(np.array([[-0.8, -1]]), block_size=(1, 2))
+    >>>     y_pred = svm.predict(test_data)
+    >>>     print(y_pred)
     """
     _name_to_kernel = {"linear": "_linear_kernel", "rbf": "_rbf_kernel"}
 
@@ -121,7 +132,7 @@ class CascadeSVM(BaseEstimator):
         self._set_kernel()
         self._hstack_f = hstack_sp if x._sparse else np.hstack
 
-        ids_list = [[_gen_ids(row._blocks)] for row in x._iterator(axis=0)]
+        ids_list = [[_gen_ids(row.shape[0])] for row in x._iterator(axis=0)]
 
         while not self._check_finished():
             self._do_iteration(x, y, ids_list)
@@ -182,7 +193,7 @@ class CascadeSVM(BaseEstimator):
                      reg_shape=(x._reg_shape[0], 1),
                      shape=(x.shape[0], 1), sparse=False)
 
-    def score(self, x, y):
+    def score(self, x, y, collect=False):
         """
         Returns the mean accuracy on the given test data and labels.
 
@@ -192,6 +203,8 @@ class CascadeSVM(BaseEstimator):
             Test samples.
         y : ds-array, shape=(n_samples, 1)
             True labels for x.
+        collect : bool, optional (default=False)
+            When True, a synchronized result is returned.
 
         Returns
         -------
@@ -207,7 +220,9 @@ class CascadeSVM(BaseEstimator):
             partial = _score(x_row._blocks, y_row._blocks, self._clf)
             partial_scores.append(partial)
 
-        return _merge_scores(*partial_scores)
+        score = _merge_scores(*partial_scores)
+
+        return compss_wait_on(score) if collect else score
 
     def _check_initial_parameters(self):
         gamma = self.gamma
@@ -316,16 +331,22 @@ class CascadeSVM(BaseEstimator):
 
     def _lag_fast(self, vectors, labels, coef):
         set_sl = set(labels.ravel())
-        assert len(set_sl) == 2, "Only binary problem can be handled"
-        new_sl = labels.copy()
-        new_sl[labels == 0] = -1
-
+        if len(set_sl) > 2:
+            new_sl = [labels.copy()]
+            vectors_def = vectors
+            for _ in range(len(set_sl) - 2):
+                new_sl.append(labels.copy())
+                vectors_def = np.concatenate((vectors_def, vectors))
+        else:
+            new_sl = labels.copy()
+            new_sl[labels == 0] = -1
+            vectors_def = vectors
         if issparse(coef):
             coef = coef.toarray()
 
         c1, c2 = np.meshgrid(coef, coef)
         l1, l2 = np.meshgrid(new_sl, new_sl)
-        double_sum = c1 * c2 * l1 * l2 * self._kernel_f(vectors)
+        double_sum = c1 * c2 * l1 * l2 * self._kernel_f(vectors_def)
         double_sum = double_sum.sum()
         w = -0.5 * double_sum + coef.sum()
 
@@ -378,14 +399,171 @@ class CascadeSVM(BaseEstimator):
     def _linear_kernel(x):
         return np.dot(x, x.T)
 
+    def save_model(self, filepath, overwrite=True, save_format="json"):
+        """Saves a model to a file.
+        The model is synchronized before saving and can be reinstantiated in
+        the exact same state, without any of the code used for model
+        definition or fitting.
+        Parameters
+        ----------
+        filepath : str
+            Path where to save the model
+        overwrite : bool, optional (default=True)
+            Whether any existing model at the target
+            location should be overwritten.
+        save_format : str, optional (default='json)
+            Format used to save the models.
+        Examples
+        --------
+        >>> from dislib.classification import CascadeSVM
+        >>> import numpy as np
+        >>> import dislib as ds
+        >>> x = ds.array(np.array([[1, 2], [2, 1], [-1, -2],
+        >>> [-2, -1]]), (2, 2))
+        >>> y = ds.array(np.array([0, 1, 1, 0]).reshape(-1, 1), (2, 1))
+        >>> model = CascadeSVM(cascade_arity=3, max_iter=10,
+        >>>              tol=1e-4, kernel='linear', c=2, gamma=0.1,
+        >>>              check_convergence=False,
+        >>>              random_state=seed, verbose=False)
+        >>> model.fit(x, y)
+        >>> model.save_model('/tmp/model')
+        >>> loaded_model = CascadeSVM()
+        >>> loaded_model.load_model('/tmp/model')
+        >>> x_test = ds.array(np.array([[1, 2], [2, 1], [-1, -2], [-2, -1],
+        >>> [1, 1], [-1, -1]]), (2, 2))
+        >>> y_pred = model.predict(x_test)
+        >>> y_loaded_pred = loaded_model.predict(x_test)
+        >>> assert np.allclose(y_pred.collect(),
+        >>> y_loaded_pred.collect())
+        """
 
-@task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=1)
-def _gen_ids(blocks):
-    samples = Array._merge_blocks(blocks)
-    idx = [[uuid4().int] for _ in range(samples.shape[0])]
+        # Check overwrite
+        if not overwrite and os.path.isfile(filepath):
+            return
+
+        sync_obj(self.__dict__)
+        model_metadata = self.__dict__
+        model_metadata["model_name"] = "kmeans"
+
+        # Save model
+        if save_format == "json":
+            with open(filepath, "w") as f:
+                json.dump(model_metadata, f, default=_encode_helper)
+        elif save_format == "cbor":
+            if utilmodel.cbor2 is None:
+                raise ModuleNotFoundError("No module named 'cbor2'")
+            with open(filepath, "wb") as f:
+                utilmodel.cbor2.dump(model_metadata, f,
+                                     default=_encode_helper_cbor)
+        elif save_format == "pickle":
+            with open(filepath, "wb") as f:
+                pickle.dump(model_metadata, f)
+        else:
+            raise ValueError("Wrong save format.")
+
+    def load_model(self, filepath, load_format="json"):
+        """Loads a model from a file.
+        The model is reinstantiated in the exact same state in which it was
+        saved, without any of the code used for model definition or fitting.
+        Parameters
+        ----------
+        filepath : str
+            Path of the saved the model
+        load_format : str, optional (default='json')
+            Format used to load the model.
+        Examples
+        --------
+        >>> from dislib.classification import CascadeSVM
+        >>> import numpy as np
+        >>> import dislib as ds
+        >>> x = ds.array(np.array([[1, 2], [2, 1], [-1, -2],
+        >>> [-2, -1]]), (2, 2))
+        >>> y = ds.array(np.array([0, 1, 1, 0]).reshape(-1, 1), (2, 1))
+        >>> model = CascadeSVM(cascade_arity=3, max_iter=10,
+        >>>              tol=1e-4, kernel='linear', c=2, gamma=0.1,
+        >>>              check_convergence=False,
+        >>>              random_state=seed, verbose=False)
+        >>> model.fit(x, y)
+        >>> model.save_model('/tmp/model')
+        >>> loaded_model = CascadeSVM()
+        >>> loaded_model.load_model('/tmp/model')
+        >>> x_test = ds.array(np.array([[1, 2], [2, 1], [-1, -2], [-2, -1],
+        >>> [1, 1], [-1, -1]]), (2, 2))
+        >>> y_pred = model.predict(x_test)
+        >>> y_loaded_pred = loaded_model.predict(x_test)
+        >>> assert np.allclose(y_pred.collect(), y_loaded_pred.collect())
+        """
+        # Load model
+        if load_format == "json":
+            with open(filepath, "r") as f:
+                model_metadata = json.load(f, object_hook=_decode_helper)
+        elif load_format == "cbor":
+            if utilmodel.cbor2 is None:
+                raise ModuleNotFoundError("No module named 'cbor2'")
+            with open(filepath, "rb") as f:
+                model_metadata = utilmodel.cbor2.\
+                    load(f, object_hook=_decode_helper_cbor)
+        elif load_format == "pickle":
+            with open(filepath, "rb") as f:
+                model_metadata = pickle.load(f)
+        else:
+            raise ValueError("Wrong load format.")
+
+        for key, val in model_metadata.items():
+            setattr(self, key, val)
+
+
+def _encode_helper_cbor(encoder, obj):
+    encoder.encode(_encode_helper(obj))
+
+
+def _encode_helper(obj):
+    encoded = encoder_helper(obj)
+    if encoded is not None:
+        return encoded
+    elif isinstance(obj, SVC):
+        return {
+            "class_name": obj.__class__.__name__,
+            "module_name": obj.__module__,
+            "items": obj.__dict__,
+        }
+    else:
+        return {
+            "class_name": "CascadeSVM",
+            "module_name": "classification",
+            "items": obj.__dict__,
+        }
+
+
+def _decode_helper_cbor(decoder, obj):
+    """Special decoder wrapper for dislib using cbor2."""
+    return _decode_helper(obj)
+
+
+def _decode_helper(obj):
+    if isinstance(obj, dict) and "class_name" in obj:
+        class_name = obj["class_name"]
+        decoded = decoder_helper(class_name, obj)
+        if decoded is not None:
+            return decoded
+        elif (class_name == "SVC" and "sklearn" in obj["module_name"]):
+            dict_ = _decode_helper(obj["items"])
+            model = SVC()
+            model.__dict__.update(dict_)
+            return model
+        else:
+            return CascadeSVM().__dict__.update(_decode_helper(obj["items"]))
+    return obj
+
+
+@constraint(computing_units="${ComputingUnits}")
+@task(returns=1)
+def _gen_ids(n_samples):
+    idx = [[uuid4().int] for _ in range(n_samples)]
     return np.array(idx)
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(x_list={Type: COLLECTION_IN, Depth: 2},
       y_list={Type: COLLECTION_IN, Depth: 2},
       id_list={Type: COLLECTION_IN, Depth: 2},
@@ -411,18 +589,21 @@ def _train(x_list, y_list, id_list, random_state, **params):
     return sv, sv_labels, sv_ids, clf
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(x_list={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
 def _predict(x_list, clf):
     x = Array._merge_blocks(x_list)
     return clf.predict(x).reshape(-1, 1)
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(x_list={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
 def _decision_function(x_list, clf):
     x = Array._merge_blocks(x_list)
     return clf.decision_function(x).reshape(-1, 1)
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(x_list={Type: COLLECTION_IN, Depth: 2},
       y_list={Type: COLLECTION_IN, Depth: 2}, returns=tuple)
 def _score(x_list, y_list, clf):
@@ -435,6 +616,7 @@ def _score(x_list, y_list, clf):
     return np.sum(equal), x.shape[0]
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(returns=float)
 def _merge_scores(*partials):
     total_correct = 0.
