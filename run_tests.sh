@@ -27,6 +27,7 @@ do
     sed -i "s/<MaxPort>43002<\/MaxPort>/<MaxPort>$nextport<\/MaxPort>/g" /tmp/resources-$port.xml
 
     runcompss \
+        --log_level=debug \
         --pythonpath=$(pwd) \
         --python_interpreter=python3 \
         --resources=/tmp/resources-$port.xml \
