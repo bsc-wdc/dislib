@@ -32,11 +32,11 @@ class LassoTest(BaseTimedTestCase):
 
         lasso = Lasso(lmbd=0.1, max_iter=50)
 
-        lasso.fit(ds.array(X_train, (25, 100)), ds.array(y_train, (25, 1)))
+        lasso.fit(ds.array(X_train, (5, 100)), ds.array(y_train, (5, 1)))
         y_pred_lasso = lasso.predict(ds.array(X_test, (25, 100)))
         r2_score_lasso = r2_score(y_test, y_pred_lasso.collect())
 
-        self.assertAlmostEqual(r2_score_lasso, 0.961471905600488)
+        self.assertAlmostEqual(r2_score_lasso, 0.9481746925431124)
 
     def test_save_load(self):
         """ Tests load and save methods """
