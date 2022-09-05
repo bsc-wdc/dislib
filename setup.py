@@ -38,6 +38,5 @@ setuptools.setup(
         "numpy",
         "scipy",
         "cvxpy"
-    ],
-    scripts=["bin/dislib", "bin/dislib_cmd.py"],
+    ]
 )
