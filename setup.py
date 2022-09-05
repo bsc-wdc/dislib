@@ -44,5 +44,4 @@ setuptools.setup(
         "Topic :: System :: Distributed Computing",
     ],
     install_requires=parse_requirements(),
-    scripts=["bin/dislib", "bin/dislib_cmd.py"],
 )
