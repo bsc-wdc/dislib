@@ -836,6 +836,8 @@ def _merge_branches(n_classes, *predictions, classification):
     merged_prediction = np.empty(shape, dtype=dtype)
     for selected, prediction in predictions:
         merged_prediction[selected] = prediction
+    if len(shape) == 1:
+        return np.expand_dims(merged_prediction, axis=1)
     return merged_prediction
 
 

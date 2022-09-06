@@ -312,16 +312,15 @@ class RandomForestClassifier(BaseRandomForest):
                 tree_predictions = []
                 for tree in self.trees:
                     tree_predictions.append(tree.predict(x_row))
-                pred_blocks.append(_hard_vote(self.classes, *tree_predictions))
+                pred_blocks.append([_hard_vote(self.classes, *tree_predictions)])
         else:
             for x_row in x._iterator(axis=0):
                 tree_predictions = []
                 for tree in self.trees:
                     tree_predictions.append(tree.predict_proba(x_row))
-                pred_blocks.append(_soft_vote(self.classes, *tree_predictions))
-
+                pred_blocks.append([_soft_vote(self.classes, *tree_predictions)])
         y_pred = Array(
-            blocks=[pred_blocks],
+            blocks=pred_blocks,
             top_left_shape=(x._top_left_shape[0], 1),
             reg_shape=(x._reg_shape[0], 1),
             shape=(x.shape[0], 1),
@@ -359,7 +358,6 @@ class RandomForestClassifier(BaseRandomForest):
             prob_blocks.append([_join_predictions(*tree_predictions)])
         self.classes = compss_wait_on(self.classes)
         n_classes = len(self.classes)
-
         probabilities = Array(
             blocks=prob_blocks,
             top_left_shape=(x._top_left_shape[0], n_classes),
@@ -501,10 +499,10 @@ class RandomForestRegressor(BaseRandomForest):
             tree_predictions = []
             for tree in self.trees:
                 tree_predictions.append(tree.predict(x_row))
-            pred_blocks.append(_join_predictions(*tree_predictions))
+            pred_blocks.append([_join_predictions(*tree_predictions)])
 
         y_pred = Array(
-            blocks=[pred_blocks],
+            blocks=pred_blocks,
             top_left_shape=(x._top_left_shape[0], 1),
             reg_shape=(x._reg_shape[0], 1),
             shape=(x.shape[0], 1),
@@ -561,7 +559,7 @@ def _base_soft_vote(classes, *predictions):
     for p in predictions[1:]:
         aggregate += p
     predicted_labels = classes[np.argmax(aggregate, axis=1)]
-    return predicted_labels
+    return np.expand_dims(predicted_labels, axis=1)
 
 
 def _base_hard_vote(classes, *predictions):
