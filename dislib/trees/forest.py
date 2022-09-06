@@ -312,13 +312,15 @@ class RandomForestClassifier(BaseRandomForest):
                 tree_predictions = []
                 for tree in self.trees:
                     tree_predictions.append(tree.predict(x_row))
-                pred_blocks.append([_hard_vote(self.classes, *tree_predictions)])
+                pred_blocks.append([_hard_vote(self.classes,
+                                               *tree_predictions)])
         else:
             for x_row in x._iterator(axis=0):
                 tree_predictions = []
                 for tree in self.trees:
                     tree_predictions.append(tree.predict_proba(x_row))
-                pred_blocks.append([_soft_vote(self.classes, *tree_predictions)])
+                pred_blocks.append([_soft_vote(self.classes,
+                                               *tree_predictions)])
         y_pred = Array(
             blocks=pred_blocks,
             top_left_shape=(x._top_left_shape[0], 1),
