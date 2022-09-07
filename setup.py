@@ -1,12 +1,22 @@
 import setuptools
+from pkg_resources import parse_requirements as _parse_requirements
 
 
-# read the contents of the README.md file to get a long_description
-from os import path
-this_directory = path.abspath(path.dirname(__file__))
-with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
-    readme = f.read()
-    long_description = readme[:readme.find('## Contents')].strip()
+def get_long_description():
+    """Read the long_description from the README.md file"""
+    with open('README.md') as f:
+        readme = f.read()
+        end = '<!-- End of long_description for setup.py -->'
+        return readme[:readme.find(end)].strip()
+
+
+def parse_requirements():
+    """Parse the requirements.txt file"""
+    with open('requirements.txt') as f:
+        parsed_requirements = _parse_requirements(f)
+        requirements = [str(ir) for ir in parsed_requirements]
+    return requirements
+
 
 setuptools.setup(
     name="dislib",
@@ -14,7 +24,7 @@ setuptools.setup(
     author="Barcelona Supercomputing Center",
     author_email="compss@bsc.es",
     description="The distributed computing library on top of PyCOMPSs",
-    long_description=long_description,
+    long_description=get_long_description(),
     long_description_content_type='text/markdown',
     url="http://dislib.bsc.es",
     project_urls={
@@ -33,10 +43,5 @@ setuptools.setup(
         "Topic :: Software Development :: Libraries :: Python Modules",
         "Topic :: System :: Distributed Computing",
     ],
-    install_requires=[
-        "scikit-learn",
-        "numpy",
-        "scipy",
-        "cvxpy"
-    ]
+    install_requires=parse_requirements(),
 )
