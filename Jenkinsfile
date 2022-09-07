@@ -50,7 +50,6 @@ pipeline {
     }
     post{
         always {
-            sh 'docker exec dislib /dislib/bin/print_tests_logs.sh'
             sh 'docker images'
             sh 'docker rm -f dislib &> /dev/null || true'
             sh 'docker rmi -f bscwdc/dislib &> /dev/null || true'
