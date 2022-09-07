@@ -569,7 +569,7 @@ def _base_hard_vote(classes, *predictions):
     for sample_i, votes in enumerate(zip(*predictions)):
         mode[sample_i] = Counter(votes).most_common(1)[0][0]
     labels = classes[mode]
-    return labels
+    return np.expand_dims(labels, axis=1)
 
 
 def _encode_helper_cbor(encoder, obj):
