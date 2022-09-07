@@ -411,7 +411,6 @@ class RandomForestClassifier(BaseRandomForest):
                     y_row._blocks, self.classes, *tree_predictions
                 )
                 partial_scores.append(subset_score)
-
         score = _merge_classification_scores(*partial_scores)
 
         return compss_wait_on(score) if collect else score
@@ -699,7 +698,7 @@ def _hard_vote(classes, *predictions):
 def _soft_vote_score(y_blocks, classes, *predictions):
     predicted_labels = _base_soft_vote(classes, *predictions)
     real_labels = Array._merge_blocks(y_blocks).flatten()
-    correct = np.count_nonzero(predicted_labels == real_labels)
+    correct = np.count_nonzero(predicted_labels.squeeze() == real_labels)
     return correct, len(real_labels)
 
 
@@ -708,7 +707,7 @@ def _soft_vote_score(y_blocks, classes, *predictions):
 def _hard_vote_score(y_blocks, classes, *predictions):
     predicted_labels = _base_hard_vote(classes, *predictions)
     real_labels = Array._merge_blocks(y_blocks).flatten()
-    correct = np.count_nonzero(predicted_labels == real_labels)
+    correct = np.count_nonzero(predicted_labels.squeeze() == real_labels)
     return correct, len(real_labels)
 
 
@@ -716,7 +715,7 @@ def _hard_vote_score(y_blocks, classes, *predictions):
 @task(y_blocks={Type: COLLECTION_IN, Depth: 2}, returns=1)
 def _regression_score(y_blocks, *predictions):
     y_true = Array._merge_blocks(y_blocks).flatten()
-    y_pred = np.mean(predictions, axis=0)
+    y_pred = np.mean(np.squeeze(predictions), axis=0)
     n_samples = y_true.shape[0]
     y_avg = np.mean(y_true)
     u_partial = np.sum(np.square(y_true - y_pred), axis=0)
