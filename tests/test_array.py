@@ -1052,6 +1052,17 @@ class ArrayTest(BaseTimedTestCase):
 
         self.assertTrue(_equal_arrays(expected, b.collect()))
 
+        orig = sp.csr_matrix([[1, 2, 3], [4, 5, 6]])
+        x = ds.array(orig, block_size=(2, 1))
+        orig_vector = sp.csr_matrix([[1, 2, 3]])
+        vector = ds.array(orig_vector, block_size=(1, 1))
+
+        b = x + vector
+        self.assertTrue(_validate_array(b))
+        expected = sp.csr_matrix([[2, 4, 6], [5, 7, 9]])
+
+        self.assertTrue(_equal_arrays(expected, b.collect()))
+
         with self.assertRaises(NotImplementedError):
             orig = np.array([[1, 2, 3], [4, 5, 6]])
             x = ds.array(orig, block_size=(2, 1))

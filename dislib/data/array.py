@@ -2112,7 +2112,9 @@ def _copy_block(block):
 def _combine_blocks(blocks, other, func, out_blocks):
     x = Array._merge_blocks(blocks)
     y = Array._merge_blocks(other)
+
     res = func(x, y)
+
     bsize = blocks[0][0].shape[1]
 
     for i in range(len(out_blocks)):
