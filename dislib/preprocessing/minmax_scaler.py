@@ -139,6 +139,7 @@ def _transform(blocks, min_blocks, max_blocks, out_blocks,
         max_val = max_val.toarray()
 
     std_x = (x - min_val) / (max_val - min_val)
+    std_x = np.nan_to_num(std_x)
     scaled_x = std_x * (range_max - range_min) + range_min
 
     constructor_func = np.array if not sparse else csr_matrix
@@ -168,6 +169,7 @@ def _inverse_transform(blocks, min_blocks, max_blocks, out_blocks,
         max_val = max_val.toarray()
 
     x = (x - range_min) / (range_max - range_min)
+    x = np.nan_to_num(x, nan=1.0)
     x = x * (max_val - min_val) + min_val
 
     constructor_func = np.array if not sparse else csr_matrix
