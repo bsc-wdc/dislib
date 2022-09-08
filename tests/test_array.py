@@ -1074,7 +1074,7 @@ class ArrayTest(BaseTimedTestCase):
         with self.assertRaises(NotImplementedError):
             orig = np.array([[1, 2, 3], [4, 5, 6]])
             x = ds.array(orig, block_size=(2, 1))
-            orig_vector = np.array([[1, 2]])
+            orig_vector = np.array([[1, 3]])
             vector = ds.array(orig_vector, block_size=(1, 1))
             b = x - vector
 
