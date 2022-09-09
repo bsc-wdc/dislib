@@ -1040,6 +1040,177 @@ class ArrayTest(BaseTimedTestCase):
         with self.assertRaises(NotImplementedError):
             x ** x
 
+    def test_add(self):
+        orig = np.array([[1, 2, 3], [4, 5, 6]])
+        x = ds.array(orig, block_size=(2, 1))
+        orig_vector = np.array([[1, 2, 3]])
+        vector = ds.array(orig_vector, block_size=(1, 1))
+
+        b = x + vector
+        self.assertTrue(_validate_array(b))
+        expected = np.array([[2, 4, 6], [5, 7, 9]])
+
+        self.assertTrue(_equal_arrays(expected, b.collect()))
+
+        orig = sp.csr_matrix([[1, 2, 3], [4, 5, 6]])
+        x = ds.array(orig, block_size=(2, 1))
+        orig_vector = sp.csr_matrix([[1, 2, 3]])
+        vector = ds.array(orig_vector, block_size=(1, 1))
+
+        b = x + vector
+        self.assertTrue(_validate_array(b))
+        expected = sp.csr_matrix([[2, 4, 6], [5, 7, 9]])
+
+        self.assertTrue(_equal_arrays(expected, b.collect()))
+
+        with self.assertRaises(NotImplementedError):
+            orig = np.array([[1, 2, 3], [4, 5, 6]])
+            x = ds.array(orig, block_size=(2, 1))
+            orig_vector = np.array([[1, 2]])
+            vector = ds.array(orig_vector, block_size=(1, 1))
+            b = x + vector
+
+    def test_sub(self):
+        orig = np.array([[1, 2, 3], [4, 5, 6]])
+        x = ds.array(orig, block_size=(2, 1))
+        orig_vector = np.array([[1, 2, 3]])
+        vector = ds.array(orig_vector, block_size=(1, 1))
+
+        b = x - vector
+        self.assertTrue(_validate_array(b))
+        expected = np.array([[0, 0, 0], [3, 3, 3]])
+
+        self.assertTrue(_equal_arrays(expected, b.collect()))
+
+        with self.assertRaises(NotImplementedError):
+            orig = np.array([[1, 2, 3], [4, 5, 6]])
+            x = ds.array(orig, block_size=(2, 1))
+            orig_vector = np.array([[1, 3]])
+            vector = ds.array(orig_vector, block_size=(1, 1))
+            b = x - vector
+
+    def test_iadd(self):
+        """ Tests ds-array magic method __iadd__ """
+        orig = np.array([[1, 2, 3], [4, 5, 6]])
+        x = ds.array(orig, block_size=(2, 1))
+        orig_vector = np.array([[1, 2, 3]])
+        vector = ds.array(orig_vector, block_size=(1, 1))
+
+        x += vector
+
+        self.assertTrue(_validate_array(x))
+        self.assertTrue(_validate_array(vector))
+
+        expected = np.array([[2, 4, 6], [5, 7, 9]])
+
+        self.assertTrue(_equal_arrays(expected, x.collect()))
+        self.assertTrue(_equal_arrays(orig_vector, vector.collect()))
+
+        orig = np.array([[1, 2, 3], [4, 5, 6]])
+        x = ds.array(orig, block_size=(2, 1))
+        orig_mat = np.array([[1, 2, 3], [4, 5, 6]])
+        matrix = ds.array(orig_mat, block_size=(2, 1))
+
+        x += matrix
+
+        self.assertTrue(_validate_array(x))
+        self.assertTrue(_validate_array(matrix))
+
+        expected = np.array([[2, 4, 6], [8, 10, 12]])
+
+        self.assertTrue(_equal_arrays(expected, x.collect()))
+        self.assertTrue(_equal_arrays(orig_mat, matrix.collect()))
+
+        with self.assertRaises(NotImplementedError):
+            orig = np.array([[1, 2, 3], [4, 5, 6]])
+            x = ds.array(orig, block_size=(2, 1))
+            orig_vector = np.array([[1, 2]])
+            vector = ds.array(orig_vector, block_size=(1, 1))
+            x += vector
+
+        with self.assertRaises(NotImplementedError):
+            orig = np.array([[1, 2, 3], [4, 5, 6]])
+            x = ds.array(orig, block_size=(2, 1))
+            orig_vector = np.array([[1, 2], [4, 5]])
+            vector = ds.array(orig_vector, block_size=(2, 1))
+            x += vector
+
+        with self.assertRaises(ValueError):
+            x1 = ds.array([[1, 2, 3], [4, 5, 6]], (2, 3))
+            x1.__init__([[1, 2, 3], [4, 5, 6], [7, 8, 9], [1, 2, 3],
+                         [4, 5, 6]], top_left_shape=(1, 3),
+                        reg_shape=(2, 3), shape=(5, 3), sparse=False)
+            x2 = ds.array([[1, 1, 1], [1, 1, 1],
+                           [1, 1, 1], [1, 1, 1],
+                           [1, 1, 1]], (2, 3))
+            x1 += x2
+        with self.assertRaises(ValueError):
+            orig = np.array([[1, 2, 3], [4, 5, 6]])
+            x = ds.array(orig, block_size=(2, 1))
+            orig_vector = np.array([[1, 2, 3], [4, 5, 6]])
+            vector = ds.array(orig_vector, block_size=(2, 2))
+            x += vector
+
+    def test_isub(self):
+        """ Tests ds-array magic method __isub__ """
+        orig = np.array([[1, 2, 3], [4, 5, 6]])
+        x = ds.array(orig, block_size=(2, 1))
+        orig_vector = np.array([[1, 2, 3]])
+        vector = ds.array(orig_vector, block_size=(1, 1))
+
+        x -= vector
+
+        self.assertTrue(_validate_array(x))
+        self.assertTrue(_validate_array(vector))
+
+        expected = np.array([[0, 0, 0], [3, 3, 3]])
+
+        self.assertTrue(_equal_arrays(expected, x.collect()))
+        self.assertTrue(_equal_arrays(orig_vector, vector.collect()))
+
+        orig = np.array([[1, 2, 3], [4, 5, 6]])
+        x = ds.array(orig, block_size=(2, 1))
+        orig_mat = np.array([[1, 2, 3], [4, 5, 6]])
+        matrix = ds.array(orig_mat, block_size=(2, 1))
+
+        x -= matrix
+
+        self.assertTrue(_validate_array(x))
+        self.assertTrue(_validate_array(matrix))
+
+        expected = np.array([[0, 0, 0], [0, 0, 0]])
+
+        self.assertTrue(_equal_arrays(expected, x.collect()))
+        self.assertTrue(_equal_arrays(orig_mat, matrix.collect()))
+        with self.assertRaises(NotImplementedError):
+            orig = np.array([[1, 2, 3], [4, 5, 6]])
+            x = ds.array(orig, block_size=(2, 1))
+            orig_vector = np.array([[1, 2]])
+            vector = ds.array(orig_vector, block_size=(1, 1))
+            x -= vector
+        with self.assertRaises(NotImplementedError):
+            orig = np.array([[1, 2, 3], [4, 5, 6]])
+            x = ds.array(orig, block_size=(2, 1))
+            orig_vector = np.array([[1, 2], [4, 5]])
+            vector = ds.array(orig_vector, block_size=(2, 1))
+            x -= vector
+
+        with self.assertRaises(ValueError):
+            x1 = ds.array([[1, 2, 3], [4, 5, 6]], (2, 3))
+            x1.__init__([[1, 2, 3], [4, 5, 6], [7, 8, 9], [1, 2, 3],
+                         [4, 5, 6]], top_left_shape=(1, 3),
+                        reg_shape=(2, 3), shape=(5, 3), sparse=False)
+            x2 = ds.array([[1, 1, 1], [1, 1, 1],
+                           [1, 1, 1], [1, 1, 1],
+                           [1, 1, 1]], (2, 3))
+            x1 -= x2
+        with self.assertRaises(ValueError):
+            orig = np.array([[1, 2, 3], [4, 5, 6]])
+            x = ds.array(orig, block_size=(2, 1))
+            orig_vector = np.array([[1, 2, 3], [4, 5, 6]])
+            vector = ds.array(orig_vector, block_size=(2, 2))
+            x -= vector
+
     def test_norm(self):
         """ Tests the norm """
         x_np = np.array([[1, 2, 3], [4, 5, 6]])
