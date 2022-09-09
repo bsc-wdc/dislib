@@ -13,7 +13,8 @@ from numpy.ma import MaskedArray
 
 from dislib.model_selection._split import infer_cv
 from dislib.model_selection._validation import check_scorer, \
-    validate_score, aggregate_score_dicts, fit, score_func
+    validate_score, aggregate_score_dicts, fit, score_func, \
+    sklearn_fit, sklearn_score
 
 
 class BaseSearchCV(ABC):
@@ -55,6 +56,29 @@ class BaseSearchCV(ABC):
         all_candidate_params = []
         all_out = []
 
+        def evaluate_candidates_sklearn(candidate_params):
+            """Evaluate some parameters"""
+            candidate_params = list(candidate_params)
+
+            validation_data = []
+            fits = []
+            for parameters, (train, validation) in product(candidate_params,
+                                                           cv.split(x, y)):
+                validation_data.append(validation)
+                fits.append(sklearn_fit(clone(base_estimator), train,
+                                        parameters=parameters,
+                                        fit_params=fit_params))
+            out = [sklearn_score(estimator, validation, scorer=scorers) for
+                   estimator, validation in zip(fits, validation_data)]
+
+            out = compss_wait_on(out)
+
+            nonlocal n_splits
+            n_splits = cv.get_n_splits()
+
+            all_candidate_params.extend(candidate_params)
+            all_out.extend(out)
+
         def evaluate_candidates(candidate_params):
             """Evaluate some parameters"""
             candidate_params = list(candidate_params)
@@ -75,8 +99,10 @@ class BaseSearchCV(ABC):
 
             all_candidate_params.extend(candidate_params)
             all_out.extend(out)
-
-        self._run_search(evaluate_candidates)
+        if 'sklearn' in str(type(estimator)):
+            self._run_search(evaluate_candidates_sklearn)
+        else:
+            self._run_search(evaluate_candidates)
 
         for params_result in all_out:
             scores = params_result[0]
@@ -110,6 +136,9 @@ class BaseSearchCV(ABC):
         if self.refit:
             self.best_estimator_ = clone(base_estimator).set_params(
                 **self.best_params_)
+            if 'sklearn' in str(type(estimator)):
+                x = x.collect()
+                y = y.collect()
             self.best_estimator_.fit(x, y, **fit_params)
 
         # Store the only scorer not as a dict for single metric evaluation
