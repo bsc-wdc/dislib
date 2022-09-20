@@ -312,16 +312,17 @@ class RandomForestClassifier(BaseRandomForest):
                 tree_predictions = []
                 for tree in self.trees:
                     tree_predictions.append(tree.predict(x_row))
-                pred_blocks.append(_hard_vote(self.classes, *tree_predictions))
+                pred_blocks.append([_hard_vote(self.classes,
+                                               *tree_predictions)])
         else:
             for x_row in x._iterator(axis=0):
                 tree_predictions = []
                 for tree in self.trees:
                     tree_predictions.append(tree.predict_proba(x_row))
-                pred_blocks.append(_soft_vote(self.classes, *tree_predictions))
-
+                pred_blocks.append([_soft_vote(self.classes,
+                                               *tree_predictions)])
         y_pred = Array(
-            blocks=[pred_blocks],
+            blocks=pred_blocks,
             top_left_shape=(x._top_left_shape[0], 1),
             reg_shape=(x._reg_shape[0], 1),
             shape=(x.shape[0], 1),
@@ -359,7 +360,6 @@ class RandomForestClassifier(BaseRandomForest):
             prob_blocks.append([_join_predictions(*tree_predictions)])
         self.classes = compss_wait_on(self.classes)
         n_classes = len(self.classes)
-
         probabilities = Array(
             blocks=prob_blocks,
             top_left_shape=(x._top_left_shape[0], n_classes),
@@ -411,7 +411,6 @@ class RandomForestClassifier(BaseRandomForest):
                     y_row._blocks, self.classes, *tree_predictions
                 )
                 partial_scores.append(subset_score)
-
         score = _merge_classification_scores(*partial_scores)
 
         return compss_wait_on(score) if collect else score
@@ -501,10 +500,10 @@ class RandomForestRegressor(BaseRandomForest):
             tree_predictions = []
             for tree in self.trees:
                 tree_predictions.append(tree.predict(x_row))
-            pred_blocks.append(_join_predictions(*tree_predictions))
+            pred_blocks.append([_join_predictions(*tree_predictions)])
 
         y_pred = Array(
-            blocks=[pred_blocks],
+            blocks=pred_blocks,
             top_left_shape=(x._top_left_shape[0], 1),
             reg_shape=(x._reg_shape[0], 1),
             shape=(x.shape[0], 1),
@@ -561,7 +560,7 @@ def _base_soft_vote(classes, *predictions):
     for p in predictions[1:]:
         aggregate += p
     predicted_labels = classes[np.argmax(aggregate, axis=1)]
-    return predicted_labels
+    return np.expand_dims(predicted_labels, axis=1)
 
 
 def _base_hard_vote(classes, *predictions):
@@ -569,7 +568,7 @@ def _base_hard_vote(classes, *predictions):
     for sample_i, votes in enumerate(zip(*predictions)):
         mode[sample_i] = Counter(votes).most_common(1)[0][0]
     labels = classes[mode]
-    return labels
+    return np.expand_dims(labels, axis=1)
 
 
 def _encode_helper_cbor(encoder, obj):
@@ -699,7 +698,7 @@ def _hard_vote(classes, *predictions):
 def _soft_vote_score(y_blocks, classes, *predictions):
     predicted_labels = _base_soft_vote(classes, *predictions)
     real_labels = Array._merge_blocks(y_blocks).flatten()
-    correct = np.count_nonzero(predicted_labels == real_labels)
+    correct = np.count_nonzero(predicted_labels.squeeze() == real_labels)
     return correct, len(real_labels)
 
 
@@ -708,7 +707,7 @@ def _soft_vote_score(y_blocks, classes, *predictions):
 def _hard_vote_score(y_blocks, classes, *predictions):
     predicted_labels = _base_hard_vote(classes, *predictions)
     real_labels = Array._merge_blocks(y_blocks).flatten()
-    correct = np.count_nonzero(predicted_labels == real_labels)
+    correct = np.count_nonzero(predicted_labels.squeeze() == real_labels)
     return correct, len(real_labels)
 
 
@@ -716,7 +715,7 @@ def _hard_vote_score(y_blocks, classes, *predictions):
 @task(y_blocks={Type: COLLECTION_IN, Depth: 2}, returns=1)
 def _regression_score(y_blocks, *predictions):
     y_true = Array._merge_blocks(y_blocks).flatten()
-    y_pred = np.mean(predictions, axis=0)
+    y_pred = np.mean(np.squeeze(predictions), axis=0)
     n_samples = y_true.shape[0]
     y_avg = np.mean(y_true)
     u_partial = np.sum(np.square(y_true - y_pred), axis=0)
