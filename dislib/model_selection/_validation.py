@@ -3,7 +3,7 @@ import numbers
 from dislib.data.array import Array
 from pycompss.api.task import task
 from pycompss.api.parameter import INOUT, Depth, Type, COLLECTION_IN
-
+import sys
 import numpy as np
 
 
@@ -39,6 +39,36 @@ def score_sklearn_estimator(est, scorer,  blocks_x, blocks_y):
     return _score(est, x, y, scorer)
 
 
+def execute_simulation(simulation, **parameters):
+    sys.stdout.write("PARAMETERS")
+    for param in parameters:
+        sys.stdout.write(str(param))
+    return simulation(**parameters)
+
+
+@task(blocks_x={Type: COLLECTION_IN, Depth: 2},
+      blocks_y={Type: COLLECTION_IN, Depth: 2},
+      returns=1)
+def score_simulation_estimator(scorer, blocks_x, blocks_y):
+    return _score_simulation(scorer, blocks_x, blocks_y)
+
+
+def simulation_execution(simulation, parameters,
+                         simulation_params, number_simulations):
+    simulations_result = []
+    if parameters is not None:
+        for _ in range(number_simulations):
+            simulations_result.append(execute_simulation(simulation,
+                                                         **parameters,
+                                                         **simulation_params))
+    return simulations_result
+
+
+def simulation_score(validation_ds, scorer):
+    x_test, y_test = validation_ds
+    return score_simulation_estimator(x_test._blocks, y_test._blocks, scorer)
+
+
 def sklearn_fit(estimator, train_ds,
                 parameters, fit_params):
     if parameters is not None:
@@ -55,6 +85,16 @@ def sklearn_score(estimator, validation_ds, scorer):
                                           x_test._blocks, y_test._blocks)
 
     return [test_scores]
+
+
+def _score_simulation(x, y, scorers):
+    """Return a dict of scores"""
+    scores = {}
+
+    for name, scorer in scorers.items():
+        score = scorer(x, y)
+        scores[name] = score
+    return scores
 
 
 def _score(estimator, x, y, scorers):
