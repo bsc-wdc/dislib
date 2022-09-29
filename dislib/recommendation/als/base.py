@@ -252,7 +252,7 @@ class ALS(BaseEstimator):
 
         sync_obj(self.__dict__)
         model_metadata = self.__dict__
-        model_metadata["model_name"] = "kmeans"
+        model_metadata["model_name"] = "als"
 
         # Save model
         if save_format == "json":
