@@ -46,13 +46,6 @@ def execute_simulation(simulation, **parameters):
     return simulation(**parameters)
 
 
-@task(blocks_x={Type: COLLECTION_IN, Depth: 2},
-      blocks_y={Type: COLLECTION_IN, Depth: 2},
-      returns=1)
-def score_simulation_estimator(scorer, blocks_x, blocks_y):
-    return _score_simulation(scorer, blocks_x, blocks_y)
-
-
 def simulation_execution(simulation, parameters,
                          simulation_params, number_simulations):
     simulations_result = []
@@ -62,11 +55,6 @@ def simulation_execution(simulation, parameters,
                                                          **parameters,
                                                          **simulation_params))
     return simulations_result
-
-
-def simulation_score(validation_ds, scorer):
-    x_test, y_test = validation_ds
-    return score_simulation_estimator(x_test._blocks, y_test._blocks, scorer)
 
 
 def sklearn_fit(estimator, train_ds,
@@ -85,16 +73,6 @@ def sklearn_score(estimator, validation_ds, scorer):
                                           x_test._blocks, y_test._blocks)
 
     return [test_scores]
-
-
-def _score_simulation(x, y, scorers):
-    """Return a dict of scores"""
-    scores = {}
-
-    for name, scorer in scorers.items():
-        score = scorer(x, y)
-        scores[name] = score
-    return scores
 
 
 def _score(estimator, x, y, scorers):
