@@ -47,7 +47,7 @@ class KNearestNeighborsTest(unittest.TestCase):
 
     def test_save_load(self):
         """
-        Tests that the save and load methods of the C-SVM work properly with
+        Tests that the save and load methods of the KNN work properly with
         the implemented formats and that an exception is retuned when the
         requested format is not supported.
         """
