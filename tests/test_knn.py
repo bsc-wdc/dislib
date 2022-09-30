@@ -59,7 +59,7 @@ class KNearestNeighborsTest(unittest.TestCase):
         knn.save_model("./model_KNN")
         knn2 = KNeighborsClassifier(n_neighbors=3)
         knn2.load_model("./model_KNN")
-        self.assertTrue(knn2.score(x, y) > 0.8)
+        self.assertTrue(knn2.score(x, y, collect=True) > 0.8)
         # negative points belong to class 1, positives to 0
         p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12 = \
             [1, 2], [2, 1], [-1, -2], [-2, -1], [1, 2], [2, 1], \
