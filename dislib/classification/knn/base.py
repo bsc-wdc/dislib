@@ -160,15 +160,15 @@ class KNeighborsClassifier(BaseEstimator):
             Format used to save the models.
         Examples
         --------
-        >>> from dislib.recommendation import ALS
+        >>> from dislib.classification import KNeighborsClassifier
         >>> import numpy as np
         >>> import dislib as ds
         >>>  data = np.array([[0, 0, 5], [3, 0, 5], [3, 1, 2]])
-        >>> ratings = csr_matrix(data)
+        >>> y_data = np.array([2, 1, 1, 2, 0])
         >>> train = ds.array(x=ratings, block_size=(1, 1))
-        >>> als = ALS(tol=0.01, random_state=666, n_f=5, verbose=False)
-        >>> als.fit(train)
-        >>> als.save_model("model_als")
+        >>> knn = KNeighborsClassifier()
+        >>> knn.fit(train)
+        >>> knn.save_model("./model_KNN")
         """
 
         # Check overwrite
@@ -207,22 +207,22 @@ class KNeighborsClassifier(BaseEstimator):
             Format used to load the model.
         Examples
         --------
-        >>> from dislib.regression import LinearRegression
+        >>> from dislib.clasiffication import KNeighborsClassifier
         >>> import numpy as np
         >>> import dislib as ds
         >>> x_data = np.array([[1, 2], [2, 0], [3, 1], [4, 4], [5, 3]])
-        >>> y_data = np.array([2, 1, 1, 2, 4.5])
+        >>> y_data = np.array([2, 1, 1, 2, 0])
         >>> x_test_m = np.array([[3, 2], [4, 4], [1, 3]])
         >>> bn, bm = 2, 2
         >>> x = ds.array(x=x_data, block_size=(bn, bm))
         >>> y = ds.array(x=y_data, block_size=(bn, 1))
         >>> test_data_m = ds.array(x=x_test_m, block_size=(bn, bm))
-        >>> reg = LinearRegression()
-        >>> reg.fit(x, y)
-        >>> reg.save_model("./model_LR")
-        >>> reg_loaded = LinearRegression()
-        >>> reg_loaded.load_model("./model_LR")
-        >>> pred = reg_loaded.predict(test_data).collect()
+        >>> knn = KNeighborsClassifier()
+        >>> knn.fit(x, y)
+        >>> knn.save_model("./model_KNN")
+        >>> knn_loaded = KNeighborsClassifier()
+        >>> knn_loaded.load_model("./model_KNN")
+        >>> pred = knn_loaded.predict(test_data).collect()
         """
         # Load model
         if load_format == "json":
