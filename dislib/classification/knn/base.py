@@ -7,8 +7,16 @@ from sklearn.base import BaseEstimator
 from dislib.data.array import Array
 from dislib.neighbors import NearestNeighbors
 from sklearn.metrics import accuracy_score
+from sklearn.neighbors import NearestNeighbors as SKNeighbors
+from sklearn.neighbors import KDTree
 
 from collections import defaultdict
+
+import os
+import json
+import dislib.data.util.model as utilmodel
+import pickle
+from dislib.data.util import sync_obj, decoder_helper, encoder_helper
 
 
 class KNeighborsClassifier(BaseEstimator):
@@ -136,6 +144,104 @@ class KNeighborsClassifier(BaseEstimator):
 
         return compss_wait_on(score) if collect else score
 
+    def save_model(self, filepath, overwrite=True, save_format="json"):
+        """Saves a model to a file.
+        The model is synchronized before saving and can be reinstantiated
+        in the exact same state, without any of the code used for model
+        definition or fitting.
+        Parameters
+        ----------
+        filepath : str
+            Path where to save the model
+        overwrite : bool, optional (default=True)
+            Whether any existing model at the target
+            location should be overwritten.
+        save_format : str, optional (default='json)
+            Format used to save the models.
+        Examples
+        --------
+        >>> from dislib.classification import KNeighborsClassifier
+        >>> import numpy as np
+        >>> import dislib as ds
+        >>>  data = np.array([[0, 0, 5], [3, 0, 5], [3, 1, 2]])
+        >>> y_data = np.array([2, 1, 1, 2, 0])
+        >>> train = ds.array(x=ratings, block_size=(1, 1))
+        >>> knn = KNeighborsClassifier()
+        >>> knn.fit(train)
+        >>> knn.save_model("./model_KNN")
+        """
+
+        # Check overwrite
+        if not overwrite and os.path.isfile(filepath):
+            return
+
+        sync_obj(self.__dict__)
+        model_metadata = self.__dict__
+        model_metadata["model_name"] = "knn"
+
+        # Save model
+        if save_format == "json":
+            with open(filepath, "w") as f:
+                json.dump(model_metadata, f, default=_encode_helper)
+        elif save_format == "cbor":
+            if utilmodel.cbor2 is None:
+                raise ModuleNotFoundError("No module named 'cbor2'")
+            with open(filepath, "wb") as f:
+                utilmodel.cbor2.dump(model_metadata, f,
+                                     default=_encode_helper_cbor)
+        elif save_format == "pickle":
+            with open(filepath, "wb") as f:
+                pickle.dump(model_metadata, f)
+        else:
+            raise ValueError("Wrong save format.")
+
+    def load_model(self, filepath, load_format="json"):
+        """Loads a model from a file.
+        The model is reinstantiated in the exact same state in which it was
+        saved, without any of the code used for model definition or fitting.
+        Parameters
+        ----------
+        filepath : str
+            Path of the saved the model
+        load_format : str, optional (default='json')
+            Format used to load the model.
+        Examples
+        --------
+        >>> from dislib.clasiffication import KNeighborsClassifier
+        >>> import numpy as np
+        >>> import dislib as ds
+        >>> x_data = np.array([[1, 2], [2, 0], [3, 1], [4, 4], [5, 3]])
+        >>> y_data = np.array([2, 1, 1, 2, 0])
+        >>> x_test_m = np.array([[3, 2], [4, 4], [1, 3]])
+        >>> bn, bm = 2, 2
+        >>> x = ds.array(x=x_data, block_size=(bn, bm))
+        >>> y = ds.array(x=y_data, block_size=(bn, 1))
+        >>> test_data_m = ds.array(x=x_test_m, block_size=(bn, bm))
+        >>> knn = KNeighborsClassifier()
+        >>> knn.fit(x, y)
+        >>> knn.save_model("./model_KNN")
+        >>> knn_loaded = KNeighborsClassifier()
+        >>> knn_loaded.load_model("./model_KNN")
+        >>> pred = knn_loaded.predict(test_data).collect()
+        """
+        # Load model
+        if load_format == "json":
+            with open(filepath, "r") as f:
+                model_metadata = json.load(f, object_hook=_decode_helper)
+        elif load_format == "cbor":
+            if utilmodel.cbor2 is None:
+                raise ModuleNotFoundError("No module named 'cbor2'")
+            with open(filepath, "rb") as f:
+                model_metadata = utilmodel.cbor2. \
+                    load(f, object_hook=_decode_helper_cbor)
+        elif load_format == "pickle":
+            with open(filepath, "rb") as f:
+                model_metadata = pickle.load(f)
+        else:
+            raise ValueError("Wrong load format.")
+        for key, val in model_metadata.items():
+            setattr(self, key, val)
+
 
 @constraint(computing_units="${ComputingUnits}")
 @task(ind_blocks={Type: COLLECTION_IN, Depth: 2},
@@ -180,3 +286,59 @@ def _get_score(y_blocks, ypred_blocks):
     y_pred = Array._merge_blocks(ypred_blocks).flatten()
 
     return accuracy_score(y, y_pred)
+
+
+def _decode_helper_cbor(decoder, obj):
+    """Special decoder wrapper for dislib using cbor2."""
+    return _decode_helper(obj)
+
+
+def _decode_helper(obj):
+    if isinstance(obj, dict) and "class_name" in obj:
+        class_name = obj["class_name"]
+        if class_name == "NearestNeighbors":
+            nn = NearestNeighbors(obj["n_neighbors"])
+            nn.__setstate__(_decode_helper(obj["items"]))
+            return nn
+        elif class_name == "SKNeighbors":
+            dict_ = _decode_helper(obj["items"])
+            model = SKNeighbors()
+            model.__setstate__(dict_)
+            return model
+        elif class_name == "KDTree":
+            dict_ = _decode_helper(obj["items"])
+            model = KDTree(dict_[0])
+            return model
+        else:
+            decoded = decoder_helper(class_name, obj)
+            if decoded is not None:
+                return decoded
+    return obj
+
+
+def _encode_helper_cbor(encoder, obj):
+    encoder.encode(_encode_helper(obj))
+
+
+def _encode_helper(obj):
+    encoded = encoder_helper(obj)
+    if encoded is not None:
+        return encoded
+    elif isinstance(obj, SKNeighbors):
+        return {
+            "class_name": "SKNeighbors",
+            "n_neighbors": obj.n_neighbors,
+            "radius": obj.radius,
+            "items": obj.__getstate__(),
+        }
+    elif isinstance(obj, KDTree):
+        return {
+            "class_name": "KDTree",
+            "items": obj.__getstate__(),
+        }
+    elif isinstance(obj, NearestNeighbors):
+        return {
+            "class_name": obj.__class__.__name__,
+            "n_neighbors": obj.n_neighbors,
+            "items": obj.__getstate__(),
+        }

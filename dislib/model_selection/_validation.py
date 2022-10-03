@@ -3,7 +3,7 @@ import numbers
 from dislib.data.array import Array
 from pycompss.api.task import task
 from pycompss.api.parameter import INOUT, Depth, Type, COLLECTION_IN
-
+import sys
 import numpy as np
 
 
@@ -37,6 +37,24 @@ def score_sklearn_estimator(est, scorer,  blocks_x, blocks_y):
     x = Array._merge_blocks(blocks_x)
     y = Array._merge_blocks(blocks_y)
     return _score(est, x, y, scorer)
+
+
+def execute_simulation(simulation, **parameters):
+    sys.stdout.write("PARAMETERS")
+    for param in parameters:
+        sys.stdout.write(str(param))
+    return simulation(**parameters)
+
+
+def simulation_execution(simulation, parameters,
+                         simulation_params, number_simulations):
+    simulations_result = []
+    if parameters is not None:
+        for _ in range(number_simulations):
+            simulations_result.append(execute_simulation(simulation,
+                                                         **parameters,
+                                                         **simulation_params))
+    return simulations_result
 
 
 def sklearn_fit(estimator, train_ds,
