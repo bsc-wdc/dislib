@@ -1,4 +1,5 @@
 import numpy as np
+from pycompss.api.api import compss_delete_object
 from pycompss.api.constraint import constraint
 from pycompss.api.parameter import Depth, Type, COLLECTION_IN
 from pycompss.api.task import task
@@ -45,7 +46,13 @@ class NearestNeighbors(BaseEstimator):
         -------
         self : NearestNeighbors
         """
-        self._fit_data = x
+        self._fit_data = list()
+
+        for row in x._iterator(axis=0):
+            sknnstruct = _compute_fit(row._blocks)
+            n_samples = row.shape[0]
+            self._fit_data.append([sknnstruct, n_samples])
+
         return self
 
     def kneighbors(self, x, n_neighbors=None, return_distance=True):
@@ -80,12 +87,17 @@ class NearestNeighbors(BaseEstimator):
 
         for q_row in x._iterator(axis=0):
             queries = []
+            offset = 0
 
-            for row in self._fit_data._iterator(axis=0):
-                queries.append(_get_neighbors(row._blocks, q_row._blocks,
-                                              n_neighbors))
+            for sknnstruct, n_samples in self._fit_data:
+                queries.append(_get_kneighbors(sknnstruct, q_row._blocks,
+                                               n_neighbors, offset))
+                offset += n_samples
 
-            dist, ind = _merge_queries(*queries)
+            dist, ind = _merge_kqueries(n_neighbors, *queries)
+            for q in queries:
+                compss_delete_object(q)
+
             distances.append([dist])
             indices.append([ind])
 
@@ -103,52 +115,51 @@ class NearestNeighbors(BaseEstimator):
 
         return ind_arr
 
+    # @abarcelo started to implement radius_neighbors and it was trivial.
+    # Easy to implement, easy merge, everything was going smoothly.
+    # Until I realized that the returning Array structure has variable row
+    # size (the number of neighbors is not fixed). That is not supported
+    # by the Array dislib structure (AFAIK).
+    # @abarcelo then threw all the elegant implementation in a trash bin and
+    # proceeded to go cry in a corner.
+    # def radius_neighbors(self, x, radius=None, return_distance=True):
+
+
+@constraint(computing_units="${ComputingUnits}")
+@task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=1)
+def _compute_fit(blocks):
+    samples = Array._merge_blocks(blocks)
+    knn = SKNeighbors()
+    return knn.fit(X=samples)
+
+
+@constraint(computing_units="${ComputingUnits}")
+@task(q_blocks={Type: COLLECTION_IN, Depth: 2}, returns=tuple)
+def _get_kneighbors(sknnstruct, q_blocks, n_neighbors, offset):
+    q_samples = Array._merge_blocks(q_blocks)
+
+    # Note that the merge requires distances, so we ask for them
+    dist, ind = sknnstruct.kneighbors(X=q_samples, n_neighbors=n_neighbors)
+
+    # This converts the local indexes to global ones
+    ind += offset
+
+    return dist, ind
+
 
 @constraint(computing_units="${ComputingUnits}")
 @task(returns=2)
-def _merge_queries(*queries):
-    final_dist, final_ind, offset = queries[0]
+def _merge_kqueries(k, *queries):
+    # Reorganize and flatten
+    dist, ind = zip(*queries)
+    aggr_dist = np.hstack(dist)
+    aggr_ind = np.hstack(ind)
 
-    for dist, ind, n_samples in queries[1:]:
-        ind += offset
-        offset += n_samples
+    # Final indexes of the indexes (sic)
+    final_ii = np.argsort(aggr_dist)[:, :k]
 
-        # keep the indices of the samples that are at minimum distance
-        m_ind = _min_indices(final_dist, dist)
-        comb_ind = np.hstack((final_ind, ind))
-
-        final_ind = np.array([comb_ind[i][m_ind[i]]
-                              for i in range(comb_ind.shape[0])])
-
-        # keep the minimum distances
-        final_dist = _min_distances(final_dist, dist)
+    # Final results
+    final_dist = np.take_along_axis(aggr_dist, final_ii, 1)
+    final_ind = np.take_along_axis(aggr_ind, final_ii, 1)
 
     return final_dist, final_ind
-
-
-@constraint(computing_units="${ComputingUnits}")
-@task(blocks={Type: COLLECTION_IN, Depth: 2},
-      q_blocks={Type: COLLECTION_IN, Depth: 2}, returns=tuple)
-def _get_neighbors(blocks, q_blocks, n_neighbors):
-    samples = Array._merge_blocks(blocks)
-    q_samples = Array._merge_blocks(q_blocks)
-
-    n_samples = samples.shape[0]
-
-    knn = SKNeighbors(n_neighbors=n_neighbors)
-    knn.fit(X=samples)
-    dist, ind = knn.kneighbors(X=q_samples)
-
-    return dist, ind, n_samples
-
-
-def _min_distances(d1, d2):
-    size, num = d1.shape
-    d = [np.sort(np.hstack((d1[i], d2[i])))[:num] for i in range(size)]
-    return np.array(d)
-
-
-def _min_indices(d1, d2):
-    size, num = d1.shape
-    d = [np.argsort(np.hstack((d1[i], d2[i])))[:num] for i in range(size)]
-    return np.array(d)

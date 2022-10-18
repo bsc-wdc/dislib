@@ -6,9 +6,10 @@ from sklearn.datasets import make_blobs
 
 import dislib as ds
 from dislib.decomposition import PCA
+from tests import BaseTimedTestCase
 
 
-class PCATest(unittest.TestCase):
+class PCATest(BaseTimedTestCase):
 
     @parameterized.expand([("eig"),
                            ("svd")])

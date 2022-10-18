@@ -11,9 +11,10 @@ from sklearn.preprocessing import StandardScaler
 import dislib as ds
 from dislib.cluster import DBSCAN
 from dislib.cluster.dbscan.base import _arrange_samples, _rearrange_labels
+from tests import BaseTimedTestCase
 
 
-class ArrangeTest(unittest.TestCase):
+class ArrangeTest(BaseTimedTestCase):
 
     def test_arrange(self):
         """ Tests the arrange method with toy data."""
@@ -160,7 +161,7 @@ class ArrangeTest(unittest.TestCase):
             self.assertTrue(np.array_equal(samples_sp, samples_d))
 
 
-class DBSCANTest(unittest.TestCase):
+class DBSCANTest(BaseTimedTestCase):
     def test_n_clusters_blobs(self):
         """ Tests that DBSCAN finds the correct number of clusters with blob
         data.

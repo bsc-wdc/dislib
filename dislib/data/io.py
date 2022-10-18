@@ -74,7 +74,8 @@ def load_svmlight_file(path, block_size, n_features, store_sparse):
     return x, y
 
 
-def load_txt_file(path, block_size, delimiter=","):
+def load_txt_file(path, block_size, discard_first_row=False,
+                  col_of_index=False, delimiter=","):
     """ Loads a text file into a distributed array.
 
     Parameters
@@ -83,6 +84,11 @@ def load_txt_file(path, block_size, delimiter=","):
         File path.
     block_size : tuple (int, int)
         Size of the blocks of the array.
+    discard_first_row : bool
+        Boolean that indicates if the first row should be discarded.
+    col_of_index : bool
+        Boolean that indicates if the first column is a column
+        of indexes and therefore it should be discarded.
     delimiter : string, optional (default=",")
         String that separates columns in the file.
 
@@ -102,20 +108,27 @@ def load_txt_file(path, block_size, delimiter=","):
     n_lines = 0
 
     with open(path, "r") as f:
+        if discard_first_row:
+            f.readline()
         for line in f:
             n_lines += 1
             lines.append(line.encode())
 
             if len(lines) == block_size[0]:
                 out_blocks = [object() for _ in range(n_blocks)]
-                _read_lines(lines, block_size[1], delimiter, out_blocks)
+                _read_lines(lines, block_size[1], delimiter, out_blocks,
+                            col_of_index=col_of_index)
                 blocks.append(out_blocks)
                 lines = []
 
     if lines:
         out_blocks = [object() for _ in range(n_blocks)]
-        _read_lines(lines, block_size[1], delimiter, out_blocks)
+        _read_lines(lines, block_size[1], delimiter, out_blocks,
+                    col_of_index=col_of_index)
         blocks.append(out_blocks)
+
+    if col_of_index:
+        n_cols = n_cols - 1
 
     return Array(blocks, top_left_shape=block_size, reg_shape=block_size,
                  shape=(n_lines, n_cols), sparse=False)
@@ -442,14 +455,18 @@ def _read_from_buffer(data, dtype, shape, block_size, out_blocks):
 
 @constraint(computing_units="${ComputingUnits}")
 @task(out_blocks=COLLECTION_OUT)
-def _read_lines(lines, block_size, delimiter, out_blocks):
+def _read_lines(lines, block_size, delimiter, out_blocks, col_of_index=False):
     samples = np.genfromtxt(lines, delimiter=delimiter)
 
     if len(samples.shape) == 1:
         samples = samples.reshape(1, -1)
 
-    for i, j in enumerate(range(0, samples.shape[1], block_size)):
-        out_blocks[i] = samples[:, j:j + block_size]
+    if col_of_index:
+        for i, j in enumerate(range(0, samples.shape[1], block_size)):
+            out_blocks[i] = samples[:, j + 1:j + block_size + 1]
+    else:
+        for i, j in enumerate(range(0, samples.shape[1], block_size)):
+            out_blocks[i] = samples[:, j:j + block_size]
 
 
 @constraint(computing_units="${ComputingUnits}")
@@ -464,7 +481,7 @@ def _read_svmlight(lines, out_blocks, col_size, n_features, store_sparse):
     tmp_file.writelines(lines)
     tmp_file.seek(0)
 
-    x, y = load_svmlight_file(tmp_file, n_features)
+    x, y = load_svmlight_file(tmp_file, n_features=n_features)
     if not store_sparse:
         x = x.toarray()
 

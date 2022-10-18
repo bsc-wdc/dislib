@@ -13,6 +13,7 @@ from scipy.sparse import issparse, csr_matrix
 from sklearn.utils import check_random_state
 import math
 
+
 class Array(object):
     """ A distributed 2-dimensional array divided in blocks.
 
@@ -223,6 +224,123 @@ class Array(object):
         return Array(blocks, self._top_left_shape, self._reg_shape,
                      self.shape, self._sparse)
 
+    def __isub__(self, other):
+        if self.shape[1] != other.shape[1] or (other.shape[0] != 1 and
+                                               (other.shape[0] != self.shape[0]
+                                               or other._reg_shape[0] !=
+                                               self._reg_shape[0])):
+            raise NotImplementedError("Reverse subtraction not "
+                                      "implemented for the "
+                                      "given objects")
+
+        if other.shape[0] == self.shape[0] and other._reg_shape[0]\
+                == self._reg_shape[0]:
+            if other.shape[0] == self.shape[0] and \
+                    other._reg_shape[0] == self._reg_shape[0]:
+                if self._reg_shape[1] != other._reg_shape[1]:
+                    raise ValueError("incorrect block sizes for the requested "
+                                     f"subtraction ("
+                                     f"{self._reg_shape[0]}"", "
+                                     f"{self._reg_shape[1]} !="
+                                     f"{other._reg_shape[0]}"", "
+                                     f"{other._reg_shape[1]})")
+
+                if self._top_left_shape != other._top_left_shape:
+                    raise ValueError("Incompatible block sizes of the "
+                                     "top left block of the matrices"
+                                     "b._top_left_shape != b._top_left_shape")
+            # matrix - matrix
+            blocks = []
+
+            for hblock, others in zip(self._iterator("rows"),
+                                      other._iterator("rows")):
+                out_blocks = [object() for _ in range(hblock._n_blocks[1])]
+                _combine_blocks(hblock._blocks, others._blocks,
+                                Array._subtract, out_blocks)
+                blocks.append(out_blocks)
+            compss_delete_object(self._blocks)
+            self._blocks = blocks
+
+            return self
+        # matrix - vector
+        blocks = []
+
+        for hblock in self._iterator("rows"):
+            out_blocks = [object() for _ in range(hblock._n_blocks[1])]
+            _combine_blocks(hblock._blocks, other._blocks,
+                            Array._subtract, out_blocks)
+            blocks.append(out_blocks)
+
+        compss_delete_object(self._blocks)
+        self._blocks = blocks
+
+        return self
+
+    def __add__(self, other):
+        if self.shape[1] != other.shape[1] or other.shape[0] != 1:
+            raise NotImplementedError("Addition not implemented for the "
+                                      "given objects")
+
+        # matrix + vector
+        blocks = []
+
+        for hblock in self._iterator("rows"):
+            out_blocks = [object() for _ in range(hblock._n_blocks[1])]
+            _combine_blocks(hblock._blocks, other._blocks,
+                            Array._add, out_blocks)
+            blocks.append(out_blocks)
+
+        return Array(blocks, self._top_left_shape, self._reg_shape,
+                     self.shape, self._sparse)
+
+    def __iadd__(self, other):
+        if self.shape[1] != other.shape[1] or (other.shape[0] != 1 and
+                                               (other.shape[0] != self.shape[0]
+                                               or other._reg_shape[0] !=
+                                               self._reg_shape[0])):
+            raise NotImplementedError("Self addition not implemented for the "
+                                      "given objects")
+
+        if other.shape[0] == self.shape[0] and \
+                other._reg_shape[0] == self._reg_shape[0]:
+            if self._reg_shape[1] != other._reg_shape[1]:
+                raise ValueError("incorrect block sizes for the requested "
+                                 f"addition ("
+                                 f"{self._reg_shape[0]}"", "
+                                 f"{self._reg_shape[1]} !="
+                                 f"{other._reg_shape[0]}"", "
+                                 f"{other._reg_shape[1]})")
+
+            if self._top_left_shape != other._top_left_shape:
+                raise ValueError("Incompatible block sizes of the "
+                                 "top left block of the matrices"
+                                 "b._top_left_shape != b._top_left_shape")
+            # matrix + matrix
+            blocks = []
+
+            for hblock, others in zip(self._iterator("rows"),
+                                      other._iterator("rows")):
+                out_blocks = [object() for _ in range(hblock._n_blocks[1])]
+                _combine_blocks(hblock._blocks, others._blocks,
+                                Array._add, out_blocks)
+                blocks.append(out_blocks)
+            compss_delete_object(self._blocks)
+            self._blocks = blocks
+
+            return self
+        # matrix + vector
+        blocks = []
+
+        for hblock in self._iterator("rows"):
+            out_blocks = [object() for _ in range(hblock._n_blocks[1])]
+            _combine_blocks(hblock._blocks, other._blocks,
+                            Array._add, out_blocks)
+            blocks.append(out_blocks)
+        compss_delete_object(self._blocks)
+        self._blocks = blocks
+
+        return self
+
     def __truediv__(self, other):
         if not np.isscalar(other):
             raise NotImplementedError("Non scalar division not supported")
@@ -273,6 +391,22 @@ class Array(object):
             return csr_matrix(a - b)
         else:
             return a - b
+
+    @staticmethod
+    def _add(a, b):
+        sparse = issparse(a)
+
+        # needed because subtract with scipy.sparse does not support
+        # broadcasting
+        if sparse:
+            a = a.toarray()
+        if issparse(b):
+            b = b.toarray()
+
+        if sparse:
+            return csr_matrix(a + b)
+        else:
+            return a + b
 
     @staticmethod
     def _power(x_np, power):
@@ -1156,6 +1290,29 @@ def array(x, block_size):
                 reg_shape=block_size, shape=x.shape, sparse=sparse)
 
     return arr
+
+
+def _empty_array(shape, block_size):
+    '''
+    Returns an empty ds-array with the specified block_size and shape.
+    Useful for constructing ds-arrays on some algorithms without the
+    need of allocating memory for the blocks (as for example happens with
+    the random_array operation).
+    Parameters
+    ----------
+    shape : tuple of two ints
+        Shape of the output ds-array.
+    block_size : tuple of two ints
+        Size of the ds-array blocks.
+    Returns
+    -------
+    x : ds-array
+        Distributed array with value None in the blocks.
+    '''
+    return Array(blocks=[[None] for _ in range(math.ceil(shape[0] /
+                                                         block_size[0]))],
+                 top_left_shape=block_size,
+                 reg_shape=block_size, shape=shape, sparse=False)
 
 
 def random_array(shape, block_size, random_state=None):

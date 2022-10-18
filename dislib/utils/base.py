@@ -1,3 +1,5 @@
+import math
+
 import numpy as np
 from pycompss.api.api import compss_delete_object
 from pycompss.api.constraint import constraint
@@ -26,7 +28,7 @@ def train_test_split(x, y=None, test_size=None, train_size=None,
         train_size : float
             Number between 0 and 1 that defines the percentage of rows used as
             train data
-        random_state : int or RandomState, optional (default=None)
+        random_state : int or RandomState, optional (default = None)
             Seed or numpy.random.RandomState instance to use in the generation
             of splits in the blocks.
 
@@ -124,12 +126,13 @@ def shuffle(x, y=None, random_state=None):
         part_out_subsamples = [part_in_subsamples[j] for part_in_subsamples
                                in mapped_subsamples]
         seed = np.random.randint(np.iinfo(np.int32).max)
-        part_out_x_blocks = [{} for _ in range(x._n_blocks[1])]
+        # TODO: change object() for None when COMPSs version support it
+        part_out_x_blocks = [object() for _ in range(x._n_blocks[1])]
         if y is None:
             _merge_shuffle_x(seed, part_out_subsamples, part_out_x_blocks,
                              x._reg_shape[1])
         else:
-            part_out_y_blocks = [{} for _ in range(y._n_blocks[1])]
+            part_out_y_blocks = [object() for _ in range(y._n_blocks[1])]
             _merge_shuffle_xy(seed, part_out_subsamples, part_out_x_blocks,
                               part_out_y_blocks, x._reg_shape[1],
                               y._reg_shape[1])
@@ -173,7 +176,7 @@ def _partition_arrays(part_in, sizes_out):
         subsample_sizes[j] = n_selected
         n_rows -= n_selected
 
-    subsamples = [{} for _ in range(n_parts_out)]
+    subsamples = [object() for _ in range(n_parts_out)]
     seed = np.random.randint(np.iinfo(np.int32).max)
     if y is None:
         _choose_and_assign_rows_x(x._blocks, subsample_sizes, subsamples, seed)
@@ -221,17 +224,29 @@ def _make_splits(x, y=None, test_size=None, train_size=None,
             test_x_blocks_split.append(blocks_test_x)
             train_y_blocks_split.append(blocks_train_y)
             test_y_blocks_split.append(blocks_test_y)
-        block_size_x = (int(x._reg_shape[0] * train_size),
-                        int(x._reg_shape[1] * train_size))
-        block_size_test_x = (int(x._reg_shape[0] * test_size),
-                             int(x._reg_shape[1] * test_size))
-        top_train_shape_x = (int(x._top_left_shape[0] * train_size),
-                             int(x._top_left_shape[1] * train_size))
-        top_test_shape_x = (int(x._top_left_shape[0] * test_size),
-                            int(x._top_left_shape[1] * test_size))
-        shape_x = (int(x.shape[0] * train_size), int(x.shape[1] * train_size))
-        shape_test_x = (int(x.shape[0] * test_size),
-                        int(x.shape[1] * test_size))
+        block_size_x = (math.floor(x._reg_shape[0] * train_size),
+                        int(x._reg_shape[1]))
+        block_size_test_x = (math.ceil(x._reg_shape[0] * test_size),
+                             int(x._reg_shape[1]))
+        top_train_shape_x = (math.floor(x._top_left_shape[0] * train_size),
+                             int(x._top_left_shape[1]))
+        top_test_shape_x = (math.ceil(x._top_left_shape[0] * test_size),
+                            int(x._top_left_shape[1]))
+        if x.shape[0] % x._reg_shape[0] != 0:
+            shape_x = (block_size_x[0] * (len(train_x_blocks_split) - 1) +
+                       math.floor((x.shape[0] % x._reg_shape[0]) * train_size),
+                       int(x.shape[1]))
+            shape_test_x = (math.ceil(block_size_test_x[0] *
+                                      (len(test_x_blocks_split) - 1) +
+                                      math.ceil((x.shape[0] % x._reg_shape[0])
+                                                * test_size)),
+                            int(x.shape[1]))
+        else:
+            shape_x = (
+                block_size_x[0] * (len(train_x_blocks_split)),
+                int(x.shape[1]))
+            shape_test_x = (block_size_test_x[0] * (len(test_x_blocks_split)),
+                            int(x.shape[1]))
         return Array(blocks=train_x_blocks_split,
                      top_left_shape=top_train_shape_x,
                      reg_shape=block_size_x, shape=shape_x,
@@ -274,15 +289,27 @@ def _make_splits(x, y=None, test_size=None, train_size=None,
         train_x_blocks_split.append(blocks_train_x)
         test_x_blocks_split.append(blocks_test_x)
     block_size_x = (int(x._reg_shape[0] * train_size),
-                    int(x._reg_shape[1] * train_size))
+                    int(x._reg_shape[1]))
     block_size_test_x = (int(x._reg_shape[0] * test_size),
-                         int(x._reg_shape[1] * test_size))
+                         int(x._reg_shape[1]))
     top_train_shape_x = (int(x._top_left_shape[0] * train_size),
-                         int(x._top_left_shape[1] * train_size))
+                         int(x._top_left_shape[1]))
     top_test_shape_x = (int(x._top_left_shape[0] * test_size),
-                        int(x._top_left_shape[1] * test_size))
-    shape_x = (int(x.shape[0] * train_size), int(x.shape[1] * train_size))
-    shape_test_x = (int(x.shape[0] * test_size), int(x.shape[1] * test_size))
+                        int(x._top_left_shape[1]))
+    if x.shape[0] % x._reg_shape[0] != 0:
+        shape_x = (block_size_x[0] * (len(train_x_blocks_split) - 1) +
+                   math.floor((x.shape[0] % x._reg_shape[0]) * train_size),
+                   int(x.shape[1]))
+        shape_test_x = (math.ceil(block_size_test_x[0] *
+                                  (len(test_x_blocks_split) - 1) +
+                                  math.ceil((x.shape[0] % x._reg_shape[0]) *
+                                            test_size)),
+                        int(x.shape[1]))
+    else:
+        shape_x = (block_size_x[0] * (len(train_x_blocks_split)),
+                   int(x.shape[1]))
+        shape_test_x = (block_size_test_x[0] * (len(test_x_blocks_split)),
+                        int(x.shape[1]))
     return Array(blocks=train_x_blocks_split,
                  top_left_shape=top_train_shape_x,
                  reg_shape=block_size_x, shape=shape_x, sparse=False),\
@@ -340,7 +367,7 @@ def _compute_splits_x_y(x, y, blocks_train_x, blocks_test_x,
 
 
 @constraint(computing_units="${ComputingUnits}")
-@task(part_out_subsamples=COLLECTION_IN,
+@task(part_out_subsamples={Type: COLLECTION_IN, Depth: 2},
       part_out_x_blocks=COLLECTION_OUT,
       returns=1)
 def _merge_shuffle_x(seed, part_out_subsamples, part_out_x_blocks,
@@ -360,7 +387,7 @@ def _merge_shuffle_x(seed, part_out_subsamples, part_out_x_blocks,
 
 
 @constraint(computing_units="${ComputingUnits}")
-@task(part_out_subsamples=COLLECTION_IN,
+@task(part_out_subsamples={Type: COLLECTION_IN, Depth: 2},
       part_out_x_blocks=COLLECTION_OUT,
       part_out_y_blocks=COLLECTION_OUT,
       returns=1)

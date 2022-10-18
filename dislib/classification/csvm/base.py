@@ -331,16 +331,22 @@ class CascadeSVM(BaseEstimator):
 
     def _lag_fast(self, vectors, labels, coef):
         set_sl = set(labels.ravel())
-        assert len(set_sl) == 2, "Only binary problem can be handled"
-        new_sl = labels.copy()
-        new_sl[labels == 0] = -1
-
+        if len(set_sl) > 2:
+            new_sl = [labels.copy()]
+            vectors_def = vectors
+            for _ in range(len(set_sl) - 2):
+                new_sl.append(labels.copy())
+                vectors_def = np.concatenate((vectors_def, vectors))
+        else:
+            new_sl = labels.copy()
+            new_sl[labels == 0] = -1
+            vectors_def = vectors
         if issparse(coef):
             coef = coef.toarray()
 
         c1, c2 = np.meshgrid(coef, coef)
         l1, l2 = np.meshgrid(new_sl, new_sl)
-        double_sum = c1 * c2 * l1 * l2 * self._kernel_f(vectors)
+        double_sum = c1 * c2 * l1 * l2 * self._kernel_f(vectors_def)
         double_sum = double_sum.sum()
         w = -0.5 * double_sum + coef.sum()
 
@@ -437,7 +443,7 @@ class CascadeSVM(BaseEstimator):
 
         sync_obj(self.__dict__)
         model_metadata = self.__dict__
-        model_metadata["model_name"] = "kmeans"
+        model_metadata["model_name"] = "csvm"
 
         # Save model
         if save_format == "json":

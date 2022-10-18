@@ -1,16 +1,76 @@
 import numbers
 
+from dislib.data.array import Array
+from pycompss.api.task import task
+from pycompss.api.parameter import INOUT, Depth, Type, COLLECTION_IN
+import sys
 import numpy as np
 
 
-def fit_and_score(estimator, train_ds, validation_ds, scorer, parameters,
-                  fit_params):
+def fit(estimator, train_ds, parameters, fit_params):
     if parameters is not None:
         estimator.set_params(**parameters)
     x_train, y_train = train_ds
     estimator.fit(x_train, y_train, **fit_params)
+    return estimator
+
+
+def score_func(estimator, validation_ds, scorer):
     x_test, y_test = validation_ds
     test_scores = _score(estimator, x_test, y_test, scorer)
+
+    return [test_scores]
+
+
+@task(est=INOUT, blocks_x={Type: COLLECTION_IN, Depth: 2},
+      blocks_y={Type: COLLECTION_IN, Depth: 2})
+def fit_sklearn_estimator(est, blocks_x, blocks_y, **fit_params):
+    x = Array._merge_blocks(blocks_x)
+    y = Array._merge_blocks(blocks_y)
+    return est.fit(x, y, **fit_params)
+
+
+@task(blocks_x={Type: COLLECTION_IN, Depth: 2},
+      blocks_y={Type: COLLECTION_IN, Depth: 2},
+      returns=1)
+def score_sklearn_estimator(est, scorer,  blocks_x, blocks_y):
+    x = Array._merge_blocks(blocks_x)
+    y = Array._merge_blocks(blocks_y)
+    return _score(est, x, y, scorer)
+
+
+def execute_simulation(simulation, **parameters):
+    sys.stdout.write("PARAMETERS")
+    for param in parameters:
+        sys.stdout.write(str(param))
+    return simulation(**parameters)
+
+
+def simulation_execution(simulation, parameters,
+                         simulation_params, number_simulations):
+    simulations_result = []
+    if parameters is not None:
+        for _ in range(number_simulations):
+            simulations_result.append(execute_simulation(simulation,
+                                                         **parameters,
+                                                         **simulation_params))
+    return simulations_result
+
+
+def sklearn_fit(estimator, train_ds,
+                parameters, fit_params):
+    if parameters is not None:
+        estimator.set_params(**parameters)
+    x_train, y_train = train_ds
+
+    return fit_sklearn_estimator(estimator, x_train._blocks,
+                                 y_train._blocks, **fit_params)
+
+
+def sklearn_score(estimator, validation_ds, scorer):
+    x_test, y_test = validation_ds
+    test_scores = score_sklearn_estimator(estimator, scorer,
+                                          x_test._blocks, y_test._blocks)
 
     return [test_scores]
 

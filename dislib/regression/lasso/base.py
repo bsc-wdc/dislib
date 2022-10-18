@@ -118,7 +118,6 @@ class Lasso(BaseEstimator):
         # ds-arrays with different block shapes
         if coef._reg_shape[0] != x._reg_shape[1]:
             coef = coef.rechunk(x._reg_shape)
-
         return x @ coef
 
     def fit_predict(self, x):
@@ -166,7 +165,7 @@ class Lasso(BaseEstimator):
 
         sync_obj(self.__dict__)
         model_metadata = self.__dict__
-        model_metadata["model_name"] = "kmeans"
+        model_metadata["model_name"] = "lasso"
 
         # Save model
         if save_format == "json":

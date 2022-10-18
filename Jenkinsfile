@@ -22,7 +22,7 @@ pipeline {
         stage('build') {
             steps {
                 setGithubCommitStatus('pending', 'The Jenkins build is in progress')
-                sh 'git lfs pull origin'
+                sh 'git pull origin'
                 sh 'docker rm -f dislib &> /dev/null || true'
                 sh 'docker rmi -f bscwdc/dislib &> /dev/null || true'
                 sh 'docker build --pull --no-cache --tag bscwdc/dislib .'
@@ -50,7 +50,6 @@ pipeline {
     }
     post{
         always {
-            sh 'docker exec dislib /dislib/bin/print_tests_logs.sh'
             sh 'docker images'
             sh 'docker rm -f dislib &> /dev/null || true'
             sh 'docker rmi -f bscwdc/dislib &> /dev/null || true'

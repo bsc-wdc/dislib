@@ -1,9 +1,12 @@
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 MAINTAINER COMPSs Support <support-compss@bsc.es>
 
 # =============================================================================
 # Configuration required to use the image for jenkins testing
 # =============================================================================
+
+ENV DEBIAN_FRONTEND noninteractive
+ENV COMPSS_LOAD_SOURCE false
 
 RUN apt-get update && \
 # Install Packages
@@ -40,13 +43,15 @@ RUN apt-get update && \
 # Extrae dependencies
     libxml2 gfortran libpapi-dev papi-tools \
 # Misc. dependencies
-    openmpi-bin openmpi-doc libopenmpi-dev uuid-runtime curl bc cmake \
+    openmpi-bin openmpi-doc libopenmpi-dev uuid-runtime curl bc cmake && \
 # Python-binding and dislib dependencies
-    python3-dev python3-pip python3-setuptools && \
-    pip3 install wheel dill decorator coverage numpy==1.15.4 ipython==7.9.0 \
-    scipy==1.3.0 jupyter==1.0.0 scikit-learn==0.19.1 pandas==0.23.1 \
-    matplotlib==2.2.3 flake8 codecov parameterized && \
-    pip3 install cvxpy==1.1.5 && \
+    apt-get install -y python3 python3-pip python3-dev graphviz-dev && \
+    python3 -m pip install coverage ipython flake8 codecov parameterized cvxpy==1.1.5 && \
+    python3 -m pip install pycodestyle pydocstyle  mpi4py  numpy dill guppy3 memory_profiler matplotlib decorator \
+            jupyter pytest nbval pytest-cov pytest-notebook ipyparallel jupyter_nbextensions_configurator jupyterlab \ 
+            pytest nbval pytest-cov pytest-html-profiling pytest-metadata pytest-profiling pytest-subprocess pytest-sugar spacy  && \
+    python3 -m ipykernel install && \
+    python3 -m spacy download en_core_web_sm && \
 # Configure user environment
 # =============================================================================
 # System configuration
@@ -57,12 +62,11 @@ RUN apt-get update && \
     echo "LD_LIBRARY_PATH=/usr/lib/openmpi/lib" >> /etc/environment && \
     mkdir /run/sshd && \
 # Clone framework files for installation
-    git clone --depth=1 --branch 2.8 https://github.com/bsc-wdc/compss.git framework && \
+    git clone --depth=1 --branch 3.0 https://github.com/bsc-wdc/compss.git framework && \
 # Install COMPSs
     cd /framework && \
     ./submodules_get.sh && \
-    ./submodules_patch.sh && \
-    sudo -E /framework/builders/buildlocal -NpAKT /opt/COMPSs && \
+    sudo -E /framework/builders/buildlocal -NpKT /opt/COMPSs && \
     rm -rf /framework /root/.m2 /root/.cache /home/jenkins/.COMPSs /tmp/* && \
     rm -rf /var/lib/apt/lists/*
 

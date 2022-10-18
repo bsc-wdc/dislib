@@ -6,9 +6,10 @@ import numpy as np
 from parameterized import parameterized
 from scipy import sparse as sp
 from sklearn.datasets import load_svmlight_file
-
+import pandas as pd
 import dislib as ds
 from math import ceil
+from tests import BaseTimedTestCase
 
 
 def _sum_and_mult(arr, a=0, axis=0, b=1):
@@ -91,7 +92,7 @@ def _gen_irregular_arrays(fmt, shape=None, block_size=None):
         return x[1:, 1:], x_sp[1:, 1:]
 
 
-class DataLoadingTest(unittest.TestCase):
+class DataLoadingTest(BaseTimedTestCase):
 
     @parameterized.expand([(_gen_random_arrays("dense", (6, 10), (4, 3))
                             + ((6, 10), (4, 3))),
@@ -240,6 +241,34 @@ class DataLoadingTest(unittest.TestCase):
 
         self.assertTrue(_equal_arrays(data.collect(), csv))
 
+    def test_load_csv_file_without_first_row_and_col(self):
+        """ Tests loading a CSV file removing the first row and column. """
+        csv_f = "tests/datasets/csv/iris_csv.csv"
+
+        data = ds.load_txt_file(csv_f, discard_first_row=True,
+                                block_size=(20, 5))
+        csv = pd.read_csv(csv_f, delimiter=",")
+        feature_cols = ["sepallength", "sepalwidth", "petallength",
+                        "petalwidth", "class"]
+        csv_x = csv[feature_cols]
+        csv_x = csv_x.values
+        self.assertEqual(data._top_left_shape, (20, 5))
+        self.assertEqual(data._reg_shape, (20, 5))
+        self.assertEqual(data.shape, (150, 5))
+        self.assertEqual(data._n_blocks, (8, 1))
+        self.assertTrue(np.array_equal(data.collect(), csv_x))
+
+        csv_f = "tests/datasets/csv/iris_csv.csv"
+        data = ds.load_txt_file(csv_f, discard_first_row=True,
+                                col_of_index=True, block_size=(20, 4))
+        csv = pd.read_csv(csv_f, delimiter=",")
+
+        self.assertEqual(data._top_left_shape, (20, 4))
+        self.assertEqual(data._reg_shape, (20, 4))
+        self.assertEqual(data.shape, (150, 4))
+
+        self.assertFalse(np.array_equal(data.collect(), csv[:][1:]))
+
     def test_load_npy_file(self):
         """ Tests loading an npy file """
         path = "tests/datasets/npy/1.npy"
@@ -267,7 +296,7 @@ class DataLoadingTest(unittest.TestCase):
         self.assertTrue(_validate_array(x))
 
 
-class LoadBlocksRechunkTest(unittest.TestCase):
+class LoadBlocksRechunkTest(BaseTimedTestCase):
     def test_rechunk_new_block_size_exception(self):
         """ Tests that load_blocks_rechunk function throws an exception
         when the block_size returned of the rechunk is greater than the shape
@@ -319,7 +348,7 @@ class LoadBlocksRechunkTest(unittest.TestCase):
             ds.data.load_blocks_rechunk(blocks, (20, 20), (25, 25), (5, 5))
 
 
-class LoadHStackNpyFilesTest(unittest.TestCase):
+class LoadHStackNpyFilesTest(BaseTimedTestCase):
     folder = 'load_hstack_npy_files_test_folder'
     arrays = [np.random.rand(3, 4) for _ in range(5)]
 
@@ -344,7 +373,7 @@ class LoadHStackNpyFilesTest(unittest.TestCase):
         self.assertTrue(np.allclose(x.collect(), np.hstack(self.arrays)))
 
 
-class SaveTxtTest(unittest.TestCase):
+class SaveTxtTest(BaseTimedTestCase):
     folder = 'save_txt_test_folder'
 
     def tearDown(self):
@@ -380,7 +409,7 @@ class SaveTxtTest(unittest.TestCase):
         self.assertTrue(_equal_arrays(np.vstack(h_blocks), x_np))
 
 
-class SaveNpyTest(unittest.TestCase):
+class SaveNpyTest(BaseTimedTestCase):
     folder = 'save_npy_test_folder'
 
     def tearDown(self):
@@ -426,7 +455,7 @@ class SaveNpyTest(unittest.TestCase):
             ds.data.load_npy_files('save_npy_test_folder')
 
 
-class ArrayTest(unittest.TestCase):
+class ArrayTest(BaseTimedTestCase):
 
     @parameterized.expand([_gen_random_arrays("dense"),
                            _gen_random_arrays("sparse")])
@@ -474,6 +503,8 @@ class ArrayTest(unittest.TestCase):
             x["sss"]
         with self.assertRaises(NotImplementedError):
             x[:, 4]
+        with self.assertRaises(NotImplementedError):
+            x[-3:-1, 2]
 
     @parameterized.expand([_gen_random_arrays("dense"),
                            _gen_random_arrays("dense", (33, 34), (2, 33)),
@@ -1009,6 +1040,177 @@ class ArrayTest(unittest.TestCase):
         with self.assertRaises(NotImplementedError):
             x ** x
 
+    def test_add(self):
+        orig = np.array([[1, 2, 3], [4, 5, 6]])
+        x = ds.array(orig, block_size=(2, 1))
+        orig_vector = np.array([[1, 2, 3]])
+        vector = ds.array(orig_vector, block_size=(1, 1))
+
+        b = x + vector
+        self.assertTrue(_validate_array(b))
+        expected = np.array([[2, 4, 6], [5, 7, 9]])
+
+        self.assertTrue(_equal_arrays(expected, b.collect()))
+
+        orig = sp.csr_matrix([[1, 2, 3], [4, 5, 6]])
+        x = ds.array(orig, block_size=(2, 1))
+        orig_vector = sp.csr_matrix([[1, 2, 3]])
+        vector = ds.array(orig_vector, block_size=(1, 1))
+
+        b = x + vector
+        self.assertTrue(_validate_array(b))
+        expected = sp.csr_matrix([[2, 4, 6], [5, 7, 9]])
+
+        self.assertTrue(_equal_arrays(expected, b.collect()))
+
+        with self.assertRaises(NotImplementedError):
+            orig = np.array([[1, 2, 3], [4, 5, 6]])
+            x = ds.array(orig, block_size=(2, 1))
+            orig_vector = np.array([[1, 2]])
+            vector = ds.array(orig_vector, block_size=(1, 1))
+            b = x + vector
+
+    def test_sub(self):
+        orig = np.array([[1, 2, 3], [4, 5, 6]])
+        x = ds.array(orig, block_size=(2, 1))
+        orig_vector = np.array([[1, 2, 3]])
+        vector = ds.array(orig_vector, block_size=(1, 1))
+
+        b = x - vector
+        self.assertTrue(_validate_array(b))
+        expected = np.array([[0, 0, 0], [3, 3, 3]])
+
+        self.assertTrue(_equal_arrays(expected, b.collect()))
+
+        with self.assertRaises(NotImplementedError):
+            orig = np.array([[1, 2, 3], [4, 5, 6]])
+            x = ds.array(orig, block_size=(2, 1))
+            orig_vector = np.array([[1, 3]])
+            vector = ds.array(orig_vector, block_size=(1, 1))
+            b = x - vector
+
+    def test_iadd(self):
+        """ Tests ds-array magic method __iadd__ """
+        orig = np.array([[1, 2, 3], [4, 5, 6]])
+        x = ds.array(orig, block_size=(2, 1))
+        orig_vector = np.array([[1, 2, 3]])
+        vector = ds.array(orig_vector, block_size=(1, 1))
+
+        x += vector
+
+        self.assertTrue(_validate_array(x))
+        self.assertTrue(_validate_array(vector))
+
+        expected = np.array([[2, 4, 6], [5, 7, 9]])
+
+        self.assertTrue(_equal_arrays(expected, x.collect()))
+        self.assertTrue(_equal_arrays(orig_vector, vector.collect()))
+
+        orig = np.array([[1, 2, 3], [4, 5, 6]])
+        x = ds.array(orig, block_size=(2, 1))
+        orig_mat = np.array([[1, 2, 3], [4, 5, 6]])
+        matrix = ds.array(orig_mat, block_size=(2, 1))
+
+        x += matrix
+
+        self.assertTrue(_validate_array(x))
+        self.assertTrue(_validate_array(matrix))
+
+        expected = np.array([[2, 4, 6], [8, 10, 12]])
+
+        self.assertTrue(_equal_arrays(expected, x.collect()))
+        self.assertTrue(_equal_arrays(orig_mat, matrix.collect()))
+
+        with self.assertRaises(NotImplementedError):
+            orig = np.array([[1, 2, 3], [4, 5, 6]])
+            x = ds.array(orig, block_size=(2, 1))
+            orig_vector = np.array([[1, 2]])
+            vector = ds.array(orig_vector, block_size=(1, 1))
+            x += vector
+
+        with self.assertRaises(NotImplementedError):
+            orig = np.array([[1, 2, 3], [4, 5, 6]])
+            x = ds.array(orig, block_size=(2, 1))
+            orig_vector = np.array([[1, 2], [4, 5]])
+            vector = ds.array(orig_vector, block_size=(2, 1))
+            x += vector
+
+        with self.assertRaises(ValueError):
+            x1 = ds.array([[1, 2, 3], [4, 5, 6]], (2, 3))
+            x1.__init__([[1, 2, 3], [4, 5, 6], [7, 8, 9], [1, 2, 3],
+                         [4, 5, 6]], top_left_shape=(1, 3),
+                        reg_shape=(2, 3), shape=(5, 3), sparse=False)
+            x2 = ds.array([[1, 1, 1], [1, 1, 1],
+                           [1, 1, 1], [1, 1, 1],
+                           [1, 1, 1]], (2, 3))
+            x1 += x2
+        with self.assertRaises(ValueError):
+            orig = np.array([[1, 2, 3], [4, 5, 6]])
+            x = ds.array(orig, block_size=(2, 1))
+            orig_vector = np.array([[1, 2, 3], [4, 5, 6]])
+            vector = ds.array(orig_vector, block_size=(2, 2))
+            x += vector
+
+    def test_isub(self):
+        """ Tests ds-array magic method __isub__ """
+        orig = np.array([[1, 2, 3], [4, 5, 6]])
+        x = ds.array(orig, block_size=(2, 1))
+        orig_vector = np.array([[1, 2, 3]])
+        vector = ds.array(orig_vector, block_size=(1, 1))
+
+        x -= vector
+
+        self.assertTrue(_validate_array(x))
+        self.assertTrue(_validate_array(vector))
+
+        expected = np.array([[0, 0, 0], [3, 3, 3]])
+
+        self.assertTrue(_equal_arrays(expected, x.collect()))
+        self.assertTrue(_equal_arrays(orig_vector, vector.collect()))
+
+        orig = np.array([[1, 2, 3], [4, 5, 6]])
+        x = ds.array(orig, block_size=(2, 1))
+        orig_mat = np.array([[1, 2, 3], [4, 5, 6]])
+        matrix = ds.array(orig_mat, block_size=(2, 1))
+
+        x -= matrix
+
+        self.assertTrue(_validate_array(x))
+        self.assertTrue(_validate_array(matrix))
+
+        expected = np.array([[0, 0, 0], [0, 0, 0]])
+
+        self.assertTrue(_equal_arrays(expected, x.collect()))
+        self.assertTrue(_equal_arrays(orig_mat, matrix.collect()))
+        with self.assertRaises(NotImplementedError):
+            orig = np.array([[1, 2, 3], [4, 5, 6]])
+            x = ds.array(orig, block_size=(2, 1))
+            orig_vector = np.array([[1, 2]])
+            vector = ds.array(orig_vector, block_size=(1, 1))
+            x -= vector
+        with self.assertRaises(NotImplementedError):
+            orig = np.array([[1, 2, 3], [4, 5, 6]])
+            x = ds.array(orig, block_size=(2, 1))
+            orig_vector = np.array([[1, 2], [4, 5]])
+            vector = ds.array(orig_vector, block_size=(2, 1))
+            x -= vector
+
+        with self.assertRaises(ValueError):
+            x1 = ds.array([[1, 2, 3], [4, 5, 6]], (2, 3))
+            x1.__init__([[1, 2, 3], [4, 5, 6], [7, 8, 9], [1, 2, 3],
+                         [4, 5, 6]], top_left_shape=(1, 3),
+                        reg_shape=(2, 3), shape=(5, 3), sparse=False)
+            x2 = ds.array([[1, 1, 1], [1, 1, 1],
+                           [1, 1, 1], [1, 1, 1],
+                           [1, 1, 1]], (2, 3))
+            x1 -= x2
+        with self.assertRaises(ValueError):
+            orig = np.array([[1, 2, 3], [4, 5, 6]])
+            x = ds.array(orig, block_size=(2, 1))
+            orig_vector = np.array([[1, 2, 3], [4, 5, 6]])
+            vector = ds.array(orig_vector, block_size=(2, 2))
+            x -= vector
+
     def test_norm(self):
         """ Tests the norm """
         x_np = np.array([[1, 2, 3], [4, 5, 6]])
@@ -1056,7 +1258,7 @@ class ArrayTest(unittest.TestCase):
             x_csr.median()
 
 
-class MathTest(unittest.TestCase):
+class MathTest(BaseTimedTestCase):
 
     @parameterized.expand([((21, 33), (10, 15), False),
                            ((5, 10), (8, 1), False),

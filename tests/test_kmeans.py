@@ -8,9 +8,10 @@ from sklearn.datasets import make_blobs
 import dislib as ds
 from dislib.cluster import KMeans
 import dislib.data.util.model as utilmodel
+from tests import BaseTimedTestCase
 
 
-class KMeansTest(unittest.TestCase):
+class KMeansTest(BaseTimedTestCase):
     def test_init_params(self):
         """ Tests that KMeans object correctly sets the initialization
         parameters """
