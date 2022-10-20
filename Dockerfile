@@ -1,4 +1,4 @@
-FROM compss/compss:3.0
+FROM bscwdc/dislib-base:latest
 MAINTAINER COMPSs Support <support-compss@bsc.es>
 
 COPY . dislib/
