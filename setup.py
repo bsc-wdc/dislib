@@ -32,7 +32,7 @@ setuptools.setup(
         'Source': 'https://github.com/bsc-wdc/dislib',
         'Tracker': 'https://github.com/bsc-wdc/dislib/issues',
     },
-    packages=setuptools.find_packages(),
+    packages=setuptools.find_packages(exclude=['tests', 'tests.*']),
     classifiers=[
         "Programming Language :: Python :: 3 :: Only",
         "License :: OSI Approved :: Apache Software License",
