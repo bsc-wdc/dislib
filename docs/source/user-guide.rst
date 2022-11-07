@@ -466,7 +466,7 @@ iterations or until convergence. The algorithm's maximum parallelism is
 equal to the number of row blocks in the input ds-array and each task needs
 to load a row block in memory.
 
-This algorithm supports GPU acceleration. See :ref:`_gpu-support-label`
+This algorithm supports GPU acceleration. See :ref:`gpu-support-label`
 
 
 DBSCAN
@@ -754,7 +754,7 @@ task granularity. The optimal number of column blocks should not be
 too big or too small. If the number of features in the input
 ds-array is not too large, the covariance method might be more efficient.
 
-This algorithm supports GPU acceleration. See :ref:`_gpu-support-label`
+This algorithm supports GPU acceleration. See :ref:`gpu-support-label`
 
 .. topic:: References:
 
@@ -789,7 +789,7 @@ K-nearest neighbors
 The choice of neighbors search algorithm is determined automatically in 
 order to choose the best approach from the training data.
 
-This algorithm supports GPU acceleration. See :ref:`_gpu-support-label`
+This algorithm supports GPU acceleration. See :ref:`gpu-support-label`
 
 Model selection
 ---------------
