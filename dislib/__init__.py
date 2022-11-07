@@ -32,4 +32,4 @@ __all__ = ['array', 'random_array', 'zeros', 'full', 'identity', 'eye',
            'load_mdcrd_file', 'matmul', 'save_txt',
            'apply_along_axis', 'kron', 'svd']
 
-__gpu_available__ = os.environ.get('DISLIB_GPU_AVAILABLE', 'False') == 'True'
+__gpu_available__ = os.environ.get('DISLIB_GPU_AVAILABLE', 'False').lower() == 'true'
