@@ -1,6 +1,4 @@
-from collections import deque
 import itertools
-import time
 
 import numpy as np
 import dislib
@@ -41,6 +39,11 @@ def kron(a, b, block_size=None):
     # times. This is why we need to rechunk it at the end.
     offseti = 0
 
+    if dislib.__gpu_available__:
+        kron_func = _kron_gpu
+    else:
+        kron_func = _kron
+
     for i in range(a._n_blocks[0]):
         offsetj = 0
 
@@ -50,7 +53,7 @@ def kron(a, b, block_size=None):
             for k in range(b._n_blocks[0]):
                 for q in range(b._n_blocks[1]):
                     out_blocks = Array._get_out_blocks(bshape_a)
-                    _kron(a._blocks[i][j], b._blocks[k][q], out_blocks)
+                    kron_func(a._blocks[i][j], b._blocks[k][q], out_blocks)
 
                     for m in range(bshape_a[0]):
                         for n in range(bshape_a[1]):
@@ -327,7 +330,7 @@ def _compute_u_block(a_block, u_block):
 def _compute_u_block_sorted(a_block, index, bsize, sorting, u_block):
     a_col = Array._merge_blocks(a_block)
     norm = np.linalg.norm(a_col, axis=0)
-    
+
     # replace zero norm columns of a with an arbitrary unitary vector
     zero_idx = np.where(norm == 0)
     a_col[0, zero_idx] = 1
@@ -343,26 +346,24 @@ def _compute_u_block_sorted(a_block, index, bsize, sorting, u_block):
         dest_i = np.where(sorting == (index * bsize + i))[0][0]
         block_i = dest_i // bsize
         u_block[block_i].append(u_col[:, i])
-    
+
     for i in range(len(u_block)):
         if u_block[i]:
             u_block[i] = np.vstack(u_block[i])
 
 
-
 @constraint(processors=[
                 {"processorType": "CPU", "computingUnits": "1"},
                 {"processorType": "GPU", "computingUnits": "1"},
-            ]
-)
+            ])
 @task(a_block={Type: COLLECTION_IN, Depth: 2},
       u_block={Type: COLLECTION_OUT, Depth: 1})
 def _compute_u_block_sorted_gpu(a_block, index, bsize, sorting, u_block):
     import cupy as cp
-    
+
     a_col_gpu = cp.asarray(Array._merge_blocks(a_block))
     norm_gpu = cp.linalg.norm(a_col_gpu, axis=0)
-    
+
     zero_idx = cp.where(norm_gpu == 0)
     a_col_gpu[0, zero_idx] = 1
     norm_gpu[zero_idx] = 1
@@ -376,7 +377,7 @@ def _compute_u_block_sorted_gpu(a_block, index, bsize, sorting, u_block):
         dest_i = np.where(sorting == (index * bsize + i))[0][0]
         block_i = dest_i // bsize
         u_block[block_i].append(cp.asnumpy(u_col_gpu[:, i]))
-            
+
 
 @constraint(computing_units="${ComputingUnits}")
 @task(block={Type: COLLECTION_IN, Depth: 1},
@@ -439,11 +440,11 @@ def _compute_rotation_and_rotate(coli_blocks, colj_blocks, eps):
         _rotate(coli_blocks, colj_blocks, j)
         return j, True
 
+
 @constraint(processors=[
-                {"processorType": "CPU", "computingUnits": "${ComputingUnits}"},
+                {"processorType": "CPU", "computingUnits": "1"},
                 {"processorType": "GPU", "computingUnits": "1"},
-            ]
-)
+            ])
 @task(coli_blocks={Type: COLLECTION_INOUT, Depth: 2},
       colj_blocks={Type: COLLECTION_INOUT, Depth: 2},
       returns=2)
@@ -469,27 +470,21 @@ def _compute_rotation_and_rotate_gpu(coli_blocks, colj_blocks, eps):
         del bii_gpu, bij_gpu, bjj_gpu, tol_gpu
         return None, False
     else:
-        bii, bij, bjj = cp.asnumpy(bii_gpu), cp.asnumpy(bij_gpu), cp.asnumpy(bjj_gpu)
+        bii, bij = cp.asnumpy(bii_gpu), cp.asnumpy(bij_gpu)
+        bjj = cp.asnumpy(bjj_gpu)
         del bii_gpu, bij_gpu, bjj_gpu, tol_gpu
 
         b = np.block([[bii, bij], [bij.T, bjj]])
 
-        import socket
+        j_gpu, _, _ = cp.linalg.svd(cp.asarray(b))
+        _rotate_gpu(coli_blocks, colj_blocks, j_gpu)
+        return cp.asnumpy(j_gpu), True
 
-        if socket.gethostname().startswith('p9'):
-            j_gpu, _, _ = cp.linalg.svd(cp.asarray(b))
-            _rotate_gpu(coli_blocks, colj_blocks, j_gpu)
-            return cp.asnumpy(j_gpu), True
-        else:
-            j, _, _ = np.linalg.svd(b)
-            _rotate_gpu(coli_blocks, colj_blocks, cp.asarray(j))
-            return j, True
 
 @constraint(processors=[
                 {"processorType": "CPU", "computingUnits": "1"},
                 {"processorType": "GPU", "computingUnits": "1"},
-            ]
-)
+            ])
 @task(coli_blocks={Type: COLLECTION_INOUT, Depth: 2},
       colj_blocks={Type: COLLECTION_INOUT, Depth: 2})
 def _rotate_gpu(coli_blocks, colj_blocks, j_gpu):
@@ -519,7 +514,6 @@ def _rotate_gpu(coli_blocks, colj_blocks, j_gpu):
         colj_blocks[i][0][:] = colj_k[i * block_size:(i + 1) * block_size][:]
 
     cp.get_default_memory_pool().free_all_blocks()
-
 
 
 @constraint(computing_units="${ComputingUnits}")
@@ -555,3 +549,21 @@ def _kron(block1, block2, out_blocks):
     for i in range(block1.shape[0]):
         for j in range(block1.shape[1]):
             out_blocks[i][j] = block1[i, j] * block2
+
+
+@constraint(processors=[
+                {"processorType": "CPU", "computingUnits": "1"},
+                {"processorType": "GPU", "computingUnits": "1"},
+            ])
+@task(out_blocks={Type: COLLECTION_OUT, Depth: 2})
+def _kron_gpu(block1, block2, out_blocks):
+    """ Computes the kronecker product of two blocks and returns one ndarray
+    per (element-in-block1, block2) pair."""
+
+    import cupy as cp
+
+    block1_gpu, block2_gpu = cp.asarray(block1), cp.asarray(block2)
+
+    for i in range(block1_gpu.shape[0]):
+        for j in range(block1_gpu.shape[1]):
+            out_blocks[i][j] = cp.asnumpy(block1_gpu[i, j] * block2_gpu)

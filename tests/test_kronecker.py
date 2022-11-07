@@ -1,13 +1,11 @@
 import unittest
 
 import numpy as np
-from numpy.linalg import qr as qr_numpy
 from parameterized import parameterized
-from pycompss.api.api import compss_wait_on
 
 from dislib.data.array import random_array
 from dislib.math import kron
-import dislib
+
 
 class KroneckerTest(unittest.TestCase):
 
@@ -28,20 +26,14 @@ class KroneckerTest(unittest.TestCase):
         b = b.collect()
         res = res_ds.collect()
 
-        print('*****', res.shape)
         kron_np = np.kron(a, b)
-        print('*****', kron_np.shape)
-        print(); print()
 
         self.assertTrue(np.allclose(kron_np, res))
 
-    
+
 def main():
     unittest.main()
 
 
 if __name__ == '__main__':
-    print('****************************')
-    print(dislib.__gpu_available__)
-    print('****************************')
     main()

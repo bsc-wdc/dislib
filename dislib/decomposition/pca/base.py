@@ -1,6 +1,5 @@
 import numpy as np
 from pycompss.api.constraint import constraint
-from pycompss.api.api import compss_wait_on
 from pycompss.api.parameter import COLLECTION_IN, Depth, Type, COLLECTION_OUT
 from pycompss.api.task import task
 from scipy.sparse import issparse, csr_matrix
@@ -153,8 +152,8 @@ class PCA(BaseEstimator):
             decompose_func = _decompose
 
         decompose_func(cov_matrix, self.n_components, x._reg_shape[1],
-                   val_blocks,
-                   vec_blocks)
+                       val_blocks,
+                       vec_blocks)
 
         bshape = (x._reg_shape[1], x._reg_shape[1])
 
@@ -226,6 +225,7 @@ def _subset_scatter_matrix(blocks):
 
     return np.dot(data.T, data)
 
+
 @constraint(processors=[
                 {"processorType": "CPU", "computingUnits": "1"},
                 {"processorType": "GPU", "computingUnits": "1"},
@@ -294,13 +294,15 @@ def _decompose(covariance_matrix, n_components, bsize, val_blocks, vec_blocks):
             vec_blocks[i][j] = \
                 eig_vec[i * bsize:(i + 1) * bsize, j * bsize:(j + 1) * bsize]
 
+
 @constraint(processors=[
                 {"processorType": "CPU", "computingUnits": "1"},
                 {"processorType": "GPU", "computingUnits": "1"},
             ])
 @task(val_blocks={Type: COLLECTION_OUT, Depth: 2},
       vec_blocks={Type: COLLECTION_OUT, Depth: 2})
-def _decompose_gpu(covariance_matrix, n_components, bsize, val_blocks, vec_blocks):
+def _decompose_gpu(covariance_matrix, n_components, bsize,
+                   val_blocks, vec_blocks):
     import cupy as cp
 
     eig_val_gpu, eig_vec_gpu = cp.linalg.eigh(cp.asarray(covariance_matrix))
@@ -316,8 +318,10 @@ def _decompose_gpu(covariance_matrix, n_components, bsize, val_blocks, vec_block
 
     # normalize eigenvectors sign to ensure deterministic output
     max_abs_cols = cp.argmax(cp.abs(eig_vec_gpu), axis=1)
-    signs_gpu = cp.sign(eig_vec_gpu[list(range(len(eig_vec_gpu))), max_abs_cols])
-    eig_vec, signs, eig_val = cp.asnumpy(eig_vec_gpu), cp.asnumpy(signs_gpu), cp.asnumpy(eig_val_gpu)
+    s = eig_vec_gpu[list(range(len(eig_vec_gpu))), max_abs_cols]
+    signs_gpu = cp.sign(s)
+    eig_vec, signs = cp.asnumpy(eig_vec_gpu), cp.asnumpy(signs_gpu)
+    eig_val = cp.asnumpy(eig_val_gpu)
     eig_vec *= signs[:, np.newaxis]
 
     for i in range(len(vec_blocks)):

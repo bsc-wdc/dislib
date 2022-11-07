@@ -3,7 +3,6 @@ import os
 import pickle
 
 import numpy as np
-import cupy as cp
 
 import dislib
 from pycompss.api.api import compss_wait_on
@@ -345,10 +344,12 @@ def _decode_helper(obj):
             ])
 @task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
 def _partial_sum_gpu(blocks, centers):
+    import cupy as cp
 
     partials = np.zeros((centers.shape[0], 2), dtype=object)
     arr = Array._merge_blocks(blocks).astype(np.float32)
-    arr_gpu, centers_gpu = cp.asarray(arr), cp.asarray(centers).astype(cp.float32)
+    arr_gpu = cp.asarray(arr)
+    centers_gpu = cp.asarray(centers).astype(cp.float32)
 
     close_centers_gpu = cp.argmin(distance_gpu(arr_gpu, centers_gpu), axis=1)
     arr_gpu, centers_gpu = None, None
@@ -398,14 +399,19 @@ def _predict(blocks, centers):
 
 
 def distance_gpu(a_gpu, b_gpu):
+    import cupy as cp
+
     sq_sum_ker = get_sq_sum_kernel()
-    aa_gpu, bb_gpu = cp.empty(a_gpu.shape[0], dtype=cp.float32), cp.empty(b_gpu.shape[0], dtype=cp.float32)
+
+    aa_gpu = cp.empty(a_gpu.shape[0], dtype=cp.float32)
+    bb_gpu = cp.empty(b_gpu.shape[0], dtype=cp.float32)
+
     sq_sum_ker(a_gpu, aa_gpu, axis=1)
     sq_sum_ker(b_gpu, bb_gpu, axis=1)
 
     size = len(aa_gpu) * len(bb_gpu)
     dist_gpu = cp.empty((len(aa_gpu), len(bb_gpu)), dtype=cp.float32)
-    add_mix_kernel(len(b_gpu))(aa_gpu, bb_gpu, dist_gpu, size=size, block_size=1024)
+    add_mix_kernel(len(b_gpu))(aa_gpu, bb_gpu, dist_gpu, size=size)
     aa_gpu, bb_gpu = None, None
 
     dist_gpu += -2.0 * cp.dot(a_gpu, b_gpu.T)
@@ -414,6 +420,8 @@ def distance_gpu(a_gpu, b_gpu):
 
 
 def get_sq_sum_kernel():
+    import cupy as cp
+
     return cp.ReductionKernel(
         'T x',  # input params
         'T y',  # output params
@@ -424,8 +432,11 @@ def get_sq_sum_kernel():
         'sqsum'  # kernel name
     )
 
+
 def add_mix_kernel(y_len):
-  return cp.ElementwiseKernel(
-      'raw T x, raw T y', 'raw T z',
-      f'z[i] = x[i / {y_len}] + y[i % {y_len}]',
-      'add_mix')
+    import cupy as cp
+
+    return cp.ElementwiseKernel(
+        'raw T x, raw T y', 'raw T z',
+        f'z[i] = x[i / {y_len}] + y[i % {y_len}]',
+        'add_mix')

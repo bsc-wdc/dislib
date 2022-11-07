@@ -1,7 +1,5 @@
 import numpy as np
 from collections import deque
-import operator
-import time
 import warnings
 
 from pycompss.api.api import compss_delete_object
@@ -103,15 +101,13 @@ def _qr_full(r):
     r_type = full((r._n_blocks[0], r._n_blocks[1]), (1, 1), OTHER)
 
     for i in range(r._n_blocks[1]):
-        
+
         act_q_type, act_q, r_type_block, r_block = _qr(
             r._blocks[i][i], r_type._blocks[i][i], r._reg_shape, t=True
         )
-        
+
         r_type.replace_block(i, i, r_type_block)
         r.replace_block(i, i, r_block)
-
-        
 
         for j in range(r._n_blocks[0]):
             q_type_block, q_block = _dot(
@@ -136,8 +132,6 @@ def _qr_full(r):
             r_type.replace_block(i, j, r_type_block)
             r.replace_block(i, j, r_block)
 
-        
-
         compss_delete_object(act_q_type)
         compss_delete_object(act_q)
 
@@ -148,7 +142,7 @@ def _qr_full(r):
 
         # Update values of the respective column
         for j in range(i + 1, r._n_blocks[0]):
-            
+
             sub_q[0][0], sub_q[0][1], sub_q[1][0], sub_q[1][1], \
               r_type_block1, r_block1, r_type_block2, r_block2 = _little_qr(
                 r._blocks[i][i],
@@ -162,9 +156,6 @@ def _qr_full(r):
             r_type.replace_block(j, i, r_type_block2)
             r.replace_block(j, i, r_block2)
 
-            
-
-            
             # Update values of the row for the value updated in the column
             for k in range(i + 1, r._n_blocks[1]):
                 [[r_type_block1], [r_type_block2]], \
@@ -194,8 +185,6 @@ def _qr_full(r):
                 q.replace_block(k, i, q_block1)
                 q_type.replace_block(k, j, q_type_block2)
                 q.replace_block(k, j, q_block2)
-            
-            
 
             compss_delete_object(sub_q[0][0])
             compss_delete_object(sub_q[0][1])
@@ -426,8 +415,8 @@ def _split_matrix(a, m_size):
     b_size = int(len(a) / m_size)
     blocks = len(a)//b_size
     split_matrix = np.array(a).reshape(blocks, b_size, -1, b_size) \
-                    .swapaxes(1,2) \
-                    .reshape(blocks, blocks, b_size, b_size)
+                              .swapaxes(1, 2) \
+                              .reshape(blocks, blocks, b_size, b_size)
 
     return split_matrix
 
@@ -450,16 +439,16 @@ def _dot_task(a, b, transpose_result=False, transpose_a=False,
         return np.transpose(np.dot(a, b))
     return np.dot(a, b)
 
+
 @constraint(processors=[
                 {"processorType": "CPU", "computingUnits": "1"},
                 {"processorType": "GPU", "computingUnits": "1"},
-            ]
-)
+            ])
 @task(returns=np.array)
 def _dot_task_gpu(a, b, transpose_result=False, transpose_a=False,
-              transpose_b=False):
+                  transpose_b=False):
     import cupy as cp
-    
+
     a_gpu, b_gpu = cp.asarray(a), cp.asarray(b)
     if transpose_a:
         a_gpu = np.transpose(a_gpu)
@@ -467,10 +456,10 @@ def _dot_task_gpu(a, b, transpose_result=False, transpose_a=False,
         b_gpu = np.transpose(b_gpu)
 
     dot_gpu = cp.dot(a_gpu, b_gpu)
-    
+
     if transpose_result:
         dot_gpu = cp.transpose(dot_gpu)
-    
+
     return cp.asnumpy(dot_gpu)
 
 
@@ -492,10 +481,6 @@ def _qr_task(a, a_type, b_size, mode='reduced', t=False):
 
 def _type_block(value):
     return np.full((1, 1), value, np.uint8)
-
-
-def _empty_block(shape):
-    return np.full(shape, 0, dtype=np.uint8)
 
 
 def _dot(a, a_type, b, b_type, b_size, transpose_result=False,
@@ -521,16 +506,16 @@ def _dot(a, a_type, b, b_type, b_size, transpose_result=False,
 @task(returns=(np.array, np.array, np.array, np.array, np.array, np.array))
 def _little_qr_task(a, type_a, b, type_b, b_size):
     regular_b_size = b_size[0]
-    
+
     curr_a = np.bmat([[a], [b]])
     (sub_q, sub_r) = np.linalg.qr(curr_a, mode='complete')
     aa = sub_r[0:regular_b_size]
     bb = sub_r[regular_b_size:2 * regular_b_size]
     sub_q = _split_matrix(sub_q, 2)
-    
-    return np.transpose(sub_q[0][0]), np.transpose(sub_q[1][0]), \
-           np.transpose(sub_q[0][1]), np.transpose(sub_q[1][1]), aa, bb
 
+    return (np.transpose(sub_q[0][0]), np.transpose(sub_q[1][0]),
+            np.transpose(sub_q[0][1]), np.transpose(sub_q[1][1]),
+            aa, bb)
 
 
 def _multiply_blocked(a, type_a, b, type_b, b_size, transpose_a=False,
@@ -552,9 +537,10 @@ def _multiply_blocked(a, type_a, b, type_b, b_size, transpose_a=False,
             vblock = [b[k][j] for k in range(len(b))]
 
             c[i][j] = _multiply_block_groups(hblock, vblock,
-                                                  transpose_a, transpose_b)
+                                             transpose_a, transpose_b)
 
     return type_c, c
+
 
 @constraint(computing_units="${ComputingUnits}")
 @task(returns=np.array)
@@ -565,14 +551,14 @@ def _matmul_with_transpose(a, b, transpose_a, transpose_b):
 @constraint(processors=[
                 {"processorType": "CPU", "computingUnits": "1"},
                 {"processorType": "GPU", "computingUnits": "1"},
-            ]
-)
+            ])
 @task(returns=np.array)
 def _add_gpu(block1, block2):
     import cupy as cp
 
     res = cp.add(cp.asarray(block1), cp.asarray(block2))
     return cp.asnumpy(res)
+
 
 @constraint(computing_units="${ComputingUnits}")
 @task(returns=np.array)
@@ -583,8 +569,7 @@ def _add_cpu(block1, block2):
 @constraint(processors=[
                 {"processorType": "CPU", "computingUnits": "1"},
                 {"processorType": "GPU", "computingUnits": "1"},
-            ]
-)
+            ])
 @task(returns=np.array)
 def _matmul_gpu(a, b, transpose_a, transpose_b):
     import cupy as cp
@@ -612,7 +597,7 @@ def _multiply_block_groups(hblock, vblock, transpose_a=False,
     for blocki, blockj in zip(hblock, vblock):
         blocks.append(
             matmul_func(blocki, blockj,
-                         transpose_a, transpose_b)
+                        transpose_a, transpose_b)
         )
 
     while len(blocks) > 1:
@@ -625,6 +610,7 @@ def _multiply_block_groups(hblock, vblock, transpose_a=False,
 
     return blocks[0]
 
+
 @constraint(processors=[
                 {"processorType": "CPU", "computingUnits": "1"},
                 {"processorType": "GPU", "computingUnits": "1"},
@@ -636,13 +622,13 @@ def _qr_task_gpu(a, a_type, b_size, mode='reduced', t=False):
 
     a_gpu = cp.asarray(a)
     if type(a_type) is object or a_type[0, 0] == OTHER:
-        q, r = qr(a_gpu, mode=mode)                             
+        q, r = qr(a_gpu, mode=mode)
     elif a_type[0, 0] == ZEROS:
-        q, r = qr(cp.zeros(b_size), mode=mode)              
+        q, r = qr(cp.zeros(b_size), mode=mode)
     else:
-        q, r = qr(cp.identity(max(b_size)), mode=mode)      
+        q, r = qr(cp.identity(max(b_size)), mode=mode)
     if t:
-        q = cp.transpose(q)                                 
+        q = cp.transpose(q)
     q, r = cp.asnumpy(q), cp.asnumpy(r)
     return q, r
 
@@ -665,16 +651,18 @@ def _little_qr_task_gpu(a, type_a, b, type_b, b_size, transpose=False):
     import cupy as cp
 
     regular_b_size = b_size[0]
-    
+
     curr_a = np.bmat([[a], [b]])
-    sub_q_gpu, sub_r_gpu = cp.linalg.qr(cp.asarray(curr_a), mode='complete')                     
+    sub_q_gpu, sub_r_gpu = cp.linalg.qr(cp.asarray(curr_a), mode='complete')
     sub_q, sub_r = cp.asnumpy(sub_q_gpu), cp.asnumpy(sub_r_gpu)
     aa = sub_r[0:regular_b_size]
     bb = sub_r[regular_b_size:2 * regular_b_size]
     sub_q = _split_matrix(sub_q, 2)
-    
-    return np.transpose(sub_q[0][0]), np.transpose(sub_q[1][0]), \
-           np.transpose(sub_q[0][1]), np.transpose(sub_q[1][1]), aa, bb
+
+    return (np.transpose(sub_q[0][0]), np.transpose(sub_q[1][0]),
+            np.transpose(sub_q[0][1]), np.transpose(sub_q[1][1]),
+            aa, bb)
+
 
 def _little_qr(a, type_a, b, type_b, b_size):
     if dislib.__gpu_available__:
@@ -692,9 +680,3 @@ def _little_qr(a, type_a, b, type_b, b_size):
 
     return sub_q00, sub_q01, sub_q10, sub_q11, \
         _type_block(OTHER), aa, _type_block(OTHER), bb
-
-
-def _transpose_block(a, a_type):
-    if a_type[0][0] == ZEROS or a_type[0][0] == IDENTITY:
-        return a_type, a
-    return _type_block(OTHER), np.transpose(a)

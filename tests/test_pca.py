@@ -87,7 +87,7 @@ class PCATest(BaseTimedTestCase):
     def test_sparse(self):
         """ Tests PCA produces the same results using dense and sparse
         data structures. """
-        file_ = "/gpfs/scratch/bsc19/bsc19959/dislib_gpu/tests/datasets/libsvm/2"
+        file_ = "tests/datasets/libsvm/2"
         x_sp, _ = ds.load_svmlight_file(file_, (10, 300), 780, True)
         x_ds, _ = ds.load_svmlight_file(file_, (10, 300), 780, False)
 

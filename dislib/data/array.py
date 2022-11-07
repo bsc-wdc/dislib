@@ -1292,29 +1292,6 @@ def array(x, block_size):
     return arr
 
 
-def _empty_array(shape, block_size):
-    '''
-    Returns an empty ds-array with the specified block_size and shape.
-    Useful for constructing ds-arrays on some algorithms without the
-    need of allocating memory for the blocks (as for example happens with
-    the random_array operation).
-    Parameters
-    ----------
-    shape : tuple of two ints
-        Shape of the output ds-array.
-    block_size : tuple of two ints
-        Size of the ds-array blocks.
-    Returns
-    -------
-    x : ds-array
-        Distributed array with value None in the blocks.
-    '''
-    return Array(blocks=[[None] for _ in range(math.ceil(shape[0] /
-                                                         block_size[0]))],
-                 top_left_shape=block_size,
-                 reg_shape=block_size, shape=shape, sparse=False)
-
-
 def random_array(shape, block_size, random_state=None):
     """ Returns a distributed array of random floats in the open interval [0.0,
     1.0). Values are from the "continuous uniform" distribution over the
@@ -1455,6 +1432,7 @@ def _empty_array(shape, block_size):
                                                          block_size[0]))],
                  top_left_shape=block_size,
                  reg_shape=block_size, shape=shape, sparse=False)
+
 
 def full(shape, block_size, fill_value, dtype=None):
     """ Returns a ds-array of 'shape' filled with 'fill_value'.
@@ -1638,42 +1616,46 @@ def matmul(a: Array, b: Array, transpose_a=False, transpose_b=False):
 def _matmul_with_transpose(a, b, transpose_a, transpose_b):
     return (a.T if transpose_a else a) @ (b.T if transpose_b else b)
 
+
 @constraint(processors=[
                 {"processorType": "CPU", "computingUnits": "1"},
                 {"processorType": "GPU", "computingUnits": "1"},
-            ]
-)
+            ])
 @task(returns=np.array)
 def _add_gpu(block1, block2):
     import cupy as cp
 
     block1_gpu, block2_gpu = cp.asarray(block1), cp.asarray(block2)
     res = cp.asnumpy(cp.add(block1_gpu, block2_gpu))
-    block1_gpu, block2_gpu = None, None
+    del block1_gpu, block2_gpu
     return res
+
 
 @constraint(computing_units="${ComputingUnits}")
 @task(returns=np.array)
 def _add_cpu(block1, block2):
     return block1 + block2
 
+
 @constraint(processors=[
                 {"processorType": "CPU", "computingUnits": "1"},
                 {"processorType": "GPU", "computingUnits": "1"},
-            ]
-)
+            ])
 @task(returns=np.array)
 def _matmul_gpu(a, b, transpose_a, transpose_b):
     import cupy as cp
 
     a_gpu, b_gpu = cp.asarray(a), cp.asarray(b)
+
     if transpose_a:
         a_gpu = cp.transpose(a_gpu)
     if transpose_b:
         b_gpu = cp.transpose(b_gpu)
+
     res = cp.asnumpy(cp.matmul(a_gpu, b_gpu))
-    a_gpu, b_gpu = None, None
+    del a_gpu, b_gpu
     return res
+
 
 def _multiply_block_groups(hblock, vblock, transpose_a=False,
                            transpose_b=False):
@@ -1688,8 +1670,7 @@ def _multiply_block_groups(hblock, vblock, transpose_a=False,
 
     for blocki, blockj in zip(hblock, vblock):
         blocks.append(
-            matmul_func(blocki, blockj,
-                         transpose_a, transpose_b)
+            matmul_func(blocki, blockj, transpose_a, transpose_b)
         )
 
     while len(blocks) > 1:
@@ -1771,16 +1752,16 @@ def matsubtract(a: Array, b: Array):
 @constraint(processors=[
                 {"processorType": "CPU", "computingUnits": "1"},
                 {"processorType": "GPU", "computingUnits": "1"},
-            ]
-)
+            ])
 @task(returns=np.array)
 def _subtract_gpu(block1, block2):
     import cupy as cp
-    
+
     block1_gpu, block2_gpu = cp.asarray(block1), cp.asarray(block2)
     res = cp.asnumpy(cp.subtract(block1_gpu, block2_gpu))
-    block1_gpu, block2_gpu = None, None
+    del block1_gpu, block2_gpu
     return res
+
 
 @constraint(computing_units="${ComputingUnits}")
 @task(returns=np.array)
@@ -2148,6 +2129,7 @@ def _block_apply_axis(func, axis, blocks, *args, **kwargs):
 @task(returns=1)
 def _block_apply(func, block, *args, **kwargs):
     return func(block, *args, **kwargs)
+
 
 @constraint(computing_units="${ComputingUnits}")
 @task(block=INOUT)

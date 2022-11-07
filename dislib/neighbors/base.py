@@ -8,6 +8,7 @@ from sklearn.neighbors import NearestNeighbors as SKNeighbors
 from sklearn.utils import validation
 
 from dislib.data.array import Array
+import dislib
 
 
 class NearestNeighbors(BaseEstimator):
@@ -46,12 +47,15 @@ class NearestNeighbors(BaseEstimator):
         -------
         self : NearestNeighbors
         """
-        self._fit_data = list()
+        if dislib.__gpu_available__:
+            self._fit_data = x
+        else:
+            self._fit_data = list()
 
-        for row in x._iterator(axis=0):
-            sknnstruct = _compute_fit(row._blocks)
-            n_samples = row.shape[0]
-            self._fit_data.append([sknnstruct, n_samples])
+            for row in x._iterator(axis=0):
+                sknnstruct = _compute_fit(row._blocks)
+                n_samples = row.shape[0]
+                self._fit_data.append((sknnstruct, n_samples))
 
         return self
 
@@ -89,10 +93,19 @@ class NearestNeighbors(BaseEstimator):
             queries = []
             offset = 0
 
-            for sknnstruct, n_samples in self._fit_data:
-                queries.append(_get_kneighbors(sknnstruct, q_row._blocks,
-                                               n_neighbors, offset))
-                offset += n_samples
+            if dislib.__gpu_available__:
+                for x_row in self._fit_data._iterator(axis=0):
+                    q = _get_kneighbors_gpu(x_row._blocks,
+                                            q_row._blocks,
+                                            n_neighbors,
+                                            offset)
+                    queries.append(q)
+                    offset += len(x_row._blocks)
+            else:
+                for sknnstruct, n_samples in self._fit_data:
+                    queries.append(_get_kneighbors(sknnstruct, q_row._blocks,
+                                                   n_neighbors, offset))
+                    offset += n_samples
 
             dist, ind = _merge_kqueries(n_neighbors, *queries)
             for q in queries:
@@ -114,15 +127,6 @@ class NearestNeighbors(BaseEstimator):
             return dst_arr, ind_arr
 
         return ind_arr
-
-    # @abarcelo started to implement radius_neighbors and it was trivial.
-    # Easy to implement, easy merge, everything was going smoothly.
-    # Until I realized that the returning Array structure has variable row
-    # size (the number of neighbors is not fixed). That is not supported
-    # by the Array dislib structure (AFAIK).
-    # @abarcelo then threw all the elegant implementation in a trash bin and
-    # proceeded to go cry in a corner.
-    # def radius_neighbors(self, x, radius=None, return_distance=True):
 
 
 @constraint(computing_units="${ComputingUnits}")
@@ -147,6 +151,29 @@ def _get_kneighbors(sknnstruct, q_blocks, n_neighbors, offset):
     return dist, ind
 
 
+@constraint(processors=[
+                {"processorType": "CPU", "computingUnits": "1"},
+                {"processorType": "GPU", "computingUnits": "1"},
+            ])
+@task(x_blocks={Type: COLLECTION_IN, Depth: 2},
+      q_blocks={Type: COLLECTION_IN, Depth: 2},
+      returns=tuple)
+def _get_kneighbors_gpu(x_blocks, q_blocks, n_neighbors, offset):
+    import cupy as cp
+
+    x_samples = Array._merge_blocks(x_blocks)
+    q_samples = Array._merge_blocks(q_blocks)
+
+    x_samples_gpu = cp.asarray(x_samples).astype(cp.float64)
+    q_samples_gpu = cp.asarray(q_samples).astype(cp.float64)
+
+    dist_gpu = distance_gpu(q_samples_gpu, x_samples_gpu)
+    ind_gpu = cp.argsort(dist_gpu, axis=1)[:, :n_neighbors]
+    dist_gpu = cp.take_along_axis(dist_gpu, ind_gpu, axis=1)
+
+    return cp.asnumpy(dist_gpu), cp.asnumpy(ind_gpu) + offset
+
+
 @constraint(computing_units="${ComputingUnits}")
 @task(returns=2)
 def _merge_kqueries(k, *queries):
@@ -163,3 +190,49 @@ def _merge_kqueries(k, *queries):
     final_ind = np.take_along_axis(aggr_ind, final_ii, 1)
 
     return final_dist, final_ind
+
+
+def distance_gpu(a_gpu, b_gpu):
+    import cupy as cp
+
+    sq_sum_ker = get_sq_sum_kernel()
+
+    aa_gpu = cp.empty(a_gpu.shape[0], dtype=cp.float64)
+    bb_gpu = cp.empty(b_gpu.shape[0], dtype=cp.float64)
+
+    sq_sum_ker(a_gpu, aa_gpu, axis=1)
+    sq_sum_ker(b_gpu, bb_gpu, axis=1)
+
+    dist_shape = (len(aa_gpu), len(bb_gpu))
+    dist_gpu = cp.empty(dist_shape, dtype=cp.float64)
+
+    add_mix_kernel(len(b_gpu))(aa_gpu, bb_gpu, dist_gpu,
+                               size=int(np.prod(dist_shape)))
+    aa_gpu, bb_gpu = None, None
+
+    dist_gpu += -2.0 * cp.dot(a_gpu, b_gpu.T)
+
+    return cp.sqrt(dist_gpu)
+
+
+def get_sq_sum_kernel():
+    import cupy as cp
+
+    return cp.ReductionKernel(
+        'T x',  # input params
+        'T y',  # output params
+        'x * x',  # map
+        'a + b',  # reduce
+        'y = a',  # post-reduction map
+        '0',  # identity value
+        'sqsum'  # kernel name
+    )
+
+
+def add_mix_kernel(y_len):
+    import cupy as cp
+
+    return cp.ElementwiseKernel(
+      'raw T x, raw T y', 'raw T z',
+      f'z[i] = x[i / {y_len}] + y[i % {y_len}]',
+      'add_mix')
