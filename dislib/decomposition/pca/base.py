@@ -181,7 +181,7 @@ class PCA(BaseEstimator):
         n_col_blocks = div + (1 if mod else 0)
 
         for rows in x._iterator('rows'):
-            out_blocks = [object() for _ in range(n_col_blocks)]
+            out_blocks = [None] * n_col_blocks
             _subset_transform(rows._blocks, self.mean_._blocks,
                               self.components_._blocks, reg_shape, out_blocks)
             new_blocks.append(out_blocks)

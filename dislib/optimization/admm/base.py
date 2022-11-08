@@ -106,7 +106,7 @@ class ADMM(BaseEstimator):
             if self.verbose:
                 print("Iteration ", self.n_iter_)
 
-        z_blocks = [object() for _ in range(x_reg._n_blocks[1])]
+        z_blocks = [None] * x_reg._n_blocks[1]
         _split_z(self._z, x._reg_shape[1], z_blocks)
         self.z_ = Array([z_blocks], (1, x._reg_shape[1]), (1, x._reg_shape[1]),
                         (1, x.shape[1]), False)
@@ -156,7 +156,7 @@ class ADMM(BaseEstimator):
         blocks = []
 
         for w_hblock in self._w._iterator():
-            out_blocks = [object() for _ in range(self._w._n_blocks[1])]
+            out_blocks = [None] * self._w._n_blocks[1]
             _substract(w_hblock._blocks, z_old, out_blocks)
             blocks.append(out_blocks)
 
@@ -172,7 +172,7 @@ class ADMM(BaseEstimator):
 
         for u_hblock, w_hblock in zip(self._u._iterator(),
                                       self._w._iterator()):
-            out_blocks = [object() for _ in range(self._u._n_blocks[1])]
+            out_blocks = [None] * self._u._n_blocks[1]
             _update_u(self._z, u_hblock._blocks, w_hblock._blocks, out_blocks)
             u_blocks.append(out_blocks)
 
@@ -191,7 +191,7 @@ class ADMM(BaseEstimator):
         for xy_hblock, u_hblock in zip(_paired_partition(x, y),
                                        self._u._iterator()):
             x_hblock, y_hblock = xy_hblock
-            w_hblock = [object() for _ in range(x._n_blocks[1])]
+            w_hblock = [None] * x._n_blocks[1]
             x_blocks = x_hblock._blocks
             y_blocks = y_hblock._blocks
             u_blocks = u_hblock._blocks

@@ -127,12 +127,12 @@ def shuffle(x, y=None, random_state=None):
                                in mapped_subsamples]
         seed = np.random.randint(np.iinfo(np.int32).max)
         # TODO: change object() for None when COMPSs version support it
-        part_out_x_blocks = [object() for _ in range(x._n_blocks[1])]
+        part_out_x_blocks = [None] * x._n_blocks[1]
         if y is None:
             _merge_shuffle_x(seed, part_out_subsamples, part_out_x_blocks,
                              x._reg_shape[1])
         else:
-            part_out_y_blocks = [object() for _ in range(y._n_blocks[1])]
+            part_out_y_blocks = [None] * y._n_blocks[1]
             _merge_shuffle_xy(seed, part_out_subsamples, part_out_x_blocks,
                               part_out_y_blocks, x._reg_shape[1],
                               y._reg_shape[1])
@@ -176,7 +176,7 @@ def _partition_arrays(part_in, sizes_out):
         subsample_sizes[j] = n_selected
         n_rows -= n_selected
 
-    subsamples = [object() for _ in range(n_parts_out)]
+    subsamples = [None] * n_parts_out
     seed = np.random.randint(np.iinfo(np.int32).max)
     if y is None:
         _choose_and_assign_rows_x(x._blocks, subsample_sizes, subsamples, seed)
@@ -194,10 +194,10 @@ def _make_splits(x, y=None, test_size=None, train_size=None,
         train_y_blocks_split = []
         test_y_blocks_split = []
         for index, blocks_x in enumerate(zip(x._blocks, y._blocks)):
-            blocks_train_x = [object() for _ in range(x._n_blocks[1])]
-            blocks_test_x = [object() for _ in range(x._n_blocks[1])]
-            blocks_train_y = [object() for _ in range(y._n_blocks[1])]
-            blocks_test_y = [object() for _ in range(y._n_blocks[1])]
+            blocks_train_x = [None] * x._n_blocks[1]
+            blocks_test_x = [None] * x._n_blocks[1]
+            blocks_train_y = [None] * y._n_blocks[1]
+            blocks_test_y = [None] * y._n_blocks[1]
             if index <= len(x._blocks) - 2:
                 _compute_splits_x_y(blocks_x[0], blocks_x[1],
                                     blocks_train_x, blocks_test_x,
@@ -267,8 +267,8 @@ def _make_splits(x, y=None, test_size=None, train_size=None,
     train_x_blocks_split = []
     test_x_blocks_split = []
     for index, blocks_x in enumerate(x._blocks):
-        blocks_train_x = [object() for _ in range(x._n_blocks[1])]
-        blocks_test_x = [object() for _ in range(x._n_blocks[1])]
+        blocks_train_x = [None] * x._n_blocks[1]
+        blocks_test_x = [None] * x._n_blocks[1]
         if index <= len(x._blocks) - 2:
             _compute_splits_x(blocks_x, blocks_train_x,
                               blocks_test_x, test_size=test_size,

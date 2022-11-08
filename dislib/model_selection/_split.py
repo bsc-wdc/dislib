@@ -219,7 +219,7 @@ def merge_slices(s1, s2):
         for a in g:
             for row_block in a._blocks:
                 blocks.append(row_block)
-        group_blocks = [object() for _ in range(s1._n_blocks[1])]
+        group_blocks = [None] * s1._n_blocks[1]
         _merge_rows_keeping_cols(blocks, group_blocks)
         all_blocks.append(group_blocks)
 

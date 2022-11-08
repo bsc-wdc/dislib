@@ -115,14 +115,14 @@ def load_txt_file(path, block_size, discard_first_row=False,
             lines.append(line.encode())
 
             if len(lines) == block_size[0]:
-                out_blocks = [object() for _ in range(n_blocks)]
+                out_blocks = [None] * n_blocks
                 _read_lines(lines, block_size[1], delimiter, out_blocks,
                             col_of_index=col_of_index)
                 blocks.append(out_blocks)
                 lines = []
 
     if lines:
-        out_blocks = [object() for _ in range(n_blocks)]
+        out_blocks = [None] * n_blocks
         _read_lines(lines, block_size[1], delimiter, out_blocks,
                     col_of_index=col_of_index)
         blocks.append(out_blocks)
@@ -170,7 +170,7 @@ def load_npy_file(path, block_size):
             read_count = min(block_size[0], shape[0] - i)
             read_size = int(read_count * shape[1] * dtype.itemsize)
             data = fid.read(read_size)
-            out_blocks = [object() for _ in range(n_blocks)]
+            out_blocks = [None] * n_blocks
             _read_from_buffer(data, dtype, shape[1], block_size[1], out_blocks)
             blocks.append(out_blocks)
 
@@ -507,7 +507,7 @@ def _load_mdcrd_copy(path, block_size, n_cols, n_hblocks, bytes_per_snap,
     blocks = []
 
     for i in range(0, file_size, bytes_per_block):
-        out_blocks = [object() for _ in range(n_hblocks)]
+        out_blocks = [None] * n_hblocks
         _read_crd_file(path, i, bytes_per_block, block_size[1], n_cols,
                        out_blocks)
         blocks.append(out_blocks)
@@ -530,7 +530,7 @@ def _load_mdcrd(path, block_size, n_cols, n_blocks, bytes_per_snap,
 
         for _ in range(0, file_size, bytes_per_block):
             data = fid.read(bytes_per_block)
-            out_blocks = [object() for _ in range(n_blocks)]
+            out_blocks = [None] * n_blocks
             _read_crd_bytes(data, block_size[1], n_cols, out_blocks)
             blocks.append(out_blocks)
     finally:
