@@ -216,7 +216,7 @@ class Array(object):
         blocks = []
 
         for hblock in self._iterator("rows"):
-            out_blocks = [object() for _ in range(hblock._n_blocks[1])]
+            out_blocks = [None] * hblock._n_blocks[1]
             _combine_blocks(hblock._blocks, other._blocks,
                             Array._subtract, out_blocks)
             blocks.append(out_blocks)
@@ -254,7 +254,7 @@ class Array(object):
 
             for hblock, others in zip(self._iterator("rows"),
                                       other._iterator("rows")):
-                out_blocks = [object() for _ in range(hblock._n_blocks[1])]
+                out_blocks = [None] * hblock._n_blocks[1]
                 _combine_blocks(hblock._blocks, others._blocks,
                                 Array._subtract, out_blocks)
                 blocks.append(out_blocks)
@@ -266,7 +266,7 @@ class Array(object):
         blocks = []
 
         for hblock in self._iterator("rows"):
-            out_blocks = [object() for _ in range(hblock._n_blocks[1])]
+            out_blocks = [None] * hblock._n_blocks[1]
             _combine_blocks(hblock._blocks, other._blocks,
                             Array._subtract, out_blocks)
             blocks.append(out_blocks)
@@ -285,7 +285,7 @@ class Array(object):
         blocks = []
 
         for hblock in self._iterator("rows"):
-            out_blocks = [object() for _ in range(hblock._n_blocks[1])]
+            out_blocks = [None] * hblock._n_blocks[1]
             _combine_blocks(hblock._blocks, other._blocks,
                             Array._add, out_blocks)
             blocks.append(out_blocks)
@@ -320,7 +320,7 @@ class Array(object):
 
             for hblock, others in zip(self._iterator("rows"),
                                       other._iterator("rows")):
-                out_blocks = [object() for _ in range(hblock._n_blocks[1])]
+                out_blocks = [None] * hblock._n_blocks[1]
                 _combine_blocks(hblock._blocks, others._blocks,
                                 Array._add, out_blocks)
                 blocks.append(out_blocks)
@@ -332,7 +332,7 @@ class Array(object):
         blocks = []
 
         for hblock in self._iterator("rows"):
-            out_blocks = [object() for _ in range(hblock._n_blocks[1])]
+            out_blocks = [None] * hblock._n_blocks[1]
             _combine_blocks(hblock._blocks, other._blocks,
                             Array._add, out_blocks)
             blocks.append(out_blocks)
@@ -356,7 +356,7 @@ class Array(object):
         blocks = []
 
         for hblock in self._iterator("rows"):
-            out_blocks = [object() for _ in range(hblock._n_blocks[1])]
+            out_blocks = [None] * hblock._n_blocks[1]
             _combine_blocks(hblock._blocks, other._blocks,
                             operator.mul, out_blocks)
             blocks.append(out_blocks)
@@ -450,7 +450,7 @@ class Array(object):
         Helper function that builds empty lists of lists to be filled as
         parameter of type COLLECTION_OUT
         """
-        return [[object() for _ in range(n_blocks[1])]
+        return [[None] * n_blocks[1]
                 for _ in range(n_blocks[0])]
 
     @staticmethod
@@ -881,7 +881,7 @@ class Array(object):
             # enough rows to merge into a row_block
             if n_rows >= self._reg_shape[0]:
                 n_blocks = ceil(self.shape[1] / self._reg_shape[1])
-                out_blocks = [object() for _ in range(n_blocks)]
+                out_blocks = [None] * n_blocks
                 _merge_rows(to_merge, out_blocks, self._reg_shape, skip)
                 final_blocks.append(out_blocks)
 
@@ -898,7 +898,7 @@ class Array(object):
 
         if n_rows > 0:
             n_blocks = ceil(self.shape[1] / self._reg_shape[1])
-            out_blocks = [object() for _ in range(n_blocks)]
+            out_blocks = [None] * n_blocks
             _merge_rows(to_merge, out_blocks, self._reg_shape, skip)
             final_blocks.append(out_blocks)
 
@@ -948,7 +948,7 @@ class Array(object):
             # enough cols to merge into a col_block
             if n_cols >= self._reg_shape[1]:
                 n_blocks = ceil(self.shape[0] / self._reg_shape[0])
-                out_blocks = [object() for _ in range(n_blocks)]
+                out_blocks = [None] * n_blocks
                 _merge_cols([to_merge], out_blocks, self._reg_shape, skip)
                 final_blocks.append(out_blocks)
 
@@ -965,7 +965,7 @@ class Array(object):
 
         if n_cols > 0:
             n_blocks = ceil(self.shape[0] / self._reg_shape[0])
-            out_blocks = [object() for _ in range(n_blocks)]
+            out_blocks = [None] * n_blocks
             _merge_cols([to_merge], out_blocks, self._reg_shape, skip)
             final_blocks.append(out_blocks)
 

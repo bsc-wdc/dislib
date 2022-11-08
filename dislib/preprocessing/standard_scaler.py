@@ -88,7 +88,7 @@ class StandardScaler(object):
         v_blocks = self.var_._blocks
 
         for row in x._iterator(axis=0):
-            out_blocks = [object() for _ in range(n_blocks)]
+            out_blocks = [None] * n_blocks
             _transform(row._blocks, m_blocks, v_blocks, out_blocks)
             blocks.append(out_blocks)
 
@@ -119,7 +119,7 @@ class StandardScaler(object):
         v_blocks = self.var_._blocks
 
         for row in x._iterator(axis=0):
-            out_blocks = [object() for _ in range(n_blocks)]
+            out_blocks = [None] * n_blocks
             _inverse_transform(row._blocks, m_blocks, v_blocks, out_blocks)
             blocks.append(out_blocks)
 

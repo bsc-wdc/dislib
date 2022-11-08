@@ -218,7 +218,7 @@ def _compute_u(a):
     u_blocks = [[] for _ in range(a._n_blocks[0])]
 
     for vblock in a._iterator("columns"):
-        u_block = [object() for _ in range(vblock._n_blocks[0])]
+        u_block = [None] * vblock._n_blocks[0]
         _compute_u_block(vblock._blocks, u_block)
 
         for i in range(len(u_block)):
@@ -232,7 +232,7 @@ def _compute_u_sorted(a, sorting):
     hbsize = a._reg_shape[1]
 
     for i, vblock in enumerate(a._iterator("columns")):
-        u_block = [object() for _ in range(a._n_blocks[1])]
+        u_block = [None] * a._n_blocks[1]
         _compute_u_block_sorted(vblock._blocks, i, hbsize, sorting, u_block)
 
         for j in range(len(u_block)):
@@ -242,7 +242,7 @@ def _compute_u_sorted(a, sorting):
     final_blocks = Array._get_out_blocks(a._n_blocks)
 
     for i, u_block in enumerate(u_blocks):
-        new_block = [object() for _ in range(a._n_blocks[0])]
+        new_block = [None] * a._n_blocks[0]
         _merge_svd_block(u_block, i, hbsize, vbsize, sorting, new_block)
 
         for j in range(len(new_block)):
@@ -270,7 +270,7 @@ def _sort_v(v, sorting):
     final_blocks = Array._get_out_blocks(v._n_blocks)
 
     for i, v_block in enumerate(v_blocks):
-        new_block = [object() for _ in range(v._n_blocks[0])]
+        new_block = [None] * v._n_blocks[0]
         _merge_svd_block(v_block, i, hbsize, vbsize, sorting, new_block)
 
         for j in range(len(new_block)):

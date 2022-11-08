@@ -260,8 +260,8 @@ def _arrange_data(x, g_shape, bins, dims, total_regions):
     ind_lists = list()
 
     for row in x._iterator(axis=0):
-        reg_list = [object() for _ in range(total_regions)]
-        ind_list = [object() for _ in range(total_regions)]
+        reg_list = [None] * total_regions
+        ind_list = [None] * total_regions
 
         # after calling arrange_block, reg_list contains one nd-array per
         # region with the corresponding samples, and ind_list contains
@@ -297,7 +297,7 @@ def _rearrange_labels(labels, indices, n_blocks):
     blocks_list = list()
 
     for i, arr in enumerate(labels):
-        blocks = [object() for _ in range(n_blocks)]
+        blocks = [None] * n_blocks
 
         # blocks_list[i][j] contains the labels of region i that belong to
         # row block j in the original arrangement of the data
