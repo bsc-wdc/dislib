@@ -372,7 +372,7 @@ def _partial_sum(blocks, centers):
 
     close_centers = pairwise_distances(arr, centers).argmin(axis=1)
 
-    for center_idx in range(len(centers)):
+    for center_idx, _ in enumerate(centers):
         indices = np.argwhere(close_centers == center_idx).flatten()
         partials[center_idx][0] = np.sum(arr[indices], axis=0)
         partials[center_idx][1] = indices.shape[0]
