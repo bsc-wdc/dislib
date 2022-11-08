@@ -2,6 +2,7 @@ from time import time
 import unittest
 import numpy as np
 
+
 class BaseTimedTestCase(unittest.TestCase):
     def setUp(self):
         np.random.seed()
