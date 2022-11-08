@@ -133,8 +133,7 @@ html_theme_options = {
     "edit_link": False,
     "sidebar": "right",
     "scipy_org_logo": False,
-    "rootlinks": [],
-    'logo_only': True,
+    "rootlinks": []
 }
 
 # Add any paths that contain custom themes here, relative to this directory.
@@ -149,7 +148,7 @@ html_theme_path = [os.path.join(os.pardir, 'scipy-sphinx-theme', '_theme')]
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
-html_logo = '../logos/dislib-logo-full.png'
+# html_logo = '../logos/dislib-logo-full.png'
 
 # The name of an image file (relative to this directory) to use as a favicon of
 # the docs.  This file should be a Windows icon file (.ico) being 16x16 or
