@@ -1,5 +1,5 @@
 import numpy as np
-from pycompss.api.api import compss_delete_object
+from pycompss.api.api import compss_delete_object, compss_wait_on
 from pycompss.api.constraint import constraint
 from pycompss.api.parameter import Depth, Type, COLLECTION_IN
 from pycompss.api.task import task
@@ -51,11 +51,11 @@ class NearestNeighbors(BaseEstimator):
             self._fit_data = x
         else:
             self._fit_data = list()
-
+            
             for row in x._iterator(axis=0):
                 sknnstruct = _compute_fit(row._blocks)
                 n_samples = row.shape[0]
-                self._fit_data.append((sknnstruct, n_samples))
+                self._fit_data.append((compss_wait_on(sknnstruct), n_samples))
 
         return self
 
