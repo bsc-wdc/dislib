@@ -7,6 +7,7 @@ import dislib as ds
 from parameterized import parameterized
 from dislib.math.base import svd_col_combs
 
+
 class SVDTest(unittest.TestCase):
 
     def test_pairing(self):
@@ -16,7 +17,6 @@ class SVDTest(unittest.TestCase):
             cols_combs = svd_col_combs(n_cols)
 
             assert set(all_combs) == set(cols_combs)
-
 
     @parameterized.expand([(ds.array([[1, 0, 0, 0],
                                       [0, 0, 0, 2],
