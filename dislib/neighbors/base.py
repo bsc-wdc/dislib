@@ -51,7 +51,7 @@ class NearestNeighbors(BaseEstimator):
             self._fit_data = x
         else:
             self._fit_data = list()
-            
+
             for row in x._iterator(axis=0):
                 sknnstruct = _compute_fit(row._blocks)
                 n_samples = row.shape[0]
