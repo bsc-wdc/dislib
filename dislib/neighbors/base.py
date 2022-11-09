@@ -55,7 +55,7 @@ class NearestNeighbors(BaseEstimator):
             for row in x._iterator(axis=0):
                 sknnstruct = _compute_fit(row._blocks)
                 n_samples = row.shape[0]
-                self._fit_data.append((compss_wait_on(sknnstruct), n_samples))
+                self._fit_data.append([sknnstruct, n_samples])
 
         return self
 
