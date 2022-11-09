@@ -10,7 +10,6 @@ from dislib.decomposition import qr
 from dislib.decomposition.qr.base import (
     _dot_task,
     _qr_task,
-    _transpose_block,
     _validate_ds_array,
     ZEROS,
     IDENTITY
@@ -139,19 +138,6 @@ class QRTest(BaseTimedTestCase):
         """Tests special cases not covered in other tests"""
         np.set_printoptions(precision=2)
         np.random.seed(8)
-
-        # testing a block transpose
-        a = None
-        a_type = [[ZEROS]]
-        a_transposed_type, a = _transpose_block(a, a_type)
-        self.assertEqual(a_type, a_transposed_type)
-        self.assertIsNone(a)
-
-        a = None
-        a_type = [[IDENTITY]]
-        a_transposed_type, a = _transpose_block(a, a_type)
-        self.assertEqual(a_type, a_transposed_type)
-        self.assertIsNone(a)
 
         # testing array validation
         a = random_array((10, 10), (2, 5))
