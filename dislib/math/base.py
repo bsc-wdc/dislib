@@ -348,7 +348,7 @@ def _compute_u_block_sorted(a_block, index, bsize, sorting, u_block):
 @task(block={Type: COLLECTION_IN, Depth: 1},
       out_blocks={Type: COLLECTION_OUT, Depth: 1})
 def _merge_svd_block(block, index, hbsize, vbsize, sorting, out_blocks):
-    block = list(filter(lambda a: a != [], block))  # remove empty lists
+    block = list(filter(lambda a: np.any(a), block))  # remove empty lists
     col = np.vstack(block).T
     local_sorting = []
 
@@ -454,7 +454,9 @@ def _combinations(a, b):
         coverages.append(single_cov)
 
     # Now get coverages of a and b independently
-    if n == 2:
+    if n == 1:
+        return coverages
+    elif n == 2:
         coverages.append([(a[0], a[1]), (b[0], b[1])])
     else:
         m = n // 2
@@ -472,7 +474,10 @@ def _combinations(a, b):
     return coverages
 
 
-def svd_col_combs(n_cols):
+def svd_col_combs(n_cols: int):
+    if n_cols <= 1:
+        return list()
+
     cols = list(range(2**math.ceil(math.log(n_cols, 2))))
 
     n = len(cols) // 2
@@ -483,6 +488,6 @@ def svd_col_combs(n_cols):
     coverages = _combinations(a, b)
 
     coverages = sum(coverages, list())
-    all_combs = itertools.combinations(range(n_cols), 2)
+    all_combs = list(itertools.combinations(range(n_cols), 2))
     pairings = list(filter(lambda x: x in all_combs, coverages))
     return pairings

@@ -1318,67 +1318,6 @@ class MathTest(BaseTimedTestCase):
         self.assertTrue(_validate_array(computed))
         self.assertTrue(_equal_arrays(computed.collect(), expected))
 
-    @parameterized.expand([(ds.array([[1, 0, 0, 0],
-                                      [0, 0, 0, 2],
-                                      [0, 3, 0, 0],
-                                      [2, 0, 0, 0]], (2, 2)),),
-                           (ds.random_array((17, 5), (1, 1)),),
-                           (ds.random_array((9, 7), (9, 6)),),
-                           (ds.random_array((10, 10), (2, 2))[1:, 1:],)])
-    def test_svd(self, x):
-        """ Tests SVD """
-        x_np = x.collect()
-        u, s, v = ds.svd(x)
-        u = u.collect()
-        s = np.diag(s.collect())
-        v = v.collect()
-
-        self.assertTrue(np.allclose(x_np, u @ s @ v.T))
-        self.assertTrue(
-            np.allclose(np.linalg.norm(u, axis=0), np.ones(u.shape[1])))
-        self.assertTrue(
-            np.allclose(np.linalg.norm(v, axis=0), np.ones(v.shape[1])))
-
-        u, s, v = ds.svd(x, sort=False)
-        u = u.collect()
-        s = np.diag(s.collect())
-        v = v.collect()
-
-        self.assertTrue(np.allclose(x_np, u @ s @ v.T))
-        self.assertTrue(
-            np.allclose(np.linalg.norm(u, axis=0), np.ones(u.shape[1])))
-        self.assertTrue(
-            np.allclose(np.linalg.norm(v, axis=0), np.ones(v.shape[1])))
-
-        s = ds.svd(x, compute_uv=False, sort=False)
-        s = np.diag(s.collect())
-
-        # use U and V from previous decomposition
-        self.assertTrue(np.allclose(x_np, u @ s @ v.T))
-        self.assertTrue(
-            np.allclose(np.linalg.norm(u, axis=0), np.ones(u.shape[1])))
-        self.assertTrue(
-            np.allclose(np.linalg.norm(v, axis=0), np.ones(v.shape[1])))
-
-        u, s, v = ds.svd(x, copy=False)
-        u = u.collect()
-        s = np.diag(s.collect())
-        v = v.collect()
-
-        self.assertTrue(np.allclose(x_np, u @ s @ v.T))
-        self.assertTrue(
-            np.allclose(np.linalg.norm(u, axis=0), np.ones(u.shape[1])))
-        self.assertTrue(
-            np.allclose(np.linalg.norm(v, axis=0), np.ones(v.shape[1])))
-
-    def test_svd_errors(self):
-        """ Tests SVD raises """
-        with self.assertRaises(ValueError):
-            ds.svd(ds.random_array((3, 9), (2, 2)))
-
-        with self.assertRaises(ValueError):
-            ds.svd(ds.random_array((3, 3), (3, 3)))
-
 
 def main():
     unittest.main()
