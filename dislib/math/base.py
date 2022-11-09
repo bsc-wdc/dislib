@@ -13,15 +13,18 @@ from dislib.data.array import Array, identity
 
 def kron(a, b, block_size=None):
     """ Kronecker product of two ds-arrays.
+
     Parameters
     ----------
     a, b : ds-arrays
         Input ds-arrays.
     block_size : tuple of two ints, optional
         Block size of the resulting array. Defaults to the block size of `b`.
+
     Returns
     -------
     out : ds-array
+
     Raises
     ------
     NotImplementedError
@@ -92,8 +95,10 @@ def svd(a, compute_uv=True, sort=True, copy=True, eps=1e-9):
     """ Performs singular value decomposition of a ds-array via the one-sided
     block Jacobi algorithm described in Arbenz and Slapnicar [1]_ and
     Dongarra et al. [2]_.
+
     Singular value decomposition is a factorization of the form A = USV',
     where U and V are unitary matrices and S is a rectangular diagonal matrix.
+
     Parameters
     ----------
     a : ds-array, shape=(m, n)
@@ -110,6 +115,7 @@ def svd(a, compute_uv=True, sort=True, copy=True, eps=1e-9):
         regular shape).
     eps : float, optional (default=1e-9)
         Tolerance for the convergence criterion.
+
     Returns
     -------
     u : ds-array, shape=(m, n)
@@ -118,19 +124,23 @@ def svd(a, compute_uv=True, sort=True, copy=True, eps=1e-9):
         Diagonal entries of S.
     v : ds-array, shape=(n, n)
         V matrix. Only returned if compute_uv is True.
+
     Raises
     ------
     ValueError
         If a has less than 2 column blocks or m < n.
+
     References
     ----------
     .. [1] Arbenz, P. and Slapnicar, A. (1995). An Analysis of Parallel
         Implementations of the Block-Jacobi Algorithm for Computing the SVD. In
         Proceedings of the 17th International Conference on Information
         Technology Interfaces ITI (pp. 13-16).
+
     .. [2] Dongarra, J., Gates, M., Haidar, A. et al. (2018). The singular
         value decomposition: Anatomy of optimizing an algorithm for extreme
         scale. In SIAM review, 60(4) (pp. 808-865).
+
     Examples
     --------
     >>> import dislib as ds
