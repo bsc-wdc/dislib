@@ -1,5 +1,5 @@
 .. image:: ../logos/dislib-logo-full.png
-   :height: 90px
+   :width: 600px
    :align: left
 
 .. toctree::
