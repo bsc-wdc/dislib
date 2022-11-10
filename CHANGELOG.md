@@ -4,6 +4,48 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2022-11-11
+### Added
+- `save` and `load` methods for all models
+- Adding Muliclass CSVM
+- Adding TS-QR (Tall Skinny QR)
+- New in-place operations for ds-arrays:
+  `add` `iadd` `isub`
+- Matrix-Subtraction and Matrix-Addition
+- Concatenating two ds-arrays by columns
+- Save ds-array to `npy` file
+- Load ds-array from several `npy` files
+- Create ds-arrays from blocks
+- GridSearch for simulations & improvements
+- Inverse transformation in Scalers
+- Train-Test-Split functionality
+- Add KNN Classifier
+- Better SVD columns pairing
+- GPU Support using CUDA/CuPy for algorithms: Kmeans, KNN, SVD, PCA, Matmul, Addition, Subtraction, QR, Kronecker
+
+### Changed
+- New documentation for GPU, RandomForest, Scalers
+
+### Fixed
+- Fix bug Scalers & tests
+
+## [0.7.0] - 2021-11-10
+### Added
+- New decomposition algorithm QR
+- New preprocessing algorithm MinMaxScaler
+- Jenkinsfile for CI automated tests
+- ds-array matrix multiplication (matmul)
+- New function for ds-array creation
+- Add `@constraint(computing_units="${ComputingUnits}")` to all tasks
+- More I/O functions for reading and writing ds-arrays
+- More tests
+
+### Changed
+- Move RandomForest from 'classification' to 'trees'
+
+### Fixed
+- Some bugs in the ds-array
+
 ## [0.6.0] - 2020-10-09
 ### Added
 - User guide and glossary
