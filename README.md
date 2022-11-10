@@ -110,14 +110,14 @@ In addition, the development of this software has been also supported by the fol
 framework of the ERFD Operative Programme for Catalunya 2014-2020.
 
 * European Commission's through the following R&D projects:
-- H2020 I-BiDaaS project (Contract 780787)
-- H2020 BioExcel Center of Excellence (Contracts 823830, and 675728)
-- H2020 EuroHPC Joint Undertaking MEEP Project (Contract 946002)
-- H2020 EuroHPC Joint Undertaking eFlows4HPC Project (Contract 955558)
-- H2020 AI-Sprint project (Contract 101016577)
-- H2020 PerMedCoE  Center of Excellence (Contract 951773)
-- Horizon Europe CAELESTIS project (Contract 101056886)
-- Horizon Europe DT-Geo project (Contract 101058129)
+    - H2020 I-BiDaaS project (Contract 780787)
+    - H2020 BioExcel Center of Excellence (Contracts 823830, and 675728)
+    - H2020 EuroHPC Joint Undertaking MEEP Project (Contract 946002)
+    - H2020 EuroHPC Joint Undertaking eFlows4HPC Project (Contract 955558)
+    - H2020 AI-Sprint project (Contract 101016577)
+    - H2020 PerMedCoE  Center of Excellence (Contract 951773)
+    - Horizon Europe CAELESTIS project (Contract 101056886)
+    - Horizon Europe DT-Geo project (Contract 101058129)
 
 
 
