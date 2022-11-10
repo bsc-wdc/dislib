@@ -104,6 +104,9 @@ dislib.decomposition: Matrix Decomposition
 :meth:`decomposition.qr <dislib.decomposition.qr.base.qr>` -
 QR decomposition.
 
+:class:`decomposition.tsqr <dislib.decomposition.tsqr.base.tsqr>` -
+Tall-Skinny QR decomposition.
+
 :class:`decomposition.PCA <dislib.decomposition.pca.base.PCA>` -
 Principal
 Component Analysis (PCA).
