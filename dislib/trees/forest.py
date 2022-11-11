@@ -131,20 +131,22 @@ class BaseRandomForest(BaseEstimator):
             Format used to save the models.
         Examples
         --------
-        >>> from dislib.cluster import DecisionTreeClassifier
+        >>> from dislib.trees import RandomForestClassifier
         >>> import numpy as np
         >>> import dislib as ds
         >>> x = np.array([[1, 2], [1, 4], [1, 0], [4, 2], [4, 4], [4, 0]])
+        >>> y = np.array([1, 1, 2, 2, 2, 1])
         >>> x_train = ds.array(x, (2, 2))
-        >>> model = DecisionTreeClassifier(n_clusters=2, random_state=0)
-        >>> model.fit(x_train)
+        >>> y_train = ds.array(y, (2, 1))
+        >>> model = RandomForestClassifier(n_estimators=2, random_state=0)
+        >>> model.fit(x_train, y_train)
         >>> save_model(model, '/tmp/model')
         >>> loaded_model = load_model('/tmp/model')
         >>> x_test = ds.array(np.array([[0, 0], [4, 4]]), (2, 2))
         >>> model_pred = model.predict(x_test)
         >>> loaded_model_pred = loaded_model.predict(x_test)
         >>> assert np.allclose(model_pred.collect(),
-        loaded_model_pred.collect())
+        >>> loaded_model_pred.collect())
         """
 
         # Check overwrite
@@ -186,13 +188,15 @@ class BaseRandomForest(BaseEstimator):
             Format used to load the model.
         Examples
         --------
-        >>> from dislib.cluster import DecisionTreeClassifier
+        >>> from dislib.trees import RandomForestClassifier
         >>> import numpy as np
         >>> import dislib as ds
         >>> x = np.array([[1, 2], [1, 4], [1, 0], [4, 2], [4, 4], [4, 0]])
+        >>> y = np.array([1, 1, 2, 2, 2, 1])
         >>> x_train = ds.array(x, (2, 2))
-        >>> model = DecisionTreeClassifier(n_clusters=2, random_state=0)
-        >>> model.fit(x_train)
+        >>> y_train = ds.array(y, (2, 1))
+        >>> model = RandomForestClassifier(n_estimators=2, random_state=0)
+        >>> model.fit(x_train, y_train)
         >>> save_model(model, '/tmp/model')
         >>> loaded_model = load_model('/tmp/model')
         >>> x_test = ds.array(np.array([[0, 0], [4, 4]]), (2, 2))
@@ -415,6 +419,76 @@ class RandomForestClassifier(BaseRandomForest):
 
         return compss_wait_on(score) if collect else score
 
+    def load_model(self, filepath, load_format="json"):
+        """Loads a model from a file.
+        The model is reinstantiated in the exact same state in which it
+        was saved, without any of the code used for model definition or
+        fitting.
+        Parameters
+        ----------
+        filepath : str
+            Path of the saved the model
+        load_format : str, optional (default='json')
+            Format used to load the model.
+        Examples
+        --------
+        >>> from dislib.trees import RandomForestClassifier
+        >>> import numpy as np
+        >>> import dislib as ds
+        >>> x = np.array([[1, 2], [1, 4], [1, 0], [4, 2], [4, 4], [4, 0]])
+        >>> y = np.array([1, 1, 2, 2, 2, 1])
+        >>> x_train = ds.array(x, (2, 2))
+        >>> y_train = ds.array(y, (2, 1))
+        >>> model = RandomForestClassifier(n_estimators=2, random_state=0)
+        >>> model.fit(x_train, y_train)
+        >>> save_model(model, '/tmp/model')
+        >>> loaded_model = load_model('/tmp/model')
+        >>> x_test = ds.array(np.array([[0, 0], [4, 4]]), (2, 2))
+        >>> model_pred = model.predict(x_test)
+        >>> loaded_model_pred = loaded_model.predict(x_test)
+        >>> assert np.allclose(model_pred.collect(),
+        """
+        super().load_model(filepath, load_format=load_format)
+
+    def save_model(self, filepath, overwrite=True, save_format="json"):
+        """Saves a model to a file.
+        The model is synchronized before saving and can be reinstantiated in
+        the exact same state, without any of the code used for model
+        definition or fitting.
+        Parameters
+        ----------
+        filepath : str
+            Path where to save the model
+        overwrite : bool, optional (default=True)
+            Whether any existing model at the target
+            location should be overwritten.
+        save_format : str, optional (default='json)
+            Format used to save the models.
+        Examples
+        --------
+        >>> from dislib.trees import RandomForestClassifier
+        >>> import numpy as np
+        >>> import dislib as ds
+        >>> x = np.array([[1, 2], [1, 4], [1, 0], [4, 2], [4, 4], [4, 0]])
+        >>> y = np.array([1, 1, 2, 2, 2, 1])
+        >>> x_train = ds.array(x, (2, 2))
+        >>> y_train = ds.array(y, (2, 1))
+        >>> model = RandomForestClassifier(n_estimators=2, random_state=0)
+        >>> model.fit(x_train, y_train)
+        >>> save_model(model, '/tmp/model')
+        >>> loaded_model = load_model('/tmp/model')
+        >>> x_test = ds.array(np.array([[0, 0], [4, 4]]), (2, 2))
+        >>> model_pred = model.predict(x_test)
+        >>> loaded_model_pred = loaded_model.predict(x_test)
+        >>> assert np.allclose(model_pred.collect(),
+        >>> loaded_model_pred.collect())
+        """
+        super().save_model(
+            filepath,
+            overwrite=overwrite,
+            save_format=save_format
+        )
+
 
 class RandomForestRegressor(BaseRandomForest):
     """A distributed random forest regressor.
@@ -553,6 +627,76 @@ class RandomForestRegressor(BaseRandomForest):
         score = _merge_regression_scores(*partial_scores)
 
         return compss_wait_on(score) if collect else score
+
+    def load_model(self, filepath, load_format="json"):
+        """Loads a model from a file.
+        The model is reinstantiated in the exact same state in which it
+        was saved, without any of the code used for model definition or
+        fitting.
+        Parameters
+        ----------
+        filepath : str
+            Path of the saved the model
+        load_format : str, optional (default='json')
+            Format used to load the model.
+        Examples
+        --------
+        >>> from dislib.trees import RandomForestRegressor
+        >>> import numpy as np
+        >>> import dislib as ds
+        >>> x = np.array([[1, 2], [1, 4], [1, 0], [4, 2], [4, 4], [4, 0]])
+        >>> y = np.array([1.5, 1.2, 2.7, 2.1, 0.2, 0.6])
+        >>> x_train = ds.array(x, (2, 2))
+        >>> y_train = ds.array(y, (2, 1))
+        >>> model = RandomForestRegressor(n_estimators=2, random_state=0)
+        >>> model.fit(x_train, y_train)
+        >>> save_model(model, '/tmp/model')
+        >>> loaded_model = load_model('/tmp/model')
+        >>> x_test = ds.array(np.array([[0, 0], [4, 4]]), (2, 2))
+        >>> model_pred = model.predict(x_test)
+        >>> loaded_model_pred = loaded_model.predict(x_test)
+        >>> assert np.allclose(model_pred.collect(),
+        """
+        super().load_model(filepath, load_format=load_format)
+
+    def save_model(self, filepath, overwrite=True, save_format="json"):
+        """Saves a model to a file.
+        The model is synchronized before saving and can be reinstantiated in
+        the exact same state, without any of the code used for model
+        definition or fitting.
+        Parameters
+        ----------
+        filepath : str
+            Path where to save the model
+        overwrite : bool, optional (default=True)
+            Whether any existing model at the target
+            location should be overwritten.
+        save_format : str, optional (default='json)
+            Format used to save the models.
+        Examples
+        --------
+        >>> from dislib.trees import RandomForestRegressor
+        >>> import numpy as np
+        >>> import dislib as ds
+        >>> x = np.array([[1, 2], [1, 4], [1, 0], [4, 2], [4, 4], [4, 0]])
+        >>> y = np.array([1.5, 1.2, 2.7, 2.1, 0.2, 0.6])
+        >>> x_train = ds.array(x, (2, 2))
+        >>> y_train = ds.array(y, (2, 1))
+        >>> model = RandomForestRegressor(n_estimators=2, random_state=0)
+        >>> model.fit(x_train, y_train)
+        >>> save_model(model, '/tmp/model')
+        >>> loaded_model = load_model('/tmp/model')
+        >>> x_test = ds.array(np.array([[0, 0], [4, 4]]), (2, 2))
+        >>> model_pred = model.predict(x_test)
+        >>> loaded_model_pred = loaded_model.predict(x_test)
+        >>> assert np.allclose(model_pred.collect(),
+        >>> loaded_model_pred.collect())
+        """
+        super().save_model(
+            filepath,
+            overwrite=overwrite,
+            save_format=save_format
+        )
 
 
 def _base_soft_vote(classes, *predictions):

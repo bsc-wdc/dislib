@@ -31,3 +31,6 @@ __all__ = ['array', 'random_array', 'zeros', 'full', 'identity', 'eye',
            'load_txt_file', 'load_svmlight_file', 'load_npy_file',
            'load_mdcrd_file', 'matmul', 'save_txt',
            'apply_along_axis', 'kron', 'svd']
+
+gpu_envar = os.environ.get('DISLIB_GPU_AVAILABLE', 'False')
+__gpu_available__ = gpu_envar.lower() == 'true'

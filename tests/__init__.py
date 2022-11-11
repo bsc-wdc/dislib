@@ -1,9 +1,11 @@
 from time import time
 import unittest
+import numpy as np
 
 
 class BaseTimedTestCase(unittest.TestCase):
     def setUp(self):
+        np.random.seed()
         self.start_time = time()
 
     def tearDown(self):

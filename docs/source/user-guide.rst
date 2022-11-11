@@ -258,6 +258,38 @@ is specifically useful for algorithms (for example those implemented in NumPy)
 that automatically take advantage of fine-grained parallelism facilitated by a
 higher number of computing units.
 
+.. _gpu-support-label:
+
+Using GPUs with CuPy
+--------------
+
+In the version 0.8 of dislib has been added support for GPU using CuPy (CUDA) in the
+following algorithms:
+ - KMeans
+ - NearestNeighbors
+ - KNeighborsClassifier
+ - PCA
+ - QR
+ - SVD
+ - Matmul
+ - Addition
+ - Subtraction
+ - Kronecker
+
+In order to enable dislib to use GPUs for this algorithms the user must 
+set the environment variable DISLIB_GPU_AVAILABLE before executing the script:
+
+``export DISLIB_GPU_AVAILABLE=True``
+
+The above example makes dislib use GPU for any tasks that can use CuPy acceleration.
+Dislib's implementation with cupy is completely transparent for the end user because
+all the data is stored in the main memory and only transfered to GPU when necessary.
+Also, for the rest of the algorithms that are not listed above they will just use usual
+CPU computation. In this way all the resources will be used efficiently.
+
+The required external library for this functionality is cupy >= 0.9.6
+This functionality only works on computers with CUDA enabled devices.
+
 Classification
 --------------
 
@@ -434,6 +466,8 @@ iterations or until convergence. The algorithm's maximum parallelism is
 equal to the number of row blocks in the input ds-array and each task needs
 to load a row block in memory.
 
+This algorithm supports GPU acceleration. See :ref:`gpu-support-label`
+
 
 DBSCAN
 ......
@@ -500,7 +534,7 @@ component with highest probability density at that point.
 Our implementation is based on the sequential
 `implementation in scikit-learn <https://scikit-learn
 .org/stable/modules/generated/sklearn.mixture.GaussianMixture.html>`_,
-which uses an iterative `expectation–maximization (EM) algorithm <https://en
+which uses an iterative `expectation-maximization (EM) algorithm <https://en
 .wikipedia.org/wiki/Expectation%E2%80%93maximization_algorithm>`_.
 In the expectation step, given the gaussian components, membership weights to
 each component are computed for each element in the sample. In the
@@ -720,6 +754,8 @@ task granularity. The optimal number of column blocks should not be
 too big or too small. If the number of features in the input
 ds-array is not too large, the covariance method might be more efficient.
 
+This algorithm supports GPU acceleration. See :ref:`gpu-support-label`
+
 .. topic:: References:
 
   .. [Arbenz95] `An Analysis of Parallel Implementations of the Block-Jacobi
@@ -734,11 +770,26 @@ Pre-processing
 Standard scaler
 ...............
 
+Standardization of a dataset is a common requirement for many machine learning estimators: 
+they might behave badly if the individual features do not more or less look like standard normally 
+distributed data (e.g. Gaussian with 0 mean and unit variance).
+Standardize features by removing the mean and scaling to unit variance.
+Centering and scaling happen independently on each feature by computing the relevant 
+statistics on the samples in the training set. Mean and standard deviation are then stored
+to be used on later data using transform.
+
+
 Neighbors
 ---------
 
 K-nearest neighbors
 ...................
+
+:class:`KMeans <dislib.neighbors.base.NearestNeighbors>` implements unsupervised nearest neighbors learning.
+The choice of neighbors search algorithm is determined automatically in 
+order to choose the best approach from the training data.
+
+This algorithm supports GPU acceleration. See :ref:`gpu-support-label`
 
 Model selection
 ---------------

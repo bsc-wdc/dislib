@@ -11,12 +11,12 @@ ready-to-use [docker image](#using-docker).
 dislib currently requires:
 
 * PyCOMPSs >= 2.8
-* Scikit-learn >= 0.19.1
-* Scipy >= 1.0.0
-* NumPy >= 1.15.4
+* Scikit-learn >= 1.1.1
+* Scipy >= 1.3.0
+* NumPy >= 1.18.1
 * cvxpy >= 1.1.5
 
-Some of the examples also require matplotlib >= 2.0.0 and pandas >= 0.20.1. 
+Some of the examples also require matplotlib >= 2.2.3 and pandas >= 0.24.2. 
 numpydoc >= 0.8.0 is requried to build the documentation.
 
 #### Installation steps 

@@ -3,6 +3,8 @@ import os
 import pickle
 
 import numpy as np
+
+import dislib
 from pycompss.api.api import compss_wait_on
 from pycompss.api.constraint import constraint
 from pycompss.api.parameter import COLLECTION_IN, Depth, Type
@@ -101,12 +103,17 @@ class KMeans(BaseEstimator):
         old_centers = None
         iteration = 0
 
+        if dislib.__gpu_available__:
+            partial_sum_func = _partial_sum_gpu
+        else:
+            partial_sum_func = _partial_sum
+
         while not self._converged(old_centers, iteration):
             old_centers = self.centers.copy()
             partials = []
 
             for row in x._iterator(axis=0):
-                partial = _partial_sum(row._blocks, old_centers)
+                partial = partial_sum_func(row._blocks, old_centers)
                 partials.append(partial)
 
             self._recompute_centers(partials)
@@ -331,6 +338,32 @@ def _decode_helper(obj):
     return obj
 
 
+@constraint(processors=[
+                {"processorType": "CPU", "computingUnits": "1"},
+                {"processorType": "GPU", "computingUnits": "1"},
+            ])
+@task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
+def _partial_sum_gpu(blocks, centers):
+    import cupy as cp
+
+    partials = np.zeros((centers.shape[0], 2), dtype=object)
+    arr = Array._merge_blocks(blocks).astype(np.float32)
+    arr_gpu = cp.asarray(arr)
+    centers_gpu = cp.asarray(centers).astype(cp.float32)
+
+    close_centers_gpu = cp.argmin(distance_gpu(arr_gpu, centers_gpu), axis=1)
+    arr_gpu, centers_gpu = None, None
+
+    close_centers = cp.asnumpy(close_centers_gpu)
+
+    for center_idx, _ in enumerate(centers):
+        indices = np.argwhere(close_centers == center_idx).flatten()
+        partials[center_idx][0] = np.sum(arr[indices], axis=0)
+        partials[center_idx][1] = indices.shape[0]
+
+    return partials
+
+
 @constraint(computing_units="${ComputingUnits}")
 @task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
 def _partial_sum(blocks, centers):
@@ -363,3 +396,47 @@ def _merge(*data):
 def _predict(blocks, centers):
     arr = Array._merge_blocks(blocks)
     return pairwise_distances(arr, centers).argmin(axis=1).reshape(-1, 1)
+
+
+def distance_gpu(a_gpu, b_gpu):
+    import cupy as cp
+
+    sq_sum_ker = get_sq_sum_kernel()
+
+    aa_gpu = cp.empty(a_gpu.shape[0], dtype=cp.float32)
+    bb_gpu = cp.empty(b_gpu.shape[0], dtype=cp.float32)
+
+    sq_sum_ker(a_gpu, aa_gpu, axis=1)
+    sq_sum_ker(b_gpu, bb_gpu, axis=1)
+
+    size = len(aa_gpu) * len(bb_gpu)
+    dist_gpu = cp.empty((len(aa_gpu), len(bb_gpu)), dtype=cp.float32)
+    add_mix_kernel(len(b_gpu))(aa_gpu, bb_gpu, dist_gpu, size=size)
+    aa_gpu, bb_gpu = None, None
+
+    dist_gpu += -2.0 * cp.dot(a_gpu, b_gpu.T)
+
+    return dist_gpu
+
+
+def get_sq_sum_kernel():
+    import cupy as cp
+
+    return cp.ReductionKernel(
+        'T x',  # input params
+        'T y',  # output params
+        'x * x',  # map
+        'a + b',  # reduce
+        'y = a',  # post-reduction map
+        '0',  # identity value
+        'sqsum'  # kernel name
+    )
+
+
+def add_mix_kernel(y_len):
+    import cupy as cp
+
+    return cp.ElementwiseKernel(
+        'raw T x, raw T y', 'raw T z',
+        f'z[i] = x[i / {y_len}] + y[i % {y_len}]',
+        'add_mix')
