@@ -1,4 +1,5 @@
 import itertools
+import math
 
 import numpy as np
 import dislib
@@ -173,6 +174,7 @@ def svd(a, compute_uv=True, sort=True, copy=True, eps=1e-9):
         v = identity(x.shape[1], (x._reg_shape[1], x._reg_shape[1]))
 
     checks = [True]
+    n_cols = x._n_blocks[1]
 
     if dislib.__gpu_available__:
         _compute_rotation_func = _compute_rotation_and_rotate_gpu
@@ -182,11 +184,7 @@ def svd(a, compute_uv=True, sort=True, copy=True, eps=1e-9):
     while not _check_convergence_svd(checks):
         checks = []
 
-        pairings = itertools.combinations(
-            range(x._n_blocks[1]), 2
-        )
-
-        for i, j in pairings:
+        for i, j in svd_col_combs(n_cols):
             coli_x = x._get_col_block(i)
             colj_x = x._get_col_block(j)
 
@@ -393,7 +391,7 @@ def _compute_u_block_sorted_gpu(a_block, index, bsize, sorting, u_block):
 @task(block={Type: COLLECTION_IN, Depth: 1},
       out_blocks={Type: COLLECTION_OUT, Depth: 1})
 def _merge_svd_block(block, index, hbsize, vbsize, sorting, out_blocks):
-    block = list(filter(lambda a: a != [], block))  # remove empty lists
+    block = list(filter(lambda a: np.any(a), block))  # remove empty lists
     col = np.vstack(block).T
     local_sorting = []
 
@@ -577,3 +575,55 @@ def _kron_gpu(block1, block2, out_blocks):
     for i in range(block1_gpu.shape[0]):
         for j in range(block1_gpu.shape[1]):
             out_blocks[i][j] = cp.asnumpy(block1_gpu[i, j] * block2_gpu)
+
+
+def _combinations(a, b):
+    # First get all combinations between a and b
+    n = len(a)
+    coverages = list()
+
+    for i in range(n):
+        single_cov = list()
+        for a_idx in range(n):
+            b_idx = (a_idx + i) % n
+            single_cov.append((a[a_idx], b[b_idx]))
+        coverages.append(single_cov)
+
+    # Now get coverages of a and b independently
+    if n == 1:
+        return coverages
+    elif n == 2:
+        coverages.append([(a[0], a[1]), (b[0], b[1])])
+    else:
+        m = n // 2
+        a1 = a[:m]
+        a2 = a[m:]
+        b1 = b[:m]
+        b2 = b[m:]
+
+        coverages_a = _combinations(a1, a2)
+        coverages_b = _combinations(b1, b2)
+
+        for cov_a, cov_b in zip(coverages_a, coverages_b):
+            coverages.append(cov_a + cov_b)
+
+    return coverages
+
+
+def svd_col_combs(n_cols: int):
+    if n_cols <= 1:
+        return list()
+
+    cols = list(range(2**math.ceil(math.log(n_cols, 2))))
+
+    n = len(cols) // 2
+
+    a = cols[:n]
+    b = cols[n:]
+
+    coverages = _combinations(a, b)
+
+    coverages = sum(coverages, list())
+    all_combs = list(itertools.combinations(range(n_cols), 2))
+    pairings = list(filter(lambda x: x in all_combs, coverages))
+    return pairings
