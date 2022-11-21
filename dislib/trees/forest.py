@@ -483,7 +483,11 @@ class RandomForestClassifier(BaseRandomForest):
         >>> assert np.allclose(model_pred.collect(),
         >>> loaded_model_pred.collect())
         """
-        super().save_model(filepath, overwrite=overwrite, save_format=save_format)
+        super().save_model(
+            filepath,
+            overwrite=overwrite,
+            save_format=save_format
+        )
 
 
 class RandomForestRegressor(BaseRandomForest):
@@ -688,7 +692,11 @@ class RandomForestRegressor(BaseRandomForest):
         >>> assert np.allclose(model_pred.collect(),
         >>> loaded_model_pred.collect())
         """
-        super().save_model(filepath, overwrite=overwrite, save_format=save_format)
+        super().save_model(
+            filepath,
+            overwrite=overwrite,
+            save_format=save_format
+        )
 
 
 def _base_soft_vote(classes, *predictions):
