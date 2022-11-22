@@ -232,8 +232,8 @@ def terasort(x, range_min, range_max, num_buckets, returns="list"):
     return list(result.values())
 
 
-@task(checks={Type: COLLECTION_IN, Depth: 2},
-      blocks={Type: COLLECTION_INOUT, Depth: 2})
+@task(checks={Type: COLLECTION_IN, Depth: 1},
+      blocks={Type: COLLECTION_INOUT, Depth: 1})
 def evaluate_exception(checks, blocks):
     if np.all(checks):
         raise COMPSsException("All blocks contain the correct "
@@ -482,8 +482,8 @@ def redistribute_blocks_with_exception(blocks, num_buckets_reorder,
     return final_blocks
 
 
-@task(attribute_blocks={Type: COLLECTION_IN, Depth: 2},
-      outer_blocks={Type: COLLECTION_OUT, Depth: 2})
+@task(attribute_blocks={Type: COLLECTION_IN, Depth: 1},
+      outer_blocks={Type: COLLECTION_OUT, Depth: 1})
 def redistribute_data(attribute_blocks, outer_blocks, number_rows):
     total_data = np.concatenate(attribute_blocks)
     for idx in range(len(outer_blocks)):
@@ -492,7 +492,7 @@ def redistribute_data(attribute_blocks, outer_blocks, number_rows):
                                            number_rows], axis=1)
 
 
-@task(blocks={Type: COLLECTION_IN, Depth: 2})
+@task(blocks={Type: COLLECTION_IN, Depth: 1})
 def concatenate_rows(blocks, i, j,
                      reg_shape, row_blocks,
                      col_blocks, outer_rows, number_columns):
@@ -520,8 +520,8 @@ def adjust_final_block(block, cols, row, col, outer_rows, outer_cols):
     return block.reshape(-1, cols)
 
 
-@task(buckets={Type: COLLECTION_IN, Depth: 2},
-      out_blocks={Type: COLLECTION_OUT, Depth: 2}, returns=1)
+@task(buckets={Type: COLLECTION_IN, Depth: 1},
+      out_blocks={Type: COLLECTION_OUT, Depth: 1}, returns=1)
 def merge_distribute_data_bucket(buckets, out_blocks, n_buckets,
                                  number_elements,
                                  n_cols, n_rows,
@@ -573,8 +573,10 @@ def merge_distribute_data_bucket(buckets, out_blocks, n_buckets,
     return np.all(checks)
 
 
-@task(fragment={Type: COLLECTION_IN, Depth: 2},
-      fragment_buckets={Type: COLLECTION_OUT, Depth: 2})
+@task(fragment={Type: COLLECTION_IN, Depth: 1},
+      fragment_buckets={Type: COLLECTION_OUT, Depth: 2},
+      range_min={Type: COLLECTION_IN, Depth: 2},
+      range_max={Type: COLLECTION_IN, Depth: 2})
 def filter_fragment(fragment, fragment_buckets, num_buckets, range_min=0,
                     range_max=1):
     """
@@ -621,7 +623,7 @@ def filter_fragment(fragment, fragment_buckets, num_buckets, range_min=0,
         i += 1
 
 
-@task(returns=dict, args={Type: COLLECTION_IN, Depth: 2})
+@task(returns=dict, args={Type: COLLECTION_IN, Depth: 1})
 def combine_and_sort_bucket_elements(args):
     """
     Task that combines the buckets received as args parameter and final
@@ -644,10 +646,10 @@ def combine_and_sort_bucket_elements(args):
 @task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=1)
 def obtain_minimum_value(blocks):
     minimum_values = np.block(blocks)
-    return np.amin(minimum_values)
+    return np.array([[np.amin(minimum_values)]])
 
 
 @task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=1)
 def obtain_maximum_value(blocks):
-    minimum_values = np.block(blocks)
-    return np.amax(minimum_values)
+    maximum_values = np.block(blocks)
+    return np.array([[np.amax(maximum_values)]])
