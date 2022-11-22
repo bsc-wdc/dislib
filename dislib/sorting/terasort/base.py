@@ -574,7 +574,7 @@ def merge_distribute_data_bucket(buckets, out_blocks, n_buckets,
 
 
 @task(fragment={Type: COLLECTION_IN, Depth: 1},
-      fragment_buckets={Type: COLLECTION_OUT, Depth: 2},
+      fragment_buckets={Type: COLLECTION_OUT, Depth: 1},
       range_min={Type: COLLECTION_IN, Depth: 2},
       range_max={Type: COLLECTION_IN, Depth: 2})
 def filter_fragment(fragment, fragment_buckets, num_buckets, range_min=0,
