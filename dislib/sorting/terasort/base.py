@@ -41,13 +41,13 @@ class TeraSort:
                  num_buckets_reorder=None,
                  returns="ds_array", synchronize=False):
         if isinstance(range_min, int):
-            self.range_min = [[[[range_min]]]]
+            self.range_min = [[np.array([[range_min]])]]
         elif isinstance(range_min, list):
-            self.range_min = [[[range_min]]]
+            self.range_min = [[np.array(range_min)]]
         if isinstance(range_max, int):
-            self.range_max = [[[[range_max]]]]
+            self.range_max = [[np.array([[range_max]])]]
         elif isinstance(range_max, list):
-            self.range_max = [[[range_max]]]
+            self.range_max = [[np.array(range_max)]]
         if np.any(self.range_min >= self.range_max):
             raise ValueError("Minimum value range should be lower than "
                              "maximum value range.")
@@ -85,10 +85,10 @@ class TeraSort:
         self.range_min = x.min()
         self.range_max = x.max()
         if self.column_indexes is None:
-            self.range_min = [[[[obtain_minimum_value(
-                self.range_min._blocks)]]]]
-            self.range_max = [[[[obtain_maximum_value(
-                self.range_max._blocks)]]]]
+            self.range_min = [[obtain_minimum_value(
+                self.range_min._blocks)]]
+            self.range_max = [[obtain_maximum_value(
+                self.range_max._blocks)]]
 
     def sort(self, x):
         """Sorts the data in x.
