@@ -1,4 +1,4 @@
-dislib.classification.CascadeSVM
+dislib.classification.KNeighborsClassifier
 ================================
 
 .. automodule:: dislib.classification.knn.base
