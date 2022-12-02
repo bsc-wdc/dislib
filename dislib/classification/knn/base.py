@@ -21,6 +21,7 @@ from dislib.data.util import sync_obj, decoder_helper, encoder_helper
 
 class KNeighborsClassifier(BaseEstimator):
     """Classifier implementing the k-nearest neighbors vote.
+
     Parameters
     ----------
     n_neighbors : int, default=5
@@ -41,6 +42,7 @@ class KNeighborsClassifier(BaseEstimator):
         by the random number generator; If RandomState instance, random_state
         is the random number generator; If None, the random number generator is
         the RandomState instance used by np.random.
+
     Notes
     -----
     See :ref:`Nearest Neighbors <neighbors>` in the online documentation
@@ -51,6 +53,7 @@ class KNeighborsClassifier(BaseEstimator):
        but different labels, the results will depend on the ordering of the
        training data.
     https://en.wikipedia.org/wiki/K-nearest_neighbor_algorithm
+    
     Examples
     --------
     >>> import dislib as ds
