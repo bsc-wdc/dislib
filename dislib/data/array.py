@@ -6,13 +6,12 @@ import numpy as np
 from pycompss.api.api import compss_wait_on, compss_delete_object
 from pycompss.api.constraint import constraint
 from pycompss.api.parameter import Type, COLLECTION_IN, Depth, \
-    COLLECTION_OUT, INOUT
+    COLLECTION_OUT, INOUT, Cache
 from pycompss.api.task import task
 from scipy import sparse as sp
 from scipy.sparse import issparse, csr_matrix
 from sklearn.utils import check_random_state
 import math
-
 
 class Array(object):
     """ A distributed 2-dimensional array divided in blocks.
@@ -106,12 +105,17 @@ class Array(object):
         n_blocks = (self._n_blocks[0], x._n_blocks[1])
         blocks = Array._get_out_blocks(n_blocks)
 
+        if dislib.__gpu_available__:
+            multiply_func = _multiply_block_groups_gpu
+        else:
+            multiply_func = _multiply_block_groups
+
         for i in range(n_blocks[0]):
             for j in range(n_blocks[1]):
                 hblock = self._blocks[i]
                 vblock = [x._blocks[k][j] for k in range(len(x._blocks))]
 
-                blocks[i][j] = _multiply_block_groups(hblock, vblock)
+                blocks[i][j] = multiply_func(hblock, vblock)
 
         shape = (self.shape[0], x.shape[1])
         tl_shape = (self._top_left_shape[0], x._top_left_shape[1])
@@ -225,10 +229,10 @@ class Array(object):
                      self.shape, self._sparse)
 
     def __truediv__(self, other):
-        if not np.isscalar(other):
+        if type(other) == Array:
             raise NotImplementedError("Non scalar division not supported")
 
-        return _apply_elementwise(operator.truediv, self, other)
+        return _apply_elementwise(_div_task, self, other)
 
     def __mul__(self, other):
         if self.shape[1] != other.shape[1] or other.shape[0] != 1:
@@ -307,7 +311,19 @@ class Array(object):
         if sparse:
             ret = sp.bmat(blocks, format=b0.getformat(), dtype=b0.dtype)
         else:
-            ret = np.block(blocks)
+            if dislib.__gpu_available__:
+                import cupy as cp
+                if type(b0) == cp.ndarray:
+                    try:
+                        blocks = cp.asarray(np.block(blocks))
+                        ret = cp.concatenate(cp.concatenate(blocks, axis=1), axis=1)
+                    except:
+                        for i in range(len(blocks)):
+                            for j in range(len(blocks[i])):
+                                blocks[i][j] = cp.asnumpy(blocks[i][j])
+                        ret = cp.asarray(np.block(blocks))
+            else:
+                ret = np.block(blocks)
 
         return ret
 
@@ -1128,7 +1144,13 @@ def array(x, block_size):
     if sparse:
         x = csr_matrix(x, copy=True)
     else:
-        x = np.array(x, copy=True)
+        if type(x) == np.ndarray:
+            x = np.array(x, copy=True)
+        if dislib.__gpu_available__:
+            import cupy as cp
+            if type(x) == cp.ndarray:
+                x = cp.array(x, copy=True)
+
 
     if len(x.shape) > 2:
         raise ValueError("Input data has more than 2 dimensions.")
@@ -1301,6 +1323,28 @@ def zeros(shape, block_size, dtype=None):
     return _full(shape, block_size, False, _full_block, 0, dtype)
 
 
+def _empty_array(shape, block_size):
+    '''
+    Returns an empty ds-array with the specified block_size and shape.
+    Useful for constructing ds-arrays on some algorithms without the
+    need of allocating memory for the blocks (as for example happens with
+    the random_array operation).
+    Parameters
+    ----------
+    shape : tuple of two ints
+        Shape of the output ds-array.
+    block_size : tuple of two ints
+        Size of the ds-array blocks.
+    Returns
+    -------
+    x : ds-array
+        Distributed array with value None in the blocks.
+    '''
+    return Array(blocks=[[None] for _ in range(math.ceil(shape[0] /
+                                                         block_size[0]))],
+                 top_left_shape=block_size,
+                 reg_shape=block_size, shape=shape, sparse=False)
+
 def full(shape, block_size, fill_value, dtype=None):
     """ Returns a ds-array of 'shape' filled with 'fill_value'.
 
@@ -1457,13 +1501,19 @@ def matmul(a: Array, b: Array, transpose_a=False, transpose_b=False):
     n_blocks = (len(a_blocks), len(b_blocks[0]))
     blocks = Array._get_out_blocks(n_blocks)
 
+    if dislib.__gpu_available__:
+        multiply_blocks_func = _multiply_block_groups_gpu
+    else:
+        multiply_blocks_func = _multiply_block_groups
+
     for i in range(n_blocks[0]):
         for j in range(n_blocks[1]):
             hblock = a_blocks[i]
             vblock = [b_blocks[k][j] for k in range(len(b_blocks))]
 
-            blocks[i][j] = _multiply_block_groups(hblock, vblock,
-                                                  transpose_a, transpose_b)
+            blocks[i][j] = multiply_blocks_func(hblock, vblock,
+                                                transpose_a, transpose_b)
+    
 
     new_block_size = (
         a._reg_shape[1] if transpose_a else a._reg_shape[0],
@@ -1481,6 +1531,38 @@ def matmul(a: Array, b: Array, transpose_a=False, transpose_b=False):
 def _matmul_with_transpose(a, b, transpose_a, transpose_b):
     return (a.T if transpose_a else a) @ (b.T if transpose_b else b)
 
+@constraint(processors=[
+                {"processorType": "CPU", "computingUnits": "1"},
+                {"processorType": "GPU", "computingUnits": "1"},
+            ]
+)
+@task(a_gpu={Cache: True}, b_gpu={Cache: True},
+      returns=1, cache_returns=True)
+def _add_gpu(a_gpu, b_gpu):
+    import cupy as cp
+
+    return cp.add(a_gpu, b_gpu)
+
+@constraint(computing_units="${ComputingUnits}")
+@task(returns=np.array)
+def _add_cpu(block1, block2):
+    return block1 + block2
+
+@constraint(processors=[
+                {"processorType": "CPU", "computingUnits": "1"},
+                {"processorType": "GPU", "computingUnits": "1"},
+            ]
+)
+@task(a_gpu={Cache: True}, b_gpu={Cache: True},
+      returns=1, cache_returns=True)
+def _matmul_gpu(a_gpu, b_gpu, transpose_a, transpose_b):
+    import cupy as cp
+    
+    if transpose_a:
+        a_gpu = cp.transpose(a_gpu)
+    if transpose_b:
+        b_gpu = cp.transpose(b_gpu)
+    return cp.matmul(a_gpu, b_gpu)
 
 def _multiply_block_groups(hblock, vblock, transpose_a=False,
                            transpose_b=False):
@@ -1488,15 +1570,34 @@ def _multiply_block_groups(hblock, vblock, transpose_a=False,
 
     for blocki, blockj in zip(hblock, vblock):
         blocks.append(
-            _block_apply(_matmul_with_transpose, blocki, blockj,
+            _matmul_with_transpose(blocki, blockj,
                          transpose_a, transpose_b)
         )
 
     while len(blocks) > 1:
         block1 = blocks.popleft()
         block2 = blocks.popleft()
-        blocks.append(_block_apply(operator.add, block1, block2))
+        blocks.append(_add_cpu(block1, block2))
 
+        compss_delete_object(block1)
+        compss_delete_object(block2)
+
+    return blocks[0]
+
+def _multiply_block_groups_gpu(hblock, vblock, transpose_a=False,
+                           transpose_b=False):
+    blocks = deque()
+
+    for blocki, blockj in zip(hblock, vblock):
+        blocks.append(
+            _matmul_gpu(blocki, blockj,
+                         transpose_a, transpose_b)
+        )
+    while len(blocks) > 1:
+        block1 = blocks.popleft()
+        block2 = blocks.popleft()
+        blocks.append(_add_gpu(block1, block2))
+        
         compss_delete_object(block1)
         compss_delete_object(block2)
 
@@ -1566,6 +1667,25 @@ def matsubtract(a: Array, b: Array):
     )
     return Array(blocks=blocks, top_left_shape=new_block_size,
                  reg_shape=new_block_size, shape=new_shape, sparse=a._sparse)
+
+
+@constraint(processors=[
+                {"processorType": "CPU", "computingUnits": "1"},
+                {"processorType": "GPU", "computingUnits": "1"},
+            ])
+@task(returns=np.array)
+def _subtract_gpu(block1, block2):
+    import cupy as cp
+
+    block1_gpu, block2_gpu = cp.asarray(block1), cp.asarray(block2)
+    res = cp.asnumpy(cp.subtract(block1_gpu, block2_gpu))
+    block1_gpu, block2_gpu = None, None
+    return res
+
+@constraint(computing_units="${ComputingUnits}")
+@task(returns=np.array)
+def _subtract(block1, block2):
+    return block1 - block2
 
 
 def _subtract_block_groups(hblock, vblock):
@@ -1693,6 +1813,12 @@ def concat_columns(a: Array, b: Array):
 
 def _add_block_groups(hblock, vblock):
     blocks = []
+
+    if dislib.__gpu_available__:
+        add_func = _add_gpu
+    else:
+        add_func = _add_cpu
+
     for blocki, blockj in zip(hblock, vblock):
         blocks.append(_block_apply(operator.add, blocki, blockj))
     return blocks
@@ -1774,7 +1900,13 @@ def _apply_elementwise(func, x, *args, **kwargs):
 
 def _random_block_wrapper(block_size, r_state):
     seed = r_state.randint(np.iinfo(np.int32).max)
-    return _random_block(block_size, seed)
+
+    if dislib.__gpu_available__:
+        random_block_func = _random_block_gpu
+    else:
+        random_block_func = _random_block
+
+    return random_block_func(block_size, seed)
 
 
 @constraint(computing_units="${ComputingUnits}")
@@ -1785,6 +1917,14 @@ def _get_item(i, j, block):
     """
     return block[i, j]
 
+
+@constraint(computing_units="${ComputingUnits}")
+@task(returns=1)
+def _div_task(block, num):
+    if type(num) == np.array:
+        num = num.flatten()[0]
+    return block / num
+    
 
 @constraint(computing_units="${ComputingUnits}")
 @task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=1)
@@ -1866,6 +2006,18 @@ def _random_block(shape, seed):
     np.random.seed(seed)
     return np.random.random(shape)
 
+@constraint(processors=[
+                {"processorType": "CPU", "computingUnits": "1"},
+                {"processorType": "GPU", "computingUnits": "1"},
+            ]
+)
+@task(returns=1, cache_returns=True, is_distributed=True)
+def _random_block_gpu(shape, seed):
+    import cupy as cp
+
+    cp.random.seed(seed)
+    return cp.random.random(shape).astype(cp.float64)
+
 
 @constraint(computing_units="${ComputingUnits}")
 @task(returns=1)
@@ -1917,7 +2069,6 @@ def _block_apply_axis(func, axis, blocks, *args, **kwargs):
 def _block_apply(func, block, *args, **kwargs):
     return func(block, *args, **kwargs)
 
-
 @constraint(computing_units="${ComputingUnits}")
 @task(block=INOUT)
 def _set_value(block, i, j, value):
@@ -1946,7 +2097,7 @@ def _assemble_blocks(blocks, bshape):
 
         merged[-1].append(block)
 
-    return np.block(merged)
+    return Array._merge_blocks(merged)
 
 
 @constraint(computing_units="${ComputingUnits}")
