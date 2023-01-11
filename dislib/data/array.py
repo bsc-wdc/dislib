@@ -1820,7 +1820,7 @@ def _add_block_groups(hblock, vblock):
         add_func = _add_cpu
 
     for blocki, blockj in zip(hblock, vblock):
-        blocks.append(_block_apply(operator.add, blocki, blockj))
+        blocks.append(add_func(blocki, blockj))
     return blocks
 
 
