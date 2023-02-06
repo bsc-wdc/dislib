@@ -12,6 +12,7 @@ from scipy import sparse as sp
 from scipy.sparse import issparse, csr_matrix
 from sklearn.utils import check_random_state
 import math
+import sys
 
 
 class Array(object):
@@ -73,8 +74,10 @@ class Array(object):
 
     def __del__(self):
         if self._delete:
-            [compss_delete_object(b) for r_block in self._blocks for b in
-             r_block]
+            for r_block in self._blocks:
+                for b in r_block:
+                    if sys.getrefcount(b) <= 3:
+                        compss_delete_object(b)
 
     def __str__(self):
         return "ds-array(blocks=(...), top_left_shape=%r, reg_shape=%r, " \
