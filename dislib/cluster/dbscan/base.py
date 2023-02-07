@@ -309,6 +309,9 @@ def _rearrange_labels(labels, indices, n_blocks):
 
     # merge and sort the rearranged labels to build the final array of labels
     for i in range(blocks_arr.shape[1]):
+        print("AAAAA")
+        print(blocks_arr[:, i].tolist())
+        print(indices[i])
         label_block = _merge_labels(blocks_arr[:, i].tolist(), indices[i])
         sorted_blocks.append([label_block])
 
@@ -408,7 +411,7 @@ def _merge_samples(samples_list, sparse):
 
 
 @constraint(computing_units="${ComputingUnits}")
-@task(labels_list=COLLECTION_IN, indices=COLLECTION_IN, returns=1)
+@task(labels_list={Type: COLLECTION_IN, Depth: 1}, indices={Type: COLLECTION_IN, Depth: 1}, returns=1)
 def _merge_labels(labels_list, indices):
     labels = np.vstack(labels_list)
 
