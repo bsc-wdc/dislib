@@ -411,7 +411,8 @@ def _merge_samples(samples_list, sparse):
 
 
 @constraint(computing_units="${ComputingUnits}")
-@task(labels_list={Type: COLLECTION_IN, Depth: 1}, indices={Type: COLLECTION_IN, Depth: 1}, returns=1)
+@task(labels_list={Type: COLLECTION_IN, Depth: 1},
+      indices={Type: COLLECTION_IN, Depth: 1}, returns=1)
 def _merge_labels(labels_list, indices):
     labels = np.vstack(labels_list)
 
