@@ -8,6 +8,13 @@ runcompss \
     --pythonpath=$(pwd) \
     --python_interpreter=python3 \
     ./tests/__main__.py &> >(tee output.log)
+    
+
+if grep -q "TOTALLY FAILED" output.log; then
+   job_id=$(grep -oP "\d+(?=\|)" output.log)
+   job_file="/root/.COMPSs/__main__.py_01/jobs/job${job_id}_NEW.err"
+   cat $job_file
+fi
 
 # Check the unittest output because PyCOMPSs exits with code 0 even if there
 # are failed tests (the execution itself is successful)
