@@ -9,10 +9,13 @@ runcompss \
     --python_interpreter=python3 \
     ./tests/__main__.py &> >(tee output.log)
     
+    
+echo "Checking for error..."
 
 if grep -q "TOTALLY FAILED" output.log; then
    job_id=$(grep -oP "\d+(?=\|)" output.log)
    job_file="/root/.COMPSs/__main__.py_01/jobs/job${job_id}_NEW.err"
+   echo $job_file
    cat $job_file
 fi
 
