@@ -1,8 +1,6 @@
 FROM compss/compss-tutorial:3.1
 MAINTAINER COMPSs Support <support-compss@bsc.es>
 
-USER jenkins
-
 COPY . dislib/
 
 ENV PYTHONPATH=$PYTHONPATH:/dislib:/opt/COMPSs/Bindings/python/3/
