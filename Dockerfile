@@ -10,8 +10,6 @@ RUN python3 -m pip install flake8 parameterized coverage
 
 ENV COMPSS_LOAD_SOURCE false
 
-RUN rm -rf /root/.ssh
-
 # Expose SSH port and run SSHD
 EXPOSE 22
 CMD ["/usr/sbin/sshd","-D"]
