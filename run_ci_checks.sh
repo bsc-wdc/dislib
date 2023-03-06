@@ -8,8 +8,8 @@ cd ${root_path}
 export PYTHONPATH=$PYTHONPATH:${root_path}
 
 echo $HOME
-cat /home/jenkins/.ssh/id_rsa.pub
-cat /home/jenkins/.ssh/authorized_keys
+cat ~/.ssh/id_rsa.pub
+cat ~/.ssh/authorized_keys
 
 ssh compss@mt1.bsc.es pwd
 exit
