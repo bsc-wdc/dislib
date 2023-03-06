@@ -10,7 +10,7 @@ export PYTHONPATH=$PYTHONPATH:${root_path}
 cat ~/.ssh/id_rsa.pub
 cat ~/.ssh/authorized_keys
 
-#ssh jenkins@mt1.bsc.es pwd
+ssh mt1.bsc.es pwd
 exit
 
 echo "Running flake8 style check"
