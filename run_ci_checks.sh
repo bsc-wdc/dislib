@@ -7,7 +7,7 @@ cd ${root_path}
 # Add dislib to the python path
 export PYTHONPATH=$PYTHONPATH:${root_path}
 
-ssh compss@mt1.bsc.es pwd
+ssh jenkins@mt1.bsc.es pwd
 exit
 
 echo "Running flake8 style check"
