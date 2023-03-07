@@ -10,7 +10,7 @@ from sklearn.preprocessing import MinMaxScaler as SkMinMaxScaler
 
 import dislib as ds
 from dislib.preprocessing import StandardScaler, MinMaxScaler
-
+import dislib.data.util.model as utilmodel
 from tests import BaseTimedTestCase
 
 
@@ -164,6 +164,70 @@ class MinMaxScalerTest(ScalerTest):
         self.assertEqual(ds_arr.shape, ds_scaled.shape)
         self.assertEqual(ds_arr._n_blocks, ds_scaled._n_blocks)
 
+    def test_save_load(self):
+        """
+        Tests that the save and load methods work properly with the three
+        expected formats and that an exception is raised when a non-supported
+        format is provided.
+        """
+        x = ds.array(np.array([[0.2, 3.4], [5.7, 2.3], [-1.2, 9.8],
+                               [15.7, -12.3]]), block_size=(2, 2))
+
+        scaler = MinMaxScaler()
+        scaler.fit(x)
+        scaler.save_model("./saved_model")
+
+        scaler_2 = MinMaxScaler()
+        scaler_2.load_model("./saved_model")
+        self.assertTrue(np.all(scaler.transform(x).collect() ==
+                               scaler_2.transform(x).collect()))
+
+        scaler.save_model("./saved_model", save_format="cbor")
+
+        scaler_2 = MinMaxScaler()
+        scaler_2.load_model("./saved_model", load_format="cbor")
+
+        self.assertTrue(np.all(scaler.transform(x).collect() ==
+                               scaler_2.transform(x).collect()))
+
+        scaler.save_model("./saved_model", save_format="pickle")
+
+        scaler_2 = MinMaxScaler()
+        scaler_2.load_model("./saved_model", load_format="pickle")
+        self.assertTrue(np.all(scaler.transform(x).collect() ==
+                               scaler_2.transform(x).collect()))
+
+        with self.assertRaises(ValueError):
+            scaler.save_model("./saved_model", save_format="txt")
+
+        with self.assertRaises(ValueError):
+            scaler_2 = MinMaxScaler()
+            scaler_2.load_model("./saved_model", load_format="txt")
+
+        scaler = MinMaxScaler(feature_range=(0, 2))
+        scaler.fit(x)
+        scaler.save_model("./saved_model", overwrite=False)
+
+        scaler_2 = MinMaxScaler(feature_range=(0, 2))
+        scaler_2.load_model("./saved_model", load_format="pickle")
+        self.assertFalse(np.all(scaler.transform(x).collect() ==
+                                scaler_2.transform(x).collect()))
+
+        scaler.save_model("./saved_model", overwrite=True)
+
+        scaler_2 = MinMaxScaler(feature_range=(0, 2))
+        scaler_2.load_model("./saved_model")
+        self.assertTrue(np.all(scaler.transform(x).collect() ==
+                               scaler_2.transform(x).collect()))
+
+        cbor2_module = utilmodel.cbor2
+        utilmodel.cbor2 = None
+        with self.assertRaises(ModuleNotFoundError):
+            scaler.save_model("./saved_model_error", save_format="cbor")
+        with self.assertRaises(ModuleNotFoundError):
+            scaler_2.load_model("./saved_model_error", load_format="cbor")
+        utilmodel.cbor2 = cbor2_module
+
 
 class StandardScalerTest(ScalerTest):
     def test_fit_transform(self):
@@ -180,7 +244,8 @@ class StandardScalerTest(ScalerTest):
         self.assertTrue(np.allclose(sc1.var_, sc2.var_.collect()))
         self.assertEqual(ds_scaled._top_left_shape,
                          ds_scaled._blocks[0][0].shape)
-        self.assertEqual(self.ds_arr._reg_shape, ds_scaled._reg_shape)
+        self.assertEqual(self.ds_arr._reg_shape,
+                         ds_scaled._reg_shape)
         self.assertEqual(self.ds_arr._top_left_shape,
                          ds_scaled._top_left_shape)
         self.assertEqual(self.ds_arr.shape, ds_scaled.shape)
@@ -208,7 +273,8 @@ class StandardScalerTest(ScalerTest):
         self.assertEqual(ds_scaled._top_left_shape,
                          ds_scaled._blocks[0][0].shape)
         self.assertEqual(ds_arr._reg_shape, ds_scaled._reg_shape)
-        self.assertEqual(ds_arr._top_left_shape, ds_scaled._top_left_shape)
+        self.assertEqual(ds_arr._top_left_shape,
+                         ds_scaled._top_left_shape)
         self.assertEqual(ds_arr.shape, ds_scaled.shape)
         self.assertEqual(ds_arr._n_blocks, ds_scaled._n_blocks)
 
@@ -295,6 +361,55 @@ class StandardScalerTest(ScalerTest):
         self.assertEqual(ds_arr._top_left_shape, ds_scaled._top_left_shape)
         self.assertEqual(ds_arr.shape, ds_scaled.shape)
         self.assertEqual(ds_arr._n_blocks, ds_scaled._n_blocks)
+
+    def test_save_load(self):
+        """
+        Tests that the save and load methods work properly with the three
+        expected formats and that an exception is raised when a non-supported
+        format is provided.
+        """
+        x = ds.array(np.array([[0.2, 3.4], [5.7, 2.3], [-1.2, 9.8],
+                               [15.7, -12.3]]), block_size=(2, 2))
+
+        scaler = StandardScaler()
+        scaler.fit(x)
+        scaler.save_model("./saved_model")
+
+        scaler_2 = StandardScaler()
+        scaler_2.load_model("./saved_model")
+        self.assertTrue(np.all(scaler.transform(x).collect() ==
+                               scaler_2.transform(x).collect()))
+
+        scaler.save_model("./saved_model", save_format="cbor")
+
+        scaler_2 = StandardScaler()
+        scaler_2.load_model("./saved_model", load_format="cbor")
+
+        self.assertTrue(np.all(scaler.transform(x).collect() ==
+                               scaler_2.transform(x).collect()))
+
+        scaler.save_model("./saved_model", save_format="pickle")
+
+        scaler_2 = StandardScaler()
+        scaler_2.load_model("./saved_model", load_format="pickle")
+        self.assertTrue(np.all(scaler.transform(x).collect() ==
+                               scaler_2.transform(x).collect()))
+
+        scaler = StandardScaler()
+        scaler.fit(x)
+        scaler.save_model("./saved_model", overwrite=False)
+
+        scaler_2 = StandardScaler()
+        scaler_2.load_model("./saved_model", load_format="pickle")
+        self.assertTrue(np.all(scaler.transform(x).collect() ==
+                               scaler_2.transform(x).collect()))
+
+        with self.assertRaises(ValueError):
+            scaler.save_model("./saved_model", save_format="txt")
+
+        with self.assertRaises(ValueError):
+            scaler_2 = MinMaxScaler()
+            scaler_2.load_model("./saved_model", load_format="txt")
 
 
 def main():
