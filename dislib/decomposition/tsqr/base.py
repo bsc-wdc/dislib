@@ -164,6 +164,7 @@ def tsqr(a: Array, n_reduction=2, mode="complete", indexes=None):
             q = _construct_q_from_the_end(qs, n_reduction, a._reg_shape[0],
                                           a._reg_shape[1], a.shape,
                                           indexes=matrix_indices,
+                                          len_indexes=len(indexes),
                                           complete=True)
         else:
             q = _construct_q_from_the_end(qs, n_reduction, a._reg_shape[0],
@@ -248,6 +249,7 @@ def tsqr(a: Array, n_reduction=2, mode="complete", indexes=None):
             q = _construct_q_from_the_end(qs, n_reduction, a._reg_shape[0],
                                           a._reg_shape[1], a.shape,
                                           indexes=matrix_indices,
+                                          len_indexes=len(indexes),
                                           total_depth=total_depth,
                                           complete=False)
         else:
@@ -306,7 +308,8 @@ def tsqr(a: Array, n_reduction=2, mode="complete", indexes=None):
 
 
 def _construct_q_from_the_end(qs, n_reduction, reg_shape_0, reg_shape_1,
-                              shape, indexes=None, total_depth=1,
+                              shape, indexes=None, len_indexes=0,
+                              total_depth=1,
                               complete=False):
     if indexes is not None:
         q = _multiply(qs[-1], indexes)
@@ -320,7 +323,7 @@ def _construct_q_from_the_end(qs, n_reduction, reg_shape_0, reg_shape_1,
         if indexes is None:
             indexes_shape = shape[0]
         else:
-            indexes_shape = indexes.shape[1]
+            indexes_shape = len_indexes
         q = Array([[q]], top_left_shape=(shape[0], shape[0]),
                   reg_shape=(shape[0], shape[0]),
                   shape=(shape[0], indexes_shape),
@@ -337,9 +340,9 @@ def _construct_q_from_the_end(qs, n_reduction, reg_shape_0, reg_shape_1,
                       sparse=False)
         else:
             q = Array([[q]], top_left_shape=(reg_shape_1 * n_reduction,
-                                             indexes.shape[1]),
-                      reg_shape=(reg_shape_1 * n_reduction, indexes.shape[1]),
-                      shape=(reg_shape_1 * n_reduction, indexes.shape[1]),
+                                             len_indexes),
+                      reg_shape=(reg_shape_1 * n_reduction, len_indexes),
+                      shape=(reg_shape_1 * n_reduction, len_indexes),
                       sparse=False)
     for q_aux in reversed(qs):
         if complete:
