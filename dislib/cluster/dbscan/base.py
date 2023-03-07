@@ -309,9 +309,6 @@ def _rearrange_labels(labels, indices, n_blocks):
 
     # merge and sort the rearranged labels to build the final array of labels
     for i in range(blocks_arr.shape[1]):
-        print("AAAAA")
-        print(blocks_arr[:, i].tolist())
-        print(indices[i])
         label_block = _merge_labels(blocks_arr[:, i].tolist(), indices[i])
         sorted_blocks.append([label_block])
 
