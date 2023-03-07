@@ -12,6 +12,7 @@ from scipy import sparse as sp
 from scipy.sparse import issparse, csr_matrix
 from sklearn.utils import check_random_state
 import math
+import sys
 
 
 class Array(object):
