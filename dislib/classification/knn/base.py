@@ -53,7 +53,6 @@ class KNeighborsClassifier(BaseEstimator):
        but different labels, the results will depend on the ordering of the
        training data.
     https://en.wikipedia.org/wiki/K-nearest_neighbor_algorithm
-
     Examples
     --------
     >>> import dislib as ds
