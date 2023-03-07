@@ -11,7 +11,7 @@ from tests import BaseTimedTestCase
 
 class QRTest(BaseTimedTestCase):
     @parameterized.expand([
-        (2, 1, 64, 36), (4, 1, 32, 36), (16, 1, 20, 10),
+        (2, 1, 64, 36), (4, 1, 72, 36), (16, 1, 20, 10),
     ])
     def test_tsqr(self, m_size, n_size, b_size_r, b_size_c):
         """Tests tsqr"""
@@ -36,7 +36,7 @@ class QRTest(BaseTimedTestCase):
         self.assertTrue(np.allclose(q.dot(r), m2b))
 
     @parameterized.expand([
-        (2, 1, 64, 36), (4, 1, 32, 36), (16, 1, 20, 10),
+        (2, 1, 64, 36), (4, 1, 72, 36), (16, 1, 20, 10),
     ])
     def test_tsqr_complete_indexes(self, m_size, n_size, b_size_r, b_size_c):
         """Tests tsqr"""
@@ -56,7 +56,7 @@ class QRTest(BaseTimedTestCase):
         self.assertTrue(q.shape == (q.shape[0], 3))
 
     @parameterized.expand([
-        (2, 1, 64, 36), (4, 1, 32, 36), (16, 1, 20, 10),
+        (2, 1, 64, 36), (4, 1, 72, 36), (16, 1, 20, 10),
     ])
     def test_tsqr_inverse(self, m_size, n_size, b_size_r, b_size_c):
         """Tests tsqr"""
@@ -81,7 +81,7 @@ class QRTest(BaseTimedTestCase):
         self.assertTrue(np.allclose(q.dot(r), m2b))
 
     @parameterized.expand([
-        (2, 1, 64, 36), (4, 1, 32, 36), (16, 1, 20, 10),
+        (2, 1, 64, 36), (4, 1, 72, 36), (16, 1, 20, 10),
     ])
     def test_tsqr_inverse_indexes(self, m_size, n_size, b_size_r, b_size_c):
         """Tests tsqr"""
@@ -101,7 +101,7 @@ class QRTest(BaseTimedTestCase):
         # self.assertTrue(q.shape == (q.shape[0], 3))
 
     @parameterized.expand([
-        (2, 1, 64, 36), (4, 1, 32, 36), (16, 1, 20, 10),
+        (2, 1, 64, 36), (4, 1, 72, 36), (16, 1, 20, 10),
     ])
     def test_tsqr_reduced(self, m_size, n_size, b_size_r, b_size_c):
         """Tests tsqr"""
@@ -123,7 +123,7 @@ class QRTest(BaseTimedTestCase):
         self.assertTrue(np.allclose(q.dot(r), m2b))
 
     @parameterized.expand([
-        (2, 1, 64, 36), (4, 1, 32, 36), (16, 1, 20, 10),
+        (2, 1, 64, 36), (4, 1, 72, 36), (16, 1, 20, 10),
     ])
     def test_tsqr_reduced_inverse(self, m_size, n_size, b_size_r, b_size_c):
         """Tests tsqr"""
@@ -145,7 +145,7 @@ class QRTest(BaseTimedTestCase):
         self.assertTrue(np.allclose(q.dot(r), m2b))
 
     @parameterized.expand([
-        (2, 1, 64, 36), (4, 1, 32, 36), (16, 1, 20, 10),
+        (2, 1, 64, 36), (4, 1, 72, 36), (16, 1, 20, 10),
     ])
     def test_tsqr_reduced_inverse_indexes(self, m_size, n_size,
                                           b_size_r, b_size_c):
@@ -168,7 +168,7 @@ class QRTest(BaseTimedTestCase):
         self.assertTrue(q.shape == (q.shape[0], 3))
 
     @parameterized.expand([
-        (2, 1, 64, 36), (4, 1, 32, 36), (16, 1, 20, 10),
+        (2, 1, 64, 36), (4, 1, 72, 36), (16, 1, 20, 10),
     ])
     def test_tsqr_compute_r(self, m_size, n_size, b_size_r, b_size_c):
         """Tests tsqr"""
@@ -184,7 +184,7 @@ class QRTest(BaseTimedTestCase):
         self.assertTrue(np.allclose(np.triu(r), r))
 
     @parameterized.expand([
-        (2, 1, 64, 36), (4, 1, 32, 36), (16, 1, 20, 10),
+        (2, 1, 64, 36), (4, 1, 72, 36), (16, 1, 20, 10),
     ])
     def test_tsqr_compute_r_reduced(self, m_size, n_size, b_size_r, b_size_c):
         """Tests tsqr"""
