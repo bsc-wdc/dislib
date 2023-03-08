@@ -355,15 +355,14 @@ def _partial_sum_gpu(blocks, centers):
     if issparse(centers):
         centers = centers.todense()
 
-    arr_gpu = cp.asarray(arr)
-    centers_gpu = cp.asarray(centers)
+    arr_gpu = cp.expand_dims(cp.asarray(arr), axis=1)
+    centers_gpu = cp.expand_dims(cp.asarray(centers), axis=0)
 
-    diff = cp.expand_dims(arr_gpu, axis=1) - cp.expand_dims(centers_gpu, axis=0)
+    diff = arr_gpu - centers_gpu
     del arr_gpu, centers_gpu
-    
+
     dist_gpu = cp.linalg.norm(diff, axis=2)
     close_centers_gpu = cp.argmin(dist_gpu, axis=1)
-
 
     close_centers = cp.asnumpy(close_centers_gpu)
 

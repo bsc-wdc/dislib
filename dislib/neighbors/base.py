@@ -147,7 +147,7 @@ def _get_kneighbors(sknnstruct, q_blocks, n_neighbors, offset):
 
     # This converts the local indexes to global ones
     ind += offset
-    
+
     return dist, ind
 
 
@@ -170,12 +170,12 @@ def _get_kneighbors_gpu(x_blocks, q_blocks, n_neighbors, offset):
     if issparse(q_samples):
         q_samples = q_samples.todense()
 
-    x_samples_gpu = cp.asarray(x_samples)
+    x_samples_gpu = cp.expand_dims(cp.asarray(x_samples), axis=1)
     del x_samples
-    q_samples_gpu = cp.asarray(q_samples)
+    q_samples_gpu = cp.expand_dims(cp.asarray(q_samples), axis=0)
     del q_samples
 
-    diff = cp.expand_dims(x_samples_gpu, axis=1) - cp.expand_dims(q_samples_gpu, axis=0)
+    diff = x_samples_gpu - q_samples_gpu
     dist_gpu = cp.linalg.norm(diff, axis=2)
 
     ind_gpu = cp.argsort(dist_gpu, axis=1)[:, :n_neighbors]
