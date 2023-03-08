@@ -372,7 +372,7 @@ def _compute_u_block_sorted_gpu(a_block, index, bsize, sorting, u_block):
     a_col_gpu = cp.asarray(Array._merge_blocks(a_block))
     norm_gpu = cp.linalg.norm(a_col_gpu, axis=0)
 
-    zero_idx = cp.where(norm_gpu == 0)
+    zero_idx = cp.where(norm_gpu == 0)[0]
     a_col_gpu[0, zero_idx] = 1
     norm_gpu[zero_idx] = 1
 

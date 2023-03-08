@@ -451,9 +451,9 @@ def _dot_task_gpu(a, b, transpose_result=False, transpose_a=False,
 
     a_gpu, b_gpu = cp.asarray(a), cp.asarray(b)
     if transpose_a:
-        a_gpu = np.transpose(a_gpu)
+        a_gpu = cp.transpose(a_gpu)
     if transpose_b:
-        b_gpu = np.transpose(b_gpu)
+        b_gpu = cp.transpose(b_gpu)
 
     dot_gpu = cp.dot(a_gpu, b_gpu)
 
