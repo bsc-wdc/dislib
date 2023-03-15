@@ -1,4 +1,7 @@
-#!/bin/bash -e
+#!/bin/bash
+
+rm -rf .git
+ssh compss@mt1.bsc.es rm -rf /scratch/tmp/dislib-gpu-test
 
 coverage3 run --data-file=cpu_cov --source dislib tests &
 cpu_cov=$!
