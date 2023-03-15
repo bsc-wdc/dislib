@@ -10,9 +10,9 @@ export PYTHONPATH=$PYTHONPATH:${root_path}
 echo "Running flake8 style check"
 ./run_style.sh
 
-echo "Running tests"
-# Run the tests in ./tests with PyCOMPSs
-./run_tests.sh
-
 echo "Running code coverage"
 ./run_coverage.sh
+
+# echo "Running tests"
+# Run the tests in ./tests with PyCOMPSs
+# ./run_tests.sh
