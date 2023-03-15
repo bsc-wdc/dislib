@@ -8,7 +8,7 @@ cpu_cov=$!
 
 ssh compss@mt1.bsc.es mkdir -p /scratch/tmp/dislib-gpu-test
 scp -r . compss@mt1.bsc.es:/scratch/tmp/dislib-gpu-test/
-ssh compss@mt1.bsc.es cd /scratch/tmp/dislib-gpu-test;./run_gpu_cov.sh
+ssh compss@mt1.bsc.es "cd /scratch/tmp/dislib-gpu-test;./run_gpu_cov.sh"
 scp compss@mt1.bsc.es:/scratch/tmp/dislib-gpu-test/gpu_cov .
 ssh compss@mt1.bsc.es rm -rf /scratch/tmp/dislib-gpu-test
 
