@@ -4,10 +4,10 @@
 coverage3 run --data-file=cpu_cov --source dislib tests &
 cpu_cov=$!
 
-ssh compss@mt1.bsc.es mkdir /scratch/tmp/dislib-gpu-test
-scp -r . compss@mt1.bsc.es/scratch/tmp/dislib-gpu-test/
+ssh compss@mt1.bsc.es mkdir -p /scratch/tmp/dislib-gpu-test
+scp -r . compss@mt1.bsc.es:/scratch/tmp/dislib-gpu-test/
 ssh compss@mt1.bsc.es cd /scratch/tmp/dislib-gpu-test;./run_gpu_cov.sh
-scp compss@mt1.bsc.es/scratch/tmp/dislib-gpu-test/gpu_cov .
+scp compss@mt1.bsc.es:/scratch/tmp/dislib-gpu-test/gpu_cov .
 ssh compss@mt1.bsc.es rm -rf /scratch/tmp/dislib-gpu-test
 
 wait $cpu_cov
