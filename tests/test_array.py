@@ -886,10 +886,59 @@ class ArrayTest(BaseTimedTestCase):
             ds.data.matadd(x1, x2)
 
     @parameterized.expand([((ds.array([[1, 2, 3], [4, 5, 6]], (1, 3)),
+                             ds.array([[1, 1, 1], [2, 3, 4],
+                                       [1, 1, 1], [8, 2, 3]],
+                                      (1, 3)),
+                             np.array([[1, 2, 3],
+                                       [4, 5, 6],
+                                       [1, 1, 1],
+                                       [2, 3, 4],
+                                       [1, 1, 1],
+                                       [8, 2, 3]]),)),
+                           ((ds.array([[1, 2, 3, 4], [4, 5, 6, 7],
+                                       [4, 5, 6, 7]], (2, 3)),
+                             ds.array([[1, 1, 1, 4], [1, 1, 1, 8],
+                                       [1, 1, 1, 2]],
+                                      (2, 3)),
+                             np.array([[1, 2, 3, 4],
+                                       [4, 5, 6, 7],
+                                       [4, 5, 6, 7],
+                                       [1, 1, 1, 4],
+                                       [1, 1, 1, 8],
+                                       [1, 1, 1, 2]]),)),
+                           ((ds.array([[1, 2, 3, 4], [4, 5, 6, 8]], (1, 2)),
+                             ds.array([[1, 1, 3, 5], [1, 1, 6, 7]], (1, 2)),
+                             np.array([[1, 2, 3, 4],
+                                       [4, 5, 6, 8],
+                                       [1, 1, 3, 5],
+                                       [1, 1, 6, 7]]),)),
+                           ])
+    def test_concat_rows(self, x, y, z):
+        """ Tests concatenation of two ds-arrays by columns"""
+        self.assertTrue(_equal_arrays(ds.data.concat_rows(x, y).
+                                      collect(), z))
+
+    def test_concat_rows_error(self):
+        x1 = ds.array([[1, 2, 3], [4, 5, 6]], (1, 3))
+        x2 = ds.array([[1, 1, 1, 2], [1, 1, 1, 8], [1, 1, 1, 8]], (1, 4))
+        with self.assertRaises(ValueError):
+            ds.data.concat_columns(x1, x2)
+        x1 = ds.array([[1, 2, 3], [4, 5, 6]], (1, 3))
+        x2 = ds.array([[4, 4, 4, 4], [2, 3, 4, 5]], (1, 4))
+        with self.assertRaises(ValueError):
+            ds.data.concat_columns(x1, x2)
+
+    @parameterized.expand([((ds.array([[1, 2, 3], [4, 5, 6]], (1, 3)),
                             ds.array([[1, 1, 1, 2, 3, 4], [1, 1, 1, 8, 2, 3]],
                                      (1, 3)),
                             np.array([[1, 2, 3, 1, 1, 1, 2, 3, 4],
                                       [4, 5, 6, 1, 1, 1, 8, 2, 3]]), )),
+                           ((ds.array([[1, 2, 3, 4], [4, 5, 6, 7]], (1, 3)),
+                             ds.array([[1, 1, 1, 2, 3, 4, 5],
+                                       [1, 1, 1, 8, 2, 3, 5]],
+                                      (1, 3)),
+                             np.array([[1, 2, 3, 4, 1, 1, 1, 2, 3, 4, 5],
+                                       [4, 5, 6, 7, 1, 1, 1, 8, 2, 3, 5]]),)),
                            ((ds.array([[1, 2, 3, 4], [4, 5, 6, 8]], (1, 2)),
                              ds.array([[1, 1], [1, 1]], (1, 2)),
                              np.array([[1, 2, 3, 4, 1, 1],
