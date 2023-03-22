@@ -68,7 +68,6 @@ class Array(object):
         self._n_blocks = (len(blocks), len(blocks[0]))
         self._shape = shape
         self._sparse = sparse
-
         self._delete = delete
 
     def __del__(self):
@@ -1008,6 +1007,7 @@ class Array(object):
                 _transpose(r._blocks, _blocks)
 
                 out_blocks.append(_blocks[0])
+                del r
         elif mode == 'columns':
             out_blocks = [[] for _ in range(self._n_blocks[0])]
             for i, c in enumerate(self._iterator(axis=1)):
@@ -1023,6 +1023,7 @@ class Array(object):
                 % mode)
 
         blocks_t = list(map(list, zip(*out_blocks)))
+        del out_blocks
 
         bi0, bj0 = self._top_left_shape[0], self._top_left_shape[1]
         bn, bm = self._reg_shape[0], self._reg_shape[1]
@@ -1847,6 +1848,59 @@ def matadd(a: Array, b: Array):
                  reg_shape=new_block_size, shape=new_shape, sparse=a._sparse)
 
 
+@constraint(computing_units="${ComputingUnits}")
+@task(blocks={Type: COLLECTION_OUT, Depth: 1},
+      a_blocks={Type: COLLECTION_IN, Depth: 1})
+def _assign_block_columns(blocks, a_blocks):
+    print("ASSIGN BLOCK")
+    for i in range(len(a_blocks)):
+        blocks[i] = a_blocks[i]
+    print(blocks[i])
+
+
+@constraint(computing_units="${ComputingUnits}")
+@task(blocks={Type: COLLECTION_OUT, Depth: 1},
+      input_block={Type: COLLECTION_IN, Depth: 1})
+def _assign_block_columns_leftover_data(blocks, input_block,
+                                        block_shape, leftover_data):
+    if leftover_data is not None:
+        total_data = np.concatenate((leftover_data, input_block[0]), axis=1)
+    else:
+        total_data = input_block[0]
+    blocks[0] = total_data[:, :block_shape]
+    leftover_data = total_data[:, block_shape:]
+    for idx, block in enumerate(input_block[1:]):
+        if leftover_data is not None:
+            total_data = np.concatenate((leftover_data, block), axis=1)
+        else:
+            total_data = block
+        blocks[idx + 1] = total_data[:, :block_shape]
+        leftover_data = total_data[:, block_shape:]
+
+
+@constraint(computing_units="${ComputingUnits}")
+@task(blocks={Type: COLLECTION_OUT, Depth: 1},
+      input_blocks={Type: COLLECTION_IN, Depth: 1}, returns=1)
+def _assign_block(blocks, input_blocks, block_shape, leftover_data):
+    new_leftover_data = []
+    if leftover_data is None:
+        if len(input_blocks[0][0]) == block_shape:
+            for i in range(len(blocks)):
+                blocks[i] = input_blocks[i]
+        else:
+            for i in range(len(blocks)):
+                blocks[i] = input_blocks[i][:block_shape]
+                new_leftover_data.append(input_blocks[i][block_shape:])
+        return new_leftover_data
+    else:
+        for i in range(len(blocks)):
+            concatted_data = np.concatenate((leftover_data[i],
+                                             input_blocks[i]))
+            blocks[i] = concatted_data[:block_shape]
+            new_leftover_data = concatted_data[block_shape:]
+        return new_leftover_data
+
+
 def concat_columns(a: Array, b: Array):
     """ Matrix concatenation by columns.
         Parameters
@@ -1874,7 +1928,7 @@ def concat_columns(a: Array, b: Array):
         >>> if __name__ == "__main__":
         >>>     x = ds.random_array((8, 4), block_size=(2, 2))
         >>>     y = ds.random_array((8, 4), block_size=(2, 2))
-        >>>     result = ds.conc_columns(x, y)
+        >>>     result = ds.concat_columns(x, y)
         >>>     print(result.collect())
         """
     if a._shape[0] != b._shape[0]:
@@ -1884,17 +1938,93 @@ def concat_columns(a: Array, b: Array):
     if a._reg_shape[0] != b._reg_shape[0] or a._reg_shape[1] !=\
             b._reg_shape[1]:
         raise ValueError("incorrect block sizes for the requested "
-                         f"subtract ({a._reg_shape[0], a._reg_shape[1]} "
+                         f"concatenation ({a._reg_shape[0], a._reg_shape[1]} "
                          f"!= {b._reg_shape[0], b._reg_shape[1]})")
 
-    for i in range(len(a._blocks)):
-        for j in range(len(b._blocks[0])):
-            a._blocks[i].append(b._blocks[i][j])
-
-    return Array(blocks=a._blocks,
+    blocks_concatted = [[object() for _ in range(math.ceil(
+        (a.shape[1]+b.shape[1])/a._reg_shape[1]))]
+                        for _ in range(len(a._blocks))]
+    if a.shape[1] % a._reg_shape[1] == 0:
+        for i in range(len(a._blocks)):
+            x = blocks_concatted[i][:len(a._blocks[i])]
+            _assign_block_columns(x, a._blocks[i])
+            blocks_concatted[i][:len(a._blocks[i])] = x
+            x = blocks_concatted[i][len(a._blocks[i]):]
+            _assign_block_columns(x, b._blocks[i])
+            blocks_concatted[i][len(a._blocks[i]):] = x
+    else:
+        for i in range(len(a._blocks)):
+            x = blocks_concatted[i][:len(a._blocks[i]) - 1]
+            _assign_block_columns(x, a._blocks[i][:(len(a._blocks[i]) - 1)])
+            blocks_concatted[i][:len(a._blocks[i]) - 1] = x
+            leftover_data = a._blocks[i][-1]
+            x = blocks_concatted[i][len(a._blocks[i])-1:]
+            _assign_block_columns_leftover_data(x, b._blocks[i],
+                                                a._reg_shape[1],
+                                                leftover_data)
+            blocks_concatted[i][len(a._blocks[i]) - 1:] = x
+    return Array(blocks=blocks_concatted,
                  top_left_shape=(a._reg_shape[0], a._reg_shape[1]),
                  reg_shape=(a._reg_shape[0], a._reg_shape[1]),
                  shape=(a._shape[0], a._shape[1] + b._shape[1]),
+                 sparse=a._sparse)
+
+
+def concat_rows(a, b):
+    """ Matrix concatenation by rows.
+            Parameters
+            ----------
+            a : ds-array
+                First matrix.
+            b : ds-array
+                Second matrix.
+            Returns
+            -------
+            out : ds-array
+                The output array.
+            Raises
+            ------
+            ValueError
+                If the arrays do not match in the number of rows.
+                If the block size is different between the arrays.
+            Examples
+            --------
+            >>> import dislib as ds
+            >>>
+            >>>
+            >>> if __name__ == "__main__":
+            >>>     x = ds.random_array((8, 4), block_size=(2, 2))
+            >>>     y = ds.random_array((8, 4), block_size=(2, 2))
+            >>>     result = ds.concat_rows(x, y)
+            >>>     print(result.collect())
+            """
+    if a._shape[1] != b._shape[1]:
+        raise ValueError("incompatible number of columns "
+                         f"concat ({a._shape[1]} != {b._shape[1]}")
+
+    if a._reg_shape[0] != b._reg_shape[0] or a._reg_shape[1] !=\
+            b._reg_shape[1]:
+        raise ValueError("incorrect block sizes for the requested "
+                         f"concatenation ({a._reg_shape[0], a._reg_shape[1]} "
+                         f"!= {b._reg_shape[0], b._reg_shape[1]})")
+
+    blocks_a = [[object() for _ in range(len(a._blocks[i]))]
+                for i in range(len(a._blocks))]
+    blocks_b = [[object() for _ in range(len(b._blocks[i]))]
+                for i in range(len(b._blocks))]
+    blocks_concatted = blocks_a + blocks_b
+    leftover_data = None
+    for i in range(len(a._blocks)):
+        _assign_block(blocks_concatted[i], a._blocks[i],
+                      a._reg_shape[0], leftover_data)
+    i += 1
+    for j in range(len(b._blocks)):
+        _assign_block(blocks_concatted[i + j], b._blocks[j],
+                      a._reg_shape[0], leftover_data)
+    return Array(blocks=blocks_concatted,
+                 top_left_shape=(a._reg_shape[0], a._reg_shape[1]),
+                 reg_shape=(a._reg_shape[0], a._reg_shape[1]),
+                 shape=(a._shape[0] + b._shape[0], a._shape[1]),
                  sparse=a._sparse)
 
 
