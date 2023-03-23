@@ -1999,7 +1999,7 @@ def concat_rows(a, b):
             >>>     print(result.collect())
             """
     if a._shape[1] != b._shape[1]:
-        raise ValueError("incompatible number of columns "
+        raise ValueError("incompatible number of rows "
                          f"concat ({a._shape[1]} != {b._shape[1]}")
 
     if a._reg_shape[0] != b._reg_shape[0] or a._reg_shape[1] !=\
