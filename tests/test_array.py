@@ -922,11 +922,11 @@ class ArrayTest(BaseTimedTestCase):
         x1 = ds.array([[1, 2, 3], [4, 5, 6]], (1, 3))
         x2 = ds.array([[1, 1, 1, 2], [1, 1, 1, 8], [1, 1, 1, 8]], (1, 4))
         with self.assertRaises(ValueError):
-            ds.data.concat_columns(x1, x2)
+            ds.data.concat_rows(x1, x2)
         x1 = ds.array([[1, 2, 3], [4, 5, 6]], (1, 3))
         x2 = ds.array([[4, 4, 4, 4], [2, 3, 4, 5]], (1, 4))
         with self.assertRaises(ValueError):
-            ds.data.concat_columns(x1, x2)
+            ds.data.concat_rows(x1, x2)
 
     @parameterized.expand([((ds.array([[1, 2, 3], [4, 5, 6]], (1, 3)),
                             ds.array([[1, 1, 1, 2, 3, 4], [1, 1, 1, 8, 2, 3]],
