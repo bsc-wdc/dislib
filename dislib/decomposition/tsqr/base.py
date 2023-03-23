@@ -400,10 +400,6 @@ def _is_not_power(n_reduction, number_blocks):
     return 1 if (res1 != res2) else 0
 
 
-def is_power_of_two(n):
-    return (n != 0) and (n & (n - 1) == 0)
-
-
 @constraint(computing_units="${ComputingUnits}")
 @task(returns=np.array)
 def _multiply(q, to_multiply, index_start=None, index_end=None):
@@ -433,19 +429,6 @@ def _construct_blocks(blocks, array_to_place, block_shape):
     for idx, block in enumerate(blocks):
         blocks[idx][0] = array_to_place[idx * block_shape[0]:
                                         (idx + 1) * block_shape[0]]
-
-
-@constraint(computing_units="${ComputingUnits}")
-@task(qs={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
-def _compute_q_from_qs(qs, new_q, qsaux):
-    if len(qs) > 1:
-        final_q = []
-        for idx, q in enumerate(qs):
-            final_q.append(np.dot(q, new_q[idx * qsaux.shape[1]:
-                                           int(idx + 1) * qsaux.shape[1]]))
-        return np.vstack(final_q)
-    else:
-        return np.dot(qs[0], new_q[:qsaux.shape[1]])
 
 
 @constraint(computing_units="${ComputingUnits}")
