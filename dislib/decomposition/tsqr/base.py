@@ -105,11 +105,14 @@ def tsqr(a: Array, n_reduction=2, mode="complete", indexes=None):
                     q_2 = matmul(qsaux.pop(0), small_q[shape_to_use:])
                     qs.append(concat_rows(q_1, q_2))
                 else:
+                    q_1._shape = (q_1.shape[0], q_1.shape[1] - a._reg_shape[0])
                     qs.append(q_1)
                 rs.append(r)
         q = qs[0]
         if indexes is not None:
             q = q[:, indexes]
+        elif a._n_blocks[0] % n_reduction != 0:
+            q._shape = (q._shape[0], q._shape[1] - a._reg_shape[0])
 
         r_blocks = [[object()]]
         _construct_blocks(r_blocks, r, (a.shape[0], a.shape[1]))
