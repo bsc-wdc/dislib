@@ -1852,10 +1852,8 @@ def matadd(a: Array, b: Array):
 @task(blocks={Type: COLLECTION_OUT, Depth: 1},
       a_blocks={Type: COLLECTION_IN, Depth: 1})
 def _assign_block_columns(blocks, a_blocks):
-    print("ASSIGN BLOCK")
     for i in range(len(a_blocks)):
         blocks[i] = a_blocks[i]
-    print(blocks[i])
 
 
 @constraint(computing_units="${ComputingUnits}")
