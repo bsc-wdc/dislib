@@ -150,17 +150,6 @@ def tsqr(a: Array, n_reduction=2, mode="complete", indexes=None):
                 qs.append(q)
                 rs.append(r)
 
-        while len(rs) > 1:
-            reduction_number = math.ceil(len(rs) / n_reduction)
-            rsaux = rs
-            rs = []
-            for i in range(reduction_number):
-                q, r = _compute_reduction_qr(rsaux[int(i * n_reduction):
-                                                   int((i + 1) *
-                                                       n_reduction)],
-                                             "complete")
-                qs.append(q)
-                rs.append(r)
         if indexes is not None:
             matrix_indices = _construct_identity(indexes, a.shape[0])
             q = _construct_q_from_the_end(qs, n_reduction, a._reg_shape[0],
