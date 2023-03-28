@@ -1882,7 +1882,8 @@ def _assign_block_columns_leftover_data(blocks, input_block,
       leftover_data={Type: COLLECTION_IN, Depth: 1})
 def _assign_block(blocks, input_blocks, block_shape, leftover_data=None,
                   used_data=0, first_block=False, last_block=False):
-    if leftover_data is None or len(leftover_data) == 0 or leftover_data[0] is None:
+    if leftover_data is None or len(leftover_data) == 0 \
+            or leftover_data[0] is None:
         if len(input_blocks[0]) == block_shape:
             for i in range(len(blocks)):
                 blocks[i] = input_blocks[i]
@@ -1897,7 +1898,8 @@ def _assign_block(blocks, input_blocks, block_shape, leftover_data=None,
                 if first_block:
                     blocks[i] = concatted_data[:block_shape]
                 else:
-                    blocks[i] = concatted_data[block_shape - used_data:-used_data]
+                    blocks[i] = concatted_data[block_shape - used_data:
+                                               -used_data]
         else:
             if last_block:
                 for i in range(len(blocks)):
@@ -2037,12 +2039,14 @@ def concat_rows(a, b):
         leftover_data = []
         leftover_data.append(a._blocks[-1])
         for j in range(len(b._blocks)):
-              _assign_block(blocks_concatted[i + j], b._blocks[j],
-                          a._reg_shape[0], leftover_data[j], used_data, j==0)
-              leftover_data.append(b._blocks[j])
+            _assign_block(blocks_concatted[i + j], b._blocks[j],
+                          a._reg_shape[0], leftover_data[j], used_data,
+                          j == 0)
+            leftover_data.append(b._blocks[j])
         j += 1
         _assign_block(blocks_concatted[i + j], [None],
-                      a._reg_shape[0], leftover_data[j], used_data, last_block=True)
+                      a._reg_shape[0], leftover_data[j], used_data,
+                      last_block=True)
     return Array(blocks=blocks_concatted,
                  top_left_shape=(a._reg_shape[0], a._reg_shape[1]),
                  reg_shape=(a._reg_shape[0], a._reg_shape[1]),
