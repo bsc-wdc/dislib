@@ -1861,34 +1861,43 @@ def _assign_block_columns(blocks, a_blocks):
       input_block={Type: COLLECTION_IN, Depth: 1})
 def _assign_block_columns_leftover_data(blocks, input_block,
                                         block_shape, leftover_data):
-    total_data = np.concatenate((leftover_data, input_block[0]), axis=1)
+    if leftover_data is not None:
+        total_data = np.concatenate((leftover_data, input_block[0]), axis=1)
+    else:
+        total_data = input_block[0]
     blocks[0] = total_data[:, :block_shape]
     leftover_data = total_data[:, block_shape:]
     for idx, block in enumerate(input_block[1:]):
-        total_data = np.concatenate((leftover_data, block), axis=1)
+        if leftover_data is not None:
+            total_data = np.concatenate((leftover_data, block), axis=1)
+        else:
+            total_data = block
         blocks[idx + 1] = total_data[:, :block_shape]
         leftover_data = total_data[:, block_shape:]
 
 
 @constraint(computing_units="${ComputingUnits}")
 @task(blocks={Type: COLLECTION_OUT, Depth: 1},
-      input_blocks={Type: COLLECTION_IN, Depth: 1})
+      input_blocks={Type: COLLECTION_IN, Depth: 1},
+      leftover_data={Type: COLLECTION_IN, Depth: 1})
 def _assign_block(blocks, input_blocks, block_shape, leftover_data=None,
                   used_data=0, first_block=False, last_block=False):
-    if leftover_data is None or len(leftover_data) == 0:
+    if leftover_data is None or len(leftover_data) == 0 or leftover_data[0] is None:
         if len(input_blocks[0]) == block_shape:
             for i in range(len(blocks)):
                 blocks[i] = input_blocks[i]
+        else:
+            for i in range(len(blocks)):
+                blocks[i] = input_blocks[i]
     else:
-        if input_blocks is not None:
+        if input_blocks is not None and input_blocks[0] is not None:
             for i in range(len(blocks)):
                 concatted_data = np.concatenate((leftover_data[i],
                                                  input_blocks[i]))
                 if first_block:
                     blocks[i] = concatted_data[:block_shape]
                 else:
-                    blocks[i] = concatted_data[block_shape-used_data:
-                                               -used_data]
+                    blocks[i] = concatted_data[block_shape - used_data:-used_data]
         else:
             if last_block:
                 for i in range(len(blocks)):
@@ -2010,30 +2019,30 @@ def concat_rows(a, b):
     blocks_b = [[object() for _ in range(len(b._blocks[i]))]
                 for i in range(len(b._blocks))]
     blocks_concatted = blocks_a + blocks_b
-    leftover_data = []
+    leftover_data = None
     if a.shape[0] % a._reg_shape[0] == 0:
         for i in range(len(a._blocks)):
             _assign_block(blocks_concatted[i], a._blocks[i],
-                          a._reg_shape[0])
-        for i in range(len(b._blocks)):
-            _assign_block(blocks_concatted[i], b._blocks[i],
-                          a._reg_shape[0])
+                          a._reg_shape[0], leftover_data)
+        i += 1
+        for j in range(len(b._blocks)):
+            _assign_block(blocks_concatted[i + j], b._blocks[j],
+                          a._reg_shape[0], leftover_data)
     else:
         used_data = a.shape[0] % a._reg_shape[0]
-        for i in range(len(a._blocks)-1):
+        for i in range(len(a._blocks) - 1):
             _assign_block(blocks_concatted[i], a._blocks[i],
                           a._reg_shape[0])
         i += 1
+        leftover_data = []
         leftover_data.append(a._blocks[-1])
         for j in range(len(b._blocks)):
-            _assign_block(blocks_concatted[i + j], b._blocks[j],
-                          a._reg_shape[0], leftover_data[j], used_data,
-                          j == 0)
-            leftover_data.append(b._blocks[j])
+              _assign_block(blocks_concatted[i + j], b._blocks[j],
+                          a._reg_shape[0], leftover_data[j], used_data, j==0)
+              leftover_data.append(b._blocks[j])
         j += 1
-        _assign_block(blocks_concatted[i + j], None,
-                      a._reg_shape[0], leftover_data[j], used_data,
-                      last_block=True)
+        _assign_block(blocks_concatted[i + j], [None],
+                      a._reg_shape[0], leftover_data[j], used_data, last_block=True)
     return Array(blocks=blocks_concatted,
                  top_left_shape=(a._reg_shape[0], a._reg_shape[1]),
                  reg_shape=(a._reg_shape[0], a._reg_shape[1]),
