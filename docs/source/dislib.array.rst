@@ -25,6 +25,10 @@ Array creation routines
 
 .. autofunction:: dislib.matmul
 
+.. autofunction:: dislib.concat_columns
+
+.. autofunction:: dislib.concat_rows
+
 .. autofunction:: dislib.load_txt_file
 
 .. autofunction:: dislib.load_svmlight_file

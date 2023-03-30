@@ -15,38 +15,38 @@ def train_test_split(x, y=None, test_size=None, train_size=None,
                      random_state=None):
     """ Randomly shuffles the rows of data.
 
-        Parameters
-        ----------
-        x : ds-array
-            Data to be splitted.
-        y : ds-array, optional (default=None)
-            Additional array to split using the same permutations, usually for
-            labels or values. It is required that y.shape[0] == x.shape[0].
-        test_size : float
-            Number between 0 and 1 that defines the percentage of rows used as
-            test data
-        train_size : float
-            Number between 0 and 1 that defines the percentage of rows used as
-            train data
-        random_state : int or RandomState, optional (default = None)
-            Seed or numpy.random.RandomState instance to use in the generation
-            of splits in the blocks.
+    Parameters
+    ----------
+    x : ds-array
+        Data to be splitted.
+    y : ds-array, optional (default=None)
+        Additional array to split using the same permutations, usually for
+        labels or values. It is required that y.shape[0] == x.shape[0].
+    test_size : float
+        Number between 0 and 1 that defines the percentage of rows used as
+        test data
+    train_size : float
+        Number between 0 and 1 that defines the percentage of rows used as
+        train data
+    random_state : int or RandomState, optional (default = None)
+        Seed or numpy.random.RandomState instance to use in the generation
+        of splits in the blocks.
 
-        Returns
-        -------
-        train : ds-array
-            A new ds-array containing the rows of x that correspond to train
-            data.
-        test : ds-array
-            A new ds-array containing the rows of x that correspond to test
-            data.
-        train_y : ds-array, optional
-            A new ds-array containing the rows of y that correspond to the
-            rows in train.
-        test_y : ds-array, optional
-            A new ds-array containing the rows of y that correspond to the
-            rows in test.
-        """
+    Returns
+    -------
+    train : ds-array
+        A new ds-array containing the rows of x that correspond to train
+        data.
+    test : ds-array
+        A new ds-array containing the rows of x that correspond to test
+        data.
+    train_y : ds-array, optional
+        A new ds-array containing the rows of y that correspond to the
+        rows in train.
+    test_y : ds-array, optional
+        A new ds-array containing the rows of y that correspond to the
+        rows in test.
+    """
     if test_size is None and train_size is None:
         train_size = 0.75
         test_size = 0.25
