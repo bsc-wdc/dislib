@@ -169,6 +169,12 @@ dislib.regression: Regression
 - Linear Model trained with L1 prior as regularizer.
 
 
+dislib.sorting: Sorting
+-----------------------------
+
+:class:`sorting.TeraSort <dislib.sorting.terasort.base.TeraSort>`
+-  Sorts the ds-array using the TeraSort algorithm.
+
 dislib.trees: Trees
 -------------------------------------
 
