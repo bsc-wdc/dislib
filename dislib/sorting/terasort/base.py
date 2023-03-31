@@ -142,7 +142,7 @@ class TeraSort:
                         while not_ended:
                             if actual_block == (x._n_blocks[0] - 1):
                                 if remaining_count >= final_block:
-                                    out_block = [actual_block]
+                                    out_block = [out_blocks[actual_block]]
                                     get_attribute_column_blocks(
                                         out_block,
                                         positions_to_use,
@@ -158,7 +158,7 @@ class TeraSort:
                                     not_ended = False
                             else:
                                 if remaining_count >= x._reg_shape[0]:
-                                    out_block = [actual_block]
+                                    out_block = [out_blocks[actual_block]]
                                     get_attribute_column_blocks(
                                         out_block,
                                         positions_to_use,
