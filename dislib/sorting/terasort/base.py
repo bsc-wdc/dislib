@@ -22,12 +22,6 @@ class TeraSort:
         num_buckets : int, optional
             Number of buckets to divide the data in the ds.array and do the
             sorting. A big number of num_buckets may lead to slower execution.
-        returns : string, optional (default="ds_array)
-        synchronize : boolean, optional (default=False)
-            Boolean to decide if in the case of returning a ds.array
-            the blocks are synchronized before constructing the ds.array
-            or if the construction of the blocks should be done in
-            distributed.
         """
 
     def __init__(self, range_min=0, range_max=100, column_indexes=None,
@@ -35,12 +29,12 @@ class TeraSort:
         if isinstance(range_min, int):
             self.range_min = [[np.array([[range_min]])]]
         elif isinstance(range_min, list):
-            self.range_min = [[np.array(range_min)]]
+            self.range_min = [[np.array([range_min])]]
         if isinstance(range_max, int):
             self.range_max = [[np.array([[range_max]])]]
         elif isinstance(range_max, list):
-            self.range_max = [[np.array(range_max)]]
-        if np.any(self.range_min >= self.range_max):
+            self.range_max = [[np.array([range_max])]]
+        if np.any(self.range_min[0][0] >= self.range_max[0][0]):
             raise ValueError("Minimum value range should be lower than "
                              "maximum value range.")
         if not isinstance(column_indexes, np.ndarray) and \
