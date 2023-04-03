@@ -62,9 +62,9 @@ class TeraSort:
         self.range_min = x.min()
         self.range_max = x.max()
         if self.column_indexes is None:
-            self.range_min = [[obtain_minimum_value(
+            self.range_min = [[_obtain_minimum_value(
                 self.range_min._blocks)]]
-            self.range_max = [[obtain_maximum_value(
+            self.range_max = [[_obtain_maximum_value(
                 self.range_max._blocks)]]
 
     def sort(self, x):
@@ -112,7 +112,7 @@ class TeraSort:
                                                    (column_index + 1)]
                     else:
                         range_max = self.range_max
-                    result_attribute, len_buckets = terasort(
+                    result_attribute, len_buckets = _terasort(
                         x[:, column_index:(column_index + 1)],
                         range_min,
                         range_max, self.num_buckets)
@@ -137,7 +137,7 @@ class TeraSort:
                             if actual_block == (x._n_blocks[0] - 1):
                                 if remaining_count >= final_block:
                                     out_block = [out_blocks[actual_block]]
-                                    get_attribute_column_blocks(
+                                    _get_attribute_column_blocks(
                                         out_block,
                                         positions_to_use,
                                         remaining_count,
@@ -153,7 +153,7 @@ class TeraSort:
                             else:
                                 if remaining_count >= x._reg_shape[0]:
                                     out_block = [out_blocks[actual_block]]
-                                    get_attribute_column_blocks(
+                                    _get_attribute_column_blocks(
                                         out_block,
                                         positions_to_use,
                                         remaining_count,
@@ -179,12 +179,18 @@ class TeraSort:
                               range(len(attribute_blocks[0]))]
                 while used_indexes < len(self.column_indexes):
                     for i in range(len(out_blocks)):
-                        join_different_attribute_columns(
-                            out_blocks[i],
+                        out_block = [out_blocks[i]
+                                     [math.floor(used_indexes /
+                                                 number_columns)]]
+                        _join_different_attribute_columns(
+                            out_block,
                             attribute_blocks[used_indexes:
                                              used_indexes+number_columns,
                                              i],
                             math.floor(used_indexes / number_columns))
+                        out_blocks[i][math.floor(used_indexes /
+                                                 number_columns)] = \
+                            out_block[0]
                     used_indexes += number_columns
                 return Array(blocks=out_blocks,
                              top_left_shape=(x._top_left_shape[0],
@@ -194,7 +200,7 @@ class TeraSort:
                                     len(self.column_indexes)),
                              sparse=x._sparse)
             else:
-                result, len_result = terasort(x, self.range_min,
+                result, len_result = _terasort(x, self.range_min,
                                               self.range_max,
                                               self.num_buckets)
             len_block = x._reg_shape[0] * x._reg_shape[1]
@@ -234,7 +240,7 @@ class TeraSort:
                             out_block = [out_blocks[math.floor(
                                 actual_block / x._n_blocks[1])]
                                          [actual_block % x._n_blocks[1]]]
-                            join_buckets_block(out_block,
+                            _join_buckets_block(out_block,
                                                positions_to_use,
                                                remaining_count,
                                                len_block,
@@ -259,7 +265,7 @@ class TeraSort:
                                                     (actual_block /
                                                      x._n_blocks[1])][
                                         actual_block % x._n_blocks[1]]]
-                            join_buckets_block(out_block,
+                            _join_buckets_block(out_block,
                                                positions_to_use,
                                                remaining_count,
                                                final_row_block,
@@ -283,7 +289,7 @@ class TeraSort:
                                                      x._n_blocks[1])][
                                              actual_block % x._n_blocks[1]]
                                          ]
-                            join_buckets_block(out_block,
+                            _join_buckets_block(out_block,
                                                positions_to_use,
                                                remaining_count,
                                                final_column_block,
@@ -305,7 +311,7 @@ class TeraSort:
                                                      x._n_blocks[1])][
                                              actual_block % x._n_blocks[1]]
                                          ]
-                            join_buckets_block(out_block,
+                            _join_buckets_block(out_block,
                                                positions_to_use,
                                                remaining_count,
                                                final_block,
@@ -323,7 +329,7 @@ class TeraSort:
             if x._n_blocks[1] > 1:
                 for idx, unordered_blocks in enumerate(out_blocks):
                     out_block = [object() for _ in range(x._n_blocks[1])]
-                    reorder_rows(out_block, unordered_blocks)
+                    _reorder_rows(out_block, unordered_blocks)
                     out_blocks[idx] = out_block
             return Array(blocks=out_blocks,
                          top_left_shape=x._top_left_shape,
@@ -335,18 +341,18 @@ class TeraSort:
                              "Sorting only implemented for ds-array objects.")
 
 
-def terasort(x, range_min, range_max, num_buckets):
+def _terasort(x, range_min, range_max, num_buckets):
     buckets = {}
     for i in range(num_buckets):
         buckets[i] = []
     for x_block in x._blocks:
         fragment_buckets = [object() for _ in range(num_buckets)]
         if isinstance(range_min, Array):
-            filter_fragment(x_block, fragment_buckets, num_buckets,
+            _filter_fragment(x_block, fragment_buckets, num_buckets,
                             range_min=range_min._blocks,
                             range_max=range_max._blocks)
         else:
-            filter_fragment(x_block, fragment_buckets, num_buckets,
+            _filter_fragment(x_block, fragment_buckets, num_buckets,
                             range_min=range_min,
                             range_max=range_max)
         for i in range(num_buckets):
@@ -355,7 +361,7 @@ def terasort(x, range_min, range_max, num_buckets):
     len_buckets = []
     for key, value in list(buckets.items()):
         result[key], len_bucket = \
-            combine_and_sort_bucket_elements(tuple(value))
+            _combine_and_sort_bucket_elements(tuple(value))
         len_buckets.append(len_bucket)
     [compss_delete_object(future_objects) for value in buckets.items()
      for future_objects in value[1]]
@@ -365,14 +371,14 @@ def terasort(x, range_min, range_max, num_buckets):
 @constraint(computing_units="${ComputingUnits}")
 @task(blocks={Type: COLLECTION_OUT, Depth: 1},
       single_column_data={Type: COLLECTION_IN, Depth: 1})
-def join_different_attribute_columns(blocks, single_column_data, index):
-    blocks[index] = np.hstack(single_column_data)
+def _join_different_attribute_columns(blocks, single_column_data):
+    blocks[0] = np.hstack(single_column_data)
 
 
 @constraint(computing_units="${ComputingUnits}")
 @task(blocks={Type: COLLECTION_OUT, Depth: 1},
       buckets={Type: COLLECTION_IN, Depth: 1})
-def get_attribute_column_blocks(blocks, buckets, remaining_data, len_block):
+def _get_attribute_column_blocks(blocks, buckets, remaining_data, len_block):
     buckets = np.block(buckets)
     if -remaining_data+len_block == 0:
         blocks[0] = buckets[-remaining_data:].reshape(-1, 1)
@@ -384,7 +390,7 @@ def get_attribute_column_blocks(blocks, buckets, remaining_data, len_block):
 @constraint(computing_units="${ComputingUnits}")
 @task(blocks={Type: COLLECTION_OUT, Depth: 1},
       blocks_in={Type: COLLECTION_IN, Depth: 1})
-def reorder_rows(blocks, blocks_in):
+def _reorder_rows(blocks, blocks_in):
     total_block = np.sort(np.block(blocks_in).flatten()).\
         reshape(blocks_in[0].shape[0], -1)
     data_column_used = 0
@@ -400,7 +406,7 @@ def reorder_rows(blocks, blocks_in):
 @constraint(computing_units="${ComputingUnits}")
 @task(blocks={Type: COLLECTION_OUT, Depth: 1},
       buckets={Type: COLLECTION_IN, Depth: 1})
-def join_buckets_block(blocks, buckets, remaining_data,
+def _join_buckets_block(blocks, buckets, remaining_data,
                        len_block, block_shape):
     buckets = np.block(buckets)
     if -remaining_data+len_block == 0:
@@ -415,7 +421,7 @@ def join_buckets_block(blocks, buckets, remaining_data,
       fragment_buckets={Type: COLLECTION_OUT, Depth: 1},
       range_min={Type: COLLECTION_IN, Depth: 2},
       range_max={Type: COLLECTION_IN, Depth: 2})
-def filter_fragment(fragment, fragment_buckets, num_buckets, range_min=0,
+def _filter_fragment(fragment, fragment_buckets, num_buckets, range_min=0,
                     range_max=1):
     """
     Task that filters a fragment entries for the given ranges.
@@ -463,7 +469,7 @@ def filter_fragment(fragment, fragment_buckets, num_buckets, range_min=0,
 
 @constraint(computing_units="${ComputingUnits}")
 @task(returns=2, args={Type: COLLECTION_IN, Depth: 1})
-def combine_and_sort_bucket_elements(args):
+def _combine_and_sort_bucket_elements(args):
     """
     Task that combines the buckets received as args parameter and final
     sorting.
@@ -484,13 +490,13 @@ def combine_and_sort_bucket_elements(args):
 
 @constraint(computing_units="${ComputingUnits}")
 @task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=1)
-def obtain_minimum_value(blocks):
+def _obtain_minimum_value(blocks):
     minimum_values = np.block(blocks)
     return np.array([[np.amin(minimum_values)]])
 
 
 @constraint(computing_units="${ComputingUnits}")
 @task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=1)
-def obtain_maximum_value(blocks):
+def _obtain_maximum_value(blocks):
     maximum_values = np.block(blocks)
     return np.array([[np.amax(maximum_values)]])
