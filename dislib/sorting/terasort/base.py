@@ -186,8 +186,7 @@ class TeraSort:
                             out_block,
                             attribute_blocks[used_indexes:
                                              used_indexes+number_columns,
-                                             i],
-                            math.floor(used_indexes / number_columns))
+                                             i])
                         out_blocks[i][math.floor(used_indexes /
                                                  number_columns)] = \
                             out_block[0]
