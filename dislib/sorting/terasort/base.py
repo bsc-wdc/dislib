@@ -201,8 +201,8 @@ class TeraSort:
                              sparse=x._sparse)
             else:
                 result, len_result = _terasort(x, self.range_min,
-                                              self.range_max,
-                                              self.num_buckets)
+                                               self.range_max,
+                                               self.num_buckets)
             len_block = x._reg_shape[0] * x._reg_shape[1]
             shape_final_column_block = (x._reg_shape[0],
                                         (x._shape[1] % x._reg_shape[1])
@@ -241,11 +241,11 @@ class TeraSort:
                                 actual_block / x._n_blocks[1])]
                                          [actual_block % x._n_blocks[1]]]
                             _join_buckets_block(out_block,
-                                               positions_to_use,
-                                               remaining_count,
-                                               len_block,
-                                               (x._reg_shape[0],
-                                                x._reg_shape[1]))
+                                                positions_to_use,
+                                                remaining_count,
+                                                len_block,
+                                                (x._reg_shape[0],
+                                                 x._reg_shape[1]))
                             out_blocks[math.floor(
                                 actual_block / x._n_blocks[1])][
                                 actual_block % x._n_blocks[1]] = \
@@ -266,10 +266,10 @@ class TeraSort:
                                                      x._n_blocks[1])][
                                         actual_block % x._n_blocks[1]]]
                             _join_buckets_block(out_block,
-                                               positions_to_use,
-                                               remaining_count,
-                                               final_row_block,
-                                               shape_final_row_block)
+                                                positions_to_use,
+                                                remaining_count,
+                                                final_row_block,
+                                                shape_final_row_block)
                             out_blocks[math.floor
                                        (actual_block /
                                         x._n_blocks[1])][
@@ -290,10 +290,10 @@ class TeraSort:
                                              actual_block % x._n_blocks[1]]
                                          ]
                             _join_buckets_block(out_block,
-                                               positions_to_use,
-                                               remaining_count,
-                                               final_column_block,
-                                               shape_final_column_block)
+                                                positions_to_use,
+                                                remaining_count,
+                                                final_column_block,
+                                                shape_final_column_block)
                             out_blocks[math.floor
                                        (actual_block /
                                         x._n_blocks[1])][
@@ -312,10 +312,10 @@ class TeraSort:
                                              actual_block % x._n_blocks[1]]
                                          ]
                             _join_buckets_block(out_block,
-                                               positions_to_use,
-                                               remaining_count,
-                                               final_block,
-                                               shape_final_block)
+                                                positions_to_use,
+                                                remaining_count,
+                                                final_block,
+                                                shape_final_block)
                             out_blocks[math.floor
                                        (actual_block /
                                         x._n_blocks[1])][
@@ -349,12 +349,12 @@ def _terasort(x, range_min, range_max, num_buckets):
         fragment_buckets = [object() for _ in range(num_buckets)]
         if isinstance(range_min, Array):
             _filter_fragment(x_block, fragment_buckets, num_buckets,
-                            range_min=range_min._blocks,
-                            range_max=range_max._blocks)
+                             range_min=range_min._blocks,
+                             range_max=range_max._blocks)
         else:
             _filter_fragment(x_block, fragment_buckets, num_buckets,
-                            range_min=range_min,
-                            range_max=range_max)
+                             range_min=range_min,
+                             range_max=range_max)
         for i in range(num_buckets):
             buckets[i].append(fragment_buckets[i])
     result = dict()
@@ -407,7 +407,7 @@ def _reorder_rows(blocks, blocks_in):
 @task(blocks={Type: COLLECTION_OUT, Depth: 1},
       buckets={Type: COLLECTION_IN, Depth: 1})
 def _join_buckets_block(blocks, buckets, remaining_data,
-                       len_block, block_shape):
+                        len_block, block_shape):
     buckets = np.block(buckets)
     if -remaining_data+len_block == 0:
         blocks[0] = buckets[-remaining_data:].reshape(*block_shape)
@@ -422,7 +422,7 @@ def _join_buckets_block(blocks, buckets, remaining_data,
       range_min={Type: COLLECTION_IN, Depth: 2},
       range_max={Type: COLLECTION_IN, Depth: 2})
 def _filter_fragment(fragment, fragment_buckets, num_buckets, range_min=0,
-                    range_max=1):
+                     range_max=1):
     """
     Task that filters a fragment entries for the given ranges.
         * Ranges is a list of tuples where each tuple corresponds to
