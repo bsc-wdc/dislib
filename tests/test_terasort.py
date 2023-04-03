@@ -50,6 +50,23 @@ class TerasortTest(BaseTimedTestCase):
         self.assertTrue(np.all(ts.range_max.collect() == [3, 2, 2, 3, 8]))
         self.assertTrue(np.all(ts.range_min.collect() == [0, 1, 1, 0, 4]))
 
+    def test_sort_no_fit(self):
+        ts = TeraSort()
+        x = ds.array(np.array([[3],
+                               [4],
+                               [1],
+                               [2],
+                               [0]]), block_size=(2, 1))
+        sorted_x = ts.sort(x)
+        self.assertTrue(np.all(sorted_x.collect() ==
+                               np.array([0, 1, 2, 3, 4])))
+        x = ds.array(np.array([[0, 1, 2, 3, 4], [3, 2, 1, 0, 8]]),
+                     block_size=(2, 1))
+        ts = TeraSort(column_indexes=np.array([0, 1, 2, 3, 4]))
+        sorted_x = ts.sort(x)
+        self.assertTrue(np.all(sorted_x.collect() ==
+                               np.array([[0, 1, 1, 0, 4], [3, 2, 2, 3, 8]])))
+
     @parameterized.expand([(ds.array(np.array([258, 129, 528, 248, 0]),
                                      block_size=(1, 2)),
                             np.array([0, 129, 248, 258, 528]),
