@@ -1950,8 +1950,8 @@ def concat_rows(a, b):
                          f"for the concatenation "
                          f"({a._shape[1]} != {b._shape[1]}")
 
-    if a._reg_shape[0] != b._reg_shape[0] or a._reg_shape[1] !=\
-            b._reg_shape[1]:
+    if (a._reg_shape[0] != b._reg_shape[0] or a._reg_shape[1] !=
+            b._reg_shape[1]) and b._n_blocks[0] > 1:
         raise ValueError("incorrect block sizes for the requested "
                          f"concatenation ({a._reg_shape[0], a._reg_shape[1]} "
                          f"!= {b._reg_shape[0], b._reg_shape[1]})")
