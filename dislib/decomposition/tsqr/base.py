@@ -1,12 +1,12 @@
-from dislib.data.array import Array, _empty_array
+from dislib.data.array import Array, matmul, concat_rows, array
 import math
 import warnings
 import numpy as np
 from numpy.linalg import qr
 
 from pycompss.api.task import task
-from pycompss.api.parameter import Type, COLLECTION_IN, COLLECTION_OUT, Depth
-from dislib.data.array import matmul, concat_rows
+from pycompss.api.parameter import Type, COLLECTION_IN, \
+    COLLECTION_OUT, Depth, INOUT
 from pycompss.api.constraint import constraint
 
 
@@ -76,49 +76,148 @@ def tsqr(a: Array, n_reduction=2, mode="complete", indexes=None):
     rs = []
     if mode == "complete":
         for i, block in enumerate(a._blocks):
-            q, r = _compute_qr([block], "complete")
-            q_ds_array = Array([[q]], top_left_shape=(a._top_left_shape[0],
-                                                      a._top_left_shape[0]),
-                               reg_shape=(a._reg_shape[0], a._reg_shape[0]),
-                               shape=(a._reg_shape[0], a._reg_shape[0]),
-                               sparse=False)
+            q_blocks = [[object()]]
+            r_blocks = [[object() for _ in range(len(block))]]
+            _compute_qr([block], q_blocks, r_blocks, "complete")
+            if i == len(a._blocks) - 1 and a._shape[0] % a._reg_shape[0] != 0:
+                q_ds_array = Array(q_blocks,
+                                   top_left_shape=(
+                                       a.shape[0] % a._top_left_shape[0],
+                                       a.shape[0] % a._top_left_shape[0]),
+                                   reg_shape=(a.shape[0] % a._reg_shape[0],
+                                              a.shape[0] % a._reg_shape[0]),
+                                   shape=(a.shape[0] % a._reg_shape[0],
+                                          a.shape[0] % a._reg_shape[0]),
+                                   sparse=False)
+            else:
+                q_ds_array = Array(q_blocks,
+                                   top_left_shape=(
+                                       a._top_left_shape[0],
+                                       a._top_left_shape[0]),
+                                   reg_shape=(a._reg_shape[0],
+                                              a._reg_shape[0]),
+                                   shape=(a._reg_shape[0],
+                                          a._reg_shape[0]),
+                                   sparse=False)
             qs.append(q_ds_array)
-            rs.append(r)
+            rs.append(r_blocks)
+        depth = 1
         while len(rs) > 1:
             reduction_number = math.ceil(len(rs) / n_reduction)
             qsaux = qs
             rsaux = rs
             shape_to_use = qsaux[0].shape[1]
+            irregular_shape_to_use = qsaux[-1].shape[1]
             rs = []
             qs = []
             for i in range(reduction_number):
-                q, r = _compute_reduction_qr(rsaux[int(i * n_reduction):
-                                                   int((i + 1) * n_reduction)],
-                                             "complete")
-                small_q = Array([[q]], top_left_shape=(a._reg_shape[0],
-                                                       a._reg_shape[0]),
-                                reg_shape=(a._reg_shape[0], a._reg_shape[0]),
-                                shape=(shape_to_use * 2, shape_to_use * 2),
-                                sparse=False)
+                if len(rsaux[int(i * n_reduction):
+                             int((i + 1) * n_reduction)]) > 1 and \
+                        (int((i + 1) * n_reduction) != len(rsaux) or
+                         a.shape[0] % a._reg_shape[0] == 0):
+                    auxiliar_rs = len(rsaux[int(i * n_reduction)])
+                    auxiliar_rs_2 = len(rsaux[int(i * n_reduction) + 1])
+                    number_blocks = auxiliar_rs + auxiliar_rs_2
+                    q_blocks = [[object() for _ in range(number_blocks)]
+                                for _ in range(number_blocks)]
+                    r_blocks = [[object() for _ in range(len(block))]
+                                for _ in range(number_blocks)]
+                    _compute_reduction_qr(rsaux[int(i * n_reduction):
+                                                int((i + 1) * n_reduction)],
+                                          q_blocks,
+                                          r_blocks,
+                                          "complete")
+                    small_q = Array(q_blocks, top_left_shape=(
+                        a._reg_shape[0],
+                        a._reg_shape[0]),
+                                    reg_shape=(a._reg_shape[0],
+                                               a._reg_shape[0]),
+                                    shape=(a._reg_shape[0] * number_blocks,
+                                           a._reg_shape[0] * number_blocks),
+                                    sparse=False)
+                elif len(rsaux[int(i * n_reduction):
+                               int((i + 1) * n_reduction)]) > 1 and \
+                        int((i + 1) * n_reduction) == len(rsaux):
+                    auxiliar_rs = len(rsaux[int(i * n_reduction)])
+                    auxiliar_rs_2 = len(rsaux[int(i * n_reduction) + 1])
+                    number_blocks = auxiliar_rs + auxiliar_rs_2
+                    q_blocks = [[object() for _ in range(number_blocks)]
+                                for _ in range(number_blocks)]
+                    r_blocks = [[object() for _ in range(len(block))]
+                                for _ in range(number_blocks)]
+                    _compute_reduction_qr(rsaux[int(i * n_reduction):
+                                                int((i + 1) * n_reduction)],
+                                          q_blocks,
+                                          r_blocks,
+                                          "complete")
+                    small_q = Array(q_blocks, top_left_shape=(a._reg_shape[0],
+                                                              a._reg_shape[0]),
+                                    reg_shape=(a._reg_shape[0],
+                                               a._reg_shape[0]),
+                                    shape=(
+                                        shape_to_use + irregular_shape_to_use,
+                                        shape_to_use + irregular_shape_to_use
+                                    ),
+                                    sparse=False)
+                else:
+                    number_blocks = len(rsaux[-1])
+                    q_blocks = [[object() for _ in range(number_blocks)]
+                                for _ in range(number_blocks)]
+                    r_blocks = [[object() for _ in range(len(block))]
+                                for _ in range(number_blocks)]
+                    _compute_reduction_qr(rsaux[int(i * n_reduction):
+                                                int((i + 1) * n_reduction)],
+                                          q_blocks,
+                                          r_blocks,
+                                          "complete")
+                    if a._shape[0] % a._reg_shape[0] != 0 and \
+                            len(q_blocks) == 1:
+                        if len(q_blocks) == 1:
+                            reg_shape = a._shape[0] % a._reg_shape[0]
+                            small_q = Array(q_blocks, top_left_shape=(
+                                reg_shape,
+                                reg_shape),
+                                            reg_shape=(reg_shape, reg_shape),
+                                            shape=(reg_shape, reg_shape),
+                                            sparse=False)
+                        else:
+                            small_q = Array(q_blocks, top_left_shape=(
+                                a._reg_shape[0],
+                                a._reg_shape[0]),
+                                        reg_shape=(
+                                            a._reg_shape[0],
+                                            a._reg_shape[0]),
+                                        shape=(irregular_shape_to_use,
+                                               irregular_shape_to_use),
+                                        sparse=False)
+                    else:
+                        small_q = Array(q_blocks, top_left_shape=(
+                            a._reg_shape[0],
+                            a._reg_shape[0]),
+                                        reg_shape=(a._reg_shape[0],
+                                                   a._reg_shape[0]),
+                                        shape=(a._reg_shape[0]*len(q_blocks),
+                                               a._reg_shape[0]*len(q_blocks)),
+                                        sparse=False)
                 q_1 = matmul(qsaux.pop(0), small_q[:shape_to_use])
                 if len(qsaux) > 0:
-                    q_2 = matmul(qsaux.pop(0), small_q[shape_to_use:])
+                    actual_q = small_q[shape_to_use:]
+                    if actual_q._top_left_shape != actual_q._reg_shape:
+                        actual_q = small_rechunk(actual_q)
+                    q_2 = matmul(qsaux.pop(0), actual_q)
                     qs.append(concat_rows(q_1, q_2))
                 else:
-                    q_1._shape = (q_1.shape[0], q_1.shape[1] - a._reg_shape[0])
+                    q_1._shape = (q_1.shape[0], q_1.shape[1])
                     qs.append(q_1)
-                rs.append(r)
+                rs.append(r_blocks)
+            depth = depth + 1
         q = qs[0]
         if indexes is not None:
             q = q[:, indexes]
-        elif a._n_blocks[0] % n_reduction != 0:
-            q._shape = (q._shape[0], q._shape[1] - a._reg_shape[0])
-
-        r_blocks = [[object()]]
-        _construct_blocks(r_blocks, r, (a.shape[0], a.shape[1]))
-        r = _empty_array(shape=(a.shape[0], a.shape[1]),
-                         block_size=(a.shape[0], a.shape[1]))
-        r._blocks = r_blocks
+        r = Array(r_blocks, top_left_shape=a._reg_shape,
+                  reg_shape=a._reg_shape,
+                  shape=a.shape,
+                  sparse=False)
         return q, r
 
     elif mode == "complete_inverse":
@@ -133,48 +232,173 @@ def tsqr(a: Array, n_reduction=2, mode="complete", indexes=None):
                     "This mode only works if the number of blocks is a"
                     " direct power of the reduction number")
 
-        for block in a._blocks:
-            q, r = _compute_qr([block], "complete")
-            qs.append(q)
-            rs.append(r)
-
+        for i, block in enumerate(a._blocks):
+            q_blocks = [[object()]]
+            r_blocks = [[object() for _ in range(len(block))]]
+            _compute_qr([block], q_blocks, r_blocks, "complete")
+            if i == len(a._blocks) - 1 and a._shape[0] % a._reg_shape[0] != 0:
+                q_ds_array = Array(q_blocks, top_left_shape=(
+                    a.shape[0] % a._top_left_shape[0],
+                    a.shape[0] % a._top_left_shape[0]),
+                                   reg_shape=(a.shape[0] % a._reg_shape[0],
+                                              a.shape[0] % a._reg_shape[0]),
+                                   shape=(a.shape[0] % a._reg_shape[0],
+                                          a.shape[0] % a._reg_shape[0]),
+                                   sparse=False)
+            else:
+                q_ds_array = Array(q_blocks, top_left_shape=(
+                    a._top_left_shape[0],
+                    a._top_left_shape[0]),
+                                   reg_shape=(a._reg_shape[0],
+                                              a._reg_shape[0]),
+                                   shape=(a._reg_shape[0], a._reg_shape[0]),
+                                   sparse=False)
+            qs.append(q_ds_array)
+            rs.append(r_blocks)
+        shape_to_use = qs[0].shape[1]
+        irregular_shape_to_use = qs[-1].shape[1]
         while len(rs) > 1:
             reduction_number = math.ceil(len(rs) / n_reduction)
             rsaux = rs
             rs = []
             for i in range(reduction_number):
-                q, r = _compute_reduction_qr(rsaux[int(i * n_reduction):
-                                                   int((i + 1) *
-                                                       n_reduction)],
-                                             "complete")
-                qs.append(q)
-                rs.append(r)
+                if len(rsaux[int(i * n_reduction):
+                             int((i + 1) * n_reduction)]) > 1 and (
+                        int((i + 1) * n_reduction) !=
+                        len(rsaux) or a.shape[0] % a._reg_shape[0] == 0):
+                    auxiliar_rs = len(rsaux[int(i * n_reduction)])
+                    auxiliar_rs_2 = len(rsaux[int(i * n_reduction) + 1])
+                    number_blocks = auxiliar_rs + auxiliar_rs_2
+                    q_blocks = [[object() for _ in range(number_blocks)]
+                                for _ in range(number_blocks)]
+                    r_blocks = [[object() for _ in range(len(block))]
+                                for _ in range(number_blocks)]
+                    _compute_reduction_qr(rsaux[int(i * n_reduction):
+                                                int((i + 1) * n_reduction)],
+                                          q_blocks,
+                                          r_blocks,
+                                          "complete")
+                    small_q = Array(q_blocks, top_left_shape=(
+                        a._reg_shape[0],
+                        a._reg_shape[0]),
+                                    reg_shape=(a._reg_shape[0],
+                                               a._reg_shape[0]),
+                                    shape=(a._reg_shape[0] * number_blocks,
+                                           a._reg_shape[0] * number_blocks),
+                                    sparse=False)
+                elif len(rsaux[int(i * n_reduction):
+                               int((i + 1) * n_reduction)]) > 1 and int(
+                               (i + 1) * n_reduction) == len(rsaux):
+                    auxiliar_rs = len(rsaux[int(i * n_reduction)])
+                    auxiliar_rs_2 = len(rsaux[int(i * n_reduction) + 1])
+                    number_blocks = auxiliar_rs + auxiliar_rs_2
+                    q_blocks = [[object() for _ in range(number_blocks)]
+                                for _ in range(number_blocks)]
+                    r_blocks = [[object() for _ in range(len(block))]
+                                for _ in range(number_blocks)]
+                    _compute_reduction_qr(rsaux[int(i * n_reduction):
+                                                int((i + 1) * n_reduction)],
+                                          q_blocks,
+                                          r_blocks,
+                                          "complete")
+                    small_q = Array(q_blocks, top_left_shape=(
+                        a._reg_shape[0],
+                        a._reg_shape[0]),
+                                    reg_shape=(a._reg_shape[0],
+                                               a._reg_shape[0]),
+                                    shape=(
+                                    shape_to_use + irregular_shape_to_use,
+                                    shape_to_use + irregular_shape_to_use),
+                                    sparse=False)
+                else:
+                    number_blocks = len(rsaux[-1])
+                    q_blocks = [[object() for _ in range(number_blocks)]
+                                for _ in range(number_blocks)]
+                    r_blocks = [[object() for _ in range(len(block))]
+                                for _ in range(number_blocks)]
+                    _compute_reduction_qr(rsaux[int(i * n_reduction):
+                                                int((i + 1) * n_reduction)],
+                                          q_blocks,
+                                          r_blocks,
+                                          "complete")
+                    if a._shape[0] % a._reg_shape[0] != 0 and \
+                            len(q_blocks) == 1:
+                        if len(q_blocks) == 1:
+                            reg_shape = a._shape[0] % a._reg_shape[0]
+                            small_q = Array(q_blocks, top_left_shape=(
+                                reg_shape,
+                                reg_shape),
+                                            reg_shape=(reg_shape, reg_shape),
+                                            shape=(reg_shape, reg_shape),
+                                            sparse=False)
+                        else:
+                            small_q = Array(q_blocks, top_left_shape=(
+                                a._reg_shape[0],
+                                a._reg_shape[0]),
+                                            reg_shape=(a._reg_shape[0],
+                                                       a._reg_shape[0]),
+                                            shape=(irregular_shape_to_use,
+                                                   irregular_shape_to_use),
+                                            sparse=False)
+                    else:
+                        small_q = Array(q_blocks, top_left_shape=(
+                            a._reg_shape[0],
+                            a._reg_shape[0]),
+                                        reg_shape=(a._reg_shape[0],
+                                                   a._reg_shape[0]),
+                                        shape=(
+                                            a._reg_shape[0] * len(q_blocks),
+                                            a._reg_shape[0] * len(q_blocks)),
+                                        sparse=False)
+                qs.append(small_q)
+                rs.append(r_blocks)
 
         if indexes is not None:
             matrix_indices = _construct_identity(indexes, a.shape[0])
             q = _construct_q_from_the_end(qs, n_reduction, a._reg_shape[0],
-                                          a._reg_shape[1], a.shape,
+                                          a.shape,
                                           indexes=matrix_indices,
-                                          len_indexes=len(indexes),
                                           complete=True)
         else:
             q = _construct_q_from_the_end(qs, n_reduction, a._reg_shape[0],
-                                          a._reg_shape[1], a.shape,
+                                          a.shape,
                                           complete=True)
-        r_blocks = [[object()]]
-        _construct_blocks(r_blocks, r, (a.shape[0], a.shape[1]))
-        r = _empty_array(shape=(a.shape[0], a.shape[1]),
-                         block_size=(a.shape[0], a.shape[1]))
-        r._blocks = r_blocks
+        r = Array(rs[-1], top_left_shape=a._reg_shape,
+                  reg_shape=a._reg_shape,
+                  shape=a.shape,
+                  sparse=False)
         return q, r
     elif mode == "reduced":
+        if a._reg_shape[0] < a._shape[1]:
+            true_shape = (a._reg_shape[0], a._reg_shape[0])
+        else:
+            true_shape = (a._reg_shape[0], a._shape[1])
         for i, block in enumerate(a._blocks):
-            q, r = _compute_qr([block], "reduced")
-            q_ds_array = Array([[q]], top_left_shape=a._top_left_shape,
-                               reg_shape=a._reg_shape, shape=a._reg_shape,
-                               sparse=False)
+            q_blocks = [[object() for _ in range(len(block))]]
+            r_blocks = [[object() for _ in range(len(block))] for _ in
+                        range(math.ceil(a.shape[1] / a._reg_shape[1]))]
+            if i == len(a._blocks)-1 and a._shape[0] % a._reg_shape[0] != 0:
+                _compute_qr([block], q_blocks, r_blocks, "reduced")
+                if a._shape[0] % a._reg_shape[0] < a._shape[1]:
+                    col_shape = a._shape[0] % a._reg_shape[0]
+                else:
+                    col_shape = a._reg_shape[1]
+                q_ds_array = Array(q_blocks, top_left_shape=(
+                    a._shape[0] % a._top_left_shape[0], col_shape),
+                                   reg_shape=(a._shape[0] % a._reg_shape[0],
+                                              col_shape), shape=(
+                        a._shape[0] % a._reg_shape[0], a.shape[1]),
+                                   sparse=False)
+            else:
+                reg_shape_to_assign = a._reg_shape
+                _compute_qr([block], q_blocks, r_blocks, "reduced")
+                q_ds_array = Array(q_blocks,
+                                   top_left_shape=reg_shape_to_assign,
+                                   reg_shape=reg_shape_to_assign,
+                                   shape=true_shape,
+                                   sparse=False)
             qs.append(q_ds_array)
-            rs.append(r)
+            rs.append(r_blocks)
 
         while len(rs) > 1:
             reduction_number = math.ceil(len(rs) / n_reduction)
@@ -183,29 +407,70 @@ def tsqr(a: Array, n_reduction=2, mode="complete", indexes=None):
             rs = []
             qs = []
             for i in range(reduction_number):
-                q, r = _compute_reduction_qr(rsaux[int(i * n_reduction):
-                                                   int((i + 1) *
-                                                       n_reduction)],
-                                             "reduced")
-                small_q = Array([[q]], top_left_shape=(a._reg_shape[1] *
-                                                       n_reduction,
-                                                       a._reg_shape[1]),
-                                reg_shape=(a._reg_shape[1], a._reg_shape[1]),
-                                shape=(a._reg_shape[1] * n_reduction,
-                                       a._reg_shape[1]), sparse=False)
+                if i < (reduction_number - 1) or \
+                        len(rsaux) % n_reduction == 0:
+                    if a.shape[1] < a._reg_shape[0]:
+                        q_blocks = [[object() for _ in range(len(block))]
+                                    for _ in range(
+                                    math.ceil(a.shape[1] / a._reg_shape[1])
+                                    * 2)]
+                    else:
+                        q_blocks = [[object() for _ in range(len(block))]
+                                    for _ in range(
+                                    math.ceil(a._reg_shape[0] /
+                                              a._reg_shape[1])
+                                    * 2)]
+                else:
+                    if a.shape[1] < a._reg_shape[0]:
+                        q_blocks = [[object() for _ in range(len(block))]
+                                    for _ in range(
+                                    math.ceil(a.shape[1] / a._reg_shape[1]))]
+                    else:
+                        q_blocks = [[object() for _ in range(len(block))]
+                                    for _ in range(
+                                    math.ceil(a._reg_shape[0] /
+                                              a._reg_shape[1]))]
+                r_blocks = [[object() for _ in range(len(block))]
+                            for _ in range(math.ceil(a.shape[1] /
+                                                     a._reg_shape[1]))]
+                _compute_reduction_qr(rsaux[int(i * n_reduction):
+                                            int((i + 1) *
+                                                n_reduction)],
+                                      q_blocks,
+                                      r_blocks,
+                                      "reduced")
+                if i < (reduction_number - 1) or \
+                        len(rsaux) % n_reduction == 0:
+                    small_q = Array(q_blocks,
+                                    top_left_shape=(
+                                        a._reg_shape[1], a._reg_shape[1]),
+                                    reg_shape=(
+                                        a._reg_shape[1], a._reg_shape[1]),
+                                    shape=(a.shape[1] * 2, a.shape[1]),
+                                    sparse=False)
+                else:
+                    small_q = Array(q_blocks, top_left_shape=(
+                        a._reg_shape[1],
+                        a._reg_shape[1]),
+                                    reg_shape=(
+                                        a._reg_shape[1], a._reg_shape[1]),
+                                    shape=(a.shape[1],
+                                           a.shape[1]), sparse=False)
 
-                q_1 = matmul(qsaux.pop(0), small_q[:a._reg_shape[1]])
+                q_1 = matmul(qsaux.pop(0), small_q[:a.shape[1]])
                 if len(qsaux) > 0:
-                    q_2 = matmul(qsaux.pop(0), small_q[a._reg_shape[1]:])
+                    actual_q = small_q[a.shape[1]:]
+                    if actual_q._top_left_shape != actual_q._reg_shape:
+                        actual_q = small_rechunk(actual_q)
+                    q_2 = matmul(qsaux.pop(0), actual_q)
                     qs.append(concat_rows(q_1, q_2))
                 else:
                     qs.append(q_1)
-                rs.append(r)
-        r_blocks = [[object()]]
-        _construct_blocks(r_blocks, r, (a.shape[1], a.shape[1]))
-        r = _empty_array(shape=(a.shape[1], a.shape[1]),
-                         block_size=(a.shape[1], a.shape[1]))
-        r._blocks = r_blocks
+                rs.append(r_blocks)
+        r = Array(rs,
+                  top_left_shape=(a._reg_shape[1], a._reg_shape[1]),
+                  reg_shape=(a._reg_shape[1], a._reg_shape[1]),
+                  shape=(a.shape[1], a.shape[1]), sparse=False)
         return qs[-1], r
     elif mode == "reduced_inverse":
         if n_reduction == 2:
@@ -219,10 +484,41 @@ def tsqr(a: Array, n_reduction=2, mode="complete", indexes=None):
                     "This mode only works if the number of blocks is a"
                     " direct power of the reduction number")
         total_depth = 1
-        for block in a._blocks:
-            q, r = _compute_qr([block], "reduced")
-            qs.append(q)
-            rs.append(r)
+        if a._reg_shape[0] < a._shape[1]:
+            true_shape = (a._reg_shape[0], a._reg_shape[0])
+        else:
+            true_shape = (a._reg_shape[0], a._shape[1])
+        for i, block in enumerate(a._blocks):
+            q_blocks = [[object() for _ in range(len(block))]]
+            r_blocks = [[object() for _ in range(len(block))] for _ in
+                        range(math.ceil(a.shape[1] / a._reg_shape[1]))]
+            if i == len(a._blocks) - 1 and a._shape[0] % a._reg_shape[0] != 0:
+                _compute_qr([block], q_blocks, r_blocks, "reduced")
+                if a._shape[0] % a._reg_shape[0] < a._shape[1]:
+                    col_shape = a._shape[0] % a._reg_shape[0]
+                else:
+                    col_shape = a._reg_shape[1]
+                q_ds_array = Array(q_blocks,
+                                   top_left_shape=(
+                                       a._shape[0] % a._top_left_shape[0],
+                                       col_shape),
+                                   reg_shape=(
+                                       a._shape[0] % a._reg_shape[0],
+                                       col_shape),
+                                   shape=(
+                                       a._shape[0] % a._reg_shape[0],
+                                       a.shape[1]),
+                                   sparse=False)
+            else:
+                reg_shape_to_assign = a._reg_shape
+                _compute_qr([block], q_blocks, r_blocks, "reduced")
+                q_ds_array = Array(q_blocks,
+                                   top_left_shape=reg_shape_to_assign,
+                                   reg_shape=reg_shape_to_assign,
+                                   shape=true_shape,
+                                   sparse=False)
+            qs.append(q_ds_array)
+            rs.append(r_blocks)
 
         while len(rs) > 1:
             reduction_number = math.ceil(len(rs) / n_reduction)
@@ -230,81 +526,144 @@ def tsqr(a: Array, n_reduction=2, mode="complete", indexes=None):
             rsaux = rs
             rs = []
             for i in range(reduction_number):
-                q, r = _compute_reduction_qr(rsaux[int(i * n_reduction):
-                                                   int((i + 1) *
-                                                       n_reduction)],
-                                             "reduced")
-                qs.append(q)
-                rs.append(r)
+                if i < (reduction_number - 1) or \
+                        len(rsaux) % n_reduction == 0:
+                    if a.shape[1] < a._reg_shape[0]:
+                        q_blocks = [[object() for _ in range(len(block))]
+                                    for _ in range(
+                                    math.ceil(a.shape[1] / a._reg_shape[1])
+                                    * 2)]
+                    else:
+                        q_blocks = [[object() for _ in range(len(block))]
+                                    for _ in range(
+                                    math.ceil(
+                                        a._reg_shape[0] / a._reg_shape[1])
+                                    * 2)]
+                else:
+                    if a.shape[1] < a._reg_shape[0]:
+                        q_blocks = [[object() for _ in range(len(block))]
+                                    for _ in range(
+                                    math.ceil(a.shape[1] / a._reg_shape[1]))]
+                    else:
+                        q_blocks = [[object() for _ in range(len(block))]
+                                    for _ in range(
+                                    math.ceil(a._reg_shape[0] /
+                                              a._reg_shape[1]))]
+                r_blocks = [[object() for _ in range(len(block))]
+                            for _ in range(
+                            math.ceil(a.shape[1] / a._reg_shape[1]))]
+                _compute_reduction_qr(rsaux[int(i * n_reduction):
+                                            int((i + 1) *
+                                                n_reduction)],
+                                      q_blocks,
+                                      r_blocks,
+                                      "reduced")
+                if i < (reduction_number - 1) or len(rsaux) % n_reduction == 0:
+                    small_q = Array(q_blocks, top_left_shape=(
+                        a._reg_shape[1], a._reg_shape[1]),
+                                    reg_shape=(
+                                        a._reg_shape[1], a._reg_shape[1]),
+                                    shape=(a.shape[1] * 2, a.shape[1]),
+                                    sparse=False)
+                else:
+                    small_q = Array(q_blocks, top_left_shape=(
+                        a._reg_shape[1],
+                        a._reg_shape[1]),
+                                    reg_shape=(
+                                        a._reg_shape[1], a._reg_shape[1]),
+                                    shape=(a.shape[1],
+                                           a.shape[1]), sparse=False)
+                qs.append(small_q)
+                rs.append(r_blocks)
         if indexes is not None:
             matrix_indices = _construct_identity(indexes, a.shape[1])
             q = _construct_q_from_the_end(qs, n_reduction, a._reg_shape[0],
-                                          a._reg_shape[1], a.shape,
+                                          a.shape,
                                           indexes=matrix_indices,
-                                          len_indexes=len(indexes),
-                                          total_depth=total_depth,
                                           complete=False)
         else:
             q = _construct_q_from_the_end(qs, n_reduction, a._reg_shape[0],
-                                          a._reg_shape[1], a.shape,
-                                          total_depth=total_depth,
+                                          a.shape,
                                           complete=False)
-        r_blocks = [[object()]]
-        _construct_blocks(r_blocks, r, (a.shape[1], a.shape[1]))
-        r = _empty_array(shape=(a.shape[1], a.shape[1]),
-                         block_size=(a.shape[1], a.shape[1]))
-        r._blocks = r_blocks
+
+        r = Array(rs, top_left_shape=(a._reg_shape[1], a._reg_shape[1]),
+                  reg_shape=(a._reg_shape[1], a._reg_shape[1]),
+                  shape=(a.shape[1], a.shape[1]), sparse=False)
         return q, r
     elif mode == "r_complete":
         for block in a._blocks:
-            q, r = _compute_qr([block], "complete")
-            qs.append(q)
-            rs.append(r)
+            q_blocks = [[object()]]
+            r_blocks = [[object() for _ in range(len(block))]]
+            _compute_qr([block], q_blocks, r_blocks, "complete")
+            rs.append(r_blocks)
 
         while len(rs) > 1:
             reduction_number = math.ceil(len(rs) / n_reduction)
             rsaux = rs
             rs = []
             for i in range(reduction_number):
-                q, r = _compute_reduction_qr(rsaux[int(i * n_reduction):
+                if len(rsaux[int(i * n_reduction):
+                             int((i + 1) * n_reduction)]) > 1 and (
+                        int((i + 1) * n_reduction) != len(rsaux) or
+                        a.shape[0] % a._reg_shape[0] == 0):
+                    auxiliar_rs = len(rsaux[int(i * n_reduction)])
+                    auxiliar_rs_2 = len(rsaux[int(i * n_reduction) + 1])
+                    number_blocks = auxiliar_rs + auxiliar_rs_2
+                elif len(rsaux[int(i * n_reduction):
+                               int((i + 1) * n_reduction)]) > 1 and int(
+                         (i + 1) * n_reduction) == len(rsaux):
+                    auxiliar_rs = len(rsaux[int(i * n_reduction)])
+                    auxiliar_rs_2 = len(rsaux[int(i * n_reduction) + 1])
+                    number_blocks = auxiliar_rs + auxiliar_rs_2
+                else:
+                    number_blocks = len(rsaux[-1])
+
+                r_blocks = [[object() for _ in range(len(block))]
+                            for _ in range(number_blocks)]
+                _compute_reduction_qr_only_r(rsaux[int(i * n_reduction):
                                                    int((i + 1) * n_reduction)],
+                                             r_blocks,
                                              "complete")
-                rs.append(r)
-        r_blocks = [[object()]]
-        _construct_blocks(r_blocks, r, (a.shape[0], a.shape[1]))
-        r = _empty_array(shape=(a.shape[0], a.shape[1]),
-                         block_size=(a.shape[0], a.shape[1]))
-        r._blocks = r_blocks
+                rs.append(r_blocks)
+        r = Array(rs[-1], top_left_shape=a._reg_shape,
+                  reg_shape=a._reg_shape,
+                  shape=a.shape,
+                  sparse=False)
         return r
     elif mode == "r_reduced":
         for block in a._blocks:
-            q, r = _compute_qr([block], "reduced")
-            qs.append(q)
-            rs.append(r)
+            q_blocks = [[object() for _ in range(len(block))]]
+            r_blocks = [[object() for _ in range(len(block))] for _ in
+                        range(math.ceil(a.shape[1] / a._reg_shape[1]))]
+            _compute_qr([block], q_blocks, r_blocks, "reduced")
+            rs.append(r_blocks)
 
         while len(rs) > 1:
             reduction_number = math.ceil(len(rs) / n_reduction)
             rsaux = rs
             rs = []
             for i in range(reduction_number):
-                q, r = _compute_reduction_qr(rsaux[int(i * n_reduction):
+                r_blocks = [[object() for _ in range(len(block))] for _ in
+                            range(math.ceil(a.shape[1] / a._reg_shape[1]))]
+                _compute_reduction_qr_only_r(rsaux[int(i * n_reduction):
                                                    int((i + 1) * n_reduction)],
+                                             r_blocks,
                                              "reduced")
-                rs.append(r)
-        r_blocks = [[object()]]
-        _construct_blocks(r_blocks, r, (a.shape[1], a.shape[1]))
-        r = _empty_array(shape=(a.shape[1], a.shape[1]),
-                         block_size=(a.shape[1], a.shape[1]))
-        r._blocks = r_blocks
+                rs.append(r_blocks)
+        r = Array(rs[-1],
+                  top_left_shape=(a._reg_shape[1], a._reg_shape[1]),
+                  reg_shape=(a._reg_shape[1], a._reg_shape[1]),
+                  shape=(a.shape[1], a.shape[1]), sparse=False)
         return r
 
 
-def _construct_q_from_the_end(qs, n_reduction, reg_shape_0, reg_shape_1,
-                              shape, indexes=None, len_indexes=0,
-                              total_depth=1,
+def _construct_q_from_the_end(qs, n_reduction, reg_shape_0,
+                              shape, indexes=None,
                               complete=False):
     if indexes is not None:
-        q = _multiply(qs[-1], indexes)
+        q = matmul(qs[-1], array(indexes,
+                                 block_size=(qs[-1]._reg_shape[0],
+                                             indexes.shape[1])))
     else:
         q = qs[-1]
     qs.pop()
@@ -312,47 +671,10 @@ def _construct_q_from_the_end(qs, n_reduction, reg_shape_0, reg_shape_1,
     idx = n_reduction ** depth
     qs_aux = []
     if complete:
-        if indexes is None:
-            indexes_shape = shape[0]
-        else:
-            indexes_shape = len_indexes
-        q = Array([[q]], top_left_shape=(shape[0], shape[0]),
-                  reg_shape=(shape[0], shape[0]),
-                  shape=(shape[0], indexes_shape),
-                  sparse=False)
         last_block_shape = shape[0] - (math.ceil(shape[0] / reg_shape_0)) \
             * reg_shape_0 / 2
         reg_shape = shape[0] - last_block_shape
-    else:
-        if indexes is None:
-            q = Array([[q]], top_left_shape=(reg_shape_1 * n_reduction,
-                                             reg_shape_1),
-                      reg_shape=(reg_shape_1 * n_reduction, reg_shape_1),
-                      shape=(reg_shape_1 * n_reduction, reg_shape_1),
-                      sparse=False)
-        else:
-            q = Array([[q]], top_left_shape=(reg_shape_1 * n_reduction,
-                                             len_indexes),
-                      reg_shape=(reg_shape_1 * n_reduction, len_indexes),
-                      shape=(reg_shape_1 * n_reduction, len_indexes),
-                      sparse=False)
     for q_aux in reversed(qs):
-        if complete:
-            iteration_shape = (int(last_block_shape *
-                                   (n_reduction ** depth == idx) +
-                                   reg_shape * (n_reduction ** depth != idx)),
-                               int(last_block_shape *
-                                   (n_reduction ** depth == idx) +
-                                   reg_shape * (n_reduction ** depth != idx)))
-        else:
-            if depth == (total_depth - 1):
-                iteration_shape = (reg_shape_0, reg_shape_1)
-            else:
-                iteration_shape = (reg_shape_1 * n_reduction, reg_shape_1)
-        q_aux = Array([[q_aux]], top_left_shape=iteration_shape,
-                      reg_shape=iteration_shape,
-                      shape=iteration_shape,
-                      sparse=False)
         if complete:
             q_1 = q[int(reg_shape * (idx - 1)):int(reg_shape * idx)]
         else:
@@ -392,6 +714,51 @@ def _is_not_power(n_reduction, number_blocks):
     return 1 if (res1 != res2) else 0
 
 
+def small_rechunk(rechunk_array):
+    out_blocks = [[object() for _ in range(
+                   len(rechunk_array._blocks[0]))]
+                  for _ in range(len(rechunk_array._blocks))]
+    if rechunk_array._reg_shape[0] > rechunk_array.shape[0] and \
+            rechunk_array._reg_shape[1] > rechunk_array.shape[1]:
+        reg_shape = rechunk_array.shape
+    elif rechunk_array._reg_shape[0] > rechunk_array.shape[0]:
+        reg_shape = (rechunk_array.shape[0], rechunk_array._reg_shape[1])
+    else:
+        reg_shape = (rechunk_array._reg_shape[0], rechunk_array._reg_shape[1])
+    j = 0
+    for j in range(len(out_blocks)-1):
+        for i in range(len(out_blocks[j])):
+            out_blocks[j][i] = _assign_corresponding_elements_block(
+                rechunk_array._blocks[j][i], rechunk_array._blocks[j+1][i],
+                rechunk_array._reg_shape[0], rechunk_array._top_left_shape[0]
+                if i != 0 and j != 0 else 0)
+    if len(out_blocks) == 1:
+        j = 0
+    else:
+        j = j + 1
+    for i in range(len(out_blocks[j])):
+        out_blocks[j][i] = _assign_elements_last_block(
+            rechunk_array._blocks[j][i],
+            rechunk_array._top_left_shape[0])
+    return Array(out_blocks, top_left_shape=reg_shape,
+                 reg_shape=reg_shape,
+                 shape=rechunk_array.shape, sparse=False)
+
+
+@constraint(computing_units="${ComputingUnits}")
+@task(out_blocks=INOUT)
+def _assign_elements_last_block(in_block, top_left_shape_data):
+    return in_block[-top_left_shape_data:, :]
+
+
+@constraint(computing_units="${ComputingUnits}")
+@task(out_blocks=INOUT)
+def _assign_corresponding_elements_block(in_block, second_in_block,
+                                         block_size, top_left_shape_data):
+    block = np.vstack([in_block, second_in_block])
+    return block[top_left_shape_data:top_left_shape_data+block_size, :]
+
+
 @constraint(computing_units="${ComputingUnits}")
 @task(returns=np.array)
 def _multiply(q, to_multiply):
@@ -414,36 +781,159 @@ def _construct_blocks(blocks, array_to_place, block_shape):
 
 
 @constraint(computing_units="${ComputingUnits}")
-@task(rs={Type: COLLECTION_IN, Depth: 2}, returns=(np.array, np.array))
-def _compute_reduction_qr(rs, mode):
+@task(rs={Type: COLLECTION_IN, Depth: 2},
+      q_blocks={Type: COLLECTION_OUT, Depth: 2},
+      r_blocks={Type: COLLECTION_OUT, Depth: 2})
+def _compute_reduction_qr(rs, q_blocks, r_blocks, mode):
+    block_shape = rs[0][0][0].shape
     if mode == "complete":
-        if len(rs) > 1:
-            q, r = qr(np.vstack(rs[:]), mode="complete")
+        if rs[0][0][-1].shape[1] != block_shape[1]:
+            intermediate_rs = []
+            for aux_rs in rs[0]:
+                intermediate_rs.append(np.hstack(aux_rs))
+            r_first = np.vstack(intermediate_rs)
         else:
-            q, r = qr(rs[0], mode="complete")
-        return q, r
+            r_first = np.hstack(np.hstack(rs[0]))
+        if len(rs) > 1:
+            if rs[0][0][-1].shape[1] != block_shape[1]:
+                intermediate_rs = []
+                for aux_rs in rs[1]:
+                    intermediate_rs.append(np.hstack(aux_rs))
+                r_second = np.vstack(intermediate_rs)
+            else:
+                r_second = np.hstack(np.hstack(rs[1]))
+            q, r = qr(np.vstack((r_first, r_second)), mode="complete")
+        else:
+            q, r = qr(r_first, mode="complete")
+        for i in range(len(q_blocks)):
+            for j in range(len(q_blocks[i])):
+                q_blocks[i][j] = q[block_shape[0] * i:
+                                   block_shape[0] * (i + 1),
+                                   block_shape[0] * j:block_shape[0] * (j + 1)]
+        for i in range(len(r_blocks)):
+            for j in range(len(r_blocks[i])):
+                r_blocks[i][j] = r[block_shape[0] * i:
+                                   block_shape[0] * (i + 1),
+                                   block_shape[1] * j:block_shape[1] * (j + 1)]
     elif mode == "reduced":
-        if len(rs) > 1:
-            q, r = qr(np.vstack(rs[:]))
+        if rs[0][0][-1].shape[1] != block_shape[1]:
+            intermediate_rs = []
+            for aux_rs in rs[0]:
+                intermediate_rs.append(np.hstack(aux_rs))
+            r_first = np.vstack(intermediate_rs)
         else:
-            q, r = qr(rs[0])
-        return q, r
+            r_first = np.hstack(np.hstack(rs[0]))
+        if len(rs) > 1:
+            if rs[0][0][-1].shape[1] != block_shape[1]:
+                intermediate_rs = []
+                for aux_rs in rs[1]:
+                    intermediate_rs.append(np.hstack(aux_rs))
+                r_second = np.vstack(intermediate_rs)
+            else:
+                r_second = np.hstack(np.hstack(rs[1]))
+        if len(rs) > 1:
+            q, r = qr(np.vstack((r_first, r_second)))
+        else:
+            q, r = qr(r_first)
+        block_shape_to_use = block_shape[0] \
+            if block_shape[1] > block_shape[0] else block_shape[1]
+        for j in range(len(q_blocks)):
+            for i in range(len(q_blocks[0])):
+                q_blocks[j][i] = q[block_shape_to_use * j:
+                                   block_shape_to_use * (j + 1),
+                                   block_shape_to_use * i:
+                                   block_shape_to_use * (i + 1)]
+        for j in range(len(r_blocks)):
+            for i in range(len(r_blocks[0])):
+                r_blocks[j][i] = r[block_shape_to_use * j:
+                                   block_shape_to_use * (j + 1),
+                                   block_shape_to_use * i:
+                                   block_shape_to_use * (i + 1)]
 
 
 @constraint(computing_units="${ComputingUnits}")
-@task(block={Type: COLLECTION_IN, Depth: 2}, returns=(np.array, np.array))
-def _compute_qr(block, mode):
+@task(rs={Type: COLLECTION_IN, Depth: 2},
+      r_blocks={Type: COLLECTION_OUT, Depth: 2})
+def _compute_reduction_qr_only_r(rs, r_blocks, mode):
+    block_shape = rs[0][0][0].shape
+    if mode == "complete":
+        if rs[0][0][-1].shape[1] != block_shape[1]:
+            intermediate_rs = []
+            for aux_rs in rs[0]:
+                intermediate_rs.append(np.hstack(aux_rs))
+            r_first = np.vstack(intermediate_rs)
+        else:
+            r_first = np.hstack(np.hstack(rs[0]))
+        if len(rs) > 1:
+            if rs[0][0][-1].shape[1] != block_shape[1]:
+                intermediate_rs = []
+                for aux_rs in rs[1]:
+                    intermediate_rs.append(np.hstack(aux_rs))
+                r_second = np.vstack(intermediate_rs)
+            else:
+                r_second = np.hstack(np.hstack(rs[1]))
+            q, r = qr(np.vstack((r_first, r_second)), mode="complete")
+        else:
+            q, r = qr(r_first, mode="complete")
+        for i in range(len(r_blocks)):
+            for j in range(len(r_blocks[i])):
+                r_blocks[i][j] = r[block_shape[0] * i:block_shape[0] * (i + 1),
+                                   block_shape[1] * j:block_shape[1] * (j + 1)]
+    elif mode == "reduced":
+        if rs[0][0][-1].shape[1] != block_shape[1]:
+            intermediate_rs = []
+            for aux_rs in rs[0]:
+                intermediate_rs.append(np.hstack(aux_rs))
+            r_first = np.vstack(intermediate_rs)
+        else:
+            r_first = np.hstack(np.hstack(rs[0]))
+        if len(rs) > 1:
+            if rs[0][0][-1].shape[1] != block_shape[1]:
+                intermediate_rs = []
+                for aux_rs in rs[1]:
+                    intermediate_rs.append(np.hstack(aux_rs))
+                r_second = np.vstack(intermediate_rs)
+            else:
+                r_second = np.hstack(np.hstack(rs[1]))
+        if len(rs) > 1:
+            q, r = qr(np.vstack((r_first, r_second)))
+        else:
+            q, r = qr(r_first)
+        block_shape_to_use = block_shape[0] if \
+            block_shape[1] > block_shape[0] else block_shape[1]
+        for j in range(len(r_blocks)):
+            for i in range(len(r_blocks[0])):
+                r_blocks[j][i] = r[block_shape_to_use * j:
+                                   block_shape_to_use * (j + 1),
+                                   block_shape_to_use * i:
+                                   block_shape_to_use * (i + 1)]
+
+
+@constraint(computing_units="${ComputingUnits}")
+@task(block={Type: COLLECTION_IN, Depth: 2},
+      q_blocks={Type: COLLECTION_OUT, Depth: 2},
+      r_blocks={Type: COLLECTION_OUT, Depth: 2})
+def _compute_qr(block, q_blocks, r_blocks, mode):
+    block_shape = block[0][0].shape
     if mode == "complete":
         if len(block[0]) > 1:
             block = np.block(block[0])
             q, r = qr(block, mode="complete")
         else:
             q, r = qr(block[0][0], mode="complete")
-        return q, r
+        for i in range(len(q_blocks[0])):
+            q_blocks[0][i] = q[:, block_shape[0]*i:block_shape[0]*(i+1)]
+        for i in range(len(r_blocks[0])):
+            r_blocks[0][i] = r[:, block_shape[1]*i:block_shape[1]*(i+1)]
     elif mode == "reduced":
         if len(block[0]) > 1:
             block = np.block(block[0])
             q, r = qr(block)
         else:
             q, r = qr(block[0][0])
-        return q, r
+        for i in range(len(q_blocks[0])):
+            q_blocks[0][i] = q[:, block_shape[1]*i:block_shape[1]*(i+1)]
+        for i in range(len(r_blocks)):
+            for j in range(len(r_blocks[i])):
+                r_blocks[i][j] = r[block_shape[1] * i:block_shape[1] * (i + 1),
+                                   block_shape[1] * j:block_shape[1] * (j + 1)]

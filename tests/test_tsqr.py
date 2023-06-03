@@ -202,12 +202,17 @@ class QRTest(BaseTimedTestCase):
     def test_tsqr_warning(self):
         m2b_ds = random_array((50, 20), (10, 10))
         (q, r) = tsqr(m2b_ds)
+        print("Q")
+        print(q)
         q = q.collect()
         r = r.collect()
         m2b_ds = m2b_ds.collect()
         # check if R matrix is upper triangular
         self.assertTrue(np.allclose(np.triu(r), r))
         # check if Q matrix is orthogonal
+        print("AAAA")
+        print(np.dot(q, q.transpose()))
+        print(np.eye(q.shape[0]))
         self.assertTrue(np.allclose(np.dot(q, q.transpose()),
                                     np.eye(q.shape[0])))
         # check if the product Q * R is the original matrix
