@@ -1989,20 +1989,21 @@ def concat_rows(a, b):
             _assign_blocks(blocks_concatted[j + i], b._blocks[j],
                            b._blocks[j + 1], a._reg_shape[0],
                            used_data=(a._reg_shape[0] -
-                                      (size_last_block_a %
+                                      (a.shape[0] %
                                        a._reg_shape[0])))
         else:
             if size_last_block_a != a._reg_shape[0]:
                 if size_last_block_b != b._reg_shape[0]:
                     _assign_blocks(blocks_concatted[j + i], b._blocks[j - 1],
                                    b._blocks[j], a._reg_shape[0],
-                                   used_data=(a._reg_shape[0] -
-                                              (size_last_block_a %
+                                   used_data=(a._reg_shape[0] +
+                                              a._reg_shape[0] -
+                                              (a.shape[0] %
                                                a._reg_shape[0])))
                 else:
                     _assign_blocks(blocks_concatted[j+i], b._blocks[j],
                                    used_data=(a._reg_shape[0] -
-                                              (size_last_block_a %
+                                              (a.shape[0] %
                                                a._reg_shape[0])))
             else:
                 _assign_blocks(blocks_concatted[j + i], b._blocks[j])
