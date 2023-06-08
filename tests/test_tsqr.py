@@ -36,6 +36,28 @@ class QRTest(BaseTimedTestCase):
         self.assertTrue(np.allclose(q.dot(r), m2b))
 
     @parameterized.expand([
+        (110, 36, 64, 36), (170, 36, 64, 36), (288, 60, 72, 32),
+        (120, 10, 20, 10), (32, 8, 8, 3)
+    ])
+    def test_tsqr_irregular(self, t_size_r, t_size_c, b_size_r, b_size_c):
+        m2b_ds = random_array((t_size_r, t_size_c), (b_size_r, b_size_c))
+        (q, r) = tsqr(m2b_ds)
+        assigned_q_shape = q.shape
+        assigned_r_shape = r.shape
+        q = q.collect()
+        r = r.collect()
+        m2b = m2b_ds.collect()
+        self.assertEqual(assigned_q_shape, q.shape)
+        self.assertEqual(assigned_r_shape, r.shape)
+        # check if R matrix is upper triangular
+        self.assertTrue(np.allclose(np.triu(r), r))
+        # check if Q matrix is orthogonal
+        self.assertTrue(np.allclose(np.dot(q, q.transpose()),
+                                    np.eye(q.shape[0])))
+        # check if the product Q * R is the original matrix
+        self.assertTrue(np.allclose(q.dot(r), m2b))
+
+    @parameterized.expand([
         (2, 1, 64, 36), (3, 1, 64, 36), (4, 1, 32, 36), (16, 1, 20, 10),
     ])
     def test_tsqr_complete_indexes(self, m_size, n_size, b_size_r, b_size_c):
@@ -43,6 +65,26 @@ class QRTest(BaseTimedTestCase):
 
         shape = (m_size * b_size_r, n_size * b_size_c)
         m2b_ds = random_array(shape, (b_size_r, b_size_c))
+        (q, r) = tsqr(m2b_ds, indexes=[2, 3, 4])
+        assigned_q_shape = q.shape
+        assigned_r_shape = r.shape
+        q = q.collect()
+        r = r.collect()
+        self.assertEqual(assigned_q_shape, q.shape)
+        self.assertEqual(assigned_r_shape, r.shape)
+        # check if R matrix is upper triangular
+        self.assertTrue(np.allclose(np.triu(r), r))
+        # check if the Q matrix contains the number of specified indexes
+        self.assertTrue(q.shape == (q.shape[0], 3))
+
+    @parameterized.expand([
+        (110, 36, 64, 36), (170, 36, 64, 36), (288, 60, 72, 32),
+        (120, 10, 20, 10), (32, 8, 8, 3)
+    ])
+    def test_tsqr_complete_indexes_irregular(self, t_size_r, t_size_c,
+                                             b_size_r, b_size_c):
+        m2b_ds = random_array((t_size_r, t_size_c), (b_size_r, b_size_c))
+
         (q, r) = tsqr(m2b_ds, indexes=[2, 3, 4])
         assigned_q_shape = q.shape
         assigned_r_shape = r.shape
@@ -81,6 +123,31 @@ class QRTest(BaseTimedTestCase):
         self.assertTrue(np.allclose(q.dot(r), m2b))
 
     @parameterized.expand([
+        (110, 36, 64, 36), (230, 36, 64, 36), (288, 60, 72, 32),
+        (120, 10, 30, 10), (32, 8, 8, 3)
+    ])
+    def test_tsqr_inverse_irregular(self, t_size_r, t_size_c,
+                                    b_size_r, b_size_c):
+        """Tests tsqr"""
+        m2b_ds = random_array((t_size_r, t_size_c), (b_size_r, b_size_c))
+
+        (q, r) = tsqr(m2b_ds, mode="complete_inverse")
+        assigned_q_shape = q.shape
+        assigned_r_shape = r.shape
+        q = q.collect()
+        r = r.collect()
+        m2b = m2b_ds.collect()
+        self.assertEqual(assigned_q_shape, q.shape)
+        self.assertEqual(assigned_r_shape, r.shape)
+        # check if R matrix is upper triangular
+        self.assertTrue(np.allclose(np.triu(r), r))
+        # check if Q matrix is orthogonal
+        self.assertTrue(np.allclose(np.dot(q, q.transpose()),
+                                    np.eye(q.shape[0])))
+        # check if the product Q * R is the original matrix
+        self.assertTrue(np.allclose(q.dot(r), m2b))
+
+    @parameterized.expand([
         (2, 1, 64, 36), (4, 1, 32, 36), (16, 1, 20, 10),
     ])
     def test_tsqr_inverse_indexes(self, m_size, n_size, b_size_r, b_size_c):
@@ -98,7 +165,27 @@ class QRTest(BaseTimedTestCase):
         self.assertEqual(assigned_r_shape, r.shape)
         # check if R matrix is upper triangular
         self.assertTrue(np.allclose(np.triu(r), r))
-        # self.assertTrue(q.shape == (q.shape[0], 3))
+        self.assertTrue(q.shape == (q.shape[0], 3))
+
+    @parameterized.expand([
+        (110, 36, 64, 36), (230, 36, 64, 36), (288, 60, 72, 32),
+        (120, 10, 30, 10), (32, 8, 8, 3)
+    ])
+    def test_tsqr_inverse_indexes_irregular(self, t_size_r, t_size_c,
+                                            b_size_r, b_size_c):
+        """Tests tsqr"""
+        m2b_ds = random_array((t_size_r, t_size_c), (b_size_r, b_size_c))
+
+        (q, r) = tsqr(m2b_ds, mode="complete_inverse", indexes=[2, 3, 4])
+        assigned_q_shape = q.shape
+        assigned_r_shape = r.shape
+        q = q.collect()
+        r = r.collect()
+        self.assertEqual(assigned_q_shape, q.shape)
+        self.assertEqual(assigned_r_shape, r.shape)
+        # check if R matrix is upper triangular
+        self.assertTrue(np.allclose(np.triu(r), r))
+        self.assertTrue(q.shape == (q.shape[0], 3))
 
     @parameterized.expand([
         (2, 1, 64, 36), (3, 1, 64, 36), (4, 1, 36, 32), (16, 1, 20, 10),
@@ -123,6 +210,28 @@ class QRTest(BaseTimedTestCase):
         self.assertTrue(np.allclose(q.dot(r), m2b))
 
     @parameterized.expand([
+        (110, 36, 64, 36), (170, 36, 64, 36), (288, 60, 72, 32),
+        (120, 10, 20, 10), (32, 8, 8, 3)
+    ])
+    def test_tsqr_reduced_irregular(self, t_size_r, t_size_c,
+                                    b_size_r, b_size_c):
+        """Tests tsqr"""
+        m2b_ds = random_array((t_size_r, t_size_c), (b_size_r, b_size_c))
+
+        (q, r) = tsqr(m2b_ds, mode="reduced")
+        assigned_q_shape = q.shape
+        assigned_r_shape = r.shape
+        q = q.collect()
+        r = r.collect()
+        self.assertEqual(assigned_q_shape, q.shape)
+        self.assertEqual(assigned_r_shape, r.shape)
+        m2b = m2b_ds.collect()
+        # check if R matrix is upper triangular
+        self.assertTrue(np.allclose(np.triu(r), r))
+        # check if the product Q * R is the original matrix
+        self.assertTrue(np.allclose(q.dot(r), m2b))
+
+    @parameterized.expand([
         (2, 1, 64, 36), (4, 1, 36, 32), (16, 1, 20, 10),
     ])
     def test_tsqr_reduced_inverse(self, m_size, n_size, b_size_r, b_size_c):
@@ -130,6 +239,28 @@ class QRTest(BaseTimedTestCase):
 
         shape = (m_size * b_size_r, n_size * b_size_c)
         m2b_ds = random_array(shape, (b_size_r, b_size_c))
+
+        (q, r) = tsqr(m2b_ds, mode="reduced_inverse")
+        assigned_q_shape = q.shape
+        assigned_r_shape = r.shape
+        q = q.collect()
+        r = r.collect()
+        m2b = m2b_ds.collect()
+        self.assertEqual(assigned_q_shape, q.shape)
+        self.assertEqual(assigned_r_shape, r.shape)
+        # check if R matrix is upper triangular
+        self.assertTrue(np.allclose(np.triu(r), r))
+        # check if the product Q * R is the original matrix
+        self.assertTrue(np.allclose(q.dot(r), m2b))
+
+    @parameterized.expand([
+        (110, 36, 64, 36), (242, 36, 64, 36), (288, 64, 72, 32),
+        (160, 10, 20, 10), (32, 8, 8, 3)
+    ])
+    def test_tsqr_reduced_inverse_irregular(self, t_size_r, t_size_c,
+                                            b_size_r, b_size_c):
+        """Tests tsqr"""
+        m2b_ds = random_array((t_size_r, t_size_c), (b_size_r, b_size_c))
 
         (q, r) = tsqr(m2b_ds, mode="reduced_inverse")
         assigned_q_shape = q.shape
@@ -168,6 +299,28 @@ class QRTest(BaseTimedTestCase):
         self.assertTrue(q.shape == (q.shape[0], 3))
 
     @parameterized.expand([
+        (110, 36, 64, 36), (242, 36, 64, 36), (288, 64, 72, 32),
+        (160, 10, 20, 10), (32, 8, 8, 3)
+    ])
+    def test_tsqr_reduced_inverse_indexes_irregular(self, t_size_r, t_size_c,
+                                                    b_size_r, b_size_c):
+        """Tests tsqr"""
+        m2b_ds = random_array((t_size_r, t_size_c), (b_size_r, b_size_c))
+
+        (q, r) = tsqr(m2b_ds, mode="reduced_inverse", indexes=[2, 3, 4])
+        assigned_q_shape = q.shape
+        assigned_r_shape = r.shape
+        q = q.collect()
+        r = r.collect()
+        self.assertEqual(assigned_q_shape, q.shape)
+        self.assertEqual(assigned_r_shape, r.shape)
+        # check if R matrix is upper triangular
+        self.assertTrue(np.allclose(np.triu(r), r))
+        # check if the product Q columns retrived are equal to the ones in the
+        # Q computed with numpy
+        self.assertTrue(q.shape == (q.shape[0], 3))
+
+    @parameterized.expand([
         (2, 1, 64, 36), (3, 1, 64, 36), (4, 1, 36, 32), (16, 1, 20, 10),
     ])
     def test_tsqr_compute_r(self, m_size, n_size, b_size_r, b_size_c):
@@ -175,6 +328,22 @@ class QRTest(BaseTimedTestCase):
 
         shape = (m_size * b_size_r, n_size * b_size_c)
         m2b_ds = random_array(shape, (b_size_r, b_size_c))
+
+        r = tsqr(m2b_ds, mode="r_complete")
+        assigned_r_shape = r.shape
+        r = r.collect()
+        self.assertEqual(assigned_r_shape, r.shape)
+        # check if R matrix is upper triangular
+        self.assertTrue(np.allclose(np.triu(r), r))
+
+    @parameterized.expand([
+        (110, 36, 64, 36), (170, 36, 64, 36), (144, 60, 36, 32),
+        (120, 10, 20, 10), (32, 8, 8, 3)
+    ])
+    def test_tsqr_compute_r_irregular(self, t_size_r, t_size_c,
+                                      b_size_r, b_size_c):
+        """Tests tsqr"""
+        m2b_ds = random_array((t_size_r, t_size_c), (b_size_r, b_size_c))
 
         r = tsqr(m2b_ds, mode="r_complete")
         assigned_r_shape = r.shape
@@ -199,20 +368,31 @@ class QRTest(BaseTimedTestCase):
         # check if R matrix is upper triangular
         self.assertTrue(np.allclose(np.triu(r), r))
 
+    @parameterized.expand([
+        (110, 36, 64, 36), (170, 36, 64, 36),
+        (144, 60, 36, 32), (120, 10, 20, 10),
+    ])
+    def test_tsqr_compute_r_reduced_irregular(self, t_size_r, t_size_c,
+                                              b_size_r, b_size_c):
+        """Tests tsqr"""
+        m2b_ds = random_array((t_size_r, t_size_c), (b_size_r, b_size_c))
+
+        r = tsqr(m2b_ds, mode="r_reduced")
+        assigned_r_shape = r.shape
+        r = r.collect()
+        self.assertEqual(assigned_r_shape, r.shape)
+        # check if R matrix is upper triangular
+        self.assertTrue(np.allclose(np.triu(r), r))
+
     def test_tsqr_warning(self):
         m2b_ds = random_array((50, 20), (10, 10))
         (q, r) = tsqr(m2b_ds)
-        print("Q")
-        print(q)
         q = q.collect()
         r = r.collect()
         m2b_ds = m2b_ds.collect()
         # check if R matrix is upper triangular
         self.assertTrue(np.allclose(np.triu(r), r))
         # check if Q matrix is orthogonal
-        print("AAAA")
-        print(np.dot(q, q.transpose()))
-        print(np.eye(q.shape[0]))
         self.assertTrue(np.allclose(np.dot(q, q.transpose()),
                                     np.eye(q.shape[0])))
         # check if the product Q * R is the original matrix
@@ -233,20 +413,28 @@ class QRTest(BaseTimedTestCase):
             tsqr(m2b_ds)
         m2b_ds = random_array((500, 100), (100, 100))
         with self.assertRaises(ValueError):
-            # power of 2 is required
             tsqr(m2b_ds, mode="complete_inverse")
         m2b_ds = random_array((500, 100), (100, 100))
         with self.assertRaises(ValueError):
-            # power of n_reduction is required
-            tsqr(m2b_ds, n_reduction=3, mode="complete_inverse")
+            tsqr(m2b_ds, mode="complete_inverse")
         m2b_ds = random_array((500, 100), (100, 100))
         with self.assertRaises(ValueError):
-            # power of 2 is required
             tsqr(m2b_ds, mode="reduced_inverse")
         m2b_ds = random_array((500, 100), (100, 100))
         with self.assertRaises(ValueError):
-            # power of n_reduction is required
-            tsqr(m2b_ds, n_reduction=3, mode="reduced_inverse")
+            tsqr(m2b_ds, mode="reduced_inverse")
+        m2b_ds = random_array((400, 100), (325, 100))
+        with self.assertRaises(ValueError):
+            tsqr(m2b_ds, mode="reduced_inverse")
+        m2b_ds = random_array((400, 100), (50, 100))
+        with self.assertRaises(ValueError):
+            tsqr(m2b_ds, mode="reduced_inverse")
+        m2b_ds = random_array((400, 100), (175, 100))
+        with self.assertRaises(ValueError):
+            tsqr(m2b_ds, mode="reduced")
+        m2b_ds = random_array((400, 100), (50, 100))
+        with self.assertRaises(ValueError):
+            tsqr(m2b_ds, mode="reduced")
 
     def test_power_two_returns_false(self):
         self.assertFalse(_is_not_power_of_two(0))
