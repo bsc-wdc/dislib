@@ -1,4 +1,4 @@
-from dislib.data.array import Array, matmul, concat_rows, array
+from dislib.data.array import Array, matmul, concat_rows
 import math
 import numpy as np
 from numpy.linalg import qr
@@ -289,7 +289,26 @@ def tsqr(a: Array, mode="complete", indexes=None):
                 rs.append(r_blocks)
 
         if indexes is not None:
-            matrix_indices = _construct_identity(indexes, a.shape[0])
+            blocks_matrix_indices = [[object() for _ in range(
+                                      math.ceil(len(indexes) /
+                                                a._reg_shape[0]))]
+                                     for _ in range(a._n_blocks[0])]
+            _construct_identity(indexes,
+                                blocks_matrix_indices,
+                                a.shape[0], a._reg_shape)
+            matrix_indices = Array(blocks_matrix_indices,
+                                   top_left_shape=(a._reg_shape[0],
+                                                   len(indexes) if
+                                                   len(indexes) <
+                                                   a._reg_shape[0] else
+                                                   a._reg_shape[0]),
+                                   reg_shape=(a._reg_shape[0],
+                                              len(indexes) if
+                                              len(indexes) <
+                                              a._reg_shape[0]
+                                              else a._reg_shape[0]),
+                                   shape=(a.shape[0], len(indexes)),
+                                   sparse=False)
             q = _construct_q_from_the_end(qs, n_reduction, a._reg_shape[0],
                                           a.shape,
                                           indexes=matrix_indices,
@@ -396,7 +415,7 @@ def tsqr(a: Array, mode="complete", indexes=None):
                 else:
                     qs.append(q_1)
                 rs.append(r_blocks)
-        r = Array(rs,
+        r = Array(rs[-1],
                   top_left_shape=(a._reg_shape[1], a._reg_shape[1]),
                   reg_shape=(a._reg_shape[1], a._reg_shape[1]),
                   shape=(a.shape[1], a.shape[1]), sparse=False)
@@ -499,7 +518,26 @@ def tsqr(a: Array, mode="complete", indexes=None):
                 qs.append(small_q)
                 rs.append(r_blocks)
         if indexes is not None:
-            matrix_indices = _construct_identity(indexes, a.shape[1])
+            blocks_matrix_indices = [[object() for _ in range(
+                math.ceil(len(indexes) /
+                          a._reg_shape[1]))]
+                                     for _ in range(a._n_blocks[0])]
+            _construct_identity(indexes,
+                                blocks_matrix_indices,
+                                a.shape[0], a._reg_shape, complete=False)
+            matrix_indices = Array(blocks_matrix_indices,
+                                   top_left_shape=(a._reg_shape[1],
+                                                   len(indexes) if
+                                                   len(indexes) <
+                                                   a._reg_shape[1] else
+                                                   a._reg_shape[1]),
+                                   reg_shape=(a._reg_shape[1],
+                                              len(indexes) if
+                                              len(indexes) <
+                                              a._reg_shape[1] else
+                                              a._reg_shape[1]),
+                                   shape=(a.shape[0], len(indexes)),
+                                   sparse=False)
             q = _construct_q_from_the_end(qs, n_reduction,
                                           a._reg_shape[0], a.shape,
                                           indexes=matrix_indices,
@@ -509,7 +547,7 @@ def tsqr(a: Array, mode="complete", indexes=None):
                                           a._reg_shape[0], a.shape,
                                           complete=False)
 
-        r = Array(rs, top_left_shape=(a._reg_shape[1], a._reg_shape[1]),
+        r = Array(rs[-1], top_left_shape=(a._reg_shape[1], a._reg_shape[1]),
                   reg_shape=(a._reg_shape[1], a._reg_shape[1]),
                   shape=(a.shape[1], a.shape[1]), sparse=False)
         return q, r
@@ -584,9 +622,13 @@ def _construct_q_from_the_end(qs, n_reduction, reg_shape_0,
                               shape, indexes=None,
                               complete=False):
     if indexes is not None:
-        q = matmul(qs[-1], array(indexes,
-                                 block_size=(qs[-1]._reg_shape[0],
-                                             indexes.shape[1])))
+        q = matmul(qs[-1], indexes)
+        '''Array(indexes._blocks,
+                                 top_left_shape=indexes._top_left_shape,
+                                 reg_shape=(qs[-1]._reg_shape[0],
+                                            indexes.shape[1]),
+                                 shape=indexes.shape,
+                                 sparse=False))'''
     else:
         q = qs[-1]
     qs.pop()
@@ -708,10 +750,25 @@ def _multiply(q, to_multiply):
 
 
 @constraint(computing_units="${ComputingUnits}")
-@task(indexes={Type: COLLECTION_IN, Depth: 1}, returns=np.array)
-def _construct_identity(indexes, shape):
+@task(indexes={Type: COLLECTION_IN, Depth: 1},
+      blocks_out={Type: COLLECTION_OUT, Depth: 2})
+def _construct_identity(indexes, blocks_out, shape, reg_shape, complete=True):
     identity = np.eye(shape)
-    return identity[:, indexes]
+    identity = identity[:, indexes]
+    if complete:
+        for i in range(len(blocks_out)):
+            for j in range(len(blocks_out[i])):
+                blocks_out[i][j] = identity[i * reg_shape[0]:
+                                            (i + 1) * reg_shape[0],
+                                            j * reg_shape[0]:
+                                            (j + 1) * reg_shape[0]]
+    else:
+        for i in range(len(blocks_out)):
+            for j in range(len(blocks_out[i])):
+                blocks_out[i][j] = identity[i*reg_shape[1]:
+                                            (i+1)*reg_shape[1],
+                                            j*reg_shape[1]:
+                                            (j+1)*reg_shape[1]]
 
 
 @constraint(computing_units="${ComputingUnits}")

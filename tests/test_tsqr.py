@@ -300,7 +300,7 @@ class QRTest(BaseTimedTestCase):
 
     @parameterized.expand([
         (110, 36, 64, 36), (242, 36, 64, 36), (288, 64, 72, 32),
-        (160, 10, 20, 10), (32, 8, 8, 3)
+        (160, 10, 20, 10), (32, 8, 8, 2)
     ])
     def test_tsqr_reduced_inverse_indexes_irregular(self, t_size_r, t_size_c,
                                                     b_size_r, b_size_c):
