@@ -16,8 +16,6 @@ def tsqr(a: Array, mode="complete", indexes=None):
         ----------
         a : ds-arrays
             Input ds-array.
-        n_reduction : int
-            Number of row of blocks used in each reduction operation.
         mode: basestring
             Mode of execution of the tsqr. The options are:
             - complete: q=mxm, r=mxn computed from beginning to end
@@ -46,19 +44,16 @@ def tsqr(a: Array, mode="complete", indexes=None):
             or
             If m < n
             or
+            If the mode is reduced or reduced_inverse and the number
+            of rows per block is smaller than the total number of
+            columns of the matrix
+            or
             If the mode is complete_inverse and the number of blocks
-            is not a power of the reduction number
+            is not a power of 2
             or
             If the mode is reduced_inverse and the number of blocks is
-            not a power of the reduction number
-
-        UserWarning
-            If the decomposed ds-array contains more than one block columns.
+            not a power of 2
         """
-    if a._n_blocks[1] > 1:
-        warnings.warn("The method you are trying to use works with "
-                      "one column ds-arrays. The returned q and r will "
-                      "not preserve the number of columns.", UserWarning)
 
     if a._reg_shape != a._top_left_shape:
         raise ValueError(
@@ -798,7 +793,7 @@ def _compute_reduction_qr(rs, q_blocks, r_blocks, mode):
 
 
 @constraint(computing_units="${ComputingUnits}")
-@task(rs={Type: COLLECTION_IN, Depth: 2},
+@task(rs={Type: COLLECTION_IN, Depth: 3},
       r_blocks={Type: COLLECTION_OUT, Depth: 2})
 def _compute_reduction_qr_only_r(rs, r_blocks, mode):
     block_shape = rs[0][0][0].shape
