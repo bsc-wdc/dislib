@@ -1,6 +1,5 @@
 from dislib.data.array import Array, matmul, concat_rows, array
 import math
-import warnings
 import numpy as np
 from numpy.linalg import qr
 
