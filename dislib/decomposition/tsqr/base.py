@@ -327,7 +327,7 @@ def tsqr(a: Array, mode="complete", indexes=None):
             raise ValueError("The number of rows in each block needs to be "
                              "greater than the total number of columns")
         if (a.shape[0] % a._reg_shape[0]) != 0 and \
-                (a.shape[0] % a._reg_shape[0]) < a.shape[1]:
+                (a.shape[0] % a._reg_shape[0]) < a.shape[1] and (a._n_blocks[1] > 1)::
             raise ValueError("The number of rows in the last block is "
                              "smaller than the total number of columns")
         for i, block in enumerate(a._blocks):
