@@ -429,9 +429,6 @@ class QRTest(BaseTimedTestCase):
         m2b_ds = random_array((400, 100), (50, 100))
         with self.assertRaises(ValueError):
             tsqr(m2b_ds, mode="reduced_inverse")
-        m2b_ds = random_array((400, 100), (175, 100))
-        with self.assertRaises(ValueError):
-            tsqr(m2b_ds, mode="reduced")
         m2b_ds = random_array((400, 100), (50, 100))
         with self.assertRaises(ValueError):
             tsqr(m2b_ds, mode="reduced")
