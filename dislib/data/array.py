@@ -2138,7 +2138,7 @@ def _assign_block_columns_leftover_data(blocks, input_block,
 @task(blocks={Type: COLLECTION_OUT, Depth: 1},
       input_blocks={Type: COLLECTION_IN, Depth: 1},
       input_blocks_b={Type: COLLECTION_IN, Depth: 1})
-def _assign_blocks(blocks, input_blocks, input_blocks_b=None,
+def _assign_blocks(blocks, input_blocks, input_blocks_b=[None],
                    reg_shape=0, used_data=0):
     if used_data == 0:
         if reg_shape != 0:
