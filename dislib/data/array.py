@@ -1950,8 +1950,8 @@ def concat_rows(a, b):
                          f"for the concatenation "
                          f"({a._shape[1]} != {b._shape[1]}")
 
-    if a._reg_shape[0] != b._reg_shape[0] or a._reg_shape[1] !=\
-            b._reg_shape[1]:
+    if (a._reg_shape[0] != b._reg_shape[0] or a._reg_shape[1] !=
+            b._reg_shape[1]) and b._n_blocks[0] > 1:
         raise ValueError("incorrect block sizes for the requested "
                          f"concatenation ({a._reg_shape[0], a._reg_shape[1]} "
                          f"!= {b._reg_shape[0], b._reg_shape[1]})")
@@ -1989,20 +1989,21 @@ def concat_rows(a, b):
             _assign_blocks(blocks_concatted[j + i], b._blocks[j],
                            b._blocks[j + 1], a._reg_shape[0],
                            used_data=(a._reg_shape[0] -
-                                      (size_last_block_a %
+                                      (a.shape[0] %
                                        a._reg_shape[0])))
         else:
             if size_last_block_a != a._reg_shape[0]:
                 if size_last_block_b != b._reg_shape[0]:
                     _assign_blocks(blocks_concatted[j + i], b._blocks[j - 1],
                                    b._blocks[j], a._reg_shape[0],
-                                   used_data=(a._reg_shape[0] -
-                                              (size_last_block_a %
+                                   used_data=(a._reg_shape[0] +
+                                              a._reg_shape[0] -
+                                              (a.shape[0] %
                                                a._reg_shape[0])))
                 else:
                     _assign_blocks(blocks_concatted[j+i], b._blocks[j],
                                    used_data=(a._reg_shape[0] -
-                                              (size_last_block_a %
+                                              (a.shape[0] %
                                                a._reg_shape[0])))
             else:
                 _assign_blocks(blocks_concatted[j + i], b._blocks[j])
@@ -2137,7 +2138,7 @@ def _assign_block_columns_leftover_data(blocks, input_block,
 @task(blocks={Type: COLLECTION_OUT, Depth: 1},
       input_blocks={Type: COLLECTION_IN, Depth: 1},
       input_blocks_b={Type: COLLECTION_IN, Depth: 1})
-def _assign_blocks(blocks, input_blocks, input_blocks_b=None,
+def _assign_blocks(blocks, input_blocks, input_blocks_b=[None],
                    reg_shape=0, used_data=0):
     if used_data == 0:
         if reg_shape != 0:
