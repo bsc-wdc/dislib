@@ -226,22 +226,23 @@ class CascadeSVM(BaseEstimator):
 
     def _check_initial_parameters(self):
         gamma = self.gamma
-        assert (gamma == "auto" or type(gamma) == float
-                or type(float(gamma)) == float), "Invalid gamma"
+        assert (gamma == "auto" or isinstance(gamma, float)
+                or isinstance(float(gamma), float)), "Invalid gamma"
         kernel = self.kernel
         assert (kernel is None or kernel in self._name_to_kernel.keys()), \
             "Incorrect kernel value [%s], available kernels are %s" % (
                 kernel, self._name_to_kernel.keys())
         c = self.c
-        assert (c is None or type(c) == float or type(float(c)) == float), \
+        assert (c is None or isinstance(c, float) or
+                isinstance(float(c), float)), \
             "Incorrect C type [%s], type : %s" % (c, type(c))
         tol = self.tol
-        assert (type(tol) == float or type(float(tol)) == float), \
+        assert (isinstance(tol, float) or isinstance(float(tol), float)), \
             "Incorrect tol type [%s], type : %s" % (tol, type(tol))
         assert self.cascade_arity > 1, "Cascade arity must be greater than 1"
         assert self.max_iter > 0, "Max iterations must be greater than 0"
-        assert type(self.check_convergence) == bool, "Invalid value in " \
-                                                     "check_convergence"
+        assert isinstance(self.check_convergence, bool), "Invalid value in " \
+                                                         "check_convergence"
 
     def _reset_model(self):
         self.iterations = 0
