@@ -23,6 +23,9 @@ def tsqr(a: Array, mode="complete", indexes=None):
             - reduced_inverse: q=mxn, r=nxn computed from end to beginning
             - r_complete: returns only r. This r is mxn
             - r_reduced: returns only r. This r is nxn
+        indexes: list
+            Columns to return, it only works when it is set with an inverse
+            mode. In other cases it will be ignored.
 
         Returns
         -------
@@ -259,8 +262,6 @@ def tsqr(a: Array, mode="complete", indexes=None):
                 last_block_irregular = False
             depth = depth + 1
         q = qs[0]
-        if indexes is not None:
-            q = q[:, indexes]
         r = Array(r_blocks, top_left_shape=a._reg_shape,
                   reg_shape=a._reg_shape,
                   shape=a.shape,
@@ -401,26 +402,21 @@ def tsqr(a: Array, mode="complete", indexes=None):
             q_blocks = [[object() for _ in range(len(block))]]
             r_blocks = [[object() for _ in range(len(block))] for _ in
                         range(math.ceil(a.shape[1] / a._reg_shape[1]))]
+            _compute_qr([block], q_blocks, r_blocks, "reduced")
             if i == len(a._blocks) - 1 and a._shape[0] % a._reg_shape[0] != 0:
-                _compute_qr([block], q_blocks, r_blocks, "reduced")
-                if a._shape[0] % a._reg_shape[0] < a._shape[1]:
-                    col_shape = a._shape[0] % a._reg_shape[0]
-                else:
-                    col_shape = a._reg_shape[1]
                 q_ds_array = Array(q_blocks,
                                    top_left_shape=(a._shape[0] %
                                                    a._top_left_shape[0],
-                                                   col_shape),
+                                                   a._reg_shape[1]),
                                    reg_shape=(a._shape[0] %
                                               a._reg_shape[0],
-                                              col_shape),
+                                              a._reg_shape[1]),
                                    shape=(a._shape[0] %
                                           a._reg_shape[0],
-                                          col_shape),
+                                          a._reg_shape[1]),
                                    sparse=False)
             else:
                 reg_shape_to_assign = a._reg_shape
-                _compute_qr([block], q_blocks, r_blocks, "reduced")
                 q_ds_array = Array(q_blocks,
                                    top_left_shape=reg_shape_to_assign,
                                    reg_shape=reg_shape_to_assign,
@@ -462,30 +458,17 @@ def tsqr(a: Array, mode="complete", indexes=None):
                             shape_last_block = (a._reg_shape[0] %
                                                 a._reg_shape[1])
                 else:
-                    if a.shape[1] < a._reg_shape[0]:
-                        q_blocks = [[object() for _ in range(len(block))]
-                                    for _ in range(math.ceil(
-                                                   math.ceil(
-                                                       a.shape[1] /
-                                                       a._reg_shape[1]) / 2))]
-                        q_blocks_2 = [[object() for _ in range(len(block))]
-                                      for _ in range(math.floor(
-                                                     math.ceil(
-                                                         a.shape[1] /
-                                                         a._reg_shape[1]) / 2))
-                                      ]
-                    else:
-                        q_blocks = [[object() for _ in range(len(block))]
-                                    for _ in range(math.ceil(
-                                                   math.ceil(
-                                                       a._reg_shape[0] /
-                                                       a._reg_shape[1]) / 2))]
-                        q_blocks_2 = [[object() for _ in range(len(block))]
-                                      for _ in range(math.floor(
-                                                     math.ceil(
-                                                         a._reg_shape[0] /
-                                                         a._reg_shape[1]) / 2))
-                                      ]
+                    q_blocks = [[object() for _ in range(len(block))]
+                                for _ in range(math.ceil(
+                                                math.ceil(
+                                                   a.shape[1] /
+                                                   a._reg_shape[1]) / 2))]
+                    q_blocks_2 = [[object() for _ in range(len(block))]
+                                  for _ in range(math.floor(
+                                                 math.ceil(
+                                                     a.shape[1] /
+                                                     a._reg_shape[1]) / 2))
+                                  ]
                 r_blocks = [[object() for _ in range(len(block))]
                             for _ in range(math.ceil(
                                            a.shape[1] / a._reg_shape[1]))]
@@ -896,14 +879,6 @@ def _construct_identity(indexes, blocks_out, shape, reg_shape, complete=True):
 
 
 @constraint(computing_units="${ComputingUnits}")
-@task(blocks={Type: COLLECTION_OUT, Depth: 2})
-def _construct_blocks(blocks, array_to_place, block_shape):
-    for idx, block in enumerate(blocks):
-        blocks[idx][0] = array_to_place[idx * block_shape[0]:
-                                        (idx + 1) * block_shape[0]]
-
-
-@constraint(computing_units="${ComputingUnits}")
 @task(rs={Type: COLLECTION_IN, Depth: 3},
       q_blocks={Type: COLLECTION_OUT, Depth: 2},
       q_blocks_2={Type: COLLECTION_OUT, Depth: 2},
@@ -913,21 +888,9 @@ def _compute_reduction_qr(rs, q_blocks, q_blocks_2,
                           size_last_block, mode):
     block_shape = rs[0][0][0].shape
     if mode == "complete":
-        if rs[0][0][-1].shape[1] != block_shape[1]:
-            intermediate_rs = []
-            for aux_rs in rs[0]:
-                intermediate_rs.append(np.hstack(aux_rs))
-            r_first = np.vstack(intermediate_rs)
-        else:
-            r_first = np.hstack(np.hstack(rs[0]))
+        r_first = np.hstack(np.hstack(rs[0]))
         if len(rs) > 1:
-            if rs[0][0][-1].shape[1] != block_shape[1]:
-                intermediate_rs = []
-                for aux_rs in rs[1]:
-                    intermediate_rs.append(np.hstack(aux_rs))
-                r_second = np.vstack(intermediate_rs)
-            else:
-                r_second = np.hstack(np.hstack(rs[1]))
+            r_second = np.hstack(np.hstack(rs[1]))
             q, r = qr(np.vstack((r_first, r_second)), mode="complete")
         else:
             q, r = qr(r_first, mode="complete")
@@ -1030,21 +993,9 @@ def _compute_reduction_qr(rs, q_blocks, q_blocks_2,
 def _compute_reduction_qr_one_q(rs, q_blocks, r_blocks, mode):
     block_shape = rs[0][0][0].shape
     if mode == "complete":
-        if rs[0][0][-1].shape[1] != block_shape[1]:
-            intermediate_rs = []
-            for aux_rs in rs[0]:
-                intermediate_rs.append(np.hstack(aux_rs))
-            r_first = np.vstack(intermediate_rs)
-        else:
-            r_first = np.hstack(np.hstack(rs[0]))
+        r_first = np.hstack(np.hstack(rs[0]))
         if len(rs) > 1:
-            if rs[0][0][-1].shape[1] != block_shape[1]:
-                intermediate_rs = []
-                for aux_rs in rs[1]:
-                    intermediate_rs.append(np.hstack(aux_rs))
-                r_second = np.vstack(intermediate_rs)
-            else:
-                r_second = np.hstack(np.hstack(rs[1]))
+            r_second = np.hstack(np.hstack(rs[1]))
             q, r = qr(np.vstack((r_first, r_second)), mode="complete")
         else:
             q, r = qr(r_first, mode="complete")
@@ -1057,21 +1008,9 @@ def _compute_reduction_qr_one_q(rs, q_blocks, r_blocks, mode):
                 r_blocks[i][j] = r[block_shape[0] * i:block_shape[0] * (i + 1),
                                    block_shape[1] * j:block_shape[1] * (j + 1)]
     elif mode == "reduced":
-        if rs[0][0][-1].shape[1] != block_shape[1]:
-            intermediate_rs = []
-            for aux_rs in rs[0]:
-                intermediate_rs.append(np.hstack(aux_rs))
-            r_first = np.vstack(intermediate_rs)
-        else:
-            r_first = np.hstack(np.hstack(rs[0]))
+        r_first = np.hstack(np.hstack(rs[0]))
         if len(rs) > 1:
-            if rs[0][0][-1].shape[1] != block_shape[1]:
-                intermediate_rs = []
-                for aux_rs in rs[1]:
-                    intermediate_rs.append(np.hstack(aux_rs))
-                r_second = np.vstack(intermediate_rs)
-            else:
-                r_second = np.hstack(np.hstack(rs[1]))
+            r_second = np.hstack(np.hstack(rs[1]))
         if len(rs) > 1:
             q, r = qr(np.vstack((r_first, r_second)))
         else:
@@ -1098,21 +1037,9 @@ def _compute_reduction_qr_one_q(rs, q_blocks, r_blocks, mode):
 def _compute_reduction_qr_only_r(rs, r_blocks, mode):
     block_shape = rs[0][0][0].shape
     if mode == "complete":
-        if rs[0][0][-1].shape[1] != block_shape[1]:
-            intermediate_rs = []
-            for aux_rs in rs[0]:
-                intermediate_rs.append(np.hstack(aux_rs))
-            r_first = np.vstack(intermediate_rs)
-        else:
-            r_first = np.hstack(np.hstack(rs[0]))
+        r_first = np.hstack(np.hstack(rs[0]))
         if len(rs) > 1:
-            if rs[0][0][-1].shape[1] != block_shape[1]:
-                intermediate_rs = []
-                for aux_rs in rs[1]:
-                    intermediate_rs.append(np.hstack(aux_rs))
-                r_second = np.vstack(intermediate_rs)
-            else:
-                r_second = np.hstack(np.hstack(rs[1]))
+            r_second = np.hstack(np.hstack(rs[1]))
             q, r = qr(np.vstack((r_first, r_second)), mode="complete")
         else:
             q, r = qr(r_first, mode="complete")
@@ -1121,21 +1048,9 @@ def _compute_reduction_qr_only_r(rs, r_blocks, mode):
                 r_blocks[i][j] = r[block_shape[0] * i:block_shape[0] * (i + 1),
                                    block_shape[1] * j:block_shape[1] * (j + 1)]
     elif mode == "reduced":
-        if rs[0][0][-1].shape[1] != block_shape[1]:
-            intermediate_rs = []
-            for aux_rs in rs[0]:
-                intermediate_rs.append(np.hstack(aux_rs))
-            r_first = np.vstack(intermediate_rs)
-        else:
-            r_first = np.hstack(np.hstack(rs[0]))
+        r_first = np.hstack(np.hstack(rs[0]))
         if len(rs) > 1:
-            if rs[0][0][-1].shape[1] != block_shape[1]:
-                intermediate_rs = []
-                for aux_rs in rs[1]:
-                    intermediate_rs.append(np.hstack(aux_rs))
-                r_second = np.vstack(intermediate_rs)
-            else:
-                r_second = np.hstack(np.hstack(rs[1]))
+            r_second = np.hstack(np.hstack(rs[1]))
         if len(rs) > 1:
             q, r = qr(np.vstack((r_first, r_second)))
         else:
