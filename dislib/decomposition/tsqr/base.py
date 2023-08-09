@@ -271,8 +271,7 @@ def tsqr(a: Array, mode="complete", indexes=None):
     elif mode == "complete_inverse":
         if _is_not_power_of_two(a._n_blocks[0]):
             raise ValueError("This mode only works if the number of "
-                             "blocks is a direct power of the "
-                             "reduction number")
+                             "blocks is a power 2")
 
         for i, block in enumerate(a._blocks):
             q_blocks = [[object()]]
@@ -529,8 +528,7 @@ def tsqr(a: Array, mode="complete", indexes=None):
     elif mode == "reduced_inverse":
         if _is_not_power_of_two(a._n_blocks[0]):
             raise ValueError("This mode only works if the number of "
-                             "blocks is a direct power of the "
-                             "reduction number")
+                             "blocks is a power of 2")
         if a._reg_shape[0] < a.shape[1]:
             raise ValueError("The number of rows in each block needs to be "
                              "greater than the total number of columns")
