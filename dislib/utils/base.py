@@ -312,7 +312,7 @@ def _make_splits(x, y=None, test_size=None, train_size=None,
                         int(x.shape[1]))
     return Array(blocks=train_x_blocks_split,
                  top_left_shape=top_train_shape_x,
-                 reg_shape=block_size_x, shape=shape_x, sparse=False),\
+                 reg_shape=block_size_x, shape=shape_x, sparse=False), \
         Array(blocks=test_x_blocks_split, top_left_shape=top_test_shape_x,
               reg_shape=block_size_test_x, shape=shape_test_x,
               sparse=False)
