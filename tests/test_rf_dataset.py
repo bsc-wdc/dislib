@@ -4,7 +4,7 @@ import os
 import shutil
 from sklearn.datasets import make_classification
 import dislib as ds
-from dislib.trees import data, test_split
+from dislib.trees.mmap import data, test_split
 from dislib.data.array import Array
 import numpy as np
 from sys import float_info

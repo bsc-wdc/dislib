@@ -13,13 +13,13 @@ from sklearn.base import BaseEstimator
 from sklearn.utils import check_random_state
 
 from dislib.data.util import decoder_helper, encoder_helper, sync_obj
-from dislib.trees.decision_tree import (
+from dislib.trees.mmap.decision_tree import (
     DecisionTreeClassifier,
     DecisionTreeRegressor, encode_forest_helper, decode_forest_helper,
 )
 from dislib.data.array import Array
 from dislib.utils.base import _paired_partition
-from dislib.trees.data import (
+from dislib.trees.mmap.data import (
     RfClassifierDataset,
     RfRegressorDataset,
     transform_to_rf_dataset
