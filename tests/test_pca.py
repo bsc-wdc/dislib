@@ -107,6 +107,41 @@ class PCATest(BaseTimedTestCase):
             pca = PCA(method='svd')
             pca.fit(x_sp)
 
+    @parameterized.expand([("eig"),
+                           ("svd")])
+    def test_save_load_methods(self, method):
+        """Tests PCA saves and loads models correctly and the
+        results not change."""
+        x = ds.random_array((1000, 100), block_size=(100, 50), random_state=0)
+        pca = PCA(method=method)
+        x_transformed = pca.fit_transform(x)
+        pca.save_model('./modelo_PCA', save_format="pickle")
+        load_pca = PCA()
+        load_pca.load_model('./modelo_PCA', load_format="pickle")
+        x_load_transform = load_pca.transform(x)
+        self.assertTrue(np.allclose(x_transformed.collect(),
+                                    x_load_transform.collect()))
+        pca = PCA(method=method)
+        x_transformed = pca.fit_transform(x)
+        pca.save_model('./modelo_PCA', save_format="json")
+        load_pca = PCA()
+        load_pca.load_model('./modelo_PCA', load_format="json")
+        x_load_transform = load_pca.transform(x)
+        self.assertTrue(np.allclose(x_transformed.collect(),
+                                    x_load_transform.collect()))
+        pca = PCA(method=method)
+        x_transformed = pca.fit_transform(x)
+        pca.save_model('./modelo_PCA', save_format="cbor")
+        load_pca = PCA()
+        load_pca.load_model('./modelo_PCA', load_format="cbor")
+        x_load_transform = load_pca.transform(x)
+        self.assertTrue(np.allclose(x_transformed.collect(),
+                                    x_load_transform.collect()))
+        with self.assertRaises(ValueError):
+            load_pca.load_model('./modelo_PCA', load_format="png")
+        with self.assertRaises(ValueError):
+            pca.save_model('./modelo_PCA', save_format="jpg")
+
 
 def main():
     unittest.main()
