@@ -1,9 +1,9 @@
-from dislib.trees.forest import RandomForestClassifier, RandomForestRegressor
-from dislib.trees.decision_tree import (
+from dislib.trees.mmap.forest import RandomForestClassifier, RandomForestRegressor
+from dislib.trees.mmap.decision_tree import (
     DecisionTreeClassifier,
     DecisionTreeRegressor,
 )
-from dislib.trees.data import (
+from dislib.trees.mmap.data import (
     RfClassifierDataset,
     RfRegressorDataset,
     transform_to_rf_dataset
