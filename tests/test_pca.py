@@ -6,6 +6,7 @@ from sklearn.datasets import make_blobs
 
 import dislib as ds
 from dislib.decomposition import PCA
+import dislib.data.util.model as utilmodel
 from tests import BaseTimedTestCase
 
 
@@ -116,6 +117,9 @@ class PCATest(BaseTimedTestCase):
         pca = PCA(method=method)
         x_transformed = pca.fit_transform(x)
         pca.save_model('./modelo_PCA', save_format="pickle")
+        pca_not_to_save = PCA(method=method)
+        pca_not_to_save.save_model('./modelo_PCA',
+                                   overwrite=False, save_format="pickle")
         load_pca = PCA()
         load_pca.load_model('./modelo_PCA', load_format="pickle")
         x_load_transform = load_pca.transform(x)
@@ -141,6 +145,14 @@ class PCATest(BaseTimedTestCase):
             load_pca.load_model('./modelo_PCA', load_format="png")
         with self.assertRaises(ValueError):
             pca.save_model('./modelo_PCA', save_format="jpg")
+
+        cbor2_module = utilmodel.cbor2
+        utilmodel.cbor2 = None
+        with self.assertRaises(ModuleNotFoundError):
+            pca.save_model("./saved_model_error", save_format="cbor")
+        with self.assertRaises(ModuleNotFoundError):
+            load_pca.load_model("./saved_model_error", load_format="cbor")
+        utilmodel.cbor2 = cbor2_module
 
 
 def main():
