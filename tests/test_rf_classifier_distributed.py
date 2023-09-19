@@ -26,12 +26,12 @@ class RFTest(BaseTimedTestCase):
             shuffle=True,
             random_state=0,
         )
-        x_train = ds.array(x[::2], (300, 10))
-        y_train = ds.array(y[::2][:, np.newaxis], (300, 1))
-        x_test = ds.array(x[1::2], (300, 10))
-        y_test = ds.array(y[1::2][:, np.newaxis], (300, 1))
+        x_train = ds.array(x[::2], (1000, 10))
+        y_train = ds.array(y[::2][:, np.newaxis], (1000, 1))
+        x_test = ds.array(x[1::2], (1000, 10))
+        y_test = ds.array(y[1::2][:, np.newaxis], (1000, 1))
 
-        rf = RandomForestClassifier(n_classes=3, distr_depth=2,
+        rf = RandomForestClassifier(n_classes=3, distr_depth=1,
                                     random_state=0)
 
         rf.fit(x_train, y_train)
@@ -51,12 +51,12 @@ class RFTest(BaseTimedTestCase):
             shuffle=True,
             random_state=0,
         )
-        x_train = ds.array(x[::2], (300, 10))
-        y_train = ds.array(y[::2][:, np.newaxis], (300, 1))
-        x_test = ds.array(x[1::2], (300, 10))
+        x_train = ds.array(x[::2], (1000, 10))
+        y_train = ds.array(y[::2][:, np.newaxis], (1000, 1))
+        x_test = ds.array(x[1::2], (1000, 10))
         y_test = y[1::2]
 
-        rf = RandomForestClassifier(distr_depth=2, n_classes=3,
+        rf = RandomForestClassifier(distr_depth=1, n_classes=3,
                                     random_state=0)
 
         rf.fit(x_train, y_train)
@@ -77,10 +77,10 @@ class RFTest(BaseTimedTestCase):
             shuffle=True,
             random_state=0,
         )
-        x_train = ds.array(x[::2], (300, 10))
-        y_train = ds.array(y[::2][:, np.newaxis], (300, 1))
+        x_train = ds.array(x[::2], (1000, 10))
+        y_train = ds.array(y[::2][:, np.newaxis], (1000, 1))
 
-        rf = RandomForestClassifier(n_classes=3, distr_depth=2,
+        rf = RandomForestClassifier(n_classes=3, distr_depth=1,
                                     random_state=0)
 
         y_pred = rf.fit(x_train, y_train).predict(x_train).collect()
@@ -101,12 +101,12 @@ class RFTest(BaseTimedTestCase):
             shuffle=True,
             random_state=0,
         )
-        x_train = ds.array(x[::2], (300, 10))
-        y_train = ds.array(y[::2][:, np.newaxis], (300, 1))
-        x_test = ds.array(x[1::2], (300, 10))
+        x_train = ds.array(x[::2], (1000, 10))
+        y_train = ds.array(y[::2][:, np.newaxis], (1000, 1))
+        x_test = ds.array(x[1::2], (1000, 10))
         y_test = y[1::2]
 
-        rf = RandomForestClassifier(n_classes=3, distr_depth=2,
+        rf = RandomForestClassifier(n_classes=3, distr_depth=1,
                                     random_state=0, sklearn_max=10)
 
         rf.fit(x_train, y_train)
@@ -127,12 +127,12 @@ class RFTest(BaseTimedTestCase):
             shuffle=True,
             random_state=0,
         )
-        x_train = ds.array(x[::2], (300, 10))
-        y_train = ds.array(y[::2][:, np.newaxis], (300, 1))
-        x_test = ds.array(x[1::2], (300, 10))
+        x_train = ds.array(x[::2], (1000, 10))
+        y_train = ds.array(y[::2][:, np.newaxis], (1000, 1))
+        x_test = ds.array(x[1::2], (1000, 10))
         y_test = y[1::2]
 
-        rf = RandomForestClassifier(n_classes=3, distr_depth=2, random_state=0,
+        rf = RandomForestClassifier(n_classes=3, distr_depth=1, random_state=0,
                                     sklearn_max=10)
 
         rf.fit(x_train, y_train)
@@ -155,13 +155,13 @@ class RFTest(BaseTimedTestCase):
             shuffle=True,
             random_state=0,
         )
-        x_train = ds.array(x[::2], (300, 10))
-        y_train = ds.array(y[::2][:, np.newaxis], (300, 1))
-        x_test = ds.array(x[1::2], (300, 10))
+        x_train = ds.array(x[::2], (1000, 10))
+        y_train = ds.array(y[::2][:, np.newaxis], (1000, 1))
+        x_test = ds.array(x[1::2], (1000, 10))
         y_test = y[1::2]
 
         rf = RandomForestClassifier(
-            n_classes=3, distr_depth=2, random_state=0,
+            n_classes=3, distr_depth=1, random_state=0,
             sklearn_max=10, hard_vote=True
         )
 
@@ -184,16 +184,16 @@ class RFTest(BaseTimedTestCase):
             shuffle=True,
             random_state=0,
         )
-        x_train = ds.array(x[::2], (300, 10))
-        y_train = ds.array(y[::2][:, np.newaxis], (300, 1))
-        x_test = ds.array(x[1::2], (300, 10))
-        y_test = ds.array(y[1::2][:, np.newaxis], (300, 1))
+        x_train = ds.array(x[::2], (1000, 10))
+        y_train = ds.array(y[::2][:, np.newaxis], (1000, 1))
+        x_test = ds.array(x[1::2], (1000, 10))
+        y_test = ds.array(y[1::2][:, np.newaxis], (1000, 1))
 
         rf = RandomForestClassifier(
             n_classes=3,
             random_state=0,
             sklearn_max=100,
-            distr_depth=2,
+            distr_depth=1,
             max_depth=12,
             hard_vote=True,
         )
@@ -240,15 +240,15 @@ class RFTest(BaseTimedTestCase):
             shuffle=True,
             random_state=0,
         )
-        x_train = ds.array(x[::2], (300, 10))
-        y_train = ds.array(y[::2][:, np.newaxis], (300, 1))
+        x_train = ds.array(x[::2], (1000, 10))
+        y_train = ds.array(y[::2][:, np.newaxis], (1000, 1))
 
-        rf = RandomForestClassifier(n_classes=3, distr_depth=2, random_state=0,
+        rf = RandomForestClassifier(n_classes=3, distr_depth=1, random_state=0,
                                     n_estimators=5)
         rf.fit(x_train, y_train)
         rf.save_model("./saved_model")
 
-        rf2 = RandomForestClassifier(n_classes=3, distr_depth=2,
+        rf2 = RandomForestClassifier(n_classes=3, distr_depth=1,
                                      random_state=0,
                                      n_estimators=5)
         rf2.load_model("./saved_model")
@@ -259,7 +259,7 @@ class RFTest(BaseTimedTestCase):
 
         rf.save_model("./saved_model", save_format="cbor")
 
-        rf2 = RandomForestClassifier(n_classes=3, distr_depth=2,
+        rf2 = RandomForestClassifier(n_classes=3, distr_depth=1,
                                      random_state=0,
                                      n_estimators=5)
         rf2.load_model("./saved_model", load_format="cbor")
@@ -270,7 +270,7 @@ class RFTest(BaseTimedTestCase):
 
         rf.save_model("./saved_model", save_format="pickle")
 
-        rf2 = RandomForestClassifier(n_classes=3, distr_depth=2,
+        rf2 = RandomForestClassifier(n_classes=3, distr_depth=1,
                                      random_state=0,
                                      n_estimators=5)
         rf2.load_model("./saved_model", load_format="pickle")
@@ -282,19 +282,19 @@ class RFTest(BaseTimedTestCase):
             rf.save_model("./saved_model", save_format="txt")
 
         with self.assertRaises(ValueError):
-            rf2 = RandomForestClassifier(n_classes=3, distr_depth=2,
+            rf2 = RandomForestClassifier(n_classes=3, distr_depth=1,
                                          random_state=0,
                                          n_estimators=5)
             rf2.load_model("./saved_model", load_format="txt")
 
-        rf = RandomForestClassifier(n_classes=3, distr_depth=2, random_state=0,
+        rf = RandomForestClassifier(n_classes=3, distr_depth=1, random_state=0,
                                     n_estimators=1)
-        x_train2 = ds.array(x[::2], (300, 10))
-        y_train2 = ds.array(y[::2][:, np.newaxis], (300, 1))
+        x_train2 = ds.array(x[::2], (1000, 10))
+        y_train2 = ds.array(y[::2][:, np.newaxis], (1000, 1))
         rf.fit(x_train2, y_train2)
         rf.save_model("./saved_model", overwrite=False)
 
-        rf2 = RandomForestClassifier(n_classes=3, distr_depth=2,
+        rf2 = RandomForestClassifier(n_classes=3, distr_depth=1,
                                      random_state=0,
                                      n_estimators=5)
         rf2.load_model("./saved_model", load_format="pickle")

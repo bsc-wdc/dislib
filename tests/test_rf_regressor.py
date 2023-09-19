@@ -5,7 +5,8 @@ from pycompss.api.api import compss_wait_on
 from sklearn.datasets import make_regression
 
 import dislib as ds
-from dislib.regression import RandomForestRegressor
+from dislib.regression import (RandomForestRegressorMMap as
+                               RandomForestRegressor)
 import dislib.data.util.model as utilmodel
 
 from tests import BaseTimedTestCase

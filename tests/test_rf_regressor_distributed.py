@@ -27,10 +27,10 @@ class RandomForestRegressorTest(BaseTimedTestCase):
             shuffle=True,
             random_state=0,
         )
-        x_train = ds.array(x[::2], (300, 10))
-        y_train = ds.array(y[::2][:, np.newaxis], (300, 1))
-        x_test = ds.array(x[1::2], (300, 10))
-        y_test = ds.array(y[1::2][:, np.newaxis], (300, 1))
+        x_train = ds.array(x[::2], (1000, 10))
+        y_train = ds.array(y[::2][:, np.newaxis], (1000, 1))
+        x_test = ds.array(x[1::2], (1000, 10))
+        y_test = ds.array(y[1::2][:, np.newaxis], (1000, 1))
 
         rf = RandomForestRegressor(distr_depth=1, random_state=0)
 
@@ -54,10 +54,10 @@ class RandomForestRegressorTest(BaseTimedTestCase):
             shuffle=True,
             random_state=0,
         )
-        x_train = ds.array(x[::2], (300, 10))
-        y_train = ds.array(y[::2][:, np.newaxis], (300, 1))
-        x_test = ds.array(x[1::2], (300, 10))
-        y_test = ds.array(y[1::2][:, np.newaxis], (300, 1))
+        x_train = ds.array(x[::2], (1000, 10))
+        y_train = ds.array(y[::2][:, np.newaxis], (1000, 1))
+        x_test = ds.array(x[1::2], (1000, 10))
+        y_test = ds.array(y[1::2][:, np.newaxis], (1000, 1))
 
         rf = RandomForestRegressor(distr_depth=1, random_state=0)
 
@@ -81,10 +81,10 @@ class RandomForestRegressorTest(BaseTimedTestCase):
             shuffle=True,
             random_state=0,
         )
-        x_train = ds.array(x[::2], (300, 10))
-        y_train = ds.array(y[::2][:, np.newaxis], (300, 1))
-        x_test = ds.array(x[1::2], (300, 10))
-        y_test = ds.array(y[1::2][:, np.newaxis], (300, 1))
+        x_train = ds.array(x[::2], (1000, 10))
+        y_train = ds.array(y[::2][:, np.newaxis], (1000, 1))
+        x_test = ds.array(x[1::2], (1000, 10))
+        y_test = ds.array(y[1::2][:, np.newaxis], (1000, 1))
 
         rf = RandomForestRegressor(distr_depth=1,
                                    random_state=0, sklearn_max=10)
@@ -110,10 +110,10 @@ class RandomForestRegressorTest(BaseTimedTestCase):
             shuffle=True,
             random_state=0,
         )
-        x_train = ds.array(x[::2], (300, 10))
-        y_train = ds.array(y[::2][:, np.newaxis], (300, 1))
-        x_test = ds.array(x[1::2], (300, 10))
-        y_test = ds.array(y[1::2][:, np.newaxis], (300, 1))
+        x_train = ds.array(x[::2], (1000, 10))
+        y_train = ds.array(y[::2][:, np.newaxis], (1000, 1))
+        x_test = ds.array(x[1::2], (1000, 10))
+        y_test = ds.array(y[1::2][:, np.newaxis], (1000, 1))
 
         rf = RandomForestRegressor(distr_depth=1,
                                    random_state=0, n_estimators=2)
