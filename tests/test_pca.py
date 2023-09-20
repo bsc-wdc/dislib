@@ -6,6 +6,7 @@ from sklearn.datasets import make_blobs
 
 import dislib as ds
 from dislib.decomposition import PCA
+import dislib.data.util.model as utilmodel
 from tests import BaseTimedTestCase
 
 
@@ -106,6 +107,52 @@ class PCATest(BaseTimedTestCase):
         with self.assertRaises(NotImplementedError):
             pca = PCA(method='svd')
             pca.fit(x_sp)
+
+    @parameterized.expand([("eig"),
+                           ("svd")])
+    def test_save_load_methods(self, method):
+        """Tests PCA saves and loads models correctly and the
+        results not change."""
+        x = ds.random_array((1000, 100), block_size=(100, 50), random_state=0)
+        pca = PCA(method=method)
+        x_transformed = pca.fit_transform(x)
+        pca.save_model('./modelo_PCA', save_format="pickle")
+        pca_not_to_save = PCA(method=method)
+        pca_not_to_save.save_model('./modelo_PCA',
+                                   overwrite=False, save_format="pickle")
+        load_pca = PCA()
+        load_pca.load_model('./modelo_PCA', load_format="pickle")
+        x_load_transform = load_pca.transform(x)
+        self.assertTrue(np.allclose(x_transformed.collect(),
+                                    x_load_transform.collect()))
+        pca = PCA(method=method)
+        x_transformed = pca.fit_transform(x)
+        pca.save_model('./modelo_PCA', save_format="json")
+        load_pca = PCA()
+        load_pca.load_model('./modelo_PCA', load_format="json")
+        x_load_transform = load_pca.transform(x)
+        self.assertTrue(np.allclose(x_transformed.collect(),
+                                    x_load_transform.collect()))
+        pca = PCA(method=method)
+        x_transformed = pca.fit_transform(x)
+        pca.save_model('./modelo_PCA', save_format="cbor")
+        load_pca = PCA()
+        load_pca.load_model('./modelo_PCA', load_format="cbor")
+        x_load_transform = load_pca.transform(x)
+        self.assertTrue(np.allclose(x_transformed.collect(),
+                                    x_load_transform.collect()))
+        with self.assertRaises(ValueError):
+            load_pca.load_model('./modelo_PCA', load_format="png")
+        with self.assertRaises(ValueError):
+            pca.save_model('./modelo_PCA', save_format="jpg")
+
+        cbor2_module = utilmodel.cbor2
+        utilmodel.cbor2 = None
+        with self.assertRaises(ModuleNotFoundError):
+            pca.save_model("./saved_model_error", save_format="cbor")
+        with self.assertRaises(ModuleNotFoundError):
+            load_pca.load_model("./saved_model_error", load_format="cbor")
+        utilmodel.cbor2 = cbor2_module
 
 
 def main():
