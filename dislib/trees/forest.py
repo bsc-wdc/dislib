@@ -170,6 +170,10 @@ class BaseRandomForest(BaseEstimator):
                 utilmodel.cbor2.dump(model_metadata, f,
                                      default=_encode_helper_cbor)
         elif save_format == "pickle":
+            for tree in model_metadata["trees"]:
+                for idx in range(len(tree.subtrees)):
+                    tree.subtrees[idx] = utilmodel.blosc2.compress2(
+                        pickle.dumps(tree.subtrees[idx]))
             with open(filepath, "wb") as f:
                 pickle.dump(model_metadata, f)
         else:
@@ -212,11 +216,15 @@ class BaseRandomForest(BaseEstimator):
             if utilmodel.cbor2 is None:
                 raise ModuleNotFoundError("No module named 'cbor2'")
             with open(filepath, "rb") as f:
-                model_metadata = utilmodel.cbor2.\
+                model_metadata = utilmodel.cbor2. \
                     load(f, object_hook=_decode_helper_cbor)
         elif load_format == "pickle":
             with open(filepath, "rb") as f:
                 model_metadata = pickle.load(f)
+            for tree in model_metadata["trees"]:
+                for idx in range(len(tree.subtrees)):
+                    tree.subtrees[idx] = pickle.loads(
+                        utilmodel.blosc2.decompress2(tree.subtrees[idx]))
         else:
             raise ValueError("Wrong load format.")
 
@@ -716,10 +724,10 @@ def _base_hard_vote(classes, *predictions):
 
 
 def _encode_helper_cbor(encoder, obj):
-    encoder.encode(_encode_helper(obj))
+    encoder.encode(_encode_helper(obj, cbor=True))
 
 
-def _encode_helper(obj):
+def _encode_helper(obj, cbor=False):
     encoded = encoder_helper(obj)
     if encoded is not None:
         return encoded
@@ -737,8 +745,18 @@ def _encode_helper(obj):
             "n_outputs": obj.n_outputs,
             "items": obj.__getstate__(),
         }
+    elif isinstance(obj, (DecisionTreeClassifier,
+                          DecisionTreeRegressor)):
+        if cbor:
+            items = utilmodel.blosc2.compress2(pickle.dumps(obj.__dict__))
+        else:
+            items = obj.__dict__
+        return {
+            "class_name": obj.__class__.__name__,
+            "module_name": obj.__module__,
+            "items": items,
+        }
     elif isinstance(obj, (RandomForestClassifier, RandomForestRegressor,
-                          DecisionTreeClassifier, DecisionTreeRegressor,
                           SklearnDTClassifier, SklearnDTRegressor)):
         return {
             "class_name": obj.__class__.__name__,
@@ -751,10 +769,10 @@ def _encode_helper(obj):
 
 def _decode_helper_cbor(decoder, obj):
     """Special decoder wrapper for dislib using cbor2."""
-    return _decode_helper(obj)
+    return _decode_helper(obj, cbor=True)
 
 
-def _decode_helper(obj):
+def _decode_helper(obj, cbor=False):
     if isinstance(obj, dict) and "class_name" in obj:
         class_name = obj["class_name"]
         decoded = decoder_helper(class_name, obj)
@@ -785,7 +803,7 @@ def _decode_helper(obj):
             return model
         else:
             dict_ = _decode_helper(obj["items"])
-            return decode_forest_helper(class_name, dict_)
+            return decode_forest_helper(class_name, dict_, cbor=cbor)
     return obj
 
 

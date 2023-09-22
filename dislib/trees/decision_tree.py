@@ -8,6 +8,8 @@ from pycompss.api.parameter import FILE_IN, Type, COLLECTION_IN, Depth
 from pycompss.api.task import task
 from sklearn.tree import DecisionTreeClassifier as SklearnDTClassifier
 from sklearn.tree import DecisionTreeRegressor as SklearnDTRegressor
+import pickle
+import dislib.data.util.model as utilmodel
 
 from dislib.trees.test_split import test_split
 from dislib.data.array import Array
@@ -842,14 +844,19 @@ def _merge_branches(n_classes, *predictions, classification):
 
 
 def encode_forest_helper(obj):
-    if isinstance(obj, (DecisionTreeClassifier, DecisionTreeRegressor, _Node,
+    if isinstance(obj, (_Node,
                         _ClassificationNode, _RegressionNode, _InnerNodeInfo,
                         _LeafInfo, _SkTreeWrapper)):
         return obj.toJson()
 
 
-def decode_forest_helper(class_name, obj):
+def decode_forest_helper(class_name, obj, cbor=False):
     if class_name in ('DecisionTreeClassifier', 'DecisionTreeRegressor'):
+        if cbor:
+            obj = pickle.loads(utilmodel.blosc2.decompress2(obj))
+            for idx in range(len(obj["subtrees"])):
+                obj["subtrees"][idx] = pickle.loads(
+                    utilmodel.blosc2.decompress2(obj["subtrees"][idx]))
         model = eval(class_name)(
             try_features=obj.pop("try_features"),
             max_depth=obj.pop("max_depth"),
