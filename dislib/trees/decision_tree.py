@@ -854,9 +854,6 @@ def decode_forest_helper(class_name, obj, cbor=False):
     if class_name in ('DecisionTreeClassifier', 'DecisionTreeRegressor'):
         if cbor:
             obj = pickle.loads(utilmodel.blosc2.decompress2(obj))
-            for idx in range(len(obj["subtrees"])):
-                obj["subtrees"][idx] = pickle.loads(
-                    utilmodel.blosc2.decompress2(obj["subtrees"][idx]))
         model = eval(class_name)(
             try_features=obj.pop("try_features"),
             max_depth=obj.pop("max_depth"),
