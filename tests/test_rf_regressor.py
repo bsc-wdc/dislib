@@ -103,7 +103,7 @@ class RandomForestRegressorTest(BaseTimedTestCase):
         """Tests the save and the load methods of the RandomForestRegressor
         class"""
         x, y = make_regression(
-            n_samples=3000,
+            n_samples=1500,
             n_features=10,
             n_informative=4,
             shuffle=True,
@@ -114,11 +114,13 @@ class RandomForestRegressorTest(BaseTimedTestCase):
         x_test = ds.array(x[1::2], (300, 10))
         y_test = ds.array(y[1::2][:, np.newaxis], (300, 1))
 
-        rf = RandomForestRegressor(random_state=0, n_estimators=1)
+        rf = RandomForestRegressor(random_state=0, n_estimators=1,
+                                   distr_depth=1)
         rf.fit(x_train, y_train)
         rf.save_model("./rf_regressor")
 
-        rf2 = RandomForestRegressor(random_state=0, n_estimators=1)
+        rf2 = RandomForestRegressor(random_state=0, n_estimators=1,
+                                    distr_depth=1)
         rf2.load_model("./rf_regressor")
 
         accuracy1 = compss_wait_on(rf.score(x_test, y_test))
@@ -135,7 +137,8 @@ class RandomForestRegressorTest(BaseTimedTestCase):
 
         rf.save_model("./rf_regressor", save_format="cbor")
 
-        rf2 = RandomForestRegressor(random_state=0, n_estimators=1)
+        rf2 = RandomForestRegressor(random_state=0, n_estimators=1,
+                                    distr_depth=1)
         rf2.load_model("./rf_regressor", load_format="cbor")
 
         accuracy_loaded1 = compss_wait_on(rf2.score(x_test, y_test))
@@ -148,7 +151,8 @@ class RandomForestRegressorTest(BaseTimedTestCase):
 
         rf.save_model("./rf_regressor", save_format="pickle")
 
-        rf2 = RandomForestRegressor(random_state=0, n_estimators=1)
+        rf2 = RandomForestRegressor(random_state=0, n_estimators=1,
+                                    distr_depth=1)
         rf2.load_model("./rf_regressor", load_format="pickle")
 
         accuracy_loaded1 = compss_wait_on(rf2.score(x_test, y_test))
@@ -163,13 +167,16 @@ class RandomForestRegressorTest(BaseTimedTestCase):
             rf.save_model("./rf_regressor", save_format="txt")
 
         with self.assertRaises(ValueError):
-            rf2 = RandomForestRegressor(random_state=0, n_estimators=1)
+            rf2 = RandomForestRegressor(random_state=0, n_estimators=1,
+                                        distr_depth=1)
             rf2.load_model("./rf_regressor", load_format="txt")
 
-        rf1 = RandomForestRegressor(random_state=0, n_estimators=1)
+        rf1 = RandomForestRegressor(random_state=0, n_estimators=1,
+                                    distr_depth=1)
         rf1.save_model("./rf_regressor", overwrite=False)
 
-        rf2 = RandomForestRegressor(random_state=0, n_estimators=1)
+        rf2 = RandomForestRegressor(random_state=0, n_estimators=1,
+                                    distr_depth=1)
         rf2.load_model("./rf_regressor", load_format="pickle")
 
         accuracy_loaded1 = compss_wait_on(rf2.score(x_test, y_test))
