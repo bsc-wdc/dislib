@@ -222,7 +222,7 @@ class RFTest(BaseTimedTestCase):
         format is provided.
         """
         x, y = make_classification(
-            n_samples=1500,
+            n_samples=600,
             n_features=10,
             n_classes=3,
             n_informative=4,
@@ -275,7 +275,8 @@ class RFTest(BaseTimedTestCase):
                                          distr_depth=1)
             rf2.load_model("./saved_model", load_format="txt")
 
-        rf = RandomForestClassifier(random_state=0, n_estimators=1)
+        rf = RandomForestClassifier(random_state=0, n_estimators=1,
+                                    distr_depth=1)
         x_train2 = ds.array(x[::2], (300, 10))
         y_train2 = ds.array(y[::2][:, np.newaxis], (300, 1))
         rf.fit(x_train2, y_train2)

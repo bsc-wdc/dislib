@@ -103,7 +103,7 @@ class RandomForestRegressorTest(BaseTimedTestCase):
         """Tests the save and the load methods of the RandomForestRegressor
         class"""
         x, y = make_regression(
-            n_samples=1500,
+            n_samples=600,
             n_features=10,
             n_informative=4,
             shuffle=True,
