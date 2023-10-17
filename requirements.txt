@@ -4,6 +4,5 @@ numpy==1.23.1
 numpydoc>=0.8.0
 cvxpy>=1.1.5
 cbor2>=5.4.0
-blosc2>=0.3.0
 pandas>=0.24.2
 matplotlib>=2.2.3
