@@ -51,10 +51,10 @@ pipeline {
     post{
         always {
             sh 'docker images'
-            sh 'docker rm -f dislib &> /dev/null || true'
-            sh 'docker rmi -f bscwdc/dislib &> /dev/null || true'
         }
         success {
+            sh 'docker rm -f dislib &> /dev/null || true'
+            sh 'docker rmi -f bscwdc/dislib &> /dev/null || true'
             setGithubCommitStatus('success', 'Build Successful')
         }
         failure {
