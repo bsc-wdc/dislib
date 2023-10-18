@@ -8,5 +8,7 @@ scikit-build
 cmake
 ninja
 build
+cython
+setuptools
 pandas>=0.24.2
 matplotlib>=2.2.3
