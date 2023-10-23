@@ -235,12 +235,12 @@ class RFTest(BaseTimedTestCase):
         x_train = ds.array(x[::2], (300, 10))
         y_train = ds.array(y[::2][:, np.newaxis], (300, 1))
 
-        rf = RandomForestClassifier(random_state=0, n_estimators=1,
+        rf = RandomForestClassifier(random_state=0, n_estimators=5,
                                     distr_depth=1)
         rf.fit(x_train, y_train)
         rf.save_model("./saved_model")
 
-        rf2 = RandomForestClassifier(random_state=0, n_estimators=1,
+        rf2 = RandomForestClassifier(random_state=0, n_estimators=5,
                                      distr_depth=1)
         rf2.load_model("./saved_model")
         y_pred = rf2.predict(x_train).collect()
@@ -250,7 +250,7 @@ class RFTest(BaseTimedTestCase):
 
         rf.save_model("./saved_model", save_format="cbor")
 
-        rf2 = RandomForestClassifier(random_state=0, n_estimators=1,
+        rf2 = RandomForestClassifier(random_state=0, n_estimators=5,
                                      distr_depth=1)
         rf2.load_model("./saved_model", load_format="cbor")
 
@@ -260,7 +260,7 @@ class RFTest(BaseTimedTestCase):
 
         rf.save_model("./saved_model", save_format="pickle")
 
-        rf2 = RandomForestClassifier(random_state=0, n_estimators=1,
+        rf2 = RandomForestClassifier(random_state=0, n_estimators=5,
                                      distr_depth=1)
         rf2.load_model("./saved_model", load_format="pickle")
         y_pred = rf2.predict(x_train).collect()
@@ -271,18 +271,18 @@ class RFTest(BaseTimedTestCase):
             rf.save_model("./saved_model", save_format="txt")
 
         with self.assertRaises(ValueError):
-            rf2 = RandomForestClassifier(random_state=0, n_estimators=1,
+            rf2 = RandomForestClassifier(random_state=0, n_estimators=5,
                                          distr_depth=1)
             rf2.load_model("./saved_model", load_format="txt")
 
-        rf = RandomForestClassifier(random_state=0, n_estimators=1,
+        rf = RandomForestClassifier(random_state=0, n_estimators=5,
                                     distr_depth=1)
         x_train2 = ds.array(x[::2], (300, 10))
         y_train2 = ds.array(y[::2][:, np.newaxis], (300, 1))
         rf.fit(x_train2, y_train2)
         rf.save_model("./saved_model", overwrite=False)
 
-        rf2 = RandomForestClassifier(random_state=0, n_estimators=1,
+        rf2 = RandomForestClassifier(random_state=0, n_estimators=5,
                                      distr_depth=1)
         rf2.load_model("./saved_model", load_format="pickle")
         y_pred = rf2.predict(x_train).collect()
