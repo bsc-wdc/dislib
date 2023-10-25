@@ -9,6 +9,7 @@ cmake
 ninja
 build
 cython
+py-cpuinfo
 setuptools
 pandas>=0.24.2
 matplotlib>=2.2.3
