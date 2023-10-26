@@ -8,6 +8,11 @@ try:
 except ImportError:
     cbor2 = None
 
+try:
+    import blosc2
+except ImportError:
+    blosc2 = None
+
 
 def encoder_helper(obj):
     if isinstance(obj, np.generic):

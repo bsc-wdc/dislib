@@ -1,23 +1,41 @@
-import numpy as np
-from sklearn.base import BaseEstimator
+import json
+import math
+import os
+import pickle
+from collections import Counter
 
-from dislib.trees.mmap import (DecisionTreeClassifier as
-                               DecisionTreeClassifierMMap,
-                               DecisionTreeRegressor as
-                               DecisionTreeRegressorMMap)
-from dislib.trees.distributed import (DecisionTreeClassifier as
-                                      DecisionTreeClassifierDistributed,
-                                      DecisionTreeRegressor as
-                                      DecisionTreeRegressorDistributed)
-from dislib.trees.mmap import (RandomForestClassifier as
-                               RandomForestClassifierMMap,
-                               RfClassifierDataset, RfRegressorDataset)
-from dislib.trees.mmap import (RandomForestRegressor as
-                               RandomForestRegressorMMap)
-from dislib.trees.distributed import (RandomForestClassifier as
-                                      RandomForestClassifierDistributed,
-                                      RandomForestRegressor as
-                                      RandomForestRegressorDistributed)
+import numpy as np
+from pycompss.api.api import compss_wait_on
+from pycompss.api.constraint import constraint
+from pycompss.api.parameter import Type, COLLECTION_IN, Depth
+from pycompss.api.task import task
+from sklearn.base import BaseEstimator
+from sklearn.utils import check_random_state
+
+from dislib.data.util import decoder_helper, encoder_helper, sync_obj
+from dislib.trees.mmap.decision_tree import (
+    DecisionTreeClassifier,
+    DecisionTreeRegressor, encode_forest_helper, decode_forest_helper,
+)
+from dislib.data.array import Array
+from dislib.utils.base import _paired_partition
+from dislib.trees.mmap.data import (
+    RfClassifierDataset,
+    RfRegressorDataset,
+    transform_to_rf_dataset
+)
+
+import dislib.data.util.model as utilmodel
+
+from sklearn.svm import SVC as SklearnSVC
+from sklearn.tree import DecisionTreeClassifier as SklearnDTClassifier
+from sklearn.tree import DecisionTreeRegressor as SklearnDTRegressor
+from sklearn.tree._tree import Tree as SklearnTree
+SKLEARN_CLASSES = {
+    "SVC": SklearnSVC,
+    "DecisionTreeClassifier": SklearnDTClassifier,
+    "DecisionTreeRegressor": SklearnDTRegressor,
+}
 
 
 class BaseRandomForest(BaseEstimator):
@@ -37,15 +55,7 @@ class BaseRandomForest(BaseEstimator):
         hard_vote,
         random_state,
         base_tree,
-        base_dataset=None,
-        n_classes=None,
-        range_max=None,
-        range_min=None,
-        bootstrap=True,
-        n_split_points="auto",
-        split_computation="raw",
-        sync_after_fit=True,
-        mmap=True,
+        base_dataset,
     ):
         self.n_estimators = n_estimators
         self.try_features = try_features
@@ -56,15 +66,6 @@ class BaseRandomForest(BaseEstimator):
         self.random_state = random_state
         self.base_tree = base_tree
         self.base_dataset = base_dataset
-        self.n_classes = n_classes
-        self.range_max = range_max
-        self.range_min = range_min
-        self.bootstrap = bootstrap
-        self.n_split_points = n_split_points
-        self.split_computation = split_computation
-        self.sync_after_fit = sync_after_fit
-        self.mmap = mmap
-        self.rf = None
 
     def fit(self, x, y):
         """Fits a RandomForest.
@@ -81,43 +82,37 @@ class BaseRandomForest(BaseEstimator):
         -------
         self : RandomForest
         """
-        if self.mmap:
-            if DecisionTreeRegressorMMap == self.base_tree:
-                self.rf = RandomForestRegressorMMap(
-                    self.n_estimators, self.try_features, self.max_depth,
-                    self.distr_depth, self.sklearn_max,
-                    self.random_state)
-            else:
-                self.rf = RandomForestClassifierMMap(
-                    self.n_estimators, self.try_features, self.max_depth,
-                    self.distr_depth, self.sklearn_max,
-                    self.hard_vote, self.random_state)
-        else:
-            if DecisionTreeRegressorDistributed == self.base_tree:
-                self.rf = RandomForestRegressorDistributed(
-                    self.n_estimators, self.try_features, self.max_depth,
-                    self.distr_depth, self.sklearn_max,
-                    self.random_state,
-                    range_max=self.range_max, range_min=self.range_min,
-                    bootstrap=self.bootstrap,
-                    n_split_points=self.n_split_points,
-                    split_computation=self.split_computation,
-                    sync_after_fit=self.sync_after_fit)
-            else:
-                self.rf = RandomForestClassifierDistributed(
-                    self.n_classes, self.n_estimators,
-                    self.try_features, self.max_depth,
-                    self.distr_depth, self.sklearn_max,
-                    self.hard_vote, self.random_state,
-                    range_max=self.range_max, range_min=self.range_min,
-                    bootstrap=self.bootstrap,
-                    n_split_points=self.n_split_points,
-                    split_computation=self.split_computation,
-                    sync_after_fit=self.sync_after_fit)
 
-        self.rf.fit(x, y)
-        if self.mmap and DecisionTreeClassifierMMap == self.base_tree:
-            self.classes = self.rf.classes
+        dataset = transform_to_rf_dataset(x, y, self.base_dataset)
+
+        n_features = dataset.get_n_features()
+        try_features = _resolve_try_features(self.try_features, n_features)
+        random_state = check_random_state(self.random_state)
+
+        self.classes = dataset.get_classes()
+
+        if self.distr_depth == "auto":
+            dataset.n_samples = compss_wait_on(dataset.get_n_samples())
+            distr_depth = max(0, int(math.log10(dataset.n_samples)) - 4)
+            distr_depth = min(distr_depth, self.max_depth)
+        else:
+            distr_depth = self.distr_depth
+
+        self.trees = []
+        for _ in range(self.n_estimators):
+            tree = self.base_tree(
+                try_features,
+                self.max_depth,
+                distr_depth,
+                self.sklearn_max,
+                bootstrap=True,
+                random_state=random_state,
+            )
+            self.trees.append(tree)
+
+        for tree in self.trees:
+            tree.fit(dataset)
+
         return self
 
     def save_model(self, filepath, overwrite=True, save_format="json"):
@@ -154,12 +149,37 @@ class BaseRandomForest(BaseEstimator):
         >>> assert np.allclose(model_pred.collect(),
         >>> loaded_model_pred.collect())
         """
-        if self.rf is not None:
-            self.rf.save_model(filepath,
-                               overwrite=overwrite,
-                               save_format=save_format)
-        else:
+
+        # Check overwrite
+        if not overwrite and os.path.isfile(filepath):
             return
+
+        _sync_rf(self)
+
+        sync_obj(self.__dict__)
+        model_metadata = self.__dict__
+        model_metadata["model_name"] = self.__class__.__name__
+
+        # Save model
+        if save_format == "json":
+            with open(filepath, "w") as f:
+                json.dump(model_metadata, f, default=_encode_helper)
+        elif save_format == "cbor":
+            if utilmodel.cbor2 is None:
+                raise ModuleNotFoundError("No module named 'cbor2'")
+            with open(filepath, "wb") as f:
+                utilmodel.cbor2.dump(model_metadata, f,
+                                     default=_encode_helper_cbor)
+        elif save_format == "pickle":
+            if utilmodel.blosc2 is not None:
+                for tree in model_metadata["trees"]:
+                    for idx in range(len(tree.subtrees)):
+                        tree.subtrees[idx] = utilmodel.blosc2.compress2(
+                            pickle.dumps(tree.subtrees[idx]))
+            with open(filepath, "wb") as f:
+                pickle.dump(model_metadata, f)
+        else:
+            raise ValueError("Wrong save format.")
 
     def load_model(self, filepath, load_format="json"):
         """Loads a model from a file.
@@ -183,7 +203,7 @@ class BaseRandomForest(BaseEstimator):
         >>> y_train = ds.array(y, (2, 1))
         >>> model = RandomForestClassifier(n_estimators=2, random_state=0)
         >>> model.fit(x_train, y_train)
-        >>> model.save_model(model, '/tmp/model')
+        >>> model.save_model('/tmp/model')
         >>> loaded_model = RandomForestClassifier()
         >>> loaded_model.load_model('/tmp/model')
         >>> x_test = ds.array(np.array([[0, 0], [4, 4]]), (2, 2))
@@ -192,45 +212,28 @@ class BaseRandomForest(BaseEstimator):
         >>> assert np.allclose(model_pred.collect(),
         """
         # Load model
-        if self.rf is not None:
-            self.rf.load_model(filepath,
-                               load_format=load_format)
+        if load_format == "json":
+            with open(filepath, "r") as f:
+                model_metadata = json.load(f, object_hook=_decode_helper)
+        elif load_format == "cbor":
+            if utilmodel.cbor2 is None:
+                raise ModuleNotFoundError("No module named 'cbor2'")
+            with open(filepath, "rb") as f:
+                model_metadata = utilmodel.cbor2.\
+                    load(f, object_hook=_decode_helper_cbor)
+        elif load_format == "pickle":
+            with open(filepath, "rb") as f:
+                model_metadata = pickle.load(f)
+            if utilmodel.blosc2 is not None:
+                for tree in model_metadata["trees"]:
+                    for idx in range(len(tree.subtrees)):
+                        tree.subtrees[idx] = pickle.loads(
+                            utilmodel.blosc2.decompress2(tree.subtrees[idx]))
         else:
-            if self.mmap:
-                if DecisionTreeRegressorMMap == self.base_tree:
-                    self.rf = RandomForestRegressorMMap(
-                        self.n_estimators, self.try_features, self.max_depth,
-                        self.distr_depth, self.sklearn_max,
-                        self.random_state)
-                else:
-                    self.rf = RandomForestClassifierMMap(
-                        self.n_estimators, self.try_features, self.max_depth,
-                        self.distr_depth, self.sklearn_max,
-                        self.hard_vote, self.random_state)
-            else:
-                if DecisionTreeRegressorDistributed == self.base_tree:
-                    self.rf = RandomForestRegressorDistributed(
-                        self.n_estimators, self.try_features, self.max_depth,
-                        self.distr_depth, self.sklearn_max,
-                        self.random_state,
-                        range_max=self.range_max, range_min=self.range_min,
-                        bootstrap=self.bootstrap,
-                        n_split_points=self.n_split_points,
-                        split_computation=self.split_computation,
-                        sync_after_fit=self.sync_after_fit)
-                else:
-                    self.rf = RandomForestClassifierDistributed(
-                        self.n_classes, self.n_estimators,
-                        self.try_features, self.max_depth,
-                        self.distr_depth, self.sklearn_max,
-                        self.hard_vote, self.random_state,
-                        range_max=self.range_max, range_min=self.range_min,
-                        bootstrap=self.bootstrap,
-                        n_split_points=self.n_split_points,
-                        split_computation=self.split_computation,
-                        sync_after_fit=self.sync_after_fit)
-            self.rf.load_model(filepath,
-                               load_format=load_format)
+            raise ValueError("Wrong load format.")
+
+        for key, val in model_metadata.items():
+            setattr(self, key, val)
 
 
 class RandomForestClassifier(BaseRandomForest):
@@ -273,26 +276,6 @@ class RandomForestClassifier(BaseRandomForest):
         If RandomState instance, random_state is the random number generator;
         If None, the random number generator is the RandomState instance used
         by `np.random`.
-    n_classes : int
-        Number of classes that appear on the dataset. Only needed on
-        distributed random forest.
-    range_min : ds-array or np.array
-        Contains the minimum values of the different attributes of the dataset
-        Only used on distributed random forest (it is an optional parameter)
-    range_max : ds-array or np.array
-        Contains the maximum values of the different attributes of the dataset
-        Only used on distributed random forest (it is an optional parameter)
-    n_split_points : String or int
-        Number of split points to evaluate.
-        "auto", "sqrt" or integer value.
-        Used on distributed random forest (non memory map version)
-    split_computation : String
-        "raw", "gaussian_approximation" or "uniform_approximation"
-        distribution of the values followed by the split points selected.
-        Used on distributed random forest (non memory map version)
-    sync_after_fit : bool
-        Synchronize or not after the training.
-        Used on distributed random forest (non memory map version)
 
     Attributes
     ----------
@@ -311,47 +294,18 @@ class RandomForestClassifier(BaseRandomForest):
         sklearn_max=1e8,
         hard_vote=False,
         random_state=None,
-        n_classes=None,
-        range_max=None,
-        range_min=None,
-        bootstrap=True,
-        n_split_points="auto",
-        split_computation="raw",
-        sync_after_fit=True,
-        mmap=True,
     ):
-        if mmap:
-            super().__init__(
-                n_estimators,
-                try_features,
-                max_depth,
-                distr_depth,
-                sklearn_max,
-                hard_vote,
-                random_state,
-                base_tree=DecisionTreeClassifierMMap,
-                base_dataset=RfClassifierDataset,
-            )
-        else:
-            super().__init__(
-                n_estimators,
-                try_features,
-                max_depth,
-                distr_depth,
-                sklearn_max,
-                hard_vote,
-                random_state,
-                base_tree=DecisionTreeClassifierDistributed,
-                base_dataset=None,
-                n_classes=n_classes,
-                range_max=range_max,
-                range_min=range_min,
-                bootstrap=bootstrap,
-                n_split_points=n_split_points,
-                split_computation=split_computation,
-                sync_after_fit=sync_after_fit,
-                mmap=mmap,
-            )
+        super().__init__(
+            n_estimators,
+            try_features,
+            max_depth,
+            distr_depth,
+            sklearn_max,
+            hard_vote,
+            random_state,
+            base_tree=DecisionTreeClassifier,
+            base_dataset=RfClassifierDataset,
+        )
 
     def predict(self, x):
         """Predicts target classes using a fitted forest.
@@ -366,8 +320,32 @@ class RandomForestClassifier(BaseRandomForest):
         y_pred : ds-array, shape=(n_samples, 1)
             Predicted class labels for x.
         """
-        assert self.rf is not None, "The random forest is not fitted."
-        return self.rf.predict(x)
+        assert self.trees is not None, "The random forest is not fitted."
+
+        pred_blocks = []
+        if self.hard_vote:
+            for x_row in x._iterator(axis=0):
+                tree_predictions = []
+                for tree in self.trees:
+                    tree_predictions.append(tree.predict(x_row))
+                pred_blocks.append([_hard_vote(self.classes,
+                                               *tree_predictions)])
+        else:
+            for x_row in x._iterator(axis=0):
+                tree_predictions = []
+                for tree in self.trees:
+                    tree_predictions.append(tree.predict_proba(x_row))
+                pred_blocks.append([_soft_vote(self.classes,
+                                               *tree_predictions)])
+        y_pred = Array(
+            blocks=pred_blocks,
+            top_left_shape=(x._top_left_shape[0], 1),
+            reg_shape=(x._reg_shape[0], 1),
+            shape=(x.shape[0], 1),
+            sparse=False,
+        )
+
+        return y_pred
 
     def predict_proba(self, x):
         """Predicts class probabilities using a fitted forest.
@@ -388,8 +366,24 @@ class RandomForestClassifier(BaseRandomForest):
             The columns of the array correspond to the classes given at
             self.classes.
         """
-        assert self.rf is not None, "The random forest is not fitted."
-        return self.rf.predict_proba(x)
+        assert self.trees is not None, "The random forest is not fitted."
+
+        prob_blocks = []
+        for x_row in x._iterator(axis=0):
+            tree_predictions = []
+            for tree in self.trees:
+                tree_predictions.append(tree.predict_proba(x_row))
+            prob_blocks.append([_join_predictions(*tree_predictions)])
+        self.classes = compss_wait_on(self.classes)
+        n_classes = len(self.classes)
+        probabilities = Array(
+            blocks=prob_blocks,
+            top_left_shape=(x._top_left_shape[0], n_classes),
+            reg_shape=(x._reg_shape[0], n_classes),
+            shape=(x.shape[0], n_classes),
+            sparse=False,
+        )
+        return probabilities
 
     def score(self, x, y, collect=False):
         """Accuracy classification score.
@@ -411,8 +405,31 @@ class RandomForestClassifier(BaseRandomForest):
         score : float (as future object)
             Fraction of correctly classified samples.
         """
-        assert self.rf is not None, "The random forest is not fitted."
-        return self.rf.score(x, y, collect=collect)
+        assert self.trees is not None, "The random forest is not fitted."
+
+        partial_scores = []
+        if self.hard_vote:
+            for x_row, y_row in _paired_partition(x, y):
+                tree_predictions = []
+                for tree in self.trees:
+                    tree_predictions.append(tree.predict(x_row))
+                subset_score = _hard_vote_score(
+                    y_row._blocks, self.classes, *tree_predictions
+                )
+                partial_scores.append(subset_score)
+
+        else:
+            for x_row, y_row in _paired_partition(x, y):
+                tree_predictions = []
+                for tree in self.trees:
+                    tree_predictions.append(tree.predict_proba(x_row))
+                subset_score = _soft_vote_score(
+                    y_row._blocks, self.classes, *tree_predictions
+                )
+                partial_scores.append(subset_score)
+        score = _merge_classification_scores(*partial_scores)
+
+        return compss_wait_on(score) if collect else score
 
     def load_model(self, filepath, load_format="json"):
         """Loads a model from a file.
@@ -436,9 +453,8 @@ class RandomForestClassifier(BaseRandomForest):
         >>> y_train = ds.array(y, (2, 1))
         >>> model = RandomForestClassifier(n_estimators=2, random_state=0)
         >>> model.fit(x_train, y_train)
-        >>> model.save_model('/tmp/model')
-        >>> loaded_model = RandomForestClassifier()
-        >>> loaded_model.load_model('/tmp/model')
+        >>> save_model(model, '/tmp/model')
+        >>> loaded_model = load_model('/tmp/model')
         >>> x_test = ds.array(np.array([[0, 0], [4, 4]]), (2, 2))
         >>> model_pred = model.predict(x_test)
         >>> loaded_model_pred = loaded_model.predict(x_test)
@@ -471,6 +487,7 @@ class RandomForestClassifier(BaseRandomForest):
         >>> y_train = ds.array(y, (2, 1))
         >>> model = RandomForestClassifier(n_estimators=2, random_state=0)
         >>> model.fit(x_train, y_train)
+        >>> model.save_model('/tmp/model')
         >>> model.save_model('/tmp/model')
         >>> loaded_model = RandomForestClassifier()
         >>> loaded_model.load_model('/tmp/model')
@@ -537,46 +554,19 @@ class RandomForestRegressor(BaseRandomForest):
         distr_depth="auto",
         sklearn_max=1e8,
         random_state=None,
-        range_max=None,
-        range_min=None,
-        bootstrap=True,
-        n_split_points="auto",
-        split_computation="raw",
-        sync_after_fit=True,
-        mmap=True,
     ):
         hard_vote = None
-        if mmap:
-            super().__init__(
-                n_estimators,
-                try_features,
-                max_depth,
-                distr_depth,
-                sklearn_max,
-                hard_vote,
-                random_state,
-                base_tree=DecisionTreeRegressorMMap,
-                base_dataset=RfRegressorDataset,
-            )
-        else:
-            super().__init__(
-                n_estimators,
-                try_features,
-                max_depth,
-                distr_depth,
-                sklearn_max,
-                hard_vote,
-                random_state,
-                base_tree=DecisionTreeRegressorDistributed,
-                base_dataset=None,
-                range_max=range_max,
-                range_min=range_min,
-                bootstrap=bootstrap,
-                n_split_points=n_split_points,
-                split_computation=split_computation,
-                sync_after_fit=sync_after_fit,
-                mmap=mmap,
-            )
+        super().__init__(
+            n_estimators,
+            try_features,
+            max_depth,
+            distr_depth,
+            sklearn_max,
+            hard_vote,
+            random_state,
+            base_tree=DecisionTreeRegressor,
+            base_dataset=RfRegressorDataset,
+        )
 
     def predict(self, x):
         """Predicts target values using a fitted forest.
@@ -591,8 +581,24 @@ class RandomForestRegressor(BaseRandomForest):
         y_pred : ds-array, shape=(n_samples, 1)
             Predicted values for x.
         """
-        assert self.rf is not None, "The random forest is not fitted."
-        return self.rf.predict(x)
+        assert self.trees is not None, "The random forest is not fitted."
+
+        pred_blocks = []
+        for x_row in x._iterator(axis=0):
+            tree_predictions = []
+            for tree in self.trees:
+                tree_predictions.append(tree.predict(x_row))
+            pred_blocks.append([_join_predictions(*tree_predictions)])
+
+        y_pred = Array(
+            blocks=pred_blocks,
+            top_left_shape=(x._top_left_shape[0], 1),
+            reg_shape=(x._reg_shape[0], 1),
+            shape=(x.shape[0], 1),
+            sparse=False,
+        )
+
+        return y_pred
 
     def score(self, x, y, collect=False):
         """R2 regression score.
@@ -622,8 +628,19 @@ class RandomForestRegressor(BaseRandomForest):
         score : float (as future object)
             Coefficient of determination $R^2$.
         """
-        assert self.rf is not None, "The random forest is not fitted."
-        return self.rf.score(x, y, collect=collect)
+        assert self.trees is not None, "The random forest is not fitted."
+
+        partial_scores = []
+        for x_row, y_row in _paired_partition(x, y):
+            tree_predictions = []
+            for tree in self.trees:
+                tree_predictions.append(tree.predict(x_row))
+            subset_score = _regression_score(y_row._blocks, *tree_predictions)
+            partial_scores.append(subset_score)
+
+        score = _merge_regression_scores(*partial_scores)
+
+        return compss_wait_on(score) if collect else score
 
     def load_model(self, filepath, load_format="json"):
         """Loads a model from a file.
@@ -696,3 +713,203 @@ class RandomForestRegressor(BaseRandomForest):
             overwrite=overwrite,
             save_format=save_format
         )
+
+
+def _base_soft_vote(classes, *predictions):
+    aggregate = predictions[0]
+    for p in predictions[1:]:
+        aggregate += p
+    predicted_labels = classes[np.argmax(aggregate, axis=1)]
+    return np.expand_dims(predicted_labels, axis=1)
+
+
+def _base_hard_vote(classes, *predictions):
+    mode = np.empty((len(predictions[0]),), dtype=int)
+    for sample_i, votes in enumerate(zip(*predictions)):
+        mode[sample_i] = Counter(votes).most_common(1)[0][0]
+    labels = classes[mode]
+    return np.expand_dims(labels, axis=1)
+
+
+def _encode_helper_cbor(encoder, obj):
+    encoder.encode(_encode_helper(obj, cbor=True))
+
+
+def _encode_helper(obj, cbor=False):
+    encoded = encoder_helper(obj)
+    if encoded is not None:
+        return encoded
+    elif callable(obj):
+        return {
+            "class_name": "callable",
+            "module": obj.__module__,
+            "name": obj.__name__,
+        }
+    elif isinstance(obj, SklearnTree):
+        return {
+            "class_name": obj.__class__.__name__,
+            "n_features": obj.n_features,
+            "n_classes": obj.n_classes,
+            "n_outputs": obj.n_outputs,
+            "items": obj.__getstate__(),
+        }
+    elif isinstance(obj, (DecisionTreeClassifier, DecisionTreeRegressor)):
+        if cbor and utilmodel.blosc2 is not None:
+            items = utilmodel.blosc2.compress2(pickle.dumps(obj.__dict__))
+        else:
+            items = obj.__dict__
+        return {
+            "class_name": obj.__class__.__name__,
+            "module_name": obj.__module__,
+            "items": items,
+        }
+    elif isinstance(obj, (RandomForestClassifier, RandomForestRegressor,
+                          SklearnDTClassifier, SklearnDTRegressor)):
+        return {
+            "class_name": obj.__class__.__name__,
+            "module_name": obj.__module__,
+            "items": obj.__dict__,
+        }
+    else:
+        return encode_forest_helper(obj)
+
+
+def _decode_helper_cbor(decoder, obj):
+    """Special decoder wrapper for dislib using cbor2."""
+    return _decode_helper(obj, cbor=True)
+
+
+def _decode_helper(obj, cbor=False):
+    if isinstance(obj, dict) and "class_name" in obj:
+        class_name = obj["class_name"]
+        decoded = decoder_helper(class_name, obj)
+        if decoded is not None:
+            return decoded
+        elif class_name == "RandomState":
+            random_state = np.random.RandomState()
+            random_state.set_state(_decode_helper(obj["items"]))
+            return random_state
+        elif class_name == "Tree":
+            dict_ = _decode_helper(obj["items"])
+            model = SklearnTree(
+                obj["n_features"], obj["n_classes"], obj["n_outputs"]
+            )
+            model.__setstate__(dict_)
+            return model
+        elif class_name == "callable":
+            if obj["module"] == "numpy":
+                return getattr(np, obj["name"])
+            return None
+        elif (
+                class_name in SKLEARN_CLASSES.keys()
+                and "sklearn" in obj["module_name"]
+        ):
+            dict_ = _decode_helper(obj["items"])
+            model = SKLEARN_CLASSES[obj["class_name"]]()
+            model.__dict__.update(dict_)
+            return model
+        else:
+            dict_ = _decode_helper(obj["items"])
+            return decode_forest_helper(class_name, dict_, cbor=cbor)
+    return obj
+
+
+def _sync_rf(rf):
+    """Sync the `try_features` and `n_classes` attribute of the different trees
+    since they cannot be synced recursively.
+    """
+    try_features = compss_wait_on(rf.trees[0].try_features)
+    n_classes = compss_wait_on(rf.trees[0].n_classes)
+    for tree in rf.trees:
+        tree.try_features = try_features
+        tree.n_classes = n_classes
+
+
+@constraint(computing_units="${ComputingUnits}")
+@task(returns=1)
+def _resolve_try_features(try_features, n_features):
+    if try_features is None:
+        return n_features
+    elif try_features == "sqrt":
+        return int(math.sqrt(n_features))
+    elif try_features == "third":
+        return max(1, n_features // 3)
+    else:
+        return int(try_features)
+
+
+@constraint(computing_units="${ComputingUnits}")
+@task(returns=1)
+def _join_predictions(*predictions):
+    aggregate = predictions[0]
+    for p in predictions[1:]:
+        aggregate += p
+    labels = aggregate / len(predictions)
+    return labels
+
+
+@constraint(computing_units="${ComputingUnits}")
+@task(returns=1)
+def _soft_vote(classes, *predictions):
+    predicted_labels = _base_soft_vote(classes, *predictions)
+    return predicted_labels
+
+
+@constraint(computing_units="${ComputingUnits}")
+@task(returns=1)
+def _hard_vote(classes, *predictions):
+    predicted_labels = _base_hard_vote(classes, *predictions)
+    return predicted_labels
+
+
+@constraint(computing_units="${ComputingUnits}")
+@task(y_blocks={Type: COLLECTION_IN, Depth: 2}, returns=1)
+def _soft_vote_score(y_blocks, classes, *predictions):
+    predicted_labels = _base_soft_vote(classes, *predictions)
+    real_labels = Array._merge_blocks(y_blocks).flatten()
+    correct = np.count_nonzero(predicted_labels.squeeze() == real_labels)
+    return correct, len(real_labels)
+
+
+@constraint(computing_units="${ComputingUnits}")
+@task(y_blocks={Type: COLLECTION_IN, Depth: 2}, returns=1)
+def _hard_vote_score(y_blocks, classes, *predictions):
+    predicted_labels = _base_hard_vote(classes, *predictions)
+    real_labels = Array._merge_blocks(y_blocks).flatten()
+    correct = np.count_nonzero(predicted_labels.squeeze() == real_labels)
+    return correct, len(real_labels)
+
+
+@constraint(computing_units="${ComputingUnits}")
+@task(y_blocks={Type: COLLECTION_IN, Depth: 2}, returns=1)
+def _regression_score(y_blocks, *predictions):
+    y_true = Array._merge_blocks(y_blocks).flatten()
+    y_pred = np.mean(np.squeeze(predictions), axis=0)
+    n_samples = y_true.shape[0]
+    y_avg = np.mean(y_true)
+    u_partial = np.sum(np.square(y_true - y_pred), axis=0)
+    v_partial = np.sum(np.square(y_true - y_avg), axis=0)
+    return u_partial, v_partial, y_avg, n_samples
+
+
+@constraint(computing_units="${ComputingUnits}")
+@task(returns=1)
+def _merge_classification_scores(*partial_scores):
+    correct = sum(subset_score[0] for subset_score in partial_scores)
+    total = sum(subset_score[1] for subset_score in partial_scores)
+    return correct / total
+
+
+@constraint(computing_units="${ComputingUnits}")
+@task(returns=1)
+def _merge_regression_scores(*partial_scores):
+    u = v = avg = n = 0
+    for u_p, v_p, avg_p, n_p in partial_scores:
+        u += u_p
+
+        delta = avg_p - avg
+        avg += delta * n_p / (n + n_p)
+        v += v_p + delta ** 2 * n * n_p / (n + n_p)
+        n += n_p
+
+    return 1 - u / v
