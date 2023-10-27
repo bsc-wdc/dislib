@@ -9,6 +9,7 @@ from sklearn.datasets import make_classification
 import dislib as ds
 from dislib.classification import RandomForestClassifier
 import dislib.data.util.model as utilmodel
+from dislib.trees.distributed.forest import _resolve_try_features
 from tests import BaseTimedTestCase
 
 
@@ -56,7 +57,26 @@ class RFTest(BaseTimedTestCase):
         x_test = ds.array(x[1::2], (1000, 10))
         y_test = y[1::2]
 
-        rf = RandomForestClassifier(distr_depth=1, n_classes=3,
+        rf = RandomForestClassifier(n_estimators=2, n_classes=3,
+                                    n_split_points="auto",
+                                    random_state=0, mmap=False)
+
+        rf.fit(x_train, y_train)
+        y_pred = rf.predict(x_test).collect()
+        accuracy = np.count_nonzero(y_pred == y_test) / len(y_test)
+        self.assertGreater(accuracy, 0.7)
+
+        rf = RandomForestClassifier(n_estimators=2, n_classes=3,
+                                    n_split_points="sqrt",
+                                    random_state=0, mmap=False)
+
+        rf.fit(x_train, y_train)
+        y_pred = rf.predict(x_test).collect()
+        accuracy = np.count_nonzero(y_pred == y_test) / len(y_test)
+        self.assertGreater(accuracy, 0.7)
+
+        rf = RandomForestClassifier(n_estimators=2, n_classes=3,
+                                    n_split_points=0.2,
                                     random_state=0, mmap=False)
 
         rf.fit(x_train, y_train)
@@ -312,6 +332,18 @@ class RFTest(BaseTimedTestCase):
         with self.assertRaises(ModuleNotFoundError):
             rf2.load_model("./saved_model_error", load_format="cbor")
         utilmodel.cbor2 = cbor2_module
+
+    def test_other_functions(self):
+        number_features = _resolve_try_features("sqrt", 9)
+        self.assertTrue(number_features == 3)
+        number_features = _resolve_try_features("third", 12)
+        self.assertTrue(number_features == 4)
+        number_features = _resolve_try_features(None, 12)
+        self.assertTrue(number_features == 12)
+        number_features = _resolve_try_features(2, 12)
+        self.assertTrue(number_features == 2)
+        number_features = _resolve_try_features(0.5, 12)
+        self.assertTrue(number_features == 6)
 
 
 def main():

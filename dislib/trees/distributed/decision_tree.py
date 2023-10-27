@@ -234,8 +234,8 @@ class DecisionTreeClassifier(BaseDecisionTree):
             sklearn_max,
             bootstrap,
             random_state,
-            range_min=None,
             range_max=None,
+            range_min=None,
             n_split_points="auto",
             split_computation="raw",
             sync_after_fit=True,
@@ -356,8 +356,8 @@ class DecisionTreeRegressor(BaseDecisionTree):
             sklearn_max,
             bootstrap,
             random_state,
-            range_min=None,
             range_max=None,
+            range_min=None,
             n_split_points="auto",
             split_computation="raw",
             sync_after_fit=True
@@ -848,27 +848,17 @@ def _predict_tree_class(x, node, node_content_num, n_classes=None,
     elif isinstance(node_content, _ClassificationNode):
         if len(x) > 0:
             sk_tree_pred = node_content.content.sk_tree.predict(x)
-            if n_classes is not None:
-                b = np.zeros((sk_tree_pred.size, n_classes))
-                b[np.arange(sk_tree_pred.size), sk_tree_pred] = 1
-                sk_tree_pred = b
-                pred = np.zeros((len(x), n_classes), dtype=np.float64)
-                pred[:, np.arange(n_classes)] = sk_tree_pred
-            else:
-                pred = np.zeros((len(x),), dtype=np.float64)
-                pred[:] = sk_tree_pred
+            b = np.zeros((sk_tree_pred.size, n_classes))
+            b[np.arange(sk_tree_pred.size), sk_tree_pred] = 1
+            sk_tree_pred = b
+            pred = np.zeros((len(x), n_classes), dtype=np.float64)
+            pred[:, np.arange(n_classes)] = sk_tree_pred
             return pred
     elif isinstance(node_content, _RegressionNode):
         if len(x) > 0:
             sk_tree_pred = node_content.content.sk_tree.predict(x)
             return sk_tree_pred
-    elif isinstance(node_content, _SkTreeWrapper):
-        if len(x) > 0:
-            sk_tree_pred = node_content.sk_tree.predict(x)
-            pred = np.zeros((len(x), n_classes), dtype=np.float64)
-            pred[:, node_content.sk_tree.classes_] = sk_tree_pred
-            return pred
-    # assert len(x) == 0, "Type not supported"
+    assert len(x) == 0, "Type not supported"
     if n_classes is not None:
         return np.empty((0, n_classes), dtype=np.float64)
     else:
@@ -909,12 +899,6 @@ def _predict_proba_tree(x, node, node_content_num, n_classes=None,
             sk_tree_pred = node_content.content.sk_tree.predict_proba(x)
             pred = np.zeros((len(x), n_classes), dtype=np.float64)
             pred[:, node_content.content.sk_tree.classes_] = sk_tree_pred
-            return pred
-    elif isinstance(node_content, _SkTreeWrapper):
-        if len(x) > 0:
-            sk_tree_pred = node_content.sk_tree.predict_proba(x)
-            pred = np.zeros((len(x), n_classes), dtype=np.float64)
-            pred[:, node_content.sk_tree.classes_] = sk_tree_pred
             return pred
     assert len(x) == 0, "Type not supported"
     return np.empty((0, n_classes), dtype=np.float64)
@@ -1409,46 +1393,10 @@ class _Node:
         self.is_classifier = is_classifier
         self.predict_dtype = np.int64 if is_classifier else np.float64
 
-    def predict(self, sample):
-        node_content = self.content
-        if isinstance(node_content, _LeafInfo):
-            return np.full((len(sample),), node_content.target)
-        if isinstance(node_content, _SkTreeWrapper):
-            if len(sample) > 0:
-                return node_content.sk_tree.predict(sample)
-        if isinstance(node_content, _InnerNodeInfo):
-            pred = np.empty((len(sample),), dtype=self.predict_dtype)
-            left_mask = sample[:, node_content.index] <= node_content.value
-            pred[left_mask] = self.left.predict(sample[left_mask])
-            pred[~left_mask] = self.right.predict(sample[~left_mask])
-            return pred
-        assert len(sample) == 0, "Type not supported"
-        return np.empty((0,), dtype=self.predict_dtype)
-
 
 class _ClassificationNode(_Node):
     def __init__(self):
         super().__init__(is_classifier=True)
-
-    def predict_proba(self, sample, n_classes):
-        node_content = self.content
-        if isinstance(node_content, _LeafInfo):
-            single_pred = node_content.frequencies / node_content.size
-            return np.tile(single_pred, (len(sample), 1))
-        if isinstance(node_content, _SkTreeWrapper):
-            if len(sample) > 0:
-                sk_tree_pred = node_content.sk_tree.predict_proba(sample)
-                pred = np.zeros((len(sample), n_classes), dtype=np.float64)
-                pred[:, node_content.sk_tree.classes_] = sk_tree_pred
-                return pred
-        if isinstance(node_content, _InnerNodeInfo):
-            pred = np.empty((len(sample), n_classes), dtype=np.float64)
-            l_msk = sample[:, node_content.index] <= node_content.value
-            pred[l_msk] = self.left.predict_proba(sample[l_msk], n_classes)
-            pred[~l_msk] = self.right.predict_proba(sample[~l_msk], n_classes)
-            return pred
-        assert len(sample) == 0, "Type not supported"
-        return np.empty((0, n_classes), dtype=np.float64)
 
     def toJson(self):
         return {

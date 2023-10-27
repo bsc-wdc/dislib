@@ -9,7 +9,7 @@ from dislib.trees.distributed.decision_tree import (
     DecisionTreeRegressor, encode_forest_helper, decode_forest_helper,
     _RegressionNode, _ClassificationNode, _compute_split,
     _compute_split_regressor, construct_subtree, _NodeInfo,
-    _LeafInfo, _InnerNodeInfo, _SkTreeWrapper
+    _LeafInfo, _InnerNodeInfo
 )
 from pycompss.api.api import compss_wait_on, compss_barrier
 from pycompss.api.constraint import constraint
@@ -103,6 +103,8 @@ class BaseRandomForest(BaseEstimator):
         if self.distr_depth == "auto":
             distr_depth = max(0, int(math.log10(x.shape[0])) - 4)
             self.distr_depth = min(distr_depth, self.max_depth)
+            if self.distr_depth < 1:
+                self.distr_depth = 1
         else:
             self.distr_depth = self.distr_depth
 
@@ -263,10 +265,12 @@ class BaseRandomForest(BaseEstimator):
                                      default=_encode_helper_cbor)
         elif save_format == "pickle":
             if utilmodel.blosc2 is not None:
-                for tree in model_metadata["trees"]:
-                    for idx in range(len(tree.subtrees)):
-                        tree.subtrees[idx] = utilmodel.blosc2.compress2(
-                            pickle.dumps(tree.subtrees[idx]))
+                for n_estimator in range(self.n_estimators):
+                    for idx, node in enumerate(self.nodes_info[
+                                                   str(n_estimator)]):
+                        self.nodes_info[str(n_estimator)][idx] = (
+                            utilmodel.blosc2.compress2(pickle.dumps(
+                                node)))
             with open(filepath, "wb") as f:
                 pickle.dump(model_metadata, f)
         else:
@@ -317,10 +321,11 @@ class BaseRandomForest(BaseEstimator):
             with open(filepath, "rb") as f:
                 model_metadata = pickle.load(f)
             if utilmodel.blosc2 is not None:
-                for tree in model_metadata["trees"]:
-                    for idx in range(len(tree.subtrees)):
-                        tree.subtrees[idx] = pickle.loads(
-                            utilmodel.blosc2.decompress2(tree.subtrees[idx]))
+                for n_estimator in range(model_metadata["n_estimators"]):
+                    for idx, node in enumerate(
+                            model_metadata["nodes_info"][str(n_estimator)]):
+                        model_metadata["nodes_info"][str(n_estimator)][idx] = \
+                            (pickle.loads(utilmodel.blosc2.decompress2(node)))
         else:
             raise ValueError("Wrong load format.")
 
@@ -559,6 +564,78 @@ class RandomForestClassifier(BaseRandomForest):
 
         return compss_wait_on(score) if collect else score
 
+    def load_model(self, filepath, load_format="json"):
+        """Loads a model from a file.
+        The model is reinstantiated in the exact same state in which it
+        was saved, without any of the code used for model definition or
+        fitting.
+        Parameters
+        ----------
+        filepath : str
+            Path of the saved the model
+        load_format : str, optional (default='json')
+            Format used to load the model.
+        Examples
+        --------
+        >>> from dislib.trees import RandomForestClassifier
+        >>> import numpy as np
+        >>> import dislib as ds
+        >>> x = np.array([[1, 2], [1, 4], [1, 0], [4, 2], [4, 4], [4, 0]])
+        >>> y = np.array([1, 1, 2, 2, 2, 1])
+        >>> x_train = ds.array(x, (2, 2))
+        >>> y_train = ds.array(y, (2, 1))
+        >>> model = RandomForestClassifier(n_estimators=2, random_state=0)
+        >>> model.fit(x_train, y_train)
+        >>> save_model(model, '/tmp/model')
+        >>> loaded_model = load_model('/tmp/model')
+        >>> x_test = ds.array(np.array([[0, 0], [4, 4]]), (2, 2))
+        >>> model_pred = model.predict(x_test)
+        >>> loaded_model_pred = loaded_model.predict(x_test)
+        >>> assert np.allclose(model_pred.collect(),
+        """
+        super().load_model(filepath, load_format=load_format)
+
+    def save_model(self, filepath, overwrite=True, save_format="json"):
+        """Saves a model to a file.
+        The model is synchronized before saving and can be reinstantiated in
+        the exact same state, without any of the code used for model
+        definition or fitting.
+        Parameters
+        ----------
+        filepath : str
+            Path where to save the model
+        overwrite : bool, optional (default=True)
+            Whether any existing model at the target
+            location should be overwritten.
+        save_format : str, optional (default='json)
+            Format used to save the models.
+        Examples
+        --------
+        >>> from dislib.trees import RandomForestClassifier
+        >>> import numpy as np
+        >>> import dislib as ds
+        >>> x = np.array([[1, 2], [1, 4], [1, 0], [4, 2], [4, 4], [4, 0]])
+        >>> y = np.array([1, 1, 2, 2, 2, 1])
+        >>> x_train = ds.array(x, (2, 2))
+        >>> y_train = ds.array(y, (2, 1))
+        >>> model = RandomForestClassifier(n_estimators=2, random_state=0)
+        >>> model.fit(x_train, y_train)
+        >>> model.save_model('/tmp/model')
+        >>> model.save_model('/tmp/model')
+        >>> loaded_model = RandomForestClassifier()
+        >>> loaded_model.load_model('/tmp/model')
+        >>> x_test = ds.array(np.array([[0, 0], [4, 4]]), (2, 2))
+        >>> model_pred = model.predict(x_test)
+        >>> loaded_model_pred = loaded_model.predict(x_test)
+        >>> assert np.allclose(model_pred.collect(),
+        >>> loaded_model_pred.collect())
+        """
+        super().save_model(
+            filepath,
+            overwrite=overwrite,
+            save_format=save_format
+        )
+
 
 class RandomForestRegressor(BaseRandomForest):
     """A distributed random forest regressor.
@@ -734,6 +811,78 @@ class RandomForestRegressor(BaseRandomForest):
         score = _merge_regression_scores(partial_scores)
 
         return compss_wait_on(score) if collect else score
+
+    def load_model(self, filepath, load_format="json"):
+        """Loads a model from a file.
+        The model is reinstantiated in the exact same state in which it
+        was saved, without any of the code used for model definition or
+        fitting.
+        Parameters
+        ----------
+        filepath : str
+            Path of the saved the model
+        load_format : str, optional (default='json')
+            Format used to load the model.
+        Examples
+        --------
+        >>> from dislib.trees import RandomForestRegressor
+        >>> import numpy as np
+        >>> import dislib as ds
+        >>> x = np.array([[1, 2], [1, 4], [1, 0], [4, 2], [4, 4], [4, 0]])
+        >>> y = np.array([1.5, 1.2, 2.7, 2.1, 0.2, 0.6])
+        >>> x_train = ds.array(x, (2, 2))
+        >>> y_train = ds.array(y, (2, 1))
+        >>> model = RandomForestRegressor(n_estimators=2, random_state=0)
+        >>> model.fit(x_train, y_train)
+        >>> model.save_model('/tmp/model')
+        >>> loaded_model = RandomForestRegressor()
+        >>> loaded_model.load_model('/tmp/model')
+        >>> x_test = ds.array(np.array([[0, 0], [4, 4]]), (2, 2))
+        >>> model_pred = model.predict(x_test)
+        >>> loaded_model_pred = loaded_model.predict(x_test)
+        >>> assert np.allclose(model_pred.collect(),
+        """
+        super().load_model(filepath, load_format=load_format)
+
+    def save_model(self, filepath, overwrite=True, save_format="json"):
+        """Saves a model to a file.
+        The model is synchronized before saving and can be reinstantiated in
+        the exact same state, without any of the code used for model
+        definition or fitting.
+        Parameters
+        ----------
+        filepath : str
+            Path where to save the model
+        overwrite : bool, optional (default=True)
+            Whether any existing model at the target
+            location should be overwritten.
+        save_format : str, optional (default='json)
+            Format used to save the models.
+        Examples
+        --------
+        >>> from dislib.trees import RandomForestRegressor
+        >>> import numpy as np
+        >>> import dislib as ds
+        >>> x = np.array([[1, 2], [1, 4], [1, 0], [4, 2], [4, 4], [4, 0]])
+        >>> y = np.array([1.5, 1.2, 2.7, 2.1, 0.2, 0.6])
+        >>> x_train = ds.array(x, (2, 2))
+        >>> y_train = ds.array(y, (2, 1))
+        >>> model = RandomForestRegressor(n_estimators=2, random_state=0)
+        >>> model.fit(x_train, y_train)
+        >>> model.save_model('/tmp/model')
+        >>> loaded_model = RandomForestRegressor()
+        >>> loaded_model.load_model('/tmp/model')
+        >>> x_test = ds.array(np.array([[0, 0], [4, 4]]), (2, 2))
+        >>> model_pred = model.predict(x_test)
+        >>> loaded_model_pred = loaded_model.predict(x_test)
+        >>> assert np.allclose(model_pred.collect(),
+        >>> loaded_model_pred.collect())
+        """
+        super().save_model(
+            filepath,
+            overwrite=overwrite,
+            save_format=save_format
+        )
 
 
 def _base_soft_vote(classes, predictions):
@@ -989,26 +1138,16 @@ def _predict_tree_class(x, node, node_content_num,
     elif isinstance(node_content, _ClassificationNode):
         if len(x) > 0:
             sk_tree_pred = node_content.content.sk_tree.predict(x)
-            if n_classes is not None:
-                b = np.zeros((sk_tree_pred.size, n_classes))
-                b[np.arange(sk_tree_pred.size), sk_tree_pred] = 1
-                sk_tree_pred = b
-                pred = np.zeros((len(x), n_classes), dtype=np.float64)
-                pred[:, np.arange(n_classes)] = sk_tree_pred
-            else:
-                pred = np.zeros((len(x),), dtype=np.float64)
-                pred[:] = sk_tree_pred
+            b = np.zeros((sk_tree_pred.size, n_classes))
+            b[np.arange(sk_tree_pred.size), sk_tree_pred] = 1
+            sk_tree_pred = b
+            pred = np.zeros((len(x), n_classes), dtype=np.float64)
+            pred[:, np.arange(n_classes)] = sk_tree_pred
             return pred
     elif isinstance(node_content, _RegressionNode):
         if len(x) > 0:
             sk_tree_pred = node_content.content.sk_tree.predict(x)
             return sk_tree_pred
-    elif isinstance(node_content, _SkTreeWrapper):
-        if len(x) > 0:
-            sk_tree_pred = node_content.sk_tree.predict(x)
-            pred = np.zeros((len(x), n_classes), dtype=np.float64)
-            pred[:, node_content.sk_tree.classes_] = sk_tree_pred
-            return pred
     # assert len(x) == 0, "Type not supported"
     if n_classes is not None:
         return np.empty((0, n_classes), dtype=np.float64)
@@ -1050,12 +1189,6 @@ def _predict_proba_tree(x, node, node_content_num,
             sk_tree_pred = node_content.content.sk_tree.predict_proba(x)
             pred = np.zeros((len(x), n_classes), dtype=np.float64)
             pred[:, node_content.content.sk_tree.classes_] = sk_tree_pred
-            return pred
-    elif isinstance(node_content, _SkTreeWrapper):
-        if len(x) > 0:
-            sk_tree_pred = node_content.sk_tree.predict_proba(x)
-            pred = np.zeros((len(x), n_classes), dtype=np.float64)
-            pred[:, node_content.sk_tree.classes_] = sk_tree_pred
             return pred
     assert len(x) == 0, "Type not supported"
     return np.empty((0, n_classes), dtype=np.float64)

@@ -4,9 +4,9 @@ import numpy as np
 from pycompss.api.api import compss_wait_on
 
 import dislib as ds
-import dislib.trees.decision_tree as dt
-from dislib.trees import RfClassifierDataset, transform_to_rf_dataset
-from dislib.trees.decision_tree import _InnerNodeInfo, _LeafInfo
+import dislib.trees.mmap.decision_tree as dt_mmap
+from dislib.trees.mmap import RfClassifierDataset, transform_to_rf_dataset
+from dislib.trees.mmap.decision_tree import _InnerNodeInfo, _LeafInfo
 from tests import BaseTimedTestCase
 
 
@@ -51,10 +51,10 @@ class DecisionTreeTest(BaseTimedTestCase):
 
         # Test bootstrap
         sample1, y_s1 = compss_wait_on(
-            dt._sample_selection(n_samples, y1, True, seed)
+            dt_mmap._sample_selection(n_samples, y1, True, seed)
         )
         sample2, y_s2 = compss_wait_on(
-            dt._sample_selection(n_samples, y1, False, seed)
+            dt_mmap._sample_selection(n_samples, y1, False, seed)
         )
         self.assertTrue(
             np.array_equal(sample1, np.array([0, 2, 3, 3, 3, 4, 5, 5, 7]))
@@ -72,7 +72,7 @@ class DecisionTreeTest(BaseTimedTestCase):
         # Assert split wrapper
         sample, y_s = sample2, y_s2
         with self.assertRaises(ValueError):
-            dt._split_node_wrapper(
+            dt_mmap._split_node_wrapper(
                 sample,
                 n_features,
                 y_s,
@@ -83,7 +83,7 @@ class DecisionTreeTest(BaseTimedTestCase):
                 features_file=None,
             )
 
-        split = dt._split_node_wrapper(
+        split = dt_mmap._split_node_wrapper(
             sample,
             n_features,
             y_s,
@@ -104,7 +104,7 @@ class DecisionTreeTest(BaseTimedTestCase):
             )
             self.assertTrue(np.array_equal(y_r, np.array([0, 0, 0, 1, 1, 1])))
             self.assertAlmostEqual(node_info.value, 0.0)
-            split_l = dt._compute_split(
+            split_l = dt_mmap._compute_split(
                 left_group,
                 n_features,
                 y_l,
@@ -131,7 +131,7 @@ class DecisionTreeTest(BaseTimedTestCase):
             self.assertTrue(np.array_equal(right_group, np.array([3, 4, 5])))
             self.assertTrue(np.array_equal(y_r, np.array([1, 1, 1])))
             self.assertAlmostEqual(node_info.value, 0.0)
-            split_r = dt._compute_split(
+            split_r = dt_mmap._compute_split(
                 right_group,
                 n_features,
                 y_r,
@@ -152,7 +152,7 @@ class DecisionTreeTest(BaseTimedTestCase):
             self.assertEqual(node_info.target, 1)
 
         # Test tree
-        tree = dt.DecisionTreeClassifier(
+        tree = dt_mmap.DecisionTreeClassifier(
             try_features,
             max_depth,
             distr_depth,

@@ -30,8 +30,8 @@ class BaseDecisionTree:
         base_node,
         base_tree,
         n_classes=None,
-        range_min=None,
         range_max=None,
+        range_min=None,
         n_split_points="auto",
         split_computation="raw",
         sync_after_fit=True,
@@ -47,11 +47,19 @@ class BaseDecisionTree:
         self.base_tree = base_tree
 
         self.n_features = None
-        self.n_classes = None
+        self.n_classes = n_classes
 
         self.tree = None
         self.nodes_info = None
         self.subtrees = None
+
+        self.range_max = range_max
+        self.range_min = range_min
+        self.n_split_points = n_split_points
+        self.split_computation = split_computation
+        self.sync_after_fit = sync_after_fit
+
+        self.mmap = mmap
 
     def fit(self, dataset):
         """Fits the DecisionTree.
@@ -62,20 +70,36 @@ class BaseDecisionTree:
         """
         if self.mmap:
             if SklearnDTRegressor == self.base_tree:
-                tree = DecisionTreeRegressorMMap
+                self.tree = DecisionTreeRegressorMMap(
+                    self.try_features, self.max_depth,
+                    self.distr_depth, self.sklearn_max,
+                    self.bootstrap, self.random_state
+                )
             else:
-                tree = DecisionTreeClassifierMMap
-            self.tree = tree(
-
-            )
+                self.tree = DecisionTreeClassifierMMap(
+                    self.try_features, self.max_depth,
+                    self.distr_depth, self.sklearn_max,
+                    self.bootstrap, self.random_state
+                )
         else:
             if SklearnDTRegressor == self.base_tree:
-                tree = DecisionTreeRegressorDistributed
+                self.tree = DecisionTreeRegressorDistributed(
+                    self.try_features, self.max_depth,
+                    self.distr_depth, self.sklearn_max,
+                    self.bootstrap, self.random_state,
+                    self.range_max, self.range_min,
+                    self.n_split_points, self.split_computation,
+                    self.sync_after_fit
+                )
             else:
-                tree = DecisionTreeClassifierDistributed
-            self.tree = tree(
-
-            )
+                self.tree = DecisionTreeClassifierDistributed(
+                    self.try_features, self.max_depth,
+                    self.distr_depth, self.sklearn_max,
+                    self.bootstrap, self.random_state,
+                    self.n_classes, self.range_max, self.range_min,
+                    self.n_split_points, self.split_computation,
+                    self.sync_after_fit
+                )
 
     def predict(self, x_row):
         """Predicts target values or classes for the given samples using
@@ -163,6 +187,13 @@ class DecisionTreeClassifier(BaseDecisionTree):
         sklearn_max,
         bootstrap,
         random_state,
+        n_classes=None,
+        range_max=None,
+        range_min=None,
+        n_split_points="auto",
+        split_computation="raw",
+        sync_after_fit=True,
+        mmap=True,
     ):
         super().__init__(
             try_features,
@@ -173,6 +204,13 @@ class DecisionTreeClassifier(BaseDecisionTree):
             random_state,
             _ClassificationNode,
             SklearnDTClassifier,
+            n_classes=n_classes,
+            range_max=range_max,
+            range_min=range_min,
+            n_split_points=n_split_points,
+            split_computation=split_computation,
+            sync_after_fit=sync_after_fit,
+            mmap=mmap,
         )
 
     def predict_proba(self, x_row):
@@ -255,6 +293,12 @@ class DecisionTreeRegressor(BaseDecisionTree):
         sklearn_max,
         bootstrap,
         random_state,
+        range_max=None,
+        range_min=None,
+        n_split_points="auto",
+        split_computation="raw",
+        sync_after_fit=True,
+        mmap=True,
     ):
         super().__init__(
             try_features,
@@ -265,4 +309,10 @@ class DecisionTreeRegressor(BaseDecisionTree):
             random_state,
             _RegressionNode,
             SklearnDTRegressor,
+            range_max=range_max,
+            range_min=range_min,
+            n_split_points=n_split_points,
+            split_computation=split_computation,
+            sync_after_fit=sync_after_fit,
+            mmap=mmap,
         )
