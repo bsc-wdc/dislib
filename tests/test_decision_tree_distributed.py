@@ -331,45 +331,45 @@ class DecisionTreeTest(BaseTimedTestCase):
             [np.array([0])], [np.array([0])],
             [np.array([0])], [np.array([0])],
             None, [3], 3)
-        self.assertTrue(solution[0] == 1)
+        self.assertTrue(compss_wait_on(solution[0]) == 1)
         value = dt_distributed.apply_split_points_to_blocks_regression(
             [np.array([0])],
             [np.array([0])],
             0, None,
             np.array([0, 1]))
-        self.assertTrue(value[0] is None)
+        self.assertTrue(compss_wait_on(value[0]) is None)
         value = dt_distributed.apply_split_points_to_blocks(
             [np.array([0])],
             [np.array([0])],
             0, None,
             np.array([0, 1]), 3)
-        self.assertTrue(value[0] is None)
+        self.assertTrue(compss_wait_on(value[0]) is None)
 
         value = dt_distributed.merge_partial_results_compute_mse_both_sides(
-            [np.array([[None, None], [None, None]])],
-            [np.array([[None, None], [None, None]])]
+            [[None, None], [None, None]],
+            [[None, None], [None, None]]
         )
-        self.assertTrue(value[0] == np.array([np.inf]))
+        self.assertTrue(compss_wait_on(value[0]) == np.array([np.inf]))
         value = dt_distributed.merge_partial_results_compute_mse_both_sides(
-            [np.array([[np.array([0, 1])], [np.array([0, 1])]])],
-            [np.array([[None, None], [None, None]])]
+            [[np.array([0, 1])], [np.array([0, 1])]],
+            [[None, None], [None, None]]
         )
-        self.assertTrue(value[0] == np.array([np.inf]))
+        self.assertTrue(compss_wait_on(value[0]) == np.array([np.inf]))
 
         value = dt_distributed.merge_partial_results_compute_mse_both_sides(
-            [np.array([[np.array([0, 1])], [np.array([0, 1])]])],
+            [[np.array([0, 1])], [np.array([0, 1])]],
             [np.array([None, None])]
         )
-        self.assertTrue(value[0] == np.array([np.inf]))
+        self.assertTrue(compss_wait_on(value[0]) == np.array([np.inf]))
 
         optimal_split_point = dt_distributed.select_optimal_split_point(
             None, 0, [0, 1, 2], 0)
-        self.assertTrue(optimal_split_point is None)
+        self.assertTrue(compss_wait_on(optimal_split_point) is None)
 
-        minimum_gini = dt_distributed.get_minimum_measure([3, 5, 6], 0)
-        self.assertTrue(minimum_gini[-1] == 1)
-        minimum_gini = dt_distributed.get_minimum_measure([], 0, False)
-        self.assertTrue(minimum_gini[-1] == np.inf)
+        minimum_gini = dt_distributed.get_minimum_measure([[3, 5, 6]], 0)
+        self.assertTrue(compss_wait_on(minimum_gini[-1]) == 1)
+        minimum_gini = dt_distributed.get_minimum_measure([[np.nan]], 0, False)
+        self.assertTrue(compss_wait_on(minimum_gini[-1]) == np.inf)
 
     def test_to_json(self):
         """Tests toJson method of _InnerNodeInfo and _LeafInfo"""
