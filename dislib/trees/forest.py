@@ -158,8 +158,6 @@ class BaseRandomForest(BaseEstimator):
             self.rf.save_model(filepath,
                                overwrite=overwrite,
                                save_format=save_format)
-        else:
-            return
 
     def load_model(self, filepath, load_format="json"):
         """Loads a model from a file.

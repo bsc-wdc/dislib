@@ -132,8 +132,8 @@ class RFTest(BaseTimedTestCase):
 
         rf.fit(x_train, y_train)
         probabilities = rf.predict_proba(x_test).collect()
-        rf.classes = compss_wait_on(rf.classes)
-        y_pred = rf.classes[np.argmax(probabilities, axis=1)]
+        rf.rf.classes = compss_wait_on(rf.rf.classes)
+        y_pred = rf.rf.classes[np.argmax(probabilities, axis=1)]
         accuracy = np.count_nonzero(y_pred == y_test) / len(y_test)
         self.assertGreater(accuracy, 0.7)
 

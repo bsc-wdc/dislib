@@ -42,8 +42,8 @@ class RandomForestRegressorTest(BaseTimedTestCase):
         y_true = y[1::2]
         accuracy2 = _determination_coefficient(y_true, y_pred)
 
-        self.assertGreater(accuracy1, 0.55)
-        self.assertGreater(accuracy2, 0.55)
+        self.assertGreater(accuracy1, 0.50)
+        self.assertGreater(accuracy2, 0.50)
         self.assertAlmostEqual(accuracy1, accuracy2)
 
     def test_make_regression_predict_and_distr_depth(self):

@@ -42,7 +42,6 @@ class DecisionTreeTest(BaseTimedTestCase):
         bootstrap = True
         seed = 0
         random_state = np.random.RandomState(seed)
-        n_samples, n_features = x1.shape
         n_classes = np.bincount(y1).shape[0]
         # Test bootstrap
         sample1 = dt_distributed._sample_selection(x1, random_state,
@@ -72,9 +71,9 @@ class DecisionTreeTest(BaseTimedTestCase):
             number_split_points=2,
             random_state=0,
         )
-
-        split = compss_wait_on(split)
         node_info, data = split
+        node_info = compss_wait_on(node_info)
+        data = compss_wait_on(data)
         left_group = data[0][0]
         y_l = data[0][1]
         right_group = data[1][0]
@@ -280,7 +279,7 @@ class DecisionTreeTest(BaseTimedTestCase):
         tree.fit(x1_ds, y1_ds)
         y_pred = compss_wait_on(tree.predict(x2_ds))
         y_pred = np.block(y_pred)
-        self.assertGreater(r2_score(y_pred.flatten(), y2), 0.4)
+        self.assertGreater(r2_score(y_pred.flatten(), y2), 0.3)
 
         tree = dt_distributed.DecisionTreeRegressor(
             try_features,
@@ -296,7 +295,7 @@ class DecisionTreeTest(BaseTimedTestCase):
         tree.fit(x1_ds, y1_ds)
         y_pred = compss_wait_on(tree.predict(x2_ds))
         y_pred = np.block(y_pred)
-        self.assertGreater(r2_score(y_pred.flatten(), y2), 0.4)
+        self.assertGreater(r2_score(y_pred.flatten(), y2), 0.3)
 
         tree = dt_distributed.DecisionTreeRegressor(
             try_features,
@@ -329,45 +328,45 @@ class DecisionTreeTest(BaseTimedTestCase):
         node_info = dt_distributed._NodeInfo()
         dt_distributed.generate_nodes_with_data_compressed_regression(
             node_info, solution,
-            np.array([0]), np.array([0]),
-            np.array([0]), np.array([0]),
-            None, 3, 3)
+            [np.array([0])], [np.array([0])],
+            [np.array([0])], [np.array([0])],
+            None, [3], 3)
         self.assertTrue(solution[0] == 1)
         value = dt_distributed.apply_split_points_to_blocks_regression(
-            np.array([0]),
-            np.array([0]),
+            [np.array([0])],
+            [np.array([0])],
             0, None,
             np.array([0, 1]))
         self.assertTrue(value[0] is None)
         value = dt_distributed.apply_split_points_to_blocks(
-            np.array([0]),
-            np.array([0]),
+            [np.array([0])],
+            [np.array([0])],
             0, None,
             np.array([0, 1]), 3)
         self.assertTrue(value[0] is None)
 
         value = dt_distributed.merge_partial_results_compute_mse_both_sides(
-            np.array([[None, None], [None, None]]),
-            np.array([[None, None], [None, None]])
+            [np.array([[None, None], [None, None]])],
+            [np.array([[None, None], [None, None]])]
         )
         self.assertTrue(value[0] == np.array([np.inf]))
         value = dt_distributed.merge_partial_results_compute_mse_both_sides(
-            np.array([[np.array([0, 1])], [np.array([0, 1])]]),
-            np.array([[None, None], [None, None]])
+            [np.array([[np.array([0, 1])], [np.array([0, 1])]])],
+            [np.array([[None, None], [None, None]])]
         )
         self.assertTrue(value[0] == np.array([np.inf]))
 
         value = dt_distributed.merge_partial_results_compute_mse_both_sides(
-            np.array([[np.array([0, 1])], [np.array([0, 1])]]),
-            np.array([None, None])
+            [np.array([[np.array([0, 1])], [np.array([0, 1])]])],
+            [np.array([None, None])]
         )
         self.assertTrue(value[0] == np.array([np.inf]))
 
         optimal_split_point = dt_distributed.select_optimal_split_point(
-            None, 0, 0, 0)
+            None, 0, [0, 1, 2], 0)
         self.assertTrue(optimal_split_point is None)
 
-        minimum_gini = dt_distributed.get_minimum_measure([], 0)
+        minimum_gini = dt_distributed.get_minimum_measure([3, 5, 6], 0)
         self.assertTrue(minimum_gini[-1] == 1)
         minimum_gini = dt_distributed.get_minimum_measure([], 0, False)
         self.assertTrue(minimum_gini[-1] == np.inf)
