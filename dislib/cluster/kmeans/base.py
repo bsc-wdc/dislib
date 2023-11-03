@@ -345,14 +345,24 @@ def _decode_helper(obj):
 @task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
 def _partial_sum_gpu(blocks, centers):
     import cupy as cp
+    from scipy.sparse import issparse
 
     partials = np.zeros((centers.shape[0], 2), dtype=object)
-    arr = Array._merge_blocks(blocks).astype(np.float32)
-    arr_gpu = cp.asarray(arr)
-    centers_gpu = cp.asarray(centers).astype(cp.float32)
+    arr = Array._merge_blocks(blocks)
 
-    close_centers_gpu = cp.argmin(distance_gpu(arr_gpu, centers_gpu), axis=1)
-    arr_gpu, centers_gpu = None, None
+    if issparse(arr):
+        arr = arr.todense()
+    if issparse(centers):
+        centers = centers.todense()
+
+    arr_gpu = cp.expand_dims(cp.asarray(arr), axis=1)
+    centers_gpu = cp.expand_dims(cp.asarray(centers), axis=0)
+
+    diff = arr_gpu - centers_gpu
+    del arr_gpu, centers_gpu
+
+    dist_gpu = cp.linalg.norm(diff, axis=2)
+    close_centers_gpu = cp.argmin(dist_gpu, axis=1)
 
     close_centers = cp.asnumpy(close_centers_gpu)
 
@@ -396,47 +406,3 @@ def _merge(*data):
 def _predict(blocks, centers):
     arr = Array._merge_blocks(blocks)
     return pairwise_distances(arr, centers).argmin(axis=1).reshape(-1, 1)
-
-
-def distance_gpu(a_gpu, b_gpu):
-    import cupy as cp
-
-    sq_sum_ker = get_sq_sum_kernel()
-
-    aa_gpu = cp.empty(a_gpu.shape[0], dtype=cp.float32)
-    bb_gpu = cp.empty(b_gpu.shape[0], dtype=cp.float32)
-
-    sq_sum_ker(a_gpu, aa_gpu, axis=1)
-    sq_sum_ker(b_gpu, bb_gpu, axis=1)
-
-    size = len(aa_gpu) * len(bb_gpu)
-    dist_gpu = cp.empty((len(aa_gpu), len(bb_gpu)), dtype=cp.float32)
-    add_mix_kernel(len(b_gpu))(aa_gpu, bb_gpu, dist_gpu, size=size)
-    aa_gpu, bb_gpu = None, None
-
-    dist_gpu += -2.0 * cp.dot(a_gpu, b_gpu.T)
-
-    return dist_gpu
-
-
-def get_sq_sum_kernel():
-    import cupy as cp
-
-    return cp.ReductionKernel(
-        'T x',  # input params
-        'T y',  # output params
-        'x * x',  # map
-        'a + b',  # reduce
-        'y = a',  # post-reduction map
-        '0',  # identity value
-        'sqsum'  # kernel name
-    )
-
-
-def add_mix_kernel(y_len):
-    import cupy as cp
-
-    return cp.ElementwiseKernel(
-        'raw T x, raw T y', 'raw T z',
-        f'z[i] = x[i / {y_len}] + y[i % {y_len}]',
-        'add_mix')

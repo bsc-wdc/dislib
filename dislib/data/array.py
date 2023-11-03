@@ -1624,11 +1624,20 @@ def _matmul_with_transpose(a, b, transpose_a, transpose_b):
 @task(returns=np.array)
 def _add_gpu(block1, block2):
     import cupy as cp
+    from scipy.sparse import issparse, csr_matrix
+
+    sparse = False
+    if issparse(block1):
+        block1 = block1.todense()
+        sparse = True
+    if issparse(block2):
+        block2 = block2.todense()
+        sparse = True
 
     block1_gpu, block2_gpu = cp.asarray(block1), cp.asarray(block2)
     res = cp.asnumpy(cp.add(block1_gpu, block2_gpu))
     del block1_gpu, block2_gpu
-    return res
+    return res if not sparse else csr_matrix(res)
 
 
 @constraint(computing_units="${ComputingUnits}")
@@ -1644,6 +1653,15 @@ def _add_cpu(block1, block2):
 @task(returns=np.array)
 def _matmul_gpu(a, b, transpose_a, transpose_b):
     import cupy as cp
+    from scipy.sparse import issparse, csr_matrix
+
+    sparse = False
+    if issparse(a):
+        a = a.todense()
+        sparse = True
+    if issparse(b):
+        b = b.todense()
+        sparse = True
 
     a_gpu, b_gpu = cp.asarray(a), cp.asarray(b)
 
@@ -1654,7 +1672,7 @@ def _matmul_gpu(a, b, transpose_a, transpose_b):
 
     res = cp.asnumpy(cp.matmul(a_gpu, b_gpu))
     del a_gpu, b_gpu
-    return res
+    return res if not sparse else csr_matrix(res)
 
 
 def _multiply_block_groups(hblock, vblock, transpose_a=False,
