@@ -4,7 +4,13 @@ codecov:
 coverage:
   precision: 2
   round: down
-  range: "90...100"
+  range: "90..100"
+  status:
+    project:
+      diff_coverage:
+        target: 90%
+      default:
+        threshold: 1%
 
 parsers:
   gcov:

@@ -146,7 +146,7 @@ class CSVMTest(BaseTimedTestCase):
 
         csvm.fit(x, y)
 
-        p7, p8, p9, p10 = np.array([1, 1]), np.array([-1, -1]),\
+        p7, p8, p9, p10 = np.array([1, 1]), np.array([-1, -1]), \
             np.array([14, 15]), np.array([15, 14])
 
         x_test = ds.array(np.array([p1, p2, p3, p4, p5, p6, p7,

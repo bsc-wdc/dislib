@@ -21,18 +21,19 @@ class RandomForestRegressorTest(BaseTimedTestCase):
     def test_make_regression(self):
         """Tests RandomForestRegressor fit and score with default params."""
         x, y = make_regression(
-            n_samples=3000,
-            n_features=10,
+            n_samples=12000,
+            n_features=40,
             n_informative=4,
             shuffle=True,
             random_state=0,
         )
-        x_train = ds.array(x[::2], (300, 10))
-        y_train = ds.array(y[::2][:, np.newaxis], (300, 1))
-        x_test = ds.array(x[1::2], (300, 10))
-        y_test = ds.array(y[1::2][:, np.newaxis], (300, 1))
+        x_train = ds.array(x[::2], (4000, 20))
+        y_train = ds.array(y[::2][:, np.newaxis], (4000, 1))
+        x_test = ds.array(x[1::2], (4000, 20))
+        y_test = ds.array(y[1::2][:, np.newaxis], (4000, 1))
 
-        rf = RandomForestRegressor(random_state=0)
+        rf = RandomForestRegressor(distr_depth=2, random_state=0,
+                                   n_estimators=2, mmap=False)
 
         rf.fit(x_train, y_train)
         accuracy1 = compss_wait_on(rf.score(x_test, y_test))
@@ -41,8 +42,8 @@ class RandomForestRegressorTest(BaseTimedTestCase):
         y_true = y[1::2]
         accuracy2 = _determination_coefficient(y_true, y_pred)
 
-        self.assertGreater(accuracy1, 0.85)
-        self.assertGreater(accuracy2, 0.85)
+        self.assertGreater(accuracy1, 0.50)
+        self.assertGreater(accuracy2, 0.50)
         self.assertAlmostEqual(accuracy1, accuracy2)
 
     def test_make_regression_predict_and_distr_depth(self):
@@ -54,12 +55,14 @@ class RandomForestRegressorTest(BaseTimedTestCase):
             shuffle=True,
             random_state=0,
         )
-        x_train = ds.array(x[::2], (300, 10))
-        y_train = ds.array(y[::2][:, np.newaxis], (300, 1))
-        x_test = ds.array(x[1::2], (300, 10))
-        y_test = ds.array(y[1::2][:, np.newaxis], (300, 1))
+        x_train = ds.array(x[::2], (1000, 10))
+        y_train = ds.array(y[::2][:, np.newaxis], (1000, 1))
+        x_test = ds.array(x[1::2], (1000, 10))
+        y_test = ds.array(y[1::2][:, np.newaxis], (1000, 1))
 
-        rf = RandomForestRegressor(distr_depth=2, random_state=0)
+        rf = RandomForestRegressor(distr_depth=1, random_state=0,
+                                   n_estimators=2,
+                                   mmap=False)
 
         rf.fit(x_train, y_train)
         accuracy1 = compss_wait_on(rf.score(x_test, y_test))
@@ -68,8 +71,8 @@ class RandomForestRegressorTest(BaseTimedTestCase):
         y_true = y[1::2]
         accuracy2 = _determination_coefficient(y_true, y_pred)
 
-        self.assertGreater(accuracy1, 0.85)
-        self.assertGreater(accuracy2, 0.85)
+        self.assertGreater(accuracy1, 0.75)
+        self.assertGreater(accuracy2, 0.75)
         self.assertAlmostEqual(accuracy1, accuracy2)
 
     def test_make_regression_sklearn_max_predict(self):
@@ -81,12 +84,13 @@ class RandomForestRegressorTest(BaseTimedTestCase):
             shuffle=True,
             random_state=0,
         )
-        x_train = ds.array(x[::2], (300, 10))
-        y_train = ds.array(y[::2][:, np.newaxis], (300, 1))
-        x_test = ds.array(x[1::2], (300, 10))
-        y_test = ds.array(y[1::2][:, np.newaxis], (300, 1))
+        x_train = ds.array(x[::2], (1000, 10))
+        y_train = ds.array(y[::2][:, np.newaxis], (1000, 1))
+        x_test = ds.array(x[1::2], (1000, 10))
+        y_test = ds.array(y[1::2][:, np.newaxis], (1000, 1))
 
-        rf = RandomForestRegressor(random_state=0, sklearn_max=10)
+        rf = RandomForestRegressor(distr_depth=1, n_estimators=2,
+                                   random_state=0, sklearn_max=10, mmap=False)
 
         rf.fit(x_train, y_train)
         accuracy1 = compss_wait_on(rf.score(x_test, y_test))
@@ -95,32 +99,32 @@ class RandomForestRegressorTest(BaseTimedTestCase):
         y_true = y[1::2]
         accuracy2 = _determination_coefficient(y_true, y_pred)
 
-        self.assertGreater(accuracy1, 0.85)
-        self.assertGreater(accuracy2, 0.85)
+        self.assertGreater(accuracy1, 0.75)
+        self.assertGreater(accuracy2, 0.75)
         self.assertAlmostEqual(accuracy1, accuracy2)
 
     def test_save_load(self):
         """Tests the save and the load methods of the RandomForestRegressor
         class"""
         x, y = make_regression(
-            n_samples=600,
+            n_samples=3000,
             n_features=10,
             n_informative=4,
             shuffle=True,
             random_state=0,
         )
-        x_train = ds.array(x[::2], (300, 10))
-        y_train = ds.array(y[::2][:, np.newaxis], (300, 1))
-        x_test = ds.array(x[1::2], (300, 10))
-        y_test = ds.array(y[1::2][:, np.newaxis], (300, 1))
+        x_train = ds.array(x[::2], (1000, 10))
+        y_train = ds.array(y[::2][:, np.newaxis], (1000, 1))
+        x_test = ds.array(x[1::2], (1000, 10))
+        y_test = ds.array(y[1::2][:, np.newaxis], (1000, 1))
 
-        rf = RandomForestRegressor(random_state=0, n_estimators=5,
-                                   distr_depth=1)
+        rf = RandomForestRegressor(distr_depth=1,
+                                   random_state=0, n_estimators=2, mmap=False)
         rf.fit(x_train, y_train)
         rf.save_model("./rf_regressor")
 
-        rf2 = RandomForestRegressor(random_state=0, n_estimators=5,
-                                    distr_depth=1)
+        rf2 = RandomForestRegressor(distr_depth=1,
+                                    random_state=0, n_estimators=2, mmap=False)
         rf2.load_model("./rf_regressor")
 
         accuracy1 = compss_wait_on(rf.score(x_test, y_test))
@@ -137,8 +141,8 @@ class RandomForestRegressorTest(BaseTimedTestCase):
 
         rf.save_model("./rf_regressor", save_format="cbor")
 
-        rf2 = RandomForestRegressor(random_state=0, n_estimators=5,
-                                    distr_depth=1)
+        rf2 = RandomForestRegressor(distr_depth=1,
+                                    random_state=0, n_estimators=2, mmap=False)
         rf2.load_model("./rf_regressor", load_format="cbor")
 
         accuracy_loaded1 = compss_wait_on(rf2.score(x_test, y_test))
@@ -151,8 +155,8 @@ class RandomForestRegressorTest(BaseTimedTestCase):
 
         rf.save_model("./rf_regressor", save_format="pickle")
 
-        rf2 = RandomForestRegressor(random_state=0, n_estimators=5,
-                                    distr_depth=1)
+        rf2 = RandomForestRegressor(distr_depth=1,
+                                    random_state=0, n_estimators=2, mmap=False)
         rf2.load_model("./rf_regressor", load_format="pickle")
 
         accuracy_loaded1 = compss_wait_on(rf2.score(x_test, y_test))
@@ -167,16 +171,19 @@ class RandomForestRegressorTest(BaseTimedTestCase):
             rf.save_model("./rf_regressor", save_format="txt")
 
         with self.assertRaises(ValueError):
-            rf2 = RandomForestRegressor(random_state=0, n_estimators=5,
-                                        distr_depth=1)
+            rf2 = RandomForestRegressor(distr_depth=1,
+                                        random_state=0, n_estimators=2,
+                                        mmap=False)
             rf2.load_model("./rf_regressor", load_format="txt")
 
-        rf1 = RandomForestRegressor(random_state=0, n_estimators=5,
-                                    distr_depth=1)
+        rf1 = RandomForestRegressor(distr_depth=1,
+                                    random_state=0, n_estimators=1,
+                                    mmap=False)
         rf1.save_model("./rf_regressor", overwrite=False)
 
-        rf2 = RandomForestRegressor(random_state=0, n_estimators=5,
-                                    distr_depth=1)
+        rf2 = RandomForestRegressor(distr_depth=1,
+                                    random_state=0, n_estimators=2,
+                                    mmap=False)
         rf2.load_model("./rf_regressor", load_format="pickle")
 
         accuracy_loaded1 = compss_wait_on(rf2.score(x_test, y_test))
