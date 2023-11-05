@@ -354,7 +354,7 @@ def lanczos_svd(a: Array, k, bs, rank, num_sv, tolerance,
             values. Its shape is rank x rank and the block size is bs x bs
         V : ds-array
             The V of the matrix, Unitary array returned as ds-array,
-            the shape is A.shape[1] x rank, and the block size is the bs x bs
+            the shape is A.shape[1] x rank, and the block size is bs x bs
 
         Raises
         ------
