@@ -15,3 +15,13 @@ dislib.decomposition
     :members:
     :undoc-members:
     :show-inheritance:
+
+.. automodule:: dislib.decomposition.lanczos.base
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+.. automodule:: dislib.decomposition.randomsvd.base
+    :members:
+    :undoc-members:
+    :show-inheritance:
