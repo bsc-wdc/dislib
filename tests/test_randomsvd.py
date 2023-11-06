@@ -15,9 +15,9 @@ def create_matrix(m, n):
     return A, singular_values[::-1]
 
 
-class LanczosSVDTest(unittest.TestCase):
+class RandomSVDTest(unittest.TestCase):
 
-    def test_lanczos(self):
+    def test_random(self):
         A, sing_values = create_matrix(10000, 50)
         A = ds.data.array(A, block_size=(2000, 10))
         U, svds, V = random_svd(A, iters=10, epsilon=0.5, tol=1e-3,
@@ -28,7 +28,7 @@ class LanczosSVDTest(unittest.TestCase):
         svds = svds.collect().diagonal()
         self.assertTrue(np.allclose(sing_values[:5], svds[:5]))
 
-    def test_convergence_lanczos(self):
+    def test_convergence_random(self):
         A = ds.data.random_array(shape=(10000, 100), block_size=(2000, 20),
                                  random_state=0)
         U, svds, V = random_svd(A, iters=10, epsilon=0.5, tol=1e-3,
