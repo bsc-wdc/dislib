@@ -21,7 +21,7 @@ class RandomSVDTest(unittest.TestCase):
         A, sing_values = create_matrix(10000, 50)
         A = ds.data.array(A, block_size=(2000, 10))
         U, svds, V = random_svd(A, iters=5, epsilon=0.5, tol=1e-3,
-                                nsv=5, k=20)
+                                nsv=5, k=20, verbose=True)
         self.assertTrue(svds.shape == (20, 20))
         self.assertTrue(U.shape == (A.shape[0], 20))
         self.assertTrue(V.shape == (A.shape[1], 20))
