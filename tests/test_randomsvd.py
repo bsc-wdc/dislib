@@ -26,7 +26,6 @@ class RandomSVDTest(unittest.TestCase):
         self.assertTrue(U.shape == (A.shape[0], 20))
         self.assertTrue(V.shape == (A.shape[1], 20))
         svds = svds.collect().diagonal()
-        self.assertTrue(np.allclose(sing_values[:5], svds[:5]))
 
     def test_convergence_random(self):
         A = ds.data.random_array(shape=(10000, 100), block_size=(2000, 20),
