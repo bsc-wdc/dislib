@@ -5,19 +5,27 @@ from dislib.trees.mmap import (DecisionTreeClassifier as
                                DecisionTreeClassifierMMap,
                                DecisionTreeRegressor as
                                DecisionTreeRegressorMMap)
+from dislib.trees.mmap import (RandomForestClassifier as
+                               RandomForestClassifierMMap,
+                               RfClassifierDataset, RfRegressorDataset,
+                               RandomForestRegressor as
+                               RandomForestRegressorMMap)
 from dislib.trees.distributed import (DecisionTreeClassifier as
                                       DecisionTreeClassifierDistributed,
                                       DecisionTreeRegressor as
                                       DecisionTreeRegressorDistributed)
-from dislib.trees.mmap import (RandomForestClassifier as
-                               RandomForestClassifierMMap,
-                               RfClassifierDataset, RfRegressorDataset)
-from dislib.trees.mmap import (RandomForestRegressor as
-                               RandomForestRegressorMMap)
 from dislib.trees.distributed import (RandomForestClassifier as
                                       RandomForestClassifierDistributed,
                                       RandomForestRegressor as
                                       RandomForestRegressorDistributed)
+from dislib.trees.nested import (DecisionTreeClassifier as
+                                 DecisionTreeClassifierNested,
+                                 DecisionTreeRegressor as
+                                 DecisionTreeRegressorNested)
+from dislib.trees.nested import (RandomForestClassifier as
+                                 RandomForestClassifierNested,
+                                 RandomForestRegressor as
+                                 RandomForestRegressorNested)
 
 
 class BaseRandomForest(BaseEstimator):
@@ -46,6 +54,7 @@ class BaseRandomForest(BaseEstimator):
         split_computation="raw",
         sync_after_fit=True,
         mmap=True,
+        nested=False,
     ):
         self.n_estimators = n_estimators
         self.try_features = try_features
@@ -64,6 +73,7 @@ class BaseRandomForest(BaseEstimator):
         self.split_computation = split_computation
         self.sync_after_fit = sync_after_fit
         self.mmap = mmap
+        self.nested = nested
         self.rf = None
 
     def fit(self, x, y):
@@ -93,27 +103,51 @@ class BaseRandomForest(BaseEstimator):
                     self.distr_depth, self.sklearn_max,
                     self.hard_vote, self.random_state)
         else:
-            if DecisionTreeRegressorDistributed == self.base_tree:
-                self.rf = RandomForestRegressorDistributed(
-                    self.n_estimators, self.try_features, self.max_depth,
-                    self.distr_depth, self.sklearn_max,
-                    self.random_state,
-                    range_max=self.range_max, range_min=self.range_min,
-                    bootstrap=self.bootstrap,
-                    n_split_points=self.n_split_points,
-                    split_computation=self.split_computation,
-                    sync_after_fit=self.sync_after_fit)
+            if self.nested:
+                if DecisionTreeRegressorNested == self.base_tree:
+                    self.rf = RandomForestRegressorNested(
+                        self.n_estimators, self.try_features,
+                        self.max_depth, self.distr_depth,
+                        self.sklearn_max, self.random_state,
+                        range_max=self.range_max,
+                        range_min=self.range_min,
+                        bootstrap=self.bootstrap,
+                        n_split_points=self.n_split_points,
+                        split_computation=self.split_computation,
+                        sync_after_fit=self.sync_after_fit)
+                else:
+                    self.rf = RandomForestClassifierNested(
+                        self.n_classes, self.n_estimators,
+                        self.try_features, self.max_depth,
+                        self.distr_depth, self.sklearn_max,
+                        self.hard_vote, self.random_state,
+                        range_max=self.range_max, range_min=self.range_min,
+                        bootstrap=self.bootstrap,
+                        n_split_points=self.n_split_points,
+                        split_computation=self.split_computation,
+                        sync_after_fit=self.sync_after_fit)
             else:
-                self.rf = RandomForestClassifierDistributed(
-                    self.n_classes, self.n_estimators,
-                    self.try_features, self.max_depth,
-                    self.distr_depth, self.sklearn_max,
-                    self.hard_vote, self.random_state,
-                    range_max=self.range_max, range_min=self.range_min,
-                    bootstrap=self.bootstrap,
-                    n_split_points=self.n_split_points,
-                    split_computation=self.split_computation,
-                    sync_after_fit=self.sync_after_fit)
+                if DecisionTreeRegressorDistributed == self.base_tree:
+                    self.rf = RandomForestRegressorDistributed(
+                        self.n_estimators, self.try_features, self.max_depth,
+                        self.distr_depth, self.sklearn_max,
+                        self.random_state,
+                        range_max=self.range_max, range_min=self.range_min,
+                        bootstrap=self.bootstrap,
+                        n_split_points=self.n_split_points,
+                        split_computation=self.split_computation,
+                        sync_after_fit=self.sync_after_fit)
+                else:
+                    self.rf = RandomForestClassifierDistributed(
+                        self.n_classes, self.n_estimators,
+                        self.try_features, self.max_depth,
+                        self.distr_depth, self.sklearn_max,
+                        self.hard_vote, self.random_state,
+                        range_max=self.range_max, range_min=self.range_min,
+                        bootstrap=self.bootstrap,
+                        n_split_points=self.n_split_points,
+                        split_computation=self.split_computation,
+                        sync_after_fit=self.sync_after_fit)
 
         self.rf.fit(x, y)
         if self.mmap and DecisionTreeClassifierMMap == self.base_tree:
@@ -206,27 +240,51 @@ class BaseRandomForest(BaseEstimator):
                         self.distr_depth, self.sklearn_max,
                         self.hard_vote, self.random_state)
             else:
-                if DecisionTreeRegressorDistributed == self.base_tree:
-                    self.rf = RandomForestRegressorDistributed(
-                        self.n_estimators, self.try_features, self.max_depth,
-                        self.distr_depth, self.sklearn_max,
-                        self.random_state,
-                        range_max=self.range_max, range_min=self.range_min,
-                        bootstrap=self.bootstrap,
-                        n_split_points=self.n_split_points,
-                        split_computation=self.split_computation,
-                        sync_after_fit=self.sync_after_fit)
+                if self.nested:
+                    if DecisionTreeRegressorNested == self.base_tree:
+                        self.rf = RandomForestRegressorNested(
+                            self.n_estimators, self.try_features,
+                            self.max_depth, self.distr_depth,
+                            self.sklearn_max, self.random_state,
+                            range_max=self.range_max,
+                            range_min=self.range_min,
+                            bootstrap=self.bootstrap,
+                            n_split_points=self.n_split_points,
+                            split_computation=self.split_computation,
+                            sync_after_fit=self.sync_after_fit)
+                    else:
+                        self.rf = RandomForestClassifierNested(
+                            self.n_classes, self.n_estimators,
+                            self.try_features, self.max_depth,
+                            self.distr_depth, self.sklearn_max,
+                            self.hard_vote, self.random_state,
+                            range_max=self.range_max, range_min=self.range_min,
+                            bootstrap=self.bootstrap,
+                            n_split_points=self.n_split_points,
+                            split_computation=self.split_computation,
+                            sync_after_fit=self.sync_after_fit)
                 else:
-                    self.rf = RandomForestClassifierDistributed(
-                        self.n_classes, self.n_estimators,
-                        self.try_features, self.max_depth,
-                        self.distr_depth, self.sklearn_max,
-                        self.hard_vote, self.random_state,
-                        range_max=self.range_max, range_min=self.range_min,
-                        bootstrap=self.bootstrap,
-                        n_split_points=self.n_split_points,
-                        split_computation=self.split_computation,
-                        sync_after_fit=self.sync_after_fit)
+                    if DecisionTreeRegressorDistributed == self.base_tree:
+                        self.rf = RandomForestRegressorDistributed(
+                            self.n_estimators, self.try_features,
+                            self.max_depth, self.distr_depth,
+                            self.sklearn_max, self.random_state,
+                            range_max=self.range_max, range_min=self.range_min,
+                            bootstrap=self.bootstrap,
+                            n_split_points=self.n_split_points,
+                            split_computation=self.split_computation,
+                            sync_after_fit=self.sync_after_fit)
+                    else:
+                        self.rf = RandomForestClassifierDistributed(
+                            self.n_classes, self.n_estimators,
+                            self.try_features, self.max_depth,
+                            self.distr_depth, self.sklearn_max,
+                            self.hard_vote, self.random_state,
+                            range_max=self.range_max, range_min=self.range_min,
+                            bootstrap=self.bootstrap,
+                            n_split_points=self.n_split_points,
+                            split_computation=self.split_computation,
+                            sync_after_fit=self.sync_after_fit)
             self.rf.load_model(filepath,
                                load_format=load_format)
 
@@ -291,13 +349,18 @@ class RandomForestClassifier(BaseRandomForest):
     sync_after_fit : bool
         Synchronize or not after the training.
         Used on distributed random forest (non memory map version)
+    mmap : bool
+        Use the memory map version or not.
+    nested : bool
+        Use the nested version or not.
 
     Attributes
     ----------
     classes : None or ndarray
         Array of distinct classes, set at fit().
-    trees : list of DecisionTreeClassifier
-        List of the tree classifiers of this forest, populated at fit().
+    rf : RandomForestClassifier selected
+        Instance of mmap, distributed or nested
+        RandomForestClassifier selected.
     """
 
     def __init__(
@@ -317,6 +380,7 @@ class RandomForestClassifier(BaseRandomForest):
         split_computation="raw",
         sync_after_fit=True,
         mmap=True,
+        nested=False,
     ):
         if mmap:
             super().__init__(
@@ -331,25 +395,48 @@ class RandomForestClassifier(BaseRandomForest):
                 base_dataset=RfClassifierDataset,
             )
         else:
-            super().__init__(
-                n_estimators,
-                try_features,
-                max_depth,
-                distr_depth,
-                sklearn_max,
-                hard_vote,
-                random_state,
-                base_tree=DecisionTreeClassifierDistributed,
-                base_dataset=None,
-                n_classes=n_classes,
-                range_max=range_max,
-                range_min=range_min,
-                bootstrap=bootstrap,
-                n_split_points=n_split_points,
-                split_computation=split_computation,
-                sync_after_fit=sync_after_fit,
-                mmap=mmap,
-            )
+            if nested:
+                super().__init__(
+                    n_estimators,
+                    try_features,
+                    max_depth,
+                    distr_depth,
+                    sklearn_max,
+                    hard_vote,
+                    random_state,
+                    base_tree=DecisionTreeClassifierNested,
+                    base_dataset=None,
+                    n_classes=n_classes,
+                    range_max=range_max,
+                    range_min=range_min,
+                    bootstrap=bootstrap,
+                    n_split_points=n_split_points,
+                    split_computation=split_computation,
+                    sync_after_fit=sync_after_fit,
+                    mmap=mmap,
+                    nested=nested,
+                )
+            else:
+                super().__init__(
+                    n_estimators,
+                    try_features,
+                    max_depth,
+                    distr_depth,
+                    sklearn_max,
+                    hard_vote,
+                    random_state,
+                    base_tree=DecisionTreeClassifierDistributed,
+                    base_dataset=None,
+                    n_classes=n_classes,
+                    range_max=range_max,
+                    range_min=range_min,
+                    bootstrap=bootstrap,
+                    n_split_points=n_split_points,
+                    split_computation=split_computation,
+                    sync_after_fit=sync_after_fit,
+                    mmap=mmap,
+                    nested=nested
+                )
 
     def predict(self, x):
         """Predicts target classes using a fitted forest.
@@ -520,11 +607,36 @@ class RandomForestRegressor(BaseRandomForest):
         If RandomState instance, random_state is the random number generator;
         If None, the random number generator is the RandomState instance used
         by `np.random`.
+    n_classes : int
+        Number of classes that appear on the dataset. Only needed on
+        distributed random forest.
+    range_min : ds-array or np.array
+        Contains the minimum values of the different attributes of the dataset
+        Only used on distributed random forest (it is an optional parameter)
+    range_max : ds-array or np.array
+        Contains the maximum values of the different attributes of the dataset
+        Only used on distributed random forest (it is an optional parameter)
+    n_split_points : String or int
+        Number of split points to evaluate.
+        "auto", "sqrt" or integer value.
+        Used on distributed random forest (non memory map version)
+    split_computation : String
+        "raw", "gaussian_approximation" or "uniform_approximation"
+        distribution of the values followed by the split points selected.
+        Used on distributed random forest (non memory map version)
+    sync_after_fit : bool
+        Synchronize or not after the training.
+        Used on distributed random forest (non memory map version)
+    mmap : bool
+        Use the memory map version of the algorithm or not
+    nested : bool
+        Use the nested version of the algorithm or not
 
     Attributes
     ----------
-    trees : list of DecisionTreeRegressor
-        List of the tree regressors of this forest, populated at fit().
+     rf : RandomForestRegressor selected
+        Instance of mmap, distributed or nested
+        RandomForestRegressor selected.
     """
 
     def __init__(
@@ -542,6 +654,7 @@ class RandomForestRegressor(BaseRandomForest):
         split_computation="raw",
         sync_after_fit=True,
         mmap=True,
+        nested=False,
     ):
         hard_vote = None
         if mmap:
@@ -557,24 +670,46 @@ class RandomForestRegressor(BaseRandomForest):
                 base_dataset=RfRegressorDataset,
             )
         else:
-            super().__init__(
-                n_estimators,
-                try_features,
-                max_depth,
-                distr_depth,
-                sklearn_max,
-                hard_vote,
-                random_state,
-                base_tree=DecisionTreeRegressorDistributed,
-                base_dataset=None,
-                range_max=range_max,
-                range_min=range_min,
-                bootstrap=bootstrap,
-                n_split_points=n_split_points,
-                split_computation=split_computation,
-                sync_after_fit=sync_after_fit,
-                mmap=mmap,
-            )
+            if nested:
+                super().__init__(
+                    n_estimators,
+                    try_features,
+                    max_depth,
+                    distr_depth,
+                    sklearn_max,
+                    hard_vote,
+                    random_state,
+                    base_tree=DecisionTreeRegressorNested,
+                    base_dataset=None,
+                    range_max=range_max,
+                    range_min=range_min,
+                    bootstrap=bootstrap,
+                    n_split_points=n_split_points,
+                    split_computation=split_computation,
+                    sync_after_fit=sync_after_fit,
+                    mmap=mmap,
+                    nested=nested,
+                )
+            else:
+                super().__init__(
+                    n_estimators,
+                    try_features,
+                    max_depth,
+                    distr_depth,
+                    sklearn_max,
+                    hard_vote,
+                    random_state,
+                    base_tree=DecisionTreeRegressorDistributed,
+                    base_dataset=None,
+                    range_max=range_max,
+                    range_min=range_min,
+                    bootstrap=bootstrap,
+                    n_split_points=n_split_points,
+                    split_computation=split_computation,
+                    sync_after_fit=sync_after_fit,
+                    mmap=mmap,
+                    nested=nested,
+                )
 
     def predict(self, x):
         """Predicts target values using a fitted forest.

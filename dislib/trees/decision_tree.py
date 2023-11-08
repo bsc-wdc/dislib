@@ -6,10 +6,15 @@ from dislib.trees.distributed import (DecisionTreeClassifier as
                                       DecisionTreeClassifierDistributed)
 from dislib.trees.distributed import (DecisionTreeRegressor as
                                       DecisionTreeRegressorDistributed)
+from dislib.trees.nested import (DecisionTreeClassifier as
+                                 DecisionTreeClassifierNested)
+from dislib.trees.nested import (DecisionTreeRegressor as
+                                 DecisionTreeRegressorNested)
 from sklearn.tree import DecisionTreeClassifier as SklearnDTClassifier
 from sklearn.tree import DecisionTreeRegressor as SklearnDTRegressor
 from dislib.trees.distributed.decision_tree import (_RegressionNode,
                                                     _ClassificationNode)
+from pycompss.api.api import compss_wait_on
 
 
 class BaseDecisionTree:
@@ -36,6 +41,7 @@ class BaseDecisionTree:
         split_computation="raw",
         sync_after_fit=True,
         mmap=True,
+        nested=False,
     ):
         self.try_features = try_features
         self.max_depth = max_depth
@@ -60,13 +66,17 @@ class BaseDecisionTree:
         self.sync_after_fit = sync_after_fit
 
         self.mmap = mmap
+        self.nested = nested
 
     def fit(self, dataset):
         """Fits the DecisionTree.
 
         Parameters
         ----------
-        dataset : dislib.classification.rf._data.RfDataset
+        dataset : dislib.trees.mmap.RfDataset / ds-array
+        It has to be dislib.trees.mmap.RfDataset if the mmap decision tree
+        is used. When using distributed or nested decision tree the input
+        to this function should be of type ds-array.
         """
         if self.mmap:
             if SklearnDTRegressor == self.base_tree:
@@ -82,26 +92,46 @@ class BaseDecisionTree:
                     self.bootstrap, self.random_state
                 )
         else:
-            if SklearnDTRegressor == self.base_tree:
-                self.tree = DecisionTreeRegressorDistributed(
-                    self.try_features, self.max_depth,
-                    self.distr_depth, self.sklearn_max,
-                    self.bootstrap, self.random_state,
-                    self.range_max, self.range_min,
-                    self.n_split_points, self.split_computation,
-                    self.sync_after_fit
-                )
+            if self.nested:
+                if SklearnDTRegressor == self.base_tree:
+                    self.tree = DecisionTreeRegressorNested(
+                        self.try_features, self.max_depth,
+                        self.distr_depth, self.sklearn_max,
+                        self.bootstrap, self.random_state,
+                        self.range_max, self.range_min,
+                        self.n_split_points, self.split_computation,
+                        self.sync_after_fit)
+                else:
+                    self.tree = DecisionTreeClassifierNested(
+                        self.n_classes,
+                        self.try_features, self.max_depth,
+                        self.distr_depth, self.sklearn_max,
+                        self.bootstrap, self.random_state,
+                        self.range_max, self.range_min,
+                        self.n_split_points, self.split_computation,
+                        self.sync_after_fit)
             else:
-                self.tree = DecisionTreeClassifierDistributed(
-                    self.try_features, self.max_depth,
-                    self.distr_depth, self.sklearn_max,
-                    self.bootstrap, self.random_state,
-                    self.n_classes, self.range_max, self.range_min,
-                    self.n_split_points, self.split_computation,
-                    self.sync_after_fit
-                )
+                if SklearnDTRegressor == self.base_tree:
+                    self.tree = DecisionTreeRegressorDistributed(
+                        self.try_features, self.max_depth,
+                        self.distr_depth, self.sklearn_max,
+                        self.bootstrap, self.random_state,
+                        self.range_max, self.range_min,
+                        self.n_split_points, self.split_computation,
+                        self.sync_after_fit
+                    )
+                else:
+                    self.tree = DecisionTreeClassifierDistributed(
+                        self.try_features, self.max_depth,
+                        self.distr_depth, self.sklearn_max,
+                        self.bootstrap, self.random_state,
+                        self.n_classes, self.range_max, self.range_min,
+                        self.n_split_points, self.split_computation,
+                        self.sync_after_fit
+                    )
+        self.tree.fit(dataset)
 
-    def predict(self, x_row):
+    def predict(self, x_row, collect=False):
         """Predicts target values or classes for the given samples using
         a fitted tree.
 
@@ -109,6 +139,12 @@ class BaseDecisionTree:
         ----------
         x_row : ds-array
             A row block of samples.
+
+        collect : boolean
+            Only affects nested and distributed versions of the algorithm.
+            When True, the results are synchronized before the returning,
+            when False, no synchronization is done, but the user should do it
+            manually when he/she wants the results.
 
         Returns
         -------
@@ -123,7 +159,13 @@ class BaseDecisionTree:
         if self.mmap:
             return self.tree.predict(x_row)
         else:
-            return self.tree.predict(x_row, collect=False)
+            if self.nested:
+                prediction = self.tree.predict(x_row)
+                if collect:
+                    prediction = compss_wait_on(prediction)
+                return prediction
+            else:
+                return self.tree.predict(x_row, collect=collect)
 
 
 class DecisionTreeClassifier(BaseDecisionTree):
@@ -148,6 +190,30 @@ class DecisionTreeClassifier(BaseDecisionTree):
         forests).
     random_state : RandomState instance
         The random number generator.
+    n_classes : int
+        Number of classes that appear on the dataset. Only needed on
+        distributed random forest.
+    range_min : ds-array or np.array
+        Contains the minimum values of the different attributes of the dataset
+        Only used on distributed random forest (it is an optional parameter)
+    range_max : ds-array or np.array
+        Contains the maximum values of the different attributes of the dataset
+        Only used on distributed random forest (it is an optional parameter)
+    n_split_points : String or int
+        Number of split points to evaluate.
+        "auto", "sqrt" or integer value.
+        Used on distributed random forest (non memory map version)
+    split_computation : String
+        "raw", "gaussian_approximation" or "uniform_approximation"
+        distribution of the values followed by the split points selected.
+        Used on distributed random forest (non memory map version)
+    sync_after_fit : bool
+        Synchronize or not after the training.
+        Used on distributed random forest (non memory map version)
+    mmap : bool
+        Use the memory map version or not
+    nested : bool
+        Use the nested version or not
 
     Attributes
     ----------
@@ -175,7 +241,7 @@ class DecisionTreeClassifier(BaseDecisionTree):
     predict(x_row)
         Predicts classes for the given samples using a fitted tree.
     predict_proba(x_row)
-        Predicts class probabilities for the given smaples using a fitted tree.
+        Predicts class probabilities for the given samples using a fitted tree.
 
     """
 
@@ -194,6 +260,7 @@ class DecisionTreeClassifier(BaseDecisionTree):
         split_computation="raw",
         sync_after_fit=True,
         mmap=True,
+        nested=False,
     ):
         super().__init__(
             try_features,
@@ -211,15 +278,22 @@ class DecisionTreeClassifier(BaseDecisionTree):
             split_computation=split_computation,
             sync_after_fit=sync_after_fit,
             mmap=mmap,
+            nested=nested,
         )
 
-    def predict_proba(self, x_row):
+    def predict_proba(self, x_row, collect=False):
         """Predicts class probabilities for a row block using a fitted tree.
 
         Parameters
         ----------
         x_row : ds-array
             A row block of samples.
+
+        collect : boolean
+            Only affects nested and distributed versions of the algorithm.
+            When True, the results are synchronized before the returning,
+            when False, no synchronization is done, but the user should do it
+            manually when he/she wants the results.
 
         Returns
         -------
@@ -235,7 +309,13 @@ class DecisionTreeClassifier(BaseDecisionTree):
         if self.mmap:
             return self.tree.predict_proba(x_row)
         else:
-            return self.tree.predict_proba(x_row, collect=False)
+            if self.nested:
+                prediction = self.tree.predict_proba(x_row)
+                if collect:
+                    prediction = compss_wait_on(prediction)
+                return prediction
+            else:
+                return self.tree.predict_proba(x_row, collect=collect)
 
 
 class DecisionTreeRegressor(BaseDecisionTree):
@@ -260,6 +340,27 @@ class DecisionTreeRegressor(BaseDecisionTree):
         forests).
     random_state : RandomState instance
         The random number generator.
+    range_min : ds-array or np.array
+        Contains the minimum values of the different attributes of the dataset
+        Only used on distributed random forest (it is an optional parameter)
+    range_max : ds-array or np.array
+        Contains the maximum values of the different attributes of the dataset
+        Only used on distributed random forest (it is an optional parameter)
+    n_split_points : String or int
+        Number of split points to evaluate.
+        "auto", "sqrt" or integer value.
+        Used on distributed random forest (non memory map version)
+    split_computation : String
+        "raw", "gaussian_approximation" or "uniform_approximation"
+        distribution of the values followed by the split points selected.
+        Used on distributed random forest (non memory map version)
+    sync_after_fit : bool
+        Synchronize or not after the training.
+        Used on distributed random forest (non memory map version)
+    mmap : bool
+        Use the memory map version or not
+    nested : bool
+        Use the nested version or not
 
     Attributes
     ----------
@@ -299,6 +400,7 @@ class DecisionTreeRegressor(BaseDecisionTree):
         split_computation="raw",
         sync_after_fit=True,
         mmap=True,
+        nested=False,
     ):
         super().__init__(
             try_features,
@@ -315,4 +417,5 @@ class DecisionTreeRegressor(BaseDecisionTree):
             split_computation=split_computation,
             sync_after_fit=sync_after_fit,
             mmap=mmap,
+            nested=nested,
         )

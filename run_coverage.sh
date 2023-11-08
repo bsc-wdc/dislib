@@ -2,6 +2,10 @@
 
 # Run the coverage of the dislib using the tests in ./tests (sequential)
 coverage3 run --source dislib tests
+# Run the coverage of the dislib using the tests in ./tests_nesting (sequential)
+coverage3 run --source dislib tests_nesting
+# Create the report
+coverage3 report
 # Report coverage results to the CLI.
 coverage3 report -m
 # Upload coverage report to codecov.io
