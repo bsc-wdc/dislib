@@ -11,7 +11,7 @@ def setGithubCommitStatus(state, description) {
 
 pipeline {
     options {
-        timeout(time: 5, unit: 'HOURS')
+        timeout(time: 6, unit: 'HOURS')
     }
     agent {
         node {
