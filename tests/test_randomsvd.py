@@ -27,11 +27,15 @@ class RandomSVDTest(unittest.TestCase):
         self.assertTrue(V.shape == (A.shape[1], 20))
         svds = svds.collect().diagonal()
 
+        A, sing_values = create_matrix(10000, 50)
+        A = ds.data.array(A, block_size=(10000, 10))
+        random_svd(A, iters=5, epsilon=0.5, tol=1e-3, verbose=True)
+
     def test_convergence_random(self):
         A = ds.data.random_array(shape=(10000, 100), block_size=(2000, 20),
                                  random_state=0)
         U, svds, V = random_svd(A, iters=5, epsilon=0.4, tol=1e-3,
-                                nsv=20, k=40)
+                                nsv=20, k=40, verbose=True)
         svds = svds.collect().diagonal()
         self.assertTrue(len(svds) == 60)
 

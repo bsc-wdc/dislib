@@ -89,11 +89,6 @@ def _get_all_cols(A, i):
 
 
 @task(returns=1)
-def _R_expand_task(R_block, b):
-    return np.pad(R_block, (0, b))
-
-
-@task(returns=1)
 def _norm(b):
     return np.linalg.norm(b, axis=0)
 
@@ -118,12 +113,6 @@ def my_norm(A):
         else:
             norms.append(col[0])
     return norms
-
-
-def R_expand(R, b):
-    R._blocks[0][0] = _R_expand_task(R._blocks[0][0], b)
-    R._shape = (R.shape[0] + b, R.shape[1] + b)
-    R._reg_shape = (R.shape[0] + b, R.shape[1] + b)
 
 
 def nsv_tolerance(m, n, nsv, S):

@@ -47,7 +47,7 @@ class LanczosSVDTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             lanczos_svd(A, 40, 20, 40, 20, 0.0001, 0.0001, 2)
         with self.assertRaises(ValueError):
-            lanczos_svd(A, 43, 20, 77, 20, 0.0001, 0.0001, 2)
+            lanczos_svd(A, 99, 20, 77, 20, 0.0001, 0.0001, 2)
 
 
 def main():
