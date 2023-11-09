@@ -1,7 +1,8 @@
 #!/bin/bash -e
 
 # Run the coverage of the dislib using the tests in ./tests (sequential)
-coverage3 run --source dislib tests_coverage
+coverage3 run --source dislib tests
+coverage3 run -a --source dislib tests_nesting
 # Create the report
 coverage3 report
 # Report coverage results to the CLI.
