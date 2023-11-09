@@ -231,7 +231,7 @@ def tsqr(a: Array, mode="complete", indexes=None):
                         shape_to_use = a._reg_shape[0]
                     q_blocks = [[object() for _ in range(number_blocks)]
                                 for _ in range(auxiliar_rs)]
-                    q_blocks_2 = [[]]
+                    q_blocks_2 = [[object()]]
                     r_blocks = [[object() for _ in range(len(block))]
                                 for _ in range(number_blocks)]
                     if (irregular_shape_to_use != 0
