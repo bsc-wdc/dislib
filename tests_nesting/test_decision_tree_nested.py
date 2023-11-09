@@ -3,6 +3,7 @@ from tests import BaseTimedTestCase
 import numpy as np
 import dislib as ds
 import dislib.trees.nested.decision_tree as dt_nested
+from dislib.trees.nested.tasks import filter_fragment
 from pycompss.api.api import compss_wait_on
 from sklearn.metrics import r2_score, accuracy_score
 from sklearn.datasets import make_classification, make_regression
@@ -455,6 +456,7 @@ def test_auxiliar_functions():
     produces_split = compss_wait_on(produces_split)
     condition = condition and np.all(mse_value == np.array([np.inf]))
     condition = condition and produces_split is False
+
     return condition
 
 
@@ -882,6 +884,12 @@ class RandomForestRegressorTest(BaseTimedTestCase):
                                                          [None])
         self.assertTrue(np.all(mse_value == np.array([np.inf])))
         self.assertTrue(produces_split is False)
+
+        fragment_buckets = [[object()]]
+        filter_fragment([], fragment_buckets, np.array([2, 3]),
+                        3, range_min=[0], range_max=[1],
+                        indexes_selected=np.array([0]))
+        self.assertTrue(fragment_buckets == [[[]]])
 
 
 @task()

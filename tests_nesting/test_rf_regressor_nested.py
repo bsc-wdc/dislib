@@ -31,7 +31,7 @@ def test_make_regression():
     x_test = ds.array(x[1::2], (4000, 20))
     y_test = ds.array(y[1::2][:, np.newaxis], (4000, 1))
 
-    rf = RandomForestRegressor(distr_depth=2, random_state=0,
+    rf = RandomForestRegressor(distr_depth=1, random_state=0,
                                n_estimators=2, mmap=False,
                                nested=True)
 
