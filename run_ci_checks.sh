@@ -16,7 +16,7 @@ echo "Running tests"
 
 echo "Running nesting tests"
 # Run the tests in ./tests with PyCOMPSs
-./run_tests_nesting.sh
+./run_test_nesting.sh
 
 echo "Running code coverage"
 ./run_coverage.sh

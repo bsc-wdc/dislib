@@ -1,8 +1,8 @@
 #!/bin/bash
 
-base_app_dir="$HOME/Documentos/GitHub/dislib/tests_nesting/"
+base_app_dir="$(pwd)/tests_nesting/"
 COMPSs_log_folder="/tmp/COMPSsWorker01"
-target_log_folder="$HOME/Documentos/GitHub/dislib/"
+target_log_folder="$(pwd)"
 retry_num=1
 
 echo $base_app_dir
@@ -40,7 +40,7 @@ port_offset=100
 
 for file in "${base_app_dir}"test_*; do
 
-  corresponding_file=$(echo "${file}" | cut -d '/' -f8)
+  corresponding_file=$(echo "${file}" | cut -d '/' -f4)
   corresponding_file=$(echo "${corresponding_file}" | cut -d '.' -f1)
 
   log_dir="${COMPSs_log_folder}/${app_name}_0${retry_num}/"
