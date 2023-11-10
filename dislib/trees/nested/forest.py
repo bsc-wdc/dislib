@@ -163,7 +163,7 @@ class BaseRandomForest(BaseEstimator):
             Format used to save the models.
         Examples
         --------
-        >>> from dislib.cluster import DecisionTreeClassifier
+        >>> from dislib.trees import DecisionTreeClassifier
         >>> import numpy as np
         >>> import dislib as ds
         >>> x = np.array([[1, 2], [1, 4], [1, 0], [4, 2], [4, 4], [4, 0]])
@@ -176,7 +176,7 @@ class BaseRandomForest(BaseEstimator):
         >>> model_pred = model.predict(x_test)
         >>> loaded_model_pred = loaded_model.predict(x_test)
         >>> assert np.allclose(model_pred.collect(),
-        loaded_model_pred.collect())
+        >>> loaded_model_pred.collect())
         """
 
         # Check overwrite
@@ -219,7 +219,7 @@ class BaseRandomForest(BaseEstimator):
             Format used to load the model.
         Examples
         --------
-        >>> from dislib.cluster import DecisionTreeClassifier
+        >>> from dislib.trees import DecisionTreeClassifier
         >>> import numpy as np
         >>> import dislib as ds
         >>> x = np.array([[1, 2], [1, 4], [1, 0], [4, 2], [4, 4], [4, 0]])
