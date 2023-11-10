@@ -55,6 +55,7 @@ class BaseDecisionTree:
         self.n_split_points = n_split_points
         self.split_computation = split_computation
         self.sync_after_fit = sync_after_fit
+
     def fit(self, x, y):
         """Fits the DecisionTree.
 

@@ -196,6 +196,42 @@ Build a random forest for classification.
 :class:`trees.RandomForestRegressor <dislib.trees.RandomForestClassifier>` -
 Build a random forest for regression.
 
+:class:`trees.mmap.DecisionTreeClassifier <dislib.trees.mmap.DecisionTreeClassifier>` -
+Build a decision tree using memorymap.
+
+:class:`trees.mmap.DecisionTreeRegressor <dislib.trees.mmap.DecisionTreeRegressor>` -
+Build a regression tree using memorymap.
+
+:class:`trees.mmap.RandomForestClassifier <dislib.trees.mmap.RandomForestClassifier>` -
+Build a random forest for classification using memorymap.
+
+:class:`trees.mmap.RandomForestRegressor <dislib.trees.mmap.RandomForestClassifier>` -
+Build a random forest for regression using memorymap.
+
+:class:`trees.distributed.DecisionTreeClassifier <dislib.trees.distributed.DecisionTreeClassifier>` -
+Build a decision tree using the distributed approach.
+
+:class:`trees.distributed.DecisionTreeRegressor <dislib.trees.distributed.DecisionTreeRegressor>` -
+Build a regression tree using the distributed approach.
+
+:class:`trees.distributed.RandomForestClassifier <dislib.trees.distributed.RandomForestClassifier>` -
+Build a random forest for classification using the distributed approach.
+
+:class:`trees.distributed.RandomForestRegressor <dislib.trees.distributed.RandomForestClassifier>` -
+Build a random forest for regression using the distributed approach.
+
+:class:`trees.nested.DecisionTreeClassifier <dislib.trees.nested.DecisionTreeClassifier>` -
+Build a decision tree using the nested approach.
+
+:class:`trees.nested.DecisionTreeRegressor <dislib.trees.nested.DecisionTreeRegressor>` -
+Build a regression tree using the nested approach.
+
+:class:`trees.nested.RandomForestClassifier <dislib.trees.nested.RandomForestClassifier>` -
+Build a random forest for classification using the nested approach.
+
+:class:`trees.nested.RandomForestRegressor <dislib.trees.nested.RandomForestClassifier>` -
+Build a random forest for regression using the nested approach.
+
 
 dislib.utils: Utility functions
 -------------------------------------
