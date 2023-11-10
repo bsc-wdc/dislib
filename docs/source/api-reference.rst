@@ -111,6 +111,12 @@ Tall-Skinny QR decomposition.
 Principal
 Component Analysis (PCA).
 
+:class:`decomposition.lanczos_svd <dislib.decomposition.lanczos.base.lanczos_svd>` -
+Lanczos SVD decomposition.
+
+:class:`decomposition.random_svd <dislib.decomposition.randomsvd.base.random_svd>` -
+Random SVD decomposition.
+
 
 dislib.math: Mathematical functions
 -----------------------------------
