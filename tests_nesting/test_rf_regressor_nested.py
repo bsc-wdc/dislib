@@ -418,6 +418,11 @@ def main():
     test2 = test_make_regression_predict_and_distr_depth()
     test3 = test_make_regression_sklearn_max_predict()
     test4 = test_save_load()
+    print("TEST", flush=True)
+    print(test)
+    print(test2)
+    print(test3)
+    print(test4, flush=True)
     test = test and test2 and test3 and test4
     if test:
         print("Result tests: Passed", flush=True)
