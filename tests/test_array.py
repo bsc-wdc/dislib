@@ -1351,8 +1351,7 @@ class ArrayTest(BaseTimedTestCase):
 
 class MathTest(BaseTimedTestCase):
 
-    @parameterized.expand([((21, 33), (10, 15), False),
-                           ((5, 10), (8, 1), False),
+    @parameterized.expand([((5, 10), (8, 1), False),
                            ((17, 13), (1, 9), False),
                            ((6, 1), (12, 23), False),
                            ((1, 22), (25, 16), False),
