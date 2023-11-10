@@ -380,6 +380,15 @@ class DecisionTreeRegressor(BaseDecisionTree):
         )
 
     def fit(self, x, y):
+        """Fits the DecisionTreeRegressor.
+
+        Parameters
+        ----------
+        x : ds-array
+            Samples of the dataset.
+        y: ds-array
+            Labels of the dataset.
+        """
         if self.range_max is None:
             self.range_max = x.max()
         if self.range_min is None:
