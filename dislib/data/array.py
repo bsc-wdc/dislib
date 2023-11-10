@@ -979,6 +979,8 @@ class Array(object):
                      reg_shape=self._reg_shape,
                      shape=(self._shape[0], len(cols)), sparse=self._sparse)
 
+    @constraint()
+    @task()
     def transpose(self, mode='rows'):
         """
         Returns the transpose of the ds-array following the method indicated by
