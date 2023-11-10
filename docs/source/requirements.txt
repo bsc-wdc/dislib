@@ -6,4 +6,4 @@ cvxpy>=1.1.5
 m2r
 docutils<0.18
 mistune==0.8.4
-scipy-sphinx-theme-v2
+sphinx-rtd-theme
