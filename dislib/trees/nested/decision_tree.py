@@ -55,9 +55,6 @@ class BaseDecisionTree:
         self.n_split_points = n_split_points
         self.split_computation = split_computation
         self.sync_after_fit = sync_after_fit
-
-    @constraint(computing_units="${ComputingUnits}")
-    @task()
     def fit(self, x, y):
         """Fits the DecisionTree.
 
@@ -68,6 +65,11 @@ class BaseDecisionTree:
         y: ds-array
             Labels of the dataset.
         """
+        self._fit(x, y)
+
+    @constraint(computing_units="${ComputingUnits}")
+    @task()
+    def _fit(self, x, y):
         if self.range_max is None:
             self.range_max = x.max()
         if self.range_min is None:
@@ -133,8 +135,6 @@ class BaseDecisionTree:
         nodes_info = compss_wait_on(nodes_info)
         self.nodes_info = nodes_info
 
-    @constraint(computing_units="${ComputingUnits}")
-    @task(returns=list)
     def predict(self, x):
         """Predicts target values or classes for the given samples using
         a fitted tree.
@@ -152,6 +152,11 @@ class BaseDecisionTree:
             dislib.classification.rf.data.RfDataset. The returned object can
             be a pycompss.runtime.Future object.
         """
+        return self._predict(x)
+
+    @constraint(computing_units="${ComputingUnits}")
+    @task(returns=list)
+    def _predict(self, x):
         assert self.tree is not None, "The decision tree is not fitted."
 
         block_predictions = []
@@ -247,31 +252,34 @@ class DecisionTreeClassifier(BaseDecisionTree):
             sync_after_fit=sync_after_fit,
         )
 
-    @constraint(computing_units="${ComputingUnits}")
-    @task(returns=1)
     def predict_proba(self, x):
         """Predicts class probabilities for a row block using a fitted tree.
 
-                Parameters
-                ----------
-                x_row : ds-array
-                    A row block of samples.
+        Parameters
+        ----------
+        x_row : ds-array
+            A row block of samples.
 
-                Returns
-                -------
-                predicted_proba : list
-                    A list with the predicted probabilities
-                    for the given samples.
-                    It contains a numpy array (if collect=True)
-                    or Future object (if collect=False) for each of the blocks
-                    in the ds-array to predict.
-                    Thus the length of the list is the same
-                    as the number of blocks the ds-array contains.
-                    The shape inside each prediction is (len(x.reg_shape[0]),
-                     self.n_classes).
-                    The returned object can be a
-                    pycompss.runtime.Future object.
-                """
+        Returns
+        -------
+        predicted_proba : list
+            A list with the predicted probabilities
+            for the given samples.
+            It contains a numpy array (if collect=True)
+            or Future object (if collect=False) for each of the blocks
+            in the ds-array to predict.
+            Thus the length of the list is the same
+            as the number of blocks the ds-array contains.
+            The shape inside each prediction is (len(x.reg_shape[0]),
+             self.n_classes).
+            The returned object can be a
+            pycompss.runtime.Future object.
+        """
+        return self._predict_proba(x)
+
+    @constraint(computing_units="${ComputingUnits}")
+    @task(returns=1)
+    def _predict_proba(self, x):
 
         assert self.tree is not None, "The decision tree is not fitted."
 
@@ -362,8 +370,6 @@ class DecisionTreeRegressor(BaseDecisionTree):
             sync_after_fit=sync_after_fit,
         )
 
-    @constraint(computing_units="${ComputingUnits}")
-    @task()
     def fit(self, x, y):
         """Fits the DecisionTreeRegressor.
 
@@ -374,6 +380,11 @@ class DecisionTreeRegressor(BaseDecisionTree):
         y: ds-array
             Labels of the dataset.
         """
+        self._fit(x, y)
+
+    @constraint(computing_units="${ComputingUnits}")
+    @task()
+    def _fit(self, x, y):
         if self.range_max is None:
             self.range_max = x.max()
         if self.range_min is None:
