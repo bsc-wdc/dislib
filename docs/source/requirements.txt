@@ -7,3 +7,5 @@ cvxpy
 m2r
 docutils<0.18
 mistune==0.8.4
+readthedocs-sphinx-ext==2.3
+jinja2==3.1.0
