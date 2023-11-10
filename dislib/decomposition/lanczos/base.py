@@ -377,6 +377,9 @@ def lanczos_svd(a: Array, k, bs, rank, num_sv, tolerance,
         raise ValueError("K defines the number of iterations of the "
                          "algorithm, the iterations are k/bs, it should"
                          " be higher than the Rank.")
+    if k % bs != 0 or rank % bs != 0:
+        raise ValueError("K and Rank must be multiple of BS.")
+
     Q = ds.zeros((m, k), block_size=(a._reg_shape[0], bs))
     P = ds.zeros(shape=(n, k), block_size=(bs, bs))
     np.random.seed(0)
