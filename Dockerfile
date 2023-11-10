@@ -1,4 +1,4 @@
-FROM compss/compss-tutorial:3.1
+FROM compss/compss-tutorial:3.3
 MAINTAINER COMPSs Support <support-compss@bsc.es>
 
 COPY . dislib/
