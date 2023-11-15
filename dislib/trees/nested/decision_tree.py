@@ -223,13 +223,13 @@ class DecisionTreeClassifier(BaseDecisionTree):
 
     def __init__(
             self,
-            n_classes,
             try_features,
             max_depth,
             distr_depth,
             sklearn_max,
             bootstrap,
             random_state,
+            n_classes=None,
             range_min=None,
             range_max=None,
             n_split_points="auto",

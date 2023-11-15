@@ -7,6 +7,8 @@ from dislib.trees.nested.tasks import filter_fragment
 from pycompss.api.api import compss_wait_on
 from sklearn.metrics import r2_score, accuracy_score
 from sklearn.datasets import make_classification, make_regression
+from dislib.trees.decision_tree import DecisionTreeClassifier, \
+    DecisionTreeRegressor
 
 
 def test_decision_tree_classifier():
@@ -110,19 +112,21 @@ def test_decision_tree_classifier():
     rang_max._blocks = compss_wait_on(rang_max._blocks)
     rang_min._blocks = compss_wait_on(rang_min._blocks)
     # Test tree
-    tree = dt_nested.DecisionTreeClassifier(
-        3,
+    tree = DecisionTreeClassifier(
         try_features,
         max_depth,
         distr_depth,
         sklearn_max,
         bootstrap,
         random_state,
+        n_classes=3,
         range_max=rang_max,
         range_min=rang_min,
         n_split_points=2,
         split_computation="raw",
         sync_after_fit=True,
+        mmap=False,
+        nested=True,
     )
     tree.fit(x1_ds, y1_ds)
 
@@ -134,17 +138,19 @@ def test_decision_tree_classifier():
 
     random_state = np.random.RandomState(seed)
 
-    tree = dt_nested.DecisionTreeClassifier(
-        3,
+    tree = DecisionTreeClassifier(
         try_features,
         max_depth,
         distr_depth,
         sklearn_max,
         bootstrap,
         random_state,
+        n_classes=3,
         n_split_points="auto",
         split_computation="raw",
         sync_after_fit=True,
+        mmap=False,
+        nested=True,
     )
 
     tree.fit(x1_ds, y1_ds)
@@ -171,17 +177,19 @@ def test_decision_tree_classifier():
     x_train = ds.array(x[::2], (50, 10))
     y_train = ds.array(y[::2][:, np.newaxis], (50, 1))
 
-    tree = dt_nested.DecisionTreeClassifier(
-        3,
+    tree = DecisionTreeClassifier(
         try_features,
         max_depth,
         distr_depth,
         sklearn_max,
         bootstrap,
         random_state,
+        n_classes=3,
         n_split_points="sqrt",
         split_computation="uniform_approximation",
         sync_after_fit=True,
+        mmap=False,
+        nested=True,
     )
 
     tree.fit(x1_ds, y1_ds)
@@ -194,17 +202,19 @@ def test_decision_tree_classifier():
 
     random_state = np.random.RandomState(seed)
 
-    tree = dt_nested.DecisionTreeClassifier(
-        3,
+    tree = DecisionTreeClassifier(
         try_features,
         max_depth,
         2,
         sklearn_max,
         bootstrap,
         random_state,
+        n_classes=3,
         n_split_points=0.444,
         split_computation="gaussian_approximation",
         sync_after_fit=True,
+        mmap=False,
+        nested=True,
     )
     tree.fit(x_train, y_train)
     y_pred = compss_wait_on(tree.predict(x_train))
@@ -274,7 +284,7 @@ def test_decision_tree_regressor():
     rang_min._blocks = compss_wait_on(rang_min._blocks)
 
     # Test tree
-    tree = dt_nested.DecisionTreeRegressor(
+    tree = DecisionTreeRegressor(
         try_features,
         max_depth,
         distr_depth,
@@ -286,13 +296,15 @@ def test_decision_tree_regressor():
         n_split_points=2,
         split_computation="raw",
         sync_after_fit=True,
+        mmap=False,
+        nested=True,
     )
     tree.fit(x1_ds, y1_ds)
     y_pred = compss_wait_on(tree.predict(x2_ds))
     y_pred = np.block(y_pred)
     condition = condition and r2_score(y_pred.flatten(), y2) > 0.1
 
-    tree = dt_nested.DecisionTreeRegressor(
+    tree = DecisionTreeRegressor(
         try_features,
         max_depth,
         distr_depth,
@@ -302,13 +314,15 @@ def test_decision_tree_regressor():
         n_split_points="auto",
         split_computation="uniform_approximation",
         sync_after_fit=True,
+        mmap=False,
+        nested=True,
     )
     tree.fit(x1_ds, y1_ds)
     y_pred = compss_wait_on(tree.predict(x2_ds))
     y_pred = np.block(y_pred)
     condition = condition and r2_score(y_pred.flatten(), y2) > 0.15
 
-    tree = dt_nested.DecisionTreeRegressor(
+    tree = DecisionTreeRegressor(
         try_features,
         max_depth,
         distr_depth,
@@ -318,13 +332,15 @@ def test_decision_tree_regressor():
         n_split_points="sqrt",
         split_computation="gaussian_approximation",
         sync_after_fit=True,
+        mmap=False,
+        nested=True,
     )
     tree.fit(x1_ds, y1_ds)
     y_pred = compss_wait_on(tree.predict(x2_ds))
     y_pred = np.block(y_pred)
     condition = condition and r2_score(y_pred.flatten(), y2) > 0.15
 
-    tree = dt_nested.DecisionTreeRegressor(
+    tree = DecisionTreeRegressor(
         try_features,
         max_depth,
         distr_depth,
@@ -334,6 +350,8 @@ def test_decision_tree_regressor():
         n_split_points=0.1,
         split_computation="gaussian_approximation",
         sync_after_fit=True,
+        mmap=False,
+        nested=True,
     )
     tree.fit(x1_ds, y1_ds)
     y_pred = compss_wait_on(tree.predict(x2_ds))
@@ -554,19 +572,21 @@ class RandomForestRegressorTest(BaseTimedTestCase):
         self.assertAlmostEqual(node_info.node_info.value, 0.35)
 
         # Test tree
-        tree = dt_nested.DecisionTreeClassifier(
-            3,
+        tree = DecisionTreeClassifier(
             try_features,
             max_depth,
             distr_depth,
             sklearn_max,
             bootstrap,
             random_state,
+            n_classes=3,
             range_max=rang_max,
             range_min=rang_min,
-            n_split_points=2,
+            n_split_points=5,
             split_computation="raw",
             sync_after_fit=True,
+            mmap=False,
+            nested=True,
         )
         tree.fit(x1_ds, y1_ds)
         y_pred = compss_wait_on(tree.predict(x2_ds))
@@ -576,17 +596,19 @@ class RandomForestRegressorTest(BaseTimedTestCase):
 
         random_state = np.random.RandomState(seed)
 
-        tree = dt_nested.DecisionTreeClassifier(
-            3,
+        tree = DecisionTreeClassifier(
             try_features,
             max_depth,
             distr_depth,
             sklearn_max,
             bootstrap,
             random_state,
+            n_classes=3,
             n_split_points="auto",
             split_computation="raw",
             sync_after_fit=True,
+            mmap=False,
+            nested=True,
         )
 
         tree.fit(x1_ds, y1_ds)
@@ -611,17 +633,19 @@ class RandomForestRegressorTest(BaseTimedTestCase):
         x_train = ds.array(x[::2], (500, 10))
         y_train = ds.array(y[::2][:, np.newaxis], (500, 1))
 
-        tree = dt_nested.DecisionTreeClassifier(
-            3,
+        tree = DecisionTreeClassifier(
             try_features,
             max_depth,
             distr_depth,
             sklearn_max,
             bootstrap,
             random_state,
+            n_classes=3,
             n_split_points="sqrt",
             split_computation="uniform_approximation",
             sync_after_fit=True,
+            mmap=False,
+            nested=True,
         )
 
         tree.fit(x1_ds, y1_ds)
@@ -632,17 +656,19 @@ class RandomForestRegressorTest(BaseTimedTestCase):
 
         random_state = np.random.RandomState(seed)
 
-        tree = dt_nested.DecisionTreeClassifier(
-            3,
+        tree = DecisionTreeClassifier(
             try_features,
             max_depth,
             2,
             sklearn_max,
             bootstrap,
             random_state,
+            n_classes=3,
             n_split_points=0.444,
             split_computation="gaussian_approximation",
             sync_after_fit=True,
+            mmap=False,
+            nested=True,
         )
         tree.fit(x_train[:100], y_train[:100])
         y_pred = tree.predict(x_train)
@@ -711,7 +737,7 @@ class RandomForestRegressorTest(BaseTimedTestCase):
         rang_max = x1_ds.max()
 
         # Test tree
-        tree = dt_nested.DecisionTreeRegressor(
+        tree = DecisionTreeRegressor(
             try_features,
             max_depth,
             distr_depth,
@@ -723,13 +749,15 @@ class RandomForestRegressorTest(BaseTimedTestCase):
             n_split_points=2,
             split_computation="raw",
             sync_after_fit=True,
+            mmap=False,
+            nested=True,
         )
         tree.fit(x1_ds, y1_ds)
         y_pred = compss_wait_on(tree.predict(x2_ds))
         y_pred = np.block(y_pred)
         self.assertGreater(r2_score(y_pred.flatten(), y2), 0.15)
 
-        tree = dt_nested.DecisionTreeRegressor(
+        tree = DecisionTreeRegressor(
             try_features,
             max_depth,
             distr_depth,
@@ -739,13 +767,15 @@ class RandomForestRegressorTest(BaseTimedTestCase):
             n_split_points="auto",
             split_computation="uniform_approximation",
             sync_after_fit=True,
+            mmap=False,
+            nested=True,
         )
         tree.fit(x1_ds, y1_ds)
         y_pred = compss_wait_on(tree.predict(x2_ds))
         y_pred = np.block(y_pred)
         self.assertGreater(r2_score(y_pred.flatten(), y2), 0.15)
 
-        tree = dt_nested.DecisionTreeRegressor(
+        tree = DecisionTreeRegressor(
             try_features,
             max_depth,
             distr_depth,
@@ -755,13 +785,15 @@ class RandomForestRegressorTest(BaseTimedTestCase):
             n_split_points="sqrt",
             split_computation="gaussian_approximation",
             sync_after_fit=True,
+            mmap=False,
+            nested=True,
         )
         tree.fit(x1_ds, y1_ds)
         y_pred = compss_wait_on(tree.predict(x2_ds))
         y_pred = np.block(y_pred)
         self.assertGreater(r2_score(y_pred.flatten(), y2), 0.15)
 
-        tree = dt_nested.DecisionTreeRegressor(
+        tree = DecisionTreeRegressor(
             try_features,
             max_depth,
             distr_depth,
@@ -771,6 +803,8 @@ class RandomForestRegressorTest(BaseTimedTestCase):
             n_split_points=0.1,
             split_computation="gaussian_approximation",
             sync_after_fit=True,
+            mmap=False,
+            nested=True,
         )
         tree.fit(x1_ds, y1_ds)
         y_pred = compss_wait_on(tree.predict(x2_ds))
