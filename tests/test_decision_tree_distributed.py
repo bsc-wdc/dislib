@@ -9,6 +9,8 @@ from dislib.trees.mmap.decision_tree import _InnerNodeInfo, _LeafInfo
 from sklearn.datasets import make_regression, make_classification
 from sklearn.metrics import r2_score, accuracy_score
 from tests import BaseTimedTestCase
+from dislib.trees.decision_tree import DecisionTreeClassifier, \
+    DecisionTreeRegressor
 
 
 class DecisionTreeTest(BaseTimedTestCase):
@@ -106,7 +108,7 @@ class DecisionTreeTest(BaseTimedTestCase):
         self.assertAlmostEqual(node_info.node_info.value, 0.35)
 
         # Test tree
-        tree = dt_distributed.DecisionTreeClassifier(
+        tree = DecisionTreeClassifier(
             3,
             try_features,
             max_depth,
@@ -119,6 +121,7 @@ class DecisionTreeTest(BaseTimedTestCase):
             n_split_points=2,
             split_computation="raw",
             sync_after_fit=True,
+            mmap=False,
         )
         tree.fit(x1_ds, y1_ds)
         y_pred = compss_wait_on(tree.predict(x2_ds))
@@ -128,7 +131,7 @@ class DecisionTreeTest(BaseTimedTestCase):
 
         random_state = np.random.RandomState(seed)
 
-        tree = dt_distributed.DecisionTreeClassifier(
+        tree = DecisionTreeClassifier(
             3,
             try_features,
             max_depth,
@@ -139,6 +142,7 @@ class DecisionTreeTest(BaseTimedTestCase):
             n_split_points="auto",
             split_computation="raw",
             sync_after_fit=True,
+            mmap=False
         )
 
         tree.fit(x1_ds, y1_ds)
@@ -163,7 +167,7 @@ class DecisionTreeTest(BaseTimedTestCase):
         x_train = ds.array(x[::2], (500, 10))
         y_train = ds.array(y[::2][:, np.newaxis], (500, 1))
 
-        tree = dt_distributed.DecisionTreeClassifier(
+        tree = DecisionTreeClassifier(
             3,
             try_features,
             max_depth,
@@ -174,6 +178,7 @@ class DecisionTreeTest(BaseTimedTestCase):
             n_split_points="sqrt",
             split_computation="uniform_approximation",
             sync_after_fit=True,
+            mmap=False
         )
 
         tree.fit(x1_ds, y1_ds)
@@ -184,7 +189,7 @@ class DecisionTreeTest(BaseTimedTestCase):
 
         random_state = np.random.RandomState(seed)
 
-        tree = dt_distributed.DecisionTreeClassifier(
+        tree = DecisionTreeClassifier(
             3,
             try_features,
             max_depth,
@@ -195,6 +200,7 @@ class DecisionTreeTest(BaseTimedTestCase):
             n_split_points=0.444,
             split_computation="gaussian_approximation",
             sync_after_fit=True,
+            mmap=False,
         )
         tree.fit(x_train[:100], y_train[:100])
         y_pred = tree.predict(x_train, collect=True)
@@ -263,7 +269,7 @@ class DecisionTreeTest(BaseTimedTestCase):
         rang_max = x1_ds.max()
 
         # Test tree
-        tree = dt_distributed.DecisionTreeRegressor(
+        tree = DecisionTreeRegressor(
             try_features,
             max_depth,
             distr_depth,
@@ -275,13 +281,14 @@ class DecisionTreeTest(BaseTimedTestCase):
             n_split_points=2,
             split_computation="raw",
             sync_after_fit=True,
+            mmap=False,
         )
         tree.fit(x1_ds, y1_ds)
         y_pred = compss_wait_on(tree.predict(x2_ds))
         y_pred = np.block(y_pred)
         self.assertGreater(r2_score(y_pred.flatten(), y2), 0.3)
 
-        tree = dt_distributed.DecisionTreeRegressor(
+        tree = DecisionTreeRegressor(
             try_features,
             max_depth,
             distr_depth,
@@ -291,13 +298,14 @@ class DecisionTreeTest(BaseTimedTestCase):
             n_split_points="auto",
             split_computation="raw",
             sync_after_fit=True,
+            mmap=False,
         )
         tree.fit(x1_ds, y1_ds)
         y_pred = compss_wait_on(tree.predict(x2_ds))
         y_pred = np.block(y_pred)
         self.assertGreater(r2_score(y_pred.flatten(), y2), 0.3)
 
-        tree = dt_distributed.DecisionTreeRegressor(
+        tree = DecisionTreeRegressor(
             try_features,
             max_depth,
             distr_depth,
@@ -307,6 +315,7 @@ class DecisionTreeTest(BaseTimedTestCase):
             n_split_points="sqrt",
             split_computation="raw",
             sync_after_fit=True,
+            mmap=False,
         )
         tree.fit(x1_ds, y1_ds)
         y_pred = compss_wait_on(tree.predict(x2_ds))

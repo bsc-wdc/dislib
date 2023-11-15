@@ -8,6 +8,7 @@ import dislib.trees.mmap.decision_tree as dt_mmap
 from dislib.trees.mmap import RfClassifierDataset, transform_to_rf_dataset
 from dislib.trees.mmap.decision_tree import _InnerNodeInfo, _LeafInfo
 from tests import BaseTimedTestCase
+from dislib.trees.decision_tree import DecisionTreeClassifier
 
 
 class DecisionTreeTest(BaseTimedTestCase):
@@ -152,7 +153,7 @@ class DecisionTreeTest(BaseTimedTestCase):
             self.assertEqual(node_info.target, 1)
 
         # Test tree
-        tree = dt_mmap.DecisionTreeClassifier(
+        tree = DecisionTreeClassifier(
             try_features,
             max_depth,
             distr_depth,

@@ -68,15 +68,17 @@ class BaseDecisionTree:
         self.mmap = mmap
         self.nested = nested
 
-    def fit(self, dataset):
+    def fit(self, x, y=None):
         """Fits the DecisionTree.
 
         Parameters
         ----------
-        dataset : dislib.trees.mmap.RfDataset / ds-array
+        x : dislib.trees.mmap.RfDataset / ds-array
         It has to be dislib.trees.mmap.RfDataset if the mmap decision tree
         is used. When using distributed or nested decision tree the input
         to this function should be of type ds-array.
+        y : ds-array
+        It is only needed if non mmap version is executed.
         """
         if self.mmap:
             if SklearnDTRegressor == self.base_tree:
@@ -91,6 +93,7 @@ class BaseDecisionTree:
                     self.distr_depth, self.sklearn_max,
                     self.bootstrap, self.random_state
                 )
+            self.tree.fit(x)
         else:
             if self.nested:
                 if SklearnDTRegressor == self.base_tree:
@@ -98,16 +101,16 @@ class BaseDecisionTree:
                         self.try_features, self.max_depth,
                         self.distr_depth, self.sklearn_max,
                         self.bootstrap, self.random_state,
-                        self.range_max, self.range_min,
+                        self.range_min, self.range_max,
                         self.n_split_points, self.split_computation,
                         self.sync_after_fit)
                 else:
                     self.tree = DecisionTreeClassifierNested(
-                        self.n_classes,
                         self.try_features, self.max_depth,
                         self.distr_depth, self.sklearn_max,
                         self.bootstrap, self.random_state,
-                        self.range_max, self.range_min,
+                        self.n_classes,
+                        self.range_min, self.range_max,
                         self.n_split_points, self.split_computation,
                         self.sync_after_fit)
             else:
@@ -129,7 +132,7 @@ class BaseDecisionTree:
                         self.n_split_points, self.split_computation,
                         self.sync_after_fit
                     )
-        self.tree.fit(dataset)
+            self.tree.fit(x, y)
 
     def predict(self, x_row, collect=False):
         """Predicts target values or classes for the given samples using
