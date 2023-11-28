@@ -1328,7 +1328,10 @@ def construct_subtree(x, y, actual_node, m_try, depth, max_depth=25,
         if len(y) == 0 or np.any(y) is None:
             actual_node.content = None
         else:
-            dt.fit(x, y.astype(int), check_input=False)
+            if isinstance(actual_node, _ClassificationNode):
+                dt.fit(x, y.astype(int), check_input=False)
+            else:
+                dt.fit(x, y, check_input=False)
             actual_node.content = _SkTreeWrapper(dt)
         return actual_node
 
