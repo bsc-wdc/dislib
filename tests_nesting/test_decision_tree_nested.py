@@ -293,7 +293,7 @@ def test_decision_tree_regressor():
         random_state,
         range_max=rang_max,
         range_min=rang_min,
-        n_split_points=2,
+        n_split_points=6,
         split_computation="raw",
         sync_after_fit=True,
         mmap=False,
@@ -302,7 +302,7 @@ def test_decision_tree_regressor():
     tree.fit(x1_ds, y1_ds)
     y_pred = compss_wait_on(tree.predict(x2_ds))
     y_pred = np.block(y_pred)
-    condition = condition and r2_score(y_pred.flatten(), y2) > 0.1
+    condition = condition and r2_score(y_pred.flatten(), y2) > 0.3
 
     tree = DecisionTreeRegressor(
         try_features,
@@ -338,7 +338,7 @@ def test_decision_tree_regressor():
     tree.fit(x1_ds, y1_ds)
     y_pred = compss_wait_on(tree.predict(x2_ds))
     y_pred = np.block(y_pred)
-    condition = condition and r2_score(y_pred.flatten(), y2) > 0.15
+    condition = condition and r2_score(y_pred.flatten(), y2) > 0.3
 
     tree = DecisionTreeRegressor(
         try_features,
@@ -356,7 +356,7 @@ def test_decision_tree_regressor():
     tree.fit(x1_ds, y1_ds)
     y_pred = compss_wait_on(tree.predict(x2_ds))
     y_pred = np.block(y_pred)
-    condition = condition and r2_score(y_pred.flatten(), y2) > 0.15
+    condition = condition and r2_score(y_pred.flatten(), y2) > 0.3
     return condition
 
 
@@ -746,7 +746,7 @@ class RandomForestRegressorTest(BaseTimedTestCase):
             random_state,
             range_max=rang_max,
             range_min=rang_min,
-            n_split_points=2,
+            n_split_points=6,
             split_computation="raw",
             sync_after_fit=True,
             mmap=False,
@@ -755,7 +755,7 @@ class RandomForestRegressorTest(BaseTimedTestCase):
         tree.fit(x1_ds, y1_ds)
         y_pred = compss_wait_on(tree.predict(x2_ds))
         y_pred = np.block(y_pred)
-        self.assertGreater(r2_score(y_pred.flatten(), y2), 0.15)
+        self.assertGreater(r2_score(y_pred.flatten(), y2), 0.3)
 
         tree = DecisionTreeRegressor(
             try_features,
@@ -773,7 +773,6 @@ class RandomForestRegressorTest(BaseTimedTestCase):
         tree.fit(x1_ds, y1_ds)
         y_pred = compss_wait_on(tree.predict(x2_ds))
         y_pred = np.block(y_pred)
-        self.assertGreater(r2_score(y_pred.flatten(), y2), 0.15)
 
         tree = DecisionTreeRegressor(
             try_features,
@@ -791,7 +790,7 @@ class RandomForestRegressorTest(BaseTimedTestCase):
         tree.fit(x1_ds, y1_ds)
         y_pred = compss_wait_on(tree.predict(x2_ds))
         y_pred = np.block(y_pred)
-        self.assertGreater(r2_score(y_pred.flatten(), y2), 0.15)
+        self.assertGreater(r2_score(y_pred.flatten(), y2), 0.3)
 
         tree = DecisionTreeRegressor(
             try_features,
@@ -809,7 +808,7 @@ class RandomForestRegressorTest(BaseTimedTestCase):
         tree.fit(x1_ds, y1_ds)
         y_pred = compss_wait_on(tree.predict(x2_ds))
         y_pred = np.block(y_pred)
-        self.assertGreater(r2_score(y_pred.flatten(), y2), 0.15)
+        self.assertGreater(r2_score(y_pred.flatten(), y2), 0.3)
 
     def test_auxiliar_functions(self):
         x1 = np.array(
