@@ -68,7 +68,7 @@ class BaseDecisionTree:
         """
         self._fit(x, y)
 
-    @constraint(computing_units="${ComputingUnits}")
+    @constraint(computing_units="${ComputingUnitsTree}")
     @task()
     def _fit(self, x, y):
         if self.range_max is None:
@@ -383,7 +383,7 @@ class DecisionTreeRegressor(BaseDecisionTree):
         """
         self._fit(x, y)
 
-    @constraint(computing_units="${ComputingUnits}")
+    @constraint(computing_units="${ComputingUnitsTree}")
     @task()
     def _fit(self, x, y):
         if self.range_max is None:
@@ -468,7 +468,7 @@ def _compute_split_regressor(x, y, num_buckets=4,
     final_lefts_x = [object()]
     final_lefts_y = [object()]
     if num_buckets < 1:
-        num_buckets = 1
+        num_buckets = 2
     tried_indices = []
     for _ in range(number_attributes):
         untried_indices = np.setdiff1d(np.arange(number_attributes),
@@ -1328,7 +1328,10 @@ def construct_subtree(x, y, actual_node, m_try, depth, max_depth=25,
         if len(y) == 0 or np.any(y) is None:
             actual_node.content = None
         else:
-            dt.fit(x, y.astype(int), check_input=False)
+            if isinstance(actual_node, _ClassificationNode):
+                dt.fit(x, y.astype(int), check_input=False)
+            else:
+                dt.fit(x, y, check_input=False)
             actual_node.content = _SkTreeWrapper(dt)
         return actual_node
 
