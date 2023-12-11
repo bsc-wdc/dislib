@@ -696,6 +696,11 @@ class RandomForestRegressorTest(BaseTimedTestCase):
             ]
         )
 
+        y1 = np.array([0, 0, 0, 1, 1, 1, 2, 2, 2])
+
+        x1_ds = ds.array(x1, (3, 2))
+        y1_ds = ds.array(y1[:, np.newaxis], (3, 1))
+
         # Model
         try_features = 2
         max_depth = np.inf
@@ -715,6 +720,55 @@ class RandomForestRegressorTest(BaseTimedTestCase):
         self.assertTrue(
             np.array_equal(sample2, np.array([0, 1, 2, 3, 4, 5, 6, 7, 8]))
         )
+
+        sample = sample2
+        rang_min = x1_ds.min()
+        rang_max = x1_ds.max()
+        rang_max._blocks = compss_wait_on(rang_max._blocks)
+        rang_min._blocks = compss_wait_on(rang_min._blocks)
+
+        split = dt_nested._compute_split_regressor(
+            x1_ds,
+            y1_ds,
+            indexes_selected=sample,
+            num_buckets=0,
+            range_min=rang_min,
+            range_max=rang_max,
+            number_split_points=2,
+            random_state=0,
+        )
+        node_info, results_l, results_l_2, results_r, results_r_2 = split
+        node_info = compss_wait_on(node_info)
+        left_group = compss_wait_on(results_l)
+        y_l = compss_wait_on(results_l_2)
+        right_group = compss_wait_on(results_r)
+        y_r = compss_wait_on(results_r_2)
+        left_group_compare = np.block(left_group)
+        y_l_compare = np.block(y_l)
+        right_group_compare = np.block(right_group)
+        y_r_compare = np.block(y_r)
+
+        self.assertTrue(node_info.node_info.index in (0, 1))
+
+        self.assertTrue(np.array_equal(left_group_compare,
+                                       np.array([[0.3, -0.3],
+                                                 [0.4, -0.5],
+                                                 [0.3, 0.3],
+                                                 [0.4, 0.5],
+                                                 [-0.3, -0.3],
+                                                 [-0.4, -0.5],
+                                                 [-0.5, -0.4]]
+                                                )))
+        self.assertTrue(np.array_equal(y_l_compare,
+                                       np.array([[0], [0],
+                                                 [1], [1], [2],
+                                                 [2], [2]])))
+        self.assertTrue(
+            np.array_equal(right_group_compare, np.array([[0.5, -0.4],
+                                                          [0.5, 0.4]]))
+        )
+        self.assertTrue(np.array_equal(y_r_compare, np.array([[0], [1]])))
+        self.assertAlmostEqual(node_info.node_info.value, 0.5)
 
         x1, y1 = make_regression(
             n_samples=1000,
