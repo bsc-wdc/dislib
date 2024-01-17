@@ -976,12 +976,13 @@ def _compute_reduction_qr(rs, q_blocks, q_blocks_2,
                                          block_shape[0] * (i + k + 1),
                                          block_shape[0] * j:
                                          block_shape[0] * (j + 1)]
+        block_shape_columns = block_shape[1]
         for i in range(len(r_blocks)):
             for j in range(len(r_blocks[0])):
                 r_blocks[i][j] = r[block_shape_to_use * i:
                                    block_shape_to_use * (i + 1),
-                                   block_shape_to_use * j:
-                                   block_shape_to_use * (j + 1)]
+                                   block_shape_columns * j:
+                                   block_shape_columns * (j + 1)]
 
 
 @constraint(computing_units="${ComputingUnits}")
