@@ -174,6 +174,31 @@ class QRTest(BaseTimedTestCase):
         self.assertTrue(np.allclose(q.dot(r), m2b))
 
     @parameterized.expand([
+        (140, 36, 64, 36),
+    ])
+    def test_tsqr_reduced_irregular_smaller_last_block(self,
+                                                       m_size,
+                                                       n_size,
+                                                       b_size_r,
+                                                       b_size_c):
+        """Tests tsqr reduced behaviour when the last block has
+        less rows than columns"""
+        m2b_ds = random_array((m_size, n_size), (b_size_r, b_size_c))
+
+        (q, r) = tsqr(m2b_ds, mode="reduced")
+        assigned_q_shape = q.shape
+        assigned_r_shape = r.shape
+        q = q.collect()
+        r = r.collect()
+        self.assertEqual(assigned_q_shape, q.shape)
+        self.assertEqual(assigned_r_shape, r.shape)
+        m2b = m2b_ds.collect()
+        # check if R matrix is upper triangular
+        self.assertTrue(np.allclose(np.triu(r), r))
+        # check if the product Q * R is the original matrix
+        self.assertTrue(np.allclose(q.dot(r), m2b))
+
+    @parameterized.expand([
         (2, 1, 64, 36), (4, 1, 36, 32),
     ])
     def test_tsqr_reduced_inverse(self, m_size, n_size, b_size_r, b_size_c):
