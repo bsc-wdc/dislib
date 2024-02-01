@@ -18,24 +18,13 @@ def terasorting(dataset, indexes_to_try, num_buckets, range_min=0,
         for idx, d in enumerate(dataset):
             fragment_buckets = [[object() for _ in range(num_buckets)]
                                 for _ in range(len(indexes_to_try))]
-            if reg_shape != top_left_shape:
-                if idx == 0:
-                    idx_selected = indexes_selected[
-                        indexes_selected < top_left_shape]
-                else:
-                    idx_selected = indexes_selected[
-                        indexes_selected < (idx * reg_shape + top_left_shape)]
-            else:
-                idx_selected = indexes_selected[
-                    indexes_selected < (idx + 1) * reg_shape]
-            # Filters each row of blocks of the dataset, each value goes to
-            # the corresponding bucket
             filter_fragment(d, fragment_buckets, indexes_to_try, num_buckets,
                             range_min=range_min._blocks,
                             range_max=range_max._blocks,
-                            indexes_selected=idx_selected[
-                                                 idx_selected >= (idx) *
-                                                 reg_shape] % reg_shape)
+                            reg_shape=reg_shape,
+                            idx=idx,
+                            top_left_shape=top_left_shape,
+                            indexes_selected=indexes_selected)
             total_fragments.append(fragment_buckets)
         total_fragments = np.array(total_fragments)
         # The terasort is made by attributes (in each split a random group of

@@ -1075,6 +1075,8 @@ def _decode_helper(obj, cbor=False):
     return obj
 
 
+@constraint(computing_units="${ComputingUnits}")
+@task(returns=1)
 def _sample_selection(x, random_state, bootstrap=True):
     if bootstrap:  # bootstrap:
         selection = random_state.choice(
