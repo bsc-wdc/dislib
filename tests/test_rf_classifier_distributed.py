@@ -39,6 +39,34 @@ class RFTest(BaseTimedTestCase):
         accuracy = compss_wait_on(rf.score(x_test, y_test))
         self.assertGreater(accuracy, 0.7)
 
+    def test_different_top_left_shape(self):
+        """Tests RandomForestClassifier fit and score with default params."""
+        x, y = make_classification(
+            n_samples=3000,
+            n_features=10,
+            n_classes=3,
+            n_informative=4,
+            n_redundant=2,
+            n_repeated=1,
+            n_clusters_per_class=2,
+            shuffle=True,
+            random_state=0,
+        )
+        x_train = ds.array(x[::2], (500, 10))
+        y_train = ds.array(y[::2][:, np.newaxis], (500, 1))
+        x_test = ds.array(x[1::2], (1000, 10))
+        y_test = ds.array(y[1::2][:, np.newaxis], (1000, 1))
+
+        x_train = x_train[100:]
+        y_train = y_train[100:]
+
+        rf = RandomForestClassifier(n_classes=3, distr_depth=1,
+                                    random_state=0, mmap=False)
+
+        rf.fit(x_train, y_train)
+        accuracy = compss_wait_on(rf.score(x_test, y_test))
+        self.assertGreater(accuracy, 0.7)
+
     def test_make_classification_predict_and_distr_depth(self):
         """Tests RandomForestClassifier fit and predict with a distr_depth."""
         x, y = make_classification(
