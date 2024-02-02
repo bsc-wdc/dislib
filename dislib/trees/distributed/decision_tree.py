@@ -1213,7 +1213,7 @@ def classes_per_split(x_block, y_block, split_points, number_classes_l,
                                         reg_shape +
                                         top_left_shape)] %
                                  reg_shape)
-    else:
+    elif reg_shape is not None:
         idx_selected = indexes_selected[
             indexes_selected < (index_blocks + 1) *
             reg_shape]
