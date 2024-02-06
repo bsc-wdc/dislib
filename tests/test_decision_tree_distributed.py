@@ -50,6 +50,8 @@ class DecisionTreeTest(BaseTimedTestCase):
                                                    bootstrap=True)
         sample2 = dt_distributed._sample_selection(x1, random_state,
                                                    bootstrap=False)
+        sample1 = compss_wait_on(sample1)
+        sample2 = compss_wait_on(sample2)
         self.assertTrue(
             np.array_equal(sample1, np.array([0, 2, 3, 3, 3, 4, 5, 5, 7]))
         )
@@ -241,6 +243,10 @@ class DecisionTreeTest(BaseTimedTestCase):
                                                    bootstrap=True)
         sample2 = dt_distributed._sample_selection(x1, random_state,
                                                    bootstrap=False)
+
+        sample1 = compss_wait_on(sample1)
+        sample2 = compss_wait_on(sample2)
+
         self.assertTrue(
             np.array_equal(sample1, np.array([0, 2, 3, 3, 3, 4, 5, 5, 7]))
         )
