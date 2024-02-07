@@ -84,6 +84,8 @@ class BaseDecisionTree:
             self.n_split_points = int(self.n_split_points * x.shape[0])
         elif isinstance(self.n_split_points, int):
             pass
+        if self.n_split_points < 2:
+            self.n_split_points = 2
         self.number_attributes = x.shape[1]
         self.tree = self.base_node()
         branches = [[x, y, self.tree]]
@@ -401,6 +403,8 @@ class DecisionTreeRegressor(BaseDecisionTree):
             self.n_split_points = int(self.n_split_points*x.shape[0])
         elif isinstance(self.n_split_points, int):
             pass
+        if self.n_split_points < 2:
+            self.n_split_points = 2
         self.number_attributes = x.shape[1]
         self.tree = self.base_node()
         branches = [[x, y, self.tree]]
