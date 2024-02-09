@@ -311,6 +311,24 @@ class DecisionTreeTest(BaseTimedTestCase):
         y_pred = np.block(y_pred)
         self.assertGreater(r2_score(y_pred.flatten(), y2), 0.3)
 
+        x1, y1 = make_regression(
+            n_samples=1000,
+            n_features=20,
+            n_informative=1,
+            shuffle=True,
+            random_state=0,
+        )
+
+        x2 = x1[800:]
+        x1 = x1[:800]
+        y2 = y1[800:]
+        y1 = y1[:800]
+
+        x1_ds = ds.array(x1, (400, 10))
+        x2_ds = ds.array(x2, (100, 10))
+
+        y1_ds = ds.array(y1, (400, 1))
+
         tree = DecisionTreeRegressor(
             try_features,
             max_depth,
