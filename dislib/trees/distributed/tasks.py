@@ -20,13 +20,17 @@
 from pycompss.api.task import task
 from pycompss.api.parameter import COLLECTION_IN
 from pycompss.api.parameter import COLLECTION_OUT
+from pycompss.api.constraint import constraint
 import numpy as np
 
 
+@constraint(computing_units="$ComputingUnits")
 @task(fragment=COLLECTION_IN, fragment_buckets=COLLECTION_OUT,
       range_min=COLLECTION_IN, range_max=COLLECTION_IN)
 def filter_fragment(fragment, fragment_buckets, indexes_to_try,
                     num_buckets, range_min=0, range_max=1,
+                    reg_shape=None, top_left_shape=None,
+                    idx=None,
                     indexes_selected=None):
     """
     Task that filters a fragment entries for the given ranges.
@@ -47,9 +51,22 @@ def filter_fragment(fragment, fragment_buckets, indexes_to_try,
     fragment = np.block(fragment)
     range_min = np.block(range_min)
     range_max = np.block(range_max)
+    if reg_shape is not None and reg_shape != top_left_shape:
+        if idx == 0:
+            idx_selected = indexes_selected[
+                indexes_selected < top_left_shape]
+        else:
+            idx_selected = indexes_selected[
+                indexes_selected < (idx * reg_shape + top_left_shape)]
+    elif indexes_selected is not None and idx is not None:
+        idx_selected = indexes_selected[
+            indexes_selected < (idx + 1) * reg_shape]
+    if indexes_selected is not None and idx is not None:
+        idx_selected = idx_selected[idx_selected >= (idx)
+                                    * reg_shape] % reg_shape
     for index, value in enumerate(indexes_to_try):
         if indexes_selected is not None:
-            actual_fragment = fragment[indexes_selected, value]
+            actual_fragment = fragment[idx_selected, value]
         else:
             actual_fragment = fragment[:, value]
         split_indexes = np.linspace(range_min[0, value],
@@ -68,6 +85,7 @@ def filter_fragment(fragment, fragment_buckets, indexes_to_try,
             i += 1
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(returns=dict, args=COLLECTION_IN)
 def combine_and_sort_bucket_elements(args):
     """

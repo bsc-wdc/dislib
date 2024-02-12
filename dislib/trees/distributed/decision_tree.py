@@ -494,16 +494,16 @@ def _compute_split_regressor(x, y, num_buckets=4, range_min=0,
         partial_results_right.append([])
         if isinstance(x, Array):
             for index_blocks, block_s in enumerate(zip(x._blocks, y._blocks)):
-                idx_selected = indexes_selected[
-                    indexes_selected < (index_blocks + 1) * x._reg_shape[0]]
+
                 block_x, block_y = block_s
                 left_class = [object() for _ in range(len(indexes_to_try))]
                 right_class = [object() for _ in range(len(indexes_to_try))]
                 classes_per_split(block_x, block_y, split_values,
                                   left_class, right_class, indexes_to_try,
-                                  idx_selected[idx_selected >=
-                                               (index_blocks) * x._reg_shape[
-                                                   0]] % x._reg_shape[0],
+                                  indexes_selected=indexes_selected,
+                                  index_blocks=index_blocks,
+                                  top_left_shape=x._top_left_shape[0],
+                                  reg_shape=x._reg_shape[0],
                                   regression=True)
                 partial_results_left[idx].append(left_class)
                 partial_results_right[idx].append(right_class)
@@ -654,38 +654,15 @@ def _compute_split(x, y, n_classes=None, num_buckets=4, range_min=0,
         partial_results_right.append([])
         if isinstance(x, Array):
             for index_blocks, block_s in enumerate(zip(x._blocks, y._blocks)):
-                if x._top_left_shape[0] != x._reg_shape[0]:
-                    if index_blocks == 0:
-                        idx_selected = indexes_selected[
-                            indexes_selected < (index_blocks + 1) *
-                            x._top_left_shape[0]]
-                        idx_selected = (idx_selected[idx_selected >= 0] %
-                                        x._top_left_shape[0])
-                    else:
-                        idx_selected = indexes_selected[
-                            indexes_selected < (index_blocks *
-                                                x._reg_shape[0] +
-                                                x._top_left_shape[0])]
-                        idx_selected = (idx_selected[
-                                           idx_selected >= (
-                                                   index_blocks *
-                                                   x._reg_shape[0] +
-                                                   x._top_left_shape[0])] %
-                                        x._reg_shape[0])
-                else:
-                    idx_selected = indexes_selected[
-                        indexes_selected < (index_blocks + 1) *
-                        x._reg_shape[0]]
-                    idx_selected = (idx_selected[idx_selected >=
-                                                 (index_blocks) *
-                                                 x._reg_shape[0]] %
-                                    x._reg_shape[0])
                 block_x, block_y = block_s
                 left_class = [object() for _ in range(len(indexes_to_try))]
                 right_class = [object() for _ in range(len(indexes_to_try))]
                 classes_per_split(block_x, block_y, split_values,
                                   left_class, right_class, indexes_to_try,
-                                  idx_selected)
+                                  indexes_selected=indexes_selected,
+                                  index_blocks=index_blocks,
+                                  top_left_shape=x._top_left_shape[0],
+                                  reg_shape=x._reg_shape[0])
                 partial_results_left[idx].append(left_class)
                 partial_results_right[idx].append(right_class)
         else:
@@ -1214,7 +1191,36 @@ def merge_partial_results_compute_gini_both_sides(partial_results_l,
       number_classes_r=COLLECTION_INOUT)
 def classes_per_split(x_block, y_block, split_points, number_classes_l,
                       number_classes_r, indexes_to_compare,
-                      indexes_to_select=None, regression=False):
+                      index_blocks=None, top_left_shape=None,
+                      reg_shape=None,
+                      indexes_selected=None, regression=False):
+    if (top_left_shape is not None and reg_shape is not None
+            and top_left_shape != reg_shape):
+        if index_blocks == 0:
+            idx_selected = indexes_selected[
+                indexes_selected < (index_blocks + 1) *
+                top_left_shape]
+            indexes_to_select = (idx_selected[idx_selected >= 0] %
+                                 top_left_shape)
+        else:
+            idx_selected = indexes_selected[
+                indexes_selected < (index_blocks *
+                                    reg_shape +
+                                    top_left_shape)]
+            indexes_to_select = (idx_selected[
+                                idx_selected >= (
+                                        index_blocks *
+                                        reg_shape +
+                                        top_left_shape)] %
+                                 reg_shape)
+    elif reg_shape is not None:
+        idx_selected = indexes_selected[
+            indexes_selected < (index_blocks + 1) *
+            reg_shape]
+        indexes_to_select = (idx_selected[idx_selected >=
+                                          (index_blocks) *
+                                          reg_shape] %
+                             reg_shape)
     if x_block is None or len(x_block) == 0 or np.all(split_points is None):
         for idx in range(len(number_classes_l)):
             number_classes_l[idx] = []
@@ -1225,7 +1231,7 @@ def classes_per_split(x_block, y_block, split_points, number_classes_l,
         number_classes_r[idx] = []
     x_block = np.block(x_block)
     y_block = np.block(y_block)
-    if indexes_to_select is not None:
+    if reg_shape is not None and indexes_to_select is not None:
         y_block = y_block[indexes_to_select]
         x_block = x_block[indexes_to_select]
         if indexes_to_compare is not None:
@@ -1342,6 +1348,8 @@ def construct_subtree(x, y, actual_node, m_try, depth,
         actual_node.content = _SkTreeWrapper(dt)
 
 
+@constraint(computing_units="${ComputingUnits}")
+@task(returns=1)
 def _sample_selection(x, random_state, bootstrap=True):
     if bootstrap:  # bootstrap:
         selection = random_state.choice(
