@@ -25,6 +25,7 @@ class BaseSearchCV(ABC):
         self.scoring = scoring
         self.cv = cv
         self.refit = refit
+        self.validation_data = []
         self.all_out = []
         self.all_candidate_params = []
 
@@ -91,8 +92,6 @@ class BaseSearchCV(ABC):
             out = [sklearn_score(estimator, validation, scorer=scorers) for
                    estimator, validation in zip(fits, validation_data)]
 
-            out = compss_wait_on(out)
-
             nonlocal n_splits
             n_splits = cv.get_n_splits()
 
@@ -134,15 +133,15 @@ class BaseSearchCV(ABC):
 
         return self
 
-    def score(self, x, y, **fit_params):
+    def score(self, x=None, y=None, **fit_params):
         """Compute score for the trained sets of parameters.
 
         Parameters
         ----------
         x : ds-array
-            Training data samples.
+            Test data samples.
         y : ds-array, optional (default = None)
-            Training data labels or values.
+            Test data labels or values.
         **fit_params : dict of string -> object
             Parameters passed to the ``fit`` method of the estimator
         """
@@ -151,6 +150,7 @@ class BaseSearchCV(ABC):
         scorers, refit_metric = self._infer_scorers()
 
         base_estimator = clone(estimator)
+        self.all_out = compss_wait_on(self.all_out)
 
         for params_result in self.all_out:
             scores = params_result[0]
