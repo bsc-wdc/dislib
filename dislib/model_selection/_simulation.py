@@ -8,7 +8,102 @@ from scipy.stats import rankdata
 import numpy as np
 
 
-class SimulationGridSearch():
+class SimulationGridSearch:
+    """Exhaustive execution of all combinations of specified parameters values
+     in parallel simulations.
+
+    SimulationGridSearch implements a "fit" method.
+
+    Parameters
+    ----------
+    estimator : simulator object.
+        This should receive the parameters specified in param_grid and use
+        that parameters for the corresponding operation.
+    param_grid : dict or list of dictionaries
+        Dictionary with parameters names (string) as keys and lists of
+        parameter settings to try as values, or a list of such
+        dictionaries, in which case the grids spanned by each dictionary
+        in the list are explored. This enables searching over any sequence
+        of parameter settings.
+    sim_number : Integer
+        Number of simulations that are going to be executed with each of the
+        parameter combination.
+    order : string "max" or "min".
+        String that specifies how to order the results obtained from
+        the simulation, "max" will set first the highest values
+        and "min" the lowest values.
+
+    Examples
+    --------
+    >>> import dislib as ds
+    >>> from dislib.model_selection import SimulationGridSearch
+    >>> from dislib.classification import RandomForestClassifier
+    >>> import numpy as np
+    >>> from sklearn import datasets
+    >>> def my_simulation(a, b):
+    >>>    return (a*a)/(b*b)+a*(a+b)-b*(2*b)
+    >>>
+    >>> param_grid = {'a': [-1.1, -0.1, 1.5, 2.5], 'b': [0.1, 1.5, 2.5, 3.5]}
+    >>> searcher = SimulationGridSearch(my_simulation, param_grid, order="min")
+    >>> searcher.fit(None)
+    >>> best_params = searcher.best_params_
+    >>>
+
+    Attributes
+    ----------
+    raw_results : list of objects
+        List containing the results obtained from the different simulations.
+        In the list the results are saved as returned from the simulation,
+        with no changes in the format.
+    cv_results_ : dict of numpy (masked) ndarrays
+        A dict with keys as column headers and values as columns, that can be
+        imported into a pandas ``DataFrame``.
+        For instance the below given table:
+
+        +------------+------------+-----------------+---+---------+
+        |   param_a  |   param_b  |        params       |...|rank_t...|
+        +============+============+=================+===+=========+
+        |    -1.1    |     0.1    |{'a': -1.1, 'b': 0.1}|...|    2    |
+        +------------+------------+-----------------+---+---------+
+        |    -1.1    |     1.5    |{'a': -1.1, 'b': 1.5}|...|    4    |
+        +------------+------------+-----------------+---+---------+
+        |    -0.1    |     0.1    |{'a': -0.1, 'b': 0.1}|...|    3    |
+        +------------+------------+-----------------+---+---------+
+        |    -0.1    |     1.5    |{'a': -0.1, 'b': 1.5}|...|    1    |
+        +------------+------------+-----------------+---+---------+
+
+        will be represented by a ``cv_results_`` dict of::
+
+            {
+            'param_kernel': masked_array(data = [-1.1, -1.1, -0.1, -0.1],
+                                         mask = [False False False False]...),
+            'param_degree': masked_array(data = [0.1 1.5 0.1 1.5],
+                                         mask = [False False  False  False]
+                                         ...),
+            ...
+            'mean_test_simulation'    : [122.08, -4.40, 0.98, -4.63],
+            'std_test_simulation'     : [0.0, --, --, --],
+            'rank_test_score'    : [2, 4, 3, 1],
+            'params'             : [{'a': '-1.1', 'b': 0.1}, ...],
+            }
+
+        NOTES:
+
+        The key ``'params'`` is used to store a list of parameter
+        settings dicts for all the parameter used in the simulation.
+
+    best_score_ : float
+        Best value obtained from a simulation, if several runs of each
+        simulation are done the best mean of the values obtained is used
+    best_params_ : dict
+        Parameter setting that gave the best results on the hold out data.
+    best_index_ : int
+        The index (of the ``cv_results_`` arrays) which corresponds to the best
+        candidate parameter setting.
+        The dict at ``search.cv_results_['params'][search.best_index_]`` gives
+        the parameter setting for the best model, that gives the highest
+        mean score (``search.best_score_``).
+    """
     def __init__(self, estimator, param_grid,
                  sim_number=1, order="max"):
         self.estimator = estimator

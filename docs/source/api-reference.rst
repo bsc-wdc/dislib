@@ -136,6 +136,9 @@ Exhaustive search over specified parameter values for an estimator.
 :class:`model_selection.RandomizedSearchCV <dislib.model_selection.RandomizedSearchCV>` -
 Randomized search over estimator parameters sampled from given distributions.
 
+:class:`model_selection.SimulationGridSearch <dislib.model_selection.SimulationGridSearch>` -
+Exhaustive search over estimator parameters sampled from given distributions.
+
 :class:`model_selection.KFold <dislib.model_selection.KFold>` -
 K-fold splitter for cross-validation.
 
