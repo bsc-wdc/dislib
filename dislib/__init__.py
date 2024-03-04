@@ -30,7 +30,8 @@ else:
 
 __all__ = ['array', 'random_array', 'zeros', 'full', 'identity', 'eye',
            'load_txt_file', 'load_svmlight_file', 'load_npy_file',
-           'load_mdcrd_file', 'matmul', 'matadd', 'matsubtract', 'save_txt', 'concat_rows',
+           'load_mdcrd_file', 'matmul', 'matadd', 'matsubtract',
+           'save_txt', 'concat_rows',
            'concat_columns', 'apply_along_axis', 'kron', 'svd']
 
 gpu_envar = os.environ.get('DISLIB_GPU_AVAILABLE', 'False')
