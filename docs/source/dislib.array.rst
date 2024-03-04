@@ -25,6 +25,10 @@ Array creation routines
 
 .. autofunction:: dislib.matmul
 
+.. autofunction:: dislib.matadd
+
+.. autofunction:: dislib.matsubtract
+
 .. autofunction:: dislib.concat_columns
 
 .. autofunction:: dislib.concat_rows

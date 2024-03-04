@@ -1686,16 +1686,19 @@ def _multiply_block_groups(hblock, vblock, transpose_a=False,
 
 def matsubtract(a: Array, b: Array):
     """ Subtraction of two matrices.
+
         Parameters
         ----------
         a : ds-array
             First matrix.
         b : ds-array
             Second matrix.
+
         Returns
         -------
         out : ds-array
             The output array.
+
         Raises
         ------
         NotImplementedError
@@ -1705,6 +1708,7 @@ def matsubtract(a: Array, b: Array):
             If any of the block sizes does not match.
         ValueError
             If the ds-arrays have different shape.
+
         Examples
         --------
         >>> import dislib as ds
@@ -1784,16 +1788,19 @@ def _subtract_block_groups(hblock, vblock):
 
 def matadd(a: Array, b: Array):
     """ Addition of two matrices.
+
         Parameters
         ----------
         a : ds-array
             First matrix.
         b : ds-array
             Second matrix.
+
         Returns
         -------
         out : ds-array
             The output array.
+
         Raises
         ------
         NotImplementedError
@@ -1803,6 +1810,7 @@ def matadd(a: Array, b: Array):
             If any of the block sizes does not match.
         ValueError
             If the ds-arrays have different shape.
+
         Examples
         --------
         >>> import dislib as ds
@@ -1849,16 +1857,19 @@ def matadd(a: Array, b: Array):
 
 def concat_columns(a: Array, b: Array):
     """ Matrix concatenation by columns.
+
         Parameters
         ----------
         a : ds-array
             First matrix.
         b : ds-array
             Second matrix.
+
         Returns
         -------
         out : ds-array
             The output array.
+
         Raises
         ------
         NotImplementedError
@@ -1866,6 +1877,7 @@ def concat_columns(a: Array, b: Array):
             implemented in the future.
         ValueError
             If the arrays do not match in the number of rows.
+
         Examples
         --------
         >>> import dislib as ds
@@ -1919,32 +1931,36 @@ def concat_columns(a: Array, b: Array):
 
 def concat_rows(a, b):
     """ Matrix concatenation by rows.
-            Parameters
-            ----------
-            a : ds-array
-                First matrix.
-            b : ds-array
-                Second matrix.
-            Returns
-            -------
-            out : ds-array
-                The output array.
-            Raises
-            ------
-            ValueError
-                If the arrays do not match in the number of rows.
-                If the block size is different between the arrays.
-            Examples
-            --------
-            >>> import dislib as ds
-            >>>
-            >>>
-            >>> if __name__ == "__main__":
-            >>>     x = ds.random_array((8, 4), block_size=(2, 2))
-            >>>     y = ds.random_array((8, 4), block_size=(2, 2))
-            >>>     result = ds.concat_rows(x, y)
-            >>>     print(result.collect())
-            """
+
+        Parameters
+        ----------
+        a : ds-array
+            First matrix.
+        b : ds-array
+            Second matrix.
+
+        Returns
+        -------
+        out : ds-array
+            The output array.
+
+        Raises
+        ------
+        ValueError
+            If the arrays do not match in the number of rows.
+            If the block size is different between the arrays.
+
+        Examples
+        --------
+        >>> import dislib as ds
+        >>>
+        >>>
+        >>> if __name__ == "__main__":
+        >>>     x = ds.random_array((8, 4), block_size=(2, 2))
+        >>>     y = ds.random_array((8, 4), block_size=(2, 2))
+        >>>     result = ds.concat_rows(x, y)
+        >>>     print(result.collect())
+        """
     if a._shape[1] != b._shape[1]:
         raise ValueError("incompatible number of rows "
                          f"for the concatenation "
