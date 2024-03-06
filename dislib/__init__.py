@@ -1,8 +1,8 @@
 import os
 
 from dislib.data.array import random_array, apply_along_axis, array, zeros, \
-    full, identity, eye, matmul, concat_rows, concat_columns, matadd, \
-    matsubtract
+    full, identity, eye, matmul, concat_rows, concat_columns, \
+    matadd, matsubtract
 from dislib.data.io import load_svmlight_file, load_npy_file, load_txt_file, \
     load_mdcrd_file, save_txt
 from dislib.math import kron, svd
