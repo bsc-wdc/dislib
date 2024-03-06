@@ -1686,16 +1686,19 @@ def _multiply_block_groups(hblock, vblock, transpose_a=False,
 
 def matsubtract(a: Array, b: Array):
     """ Subtraction of two matrices.
+
         Parameters
         ----------
         a : ds-array
             First matrix.
         b : ds-array
             Second matrix.
+
         Returns
         -------
         out : ds-array
             The output array.
+
         Raises
         ------
         NotImplementedError
@@ -1705,6 +1708,7 @@ def matsubtract(a: Array, b: Array):
             If any of the block sizes does not match.
         ValueError
             If the ds-arrays have different shape.
+
         Examples
         --------
         >>> import dislib as ds
@@ -1784,16 +1788,19 @@ def _subtract_block_groups(hblock, vblock):
 
 def matadd(a: Array, b: Array):
     """ Addition of two matrices.
+
         Parameters
         ----------
         a : ds-array
             First matrix.
         b : ds-array
             Second matrix.
+
         Returns
         -------
         out : ds-array
             The output array.
+
         Raises
         ------
         NotImplementedError
@@ -1803,6 +1810,7 @@ def matadd(a: Array, b: Array):
             If any of the block sizes does not match.
         ValueError
             If the ds-arrays have different shape.
+
         Examples
         --------
         >>> import dislib as ds
