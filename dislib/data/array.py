@@ -1239,6 +1239,59 @@ class Array(object):
         self._blocks[i][j] = new_block
         compss_delete_object(ref)
 
+    def delete(self, i=None, j=None):
+        """
+        Deletes several columns and/or rows and returns the ds-array with
+        the blocks containing adjusted.
+
+        Parameters
+        ----------
+        i : list of ints
+            Row or rows to remove from the ds-array
+        j : list of ints
+            Column or columns to remove from the ds-array
+
+        Returns
+        -------
+        array : ds-array
+            ds-array without the deleted elements
+        """
+        adjusted_blocks = None
+        if i is not None:
+            if not isinstance(i, list):
+                i = [i]
+            indexes_i = np.array(i)
+            new_blocks, number_elements_block = _delete_rows(
+                self, indexes_i)
+            adjusted_blocks = _place_rows_correctly(
+                self, new_blocks, number_elements_block)
+        else:
+            indexes_i = np.array([])
+        if adjusted_blocks is not None:
+            self._blocks = adjusted_blocks
+        if j is not None:
+            if not isinstance(j, list):
+                j = [j]
+            indexes_j = np.array(j)
+            new_blocks, number_elements_block = _delete_columns(self,
+                                                                indexes_j)
+            adjusted_blocks = _place_columns_correctly(self,
+                                                       new_blocks,
+                                                       number_elements_block,
+                                                       indexes_i)
+        if i is not None and j is not None:
+            shape = (self.shape[0] - len(i), self.shape[1] - len(j))
+        elif i is not None:
+            shape = (self.shape[0] - len(i), self.shape[1])
+        elif j is not None:
+            shape = (self.shape[0], self.shape[1] - len(j))
+        else:
+            raise ValueError("There is not column or row should be deleted.")
+        return Array(blocks=adjusted_blocks,
+                     top_left_shape=self._top_left_shape,
+                     reg_shape=self._reg_shape,
+                     shape=shape, sparse=False)
+
 
 def array(x, block_size):
     """
@@ -2122,6 +2175,216 @@ def _random_block_wrapper(block_size, r_state):
     return _random_block(block_size, seed)
 
 
+def _delete_columns(array, indexes_j):
+    blocks = array._blocks
+    number_elements_block = []
+    for idx, block in enumerate(blocks):
+        indexes_to_delete = []
+        for idx_j, col_block in enumerate(block):
+            if idx_j == 0:
+                first_index_block = 0
+                last_index_block = array._top_left_shape[1]
+            else:
+                first_index_block = (array._top_left_shape[1] +
+                                     array._reg_shape[1] * (idx_j - 1))
+                last_index_block = (array._top_left_shape[1] +
+                                    array._reg_shape[1] * (idx_j))
+            indexes_block = indexes_j[(indexes_j >= first_index_block) &
+                                      (indexes_j < last_index_block)]
+            if len(indexes_block) > 0:
+                if ((len(indexes_block) == array._top_left_shape[1] and
+                     idx == 0 and idx_j == 0) or
+                        len(indexes_block) == array._reg_shape[1]):
+                    indexes_to_delete.append(idx_j)
+                else:
+                    if idx == 0 and idx_j == 0:
+                        number_elements_block.append(array._top_left_shape[1] -
+                                                     len(indexes_block))
+                    elif idx == 0:
+                        number_elements_block.append(array._reg_shape[1] -
+                                                     len(indexes_block))
+                    block = _delete_indexes(col_block, indexes_block,
+                                            first_index_block, axis=1)
+                    blocks[idx][idx_j] = block
+            elif idx == 0:
+                number_elements_block.append(array._reg_shape[1])
+        indexes_to_delete.reverse()
+        for idx_j in indexes_to_delete:
+            del blocks[idx][idx_j]
+    return blocks, number_elements_block
+
+
+def _place_columns_correctly(array, new_blocks,
+                             number_elements_block, indexes_i):
+    adjusted_blocks = [[object() for _ in
+                        range(math.ceil(np.sum(number_elements_block) /
+                                        array._reg_shape[1]))]
+                       for _ in range(math.ceil((array.shape[0] -
+                                                 len(indexes_i)) /
+                                                array._reg_shape[0]))]
+    index_blocks = 0
+    while index_blocks < len(adjusted_blocks):
+        acc_elements = 0
+        accumulated_blocks = new_blocks[index_blocks]
+        initial_index = 0
+        elements_to_shift = 0
+        index_cols = 0
+        for index in range(len(new_blocks[index_blocks])):
+            acc_elements += number_elements_block[index]
+            if index_blocks == 0:
+                if acc_elements >= array._top_left_shape[1]:
+                    adjusted_blocks[index_blocks][index_cols] = _fill_block(
+                        accumulated_blocks[initial_index:index + 1],
+                        elements_to_shift,
+                        array._top_left_shape[1], column=True)
+                    if acc_elements > array._top_left_shape[1]:
+                        initial_index = index
+                        acc_elements = acc_elements - array._top_left_shape[1]
+                        elements_to_shift = (number_elements_block[index] -
+                                             acc_elements)
+                    else:
+                        initial_index = index + 1
+                        acc_elements = 0
+                        elements_to_shift = 0
+                    index_cols += 1
+            else:
+                if acc_elements >= array._reg_shape[1]:
+                    adjusted_blocks[index_blocks][index_cols] = _fill_block(
+                        accumulated_blocks[initial_index:index + 1],
+                        elements_to_shift,
+                        array._reg_shape[1], column=True)
+                    if acc_elements > array._reg_shape[1]:
+                        initial_index = index
+                        acc_elements = acc_elements - array._reg_shape[1]
+                        elements_to_shift = (number_elements_block[index] -
+                                             acc_elements)
+                    else:
+                        initial_index = index + 1
+                        acc_elements = 0
+                        elements_to_shift = 0
+                    index_cols += 1
+        if acc_elements > 0:
+            adjusted_blocks[index_blocks][-1] = _fill_block(
+                accumulated_blocks[initial_index:index + 1],
+                elements_to_shift,
+                array._reg_shape[1], column=True)
+        index_blocks += 1
+    return adjusted_blocks
+
+
+def _delete_rows(array, indexes_i):
+    blocks = array._blocks
+    number_elements_block = []
+    blocks_to_delete = []
+    for idx, block in enumerate(blocks):
+        if idx == 0:
+            first_index_block = 0
+            last_index_block = array._top_left_shape[0]
+        else:
+            first_index_block = (array._top_left_shape[0] +
+                                 array._reg_shape[0] * (idx - 1))
+            last_index_block = (array._top_left_shape[0] +
+                                array._reg_shape[0] * (idx))
+        for idx_j, col_block in enumerate(blocks[idx]):
+            indexes_block = indexes_i[(indexes_i >= first_index_block) &
+                                      (indexes_i < last_index_block)]
+            if len(indexes_block) > 0:
+                if ((len(indexes_block) == array._top_left_shape[0] and
+                     idx == 0) or
+                        len(indexes_block) == array._reg_shape[0]):
+                    blocks_to_delete.append(idx)
+                    break
+                elif (idx == (len(blocks) - 1) and
+                      len(indexes_block) == array.shape[0] %
+                        array._reg_shape[0]):
+                    blocks_to_delete.append(idx)
+                    break
+                else:
+                    if idx != 0 and idx_j == 0:
+                        number_elements_block.append(
+                            array._reg_shape[0] - len(indexes_block))
+                    elif idx_j == 0:
+                        number_elements_block.append(
+                            array._top_left_shape[0] - len(indexes_block))
+                    block = _delete_indexes(col_block, indexes_block,
+                                            first_index_block, axis=0)
+                    blocks[idx][idx_j] = block
+            else:
+                if idx_j == 0:
+                    if ((idx + 1) == len(blocks) and
+                            array.shape[0] % array._reg_shape[0] != 0):
+                        number_elements_block.append(array.shape[0] %
+                                                     array._reg_shape[0])
+                    else:
+                        number_elements_block.append(array._reg_shape[0])
+    blocks_to_delete.reverse()
+    for idx_block in blocks_to_delete:
+        del blocks[idx_block]
+    return blocks, number_elements_block
+
+
+def _place_rows_correctly(array, new_blocks, number_elements_block):
+    adjusted_blocks = [[object() for _ in range(array._n_blocks[1])] for _ in
+                       range(math.ceil(np.sum(
+                            number_elements_block) / array._reg_shape[0]))]
+
+    index_blocks = 0
+    acc_elements = 0
+    elements_to_shift = 0
+    auxiliar_index = 0
+    accumulated_blocks = []
+    while index_blocks < len(adjusted_blocks):
+        if auxiliar_index < len(number_elements_block):
+            elements_last_block = number_elements_block[auxiliar_index]
+            acc_elements += number_elements_block[auxiliar_index]
+        else:
+            elements_last_block = number_elements_block[-1]
+            acc_elements += number_elements_block[-1]
+        accumulated_blocks.extend(new_blocks[auxiliar_index])
+        if index_blocks == 0:
+            if acc_elements >= array._top_left_shape[0]:
+                for idx in range(len(adjusted_blocks[index_blocks])):
+                    adjusted_blocks[index_blocks][idx] = _fill_block(
+                        accumulated_blocks[idx::array._n_blocks[1]],
+                        elements_to_shift,
+                        array._top_left_shape[0])
+                if acc_elements > array._top_left_shape[0]:
+                    accumulated_blocks = accumulated_blocks[
+                                         -array._n_blocks[1]:]
+                    acc_elements = acc_elements - array._top_left_shape[0]
+                    elements_to_shift = elements_last_block - acc_elements
+                else:
+                    acc_elements = 0
+                    accumulated_blocks = []
+                index_blocks += 1
+        else:
+            if acc_elements >= array._reg_shape[0]:
+                for idx in range(len(adjusted_blocks[index_blocks])):
+                    adjusted_blocks[index_blocks][idx] = _fill_block(
+                        accumulated_blocks[idx::array._n_blocks[1]],
+                        elements_to_shift,
+                        array._reg_shape[0])
+                if acc_elements > array._reg_shape[0]:
+                    accumulated_blocks = accumulated_blocks[
+                                         -array._n_blocks[1]:]
+                    acc_elements = acc_elements - array._reg_shape[0]
+                    elements_to_shift = elements_last_block - acc_elements
+                else:
+                    acc_elements = 0
+                    accumulated_blocks = []
+                index_blocks += 1
+        if acc_elements > 0 and ((auxiliar_index + 1) == len(new_blocks)):
+            for idx in range(len(adjusted_blocks[index_blocks])):
+                adjusted_blocks[index_blocks][idx] = _fill_block(
+                    accumulated_blocks[idx::array._n_blocks[1]],
+                    elements_to_shift,
+                    array._reg_shape[0])
+            break
+        else:
+            auxiliar_index += 1
+    return adjusted_blocks
+
+
 @constraint(computing_units="${ComputingUnits}")
 @task(blocks={Type: COLLECTION_OUT, Depth: 1},
       a_blocks={Type: COLLECTION_IN, Depth: 1})
@@ -2385,3 +2648,25 @@ def _combine_blocks(blocks, other, func, out_blocks):
 
     for i in range(len(out_blocks)):
         out_blocks[i] = res[:, i * bsize: (i + 1) * bsize]
+
+
+@constraint(computing_units="${ComputingUnits}")
+@task(indexes={Type: COLLECTION_IN, Depth: 1}, returns=1)
+def _delete_indexes(block, indexes, first_index_block, axis):
+    if first_index_block == 0:
+        deleted = np.delete(block, indexes, axis)
+        return deleted
+    deleted = np.delete(block, np.array(indexes) % first_index_block, axis)
+    return deleted
+
+
+@constraint(computing_units="${ComputingUnits}")
+@task(blocks_to_use={Type: COLLECTION_IN, Depth: 1}, returns=1)
+def _fill_block(blocks_to_use, elements_to_shift, reg_shape, column=False):
+    if column:
+        block = np.hstack(blocks_to_use)
+    else:
+        block = np.vstack(blocks_to_use)
+    if column:
+        return block[:, elements_to_shift:elements_to_shift + reg_shape]
+    return block[elements_to_shift:elements_to_shift+reg_shape]
