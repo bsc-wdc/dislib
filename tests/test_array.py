@@ -1348,6 +1348,33 @@ class ArrayTest(BaseTimedTestCase):
                                             [7, 8, 9]]), (2, 2))
             x_csr.median()
 
+    @parameterized.expand([((15, 13), (3, 6), None, [1]),
+                           ((7, 8), (2, 3), [1], None),
+                           ((20, 10), (7, 2), [1, 2, 3, 4], [1, 5, 7]),
+                           ((7, 8), (2, 3), [1, 2, 3, 4], None),
+                           ((20, 5), (7, 2), None, [0, 1]),
+                           ((7, 8), (2, 3), None, [1, 2, 3, 4]),
+                           ((7, 8), (2, 3), [6], None),
+                           ((7, 8), (2, 3), 6, None),
+                           ((7, 8), (2, 3), None, [6, 7]),
+                           ((7, 8), (2, 3), None, 7),
+                           ])
+    def test_delete(self, a_shape, a_bsize, i, j):
+        x_np = np.random.rand(a_shape[0], a_shape[1])
+        x = ds.array(x_np, a_bsize)
+        b = x.delete(i=i, j=j)
+        if i is not None:
+            x_np = np.delete(x_np, i, axis=0)
+        if j is not None:
+            x_np = np.delete(x_np, j, axis=1)
+        self.assertTrue(np.all(x_np == b.collect()))
+
+    def test_delete_exception(self):
+        x_np = np.random.rand(15, 13)
+        x = ds.array(x_np, (3, 6))
+        with self.assertRaises(ValueError):
+            x.delete(i=None, j=None)
+
 
 class MathTest(BaseTimedTestCase):
 
