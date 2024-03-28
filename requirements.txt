@@ -6,6 +6,5 @@ cvxpy>=1.1.5
 cbor2>=5.4.0
 pandas>=0.24.2
 matplotlib>=2.2.3
-pybind11
 pyeddl==1.2.0
 torch==1.13.0
