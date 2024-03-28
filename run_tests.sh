@@ -2,6 +2,7 @@
 
 # Default process per worker
 export ComputingUnits=4
+export ComputingUnitsGPUs=1
 
 # Run the tests/__main__.py file which calls all the tests named test_*.py
 runcompss \
