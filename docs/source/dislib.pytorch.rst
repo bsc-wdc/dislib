@@ -1,7 +1,7 @@
-dislib.preprocessing
+dislib.pytorch
 ====================
 
-.. automodule:: dislib.preprocessing
+.. automodule:: dislib.pytorch
     :members:
     :undoc-members:
     :show-inheritance:

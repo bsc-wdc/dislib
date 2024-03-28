@@ -1,65 +1,36 @@
-dislib.array
+dislib.tensor
 ============
 
-.. autoclass:: dislib.data.array.Array
+.. autoclass:: dislib.data.tensor.Tensor
     :members:
     :undoc-members:
     :show-inheritance:
 
-.. _array-creation:
+.. _tensor-creation:
 
-Array creation routines
------------------------
+Tensor creation routines
+------------------------
 
-.. autofunction:: dislib.array
+.. autofunction:: dislib.create_ds_tensor
 
-.. autofunction:: dislib.random_array
+.. autofunction:: dislib.random_tensors
 
-.. autofunction:: dislib.zeros
+.. autofunction:: dislib.load_dataset
 
-.. autofunction:: dislib.full
+.. autofunction:: dislib.from_array
 
-.. autofunction:: dislib.eye
+.. autofunction:: dislib.from_pt_tensor
 
-.. autofunction:: dislib.identity
-
-.. autofunction:: dislib.matmul
-
-.. autofunction:: dislib.matadd
-
-.. autofunction:: dislib.matsubtract
-
-.. autofunction:: dislib.concat_columns
-
-.. autofunction:: dislib.concat_rows
-
-.. autofunction:: dislib.load_txt_file
-
-.. autofunction:: dislib.load_svmlight_file
-
-.. autofunction:: dislib.load_npy_file
-
-.. autofunction:: dislib.load_mdcrd_file
-
-.. autofunction:: dislib.data.load_hstack_npy_files
-
-.. _array-utility:
+.. _tensor-utility:
 
 Utility functions
------------------------
+-----------------
 
-.. automodule:: dislib.data.util
-    :members:
-    :undoc-members:
-    :show-inheritance:
+.. autofunction:: dislib.shuffle
 
+.. autofunction:: dislib.rechunk
 
-Other functions
------------------------
+.. autofunction:: dislib.change_shape
 
-.. autofunction:: dislib.save_txt
-
-.. autofunction:: dislib.data.array.apply_along_axis
-
-
+.. autofunction:: dislib.cat
 

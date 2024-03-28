@@ -1,7 +1,7 @@
-dislib.preprocessing
-====================
+dislib.eddl
+===========
 
-.. automodule:: dislib.preprocessing
+.. automodule:: dislib.eddl
     :members:
     :undoc-members:
     :show-inheritance:
