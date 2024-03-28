@@ -10,6 +10,9 @@ Classes
 :class:`data.Array <dislib.data.array.Array>` - 2-dimensional array divided in
 blocks that can be operated in a distributed way.
 
+:class:`data.Tensor <dislib.data.tensor.Tensor>` - n-dimensional tensor divided in
+blocks that can be operated in a distributed way.
+
 
 Array creation routines
 .......................
@@ -63,6 +66,13 @@ Removes last columns from the right-most blocks of the ds-array.
 
 :meth:`data.util.remove_last_rows <dislib.data.util.remove_last_rows>` -
 Removes last rows from the bottom blocks of the ds-array.
+
+Tensor creation routines
+........................
+
+
+Tensor utility functions
+........................
 
 
 Other functions
