@@ -22,8 +22,8 @@ RUN cd /eddl && mkdir build && cd build && \
     -DBUILD_SUPERBUILD=OFF \
     -DBUILD_EXAMPLES=OFF \
     -DBUILD_TESTS=OFF \
-    -DCMAKE_C_COMPILER=clang \
-    -DCMAKE_CXX_COMPILER=clang++ \
+    -DCMAKE_C_COMPILER=gcc-7 \
+    -DCMAKE_CXX_COMPILER=g++-7 \
     -DCMAKE_CUDA_COMPILER=$(which nvcc) \
     -DCMAKE_PREFIX_PATH=/eddl \
     -DCMAKE_INSTALL_PREFIX=/eddl \
