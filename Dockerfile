@@ -24,7 +24,7 @@ RUN cd /eddl && mkdir build && cd build && \
 RUN cd build && \
     make -j$(nproc) && \
     make install && cd .. & cd ..
-ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/eddl
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/eddl/:/eddl/descriptors/
 RUN git clone -b 1.2.0 https://github.com/deephealthproject/pyeddl.git /pyeddl
 RUN python3 -m pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org --upgrade -r /pyeddl/requirements.txt
 RUN cd /python-blosc2 && git submodule update --init --recursive && python3 setup.py build_ext --inplace -- -DDEACTIVATE_AVX2:STRING=ON
