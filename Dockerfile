@@ -6,6 +6,7 @@ COPY . dislib/
 ENV PYTHONPATH=$PYTHONPATH:/dislib:/opt/COMPSs/Bindings/python/3/:/python-blosc2:/pyeddl
 ENV LC_ALL=C.UTF-8
 RUN ln -snf /usr/share/zoneinfo/Etc/UTC /etc/localtime && echo Etc/UTC > /etc/timezone
+RUN apt-get -o Acquire::Check-Valid-Until=false -o Acquire::Check-Date=false update
 RUN apt-get update && apt-get install -y libeigen3-dev && \
     apt-get install -y protobuf-compiler && \
     apt-get install -y libprotobuf-dev && \
