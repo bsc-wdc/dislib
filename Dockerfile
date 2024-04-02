@@ -6,9 +6,9 @@ COPY . dislib/
 ENV PYTHONPATH=$PYTHONPATH:/dislib:/opt/COMPSs/Bindings/python/3/:/python-blosc2:/pyeddl
 ENV LC_ALL=C.UTF-8
 RUN apt-get update && apt-get install -y libeigen3-dev && \
-    apt-get install -y protobuf=3.11.4 && \
-    apt-get install -y libprotobuf=3.11.4 && \
-    apt-get install -y zlib=1.2.11
+    apt-get install -y protobuf-compiler && \
+    apt-get install -y libprotobuf-dev && \
+    apt-get install -y zlib1g-dev
 RUN python3 -m pip install flake8 parameterized coverage
 RUN git clone https://github.com/Blosc/python-blosc2/ /python-blosc2
 RUN python3 -m pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org --upgrade -r /python-blosc2/requirements-build.txt
