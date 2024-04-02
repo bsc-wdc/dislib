@@ -18,6 +18,7 @@ RUN apt-get -o Acquire::Check-Valid-Until=false -o Acquire::Check-Date=false upd
     cd /eddl && git checkout v1.0.4b && mkdir build && cd build && \
     cmake .. -DBUILD_HPC=OFF -DBUILD_TARGET=CPU -DBUILD_PROTOBUF=OFF && \
     cd /eddl/build && make install && cd ../.. && \
+    python3 -m pip install pybind11 && \
     git clone https://github.com/deephealthproject/pyeddl.git /pyeddl && cd /pyeddl \
     python3 -m pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org --upgrade -r /pyeddl/requirements.txt && \
     cd /python-blosc2 && git submodule update --init --recursive && python3 setup.py build_ext --inplace -- -DDEACTIVATE_AVX2:STRING=ON
