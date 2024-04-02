@@ -17,12 +17,7 @@ RUN python3 -m pip install --trusted-host pypi.org --trusted-host files.pythonho
 RUN python3 -m pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org --upgrade -r /python-blosc2/requirements-runtime.txt
 RUN git clone https://github.com/deephealthproject/eddl.git /eddl
 RUN cd /eddl && mkdir build && cd build && \
-    cmake .. \
-    -DCMAKE_PREFIX_PATH=/eddl -DCMAKE_INSTALL_PREFIX=/eddl \
-    -DBUILD_SUPERBUILD=OFF \
-    -DBUILD_TARGET=CPU \
-    -DBUILD_HPC=OFF -DBUILD_TESTS=ON \
-    -DBUILD_DIST=OFF -DBUILD_RUNTIME=OFF
+    cmake ..
 RUN cd build && \
     make -j$(nproc) && \
     make install && cd .. & cd ..
