@@ -18,7 +18,7 @@ RUN python3 -m pip install --trusted-host pypi.org --trusted-host files.pythonho
 RUN git clone https://github.com/deephealthproject/eddl.git /eddl
 RUN cd /eddl && git checkout -b v1.0.4b && mkdir build && cd build && \
     cmake .. -DBUILD_HPC=OFF -DBUILD_TARGET=CPU -DBUILD_PROTOBUF=OFF
-RUN make install && cd .. & cd ..
+RUN cd /eddl/build make install && cd .. & cd ..
 ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/eddl/:/eddl/descriptors/
 RUN git clone -b 1.2.0 https://github.com/deephealthproject/pyeddl.git /pyeddl
 RUN python3 -m pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org --upgrade -r /pyeddl/requirements.txt
