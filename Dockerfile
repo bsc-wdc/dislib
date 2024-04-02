@@ -21,8 +21,7 @@ RUN cd /eddl && mkdir build && cd build && \
     -DCMAKE_PREFIX_PATH=/eddl \
     -DCMAKE_INSTALL_PREFIX=/eddl \
     -DBUILD_SUPERBUILD=OFF     -DBUILD_TARGET=CPU     -DBUILD_HPC=OFF -DBUILD_TESTS=ON     -DBUILD_DIST=OFF -DBUILD_RUNTIME=OFF
-RUN cd build && \
-    make -j$(nproc) && \
+RUN make -j$(nproc) && \
     make install && cd .. & cd ..
 ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/eddl/:/eddl/descriptors/
 RUN git clone -b 1.2.0 https://github.com/deephealthproject/pyeddl.git /pyeddl
