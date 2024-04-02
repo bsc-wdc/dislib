@@ -5,7 +5,7 @@ COPY . dislib/
 
 ENV PYTHONPATH=$PYTHONPATH:/dislib:/opt/COMPSs/Bindings/python/3/:/python-blosc2:/pyeddl
 ENV LC_ALL=C.UTF-8
-ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/include/eigen3/Eigen/
 RUN apt-get -o Acquire::Check-Valid-Until=false -o Acquire::Check-Date=false update && \
     apt-get install -y libeigen3-dev protobuf-compiler libprotobuf-dev zlib1g-dev libgtest-dev && \
     python3 -m pip install flake8 parameterized coverage && \
