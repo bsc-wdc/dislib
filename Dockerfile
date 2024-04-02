@@ -16,9 +16,9 @@ RUN git clone https://github.com/Blosc/python-blosc2/ /python-blosc2
 RUN python3 -m pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org --upgrade -r /python-blosc2/requirements-build.txt
 RUN python3 -m pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org --upgrade -r /python-blosc2/requirements-runtime.txt
 RUN git clone https://github.com/deephealthproject/eddl.git /eddl
-RUN cd eddl && mkdir build && cd build && \
+RUN cd /eddl && mkdir build && cd build && \
     cmake .. \
-    -DCMAKE_PREFIX_PATH=$CONDA_PREFIX -DCMAKE_INSTALL_PREFIX=$CONDA_PREFIX \
+    -DCMAKE_PREFIX_PATH=/eddl -DCMAKE_INSTALL_PREFIX=/eddl \
     -DBUILD_SUPERBUILD=OFF \
     -DBUILD_TARGET=CPU \
     -DBUILD_HPC=OFF -DBUILD_TESTS=ON \
