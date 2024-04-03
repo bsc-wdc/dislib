@@ -14,8 +14,8 @@ RUN apt-get -o Acquire::Check-Valid-Until=false -o Acquire::Check-Date=false upd
     python3 -m pip install flake8 parameterized coverage && \
     git clone https://github.com/Blosc/python-blosc2/ /python-blosc2 && \
     python3 -m pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org --upgrade -r /python-blosc2/requirements-build.txt && \
-    python3 -m pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org --upgrade -r /python-blosc2/requirements-runtime.txt
-RUN git clone --recurse-submodules https://github.com/deephealthproject/pyeddl.git && cd pyeddl && \
+    python3 -m pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org --upgrade -r /python-blosc2/requirements-runtime.txt && \
+    git clone --recurse-submodules https://github.com/deephealthproject/pyeddl.git && cd pyeddl && \
     cd third_party/eddl && mkdir build && cd build && cmake .. -D BUILD_SHARED_LIB=ON -D BUILD_PROTOBUF=ON -D BUILD_TESTS=OFF && \
     make -j$(nproc) && make install && cd ../.. && \
     python3 -m pip install --upgrade setuptools pip && \
