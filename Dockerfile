@@ -18,7 +18,7 @@ RUN apt-get -o Acquire::Check-Valid-Until=false -o Acquire::Check-Date=false upd
     git clone --recurse-submodules https://github.com/deephealthproject/pyeddl.git && cd pyeddl && \
     cd third_party/eddl && mkdir build && cd build && cmake .. -D BUILD_SHARED_LIB=ON -D BUILD_PROTOBUF=ON -D BUILD_TESTS=OFF -D BUILD_SUPERBUILD=ON && \
     make -j$(nproc) && make install && cd ../.. && \
-    python3 -m pip install --upgrade setuptools pip && \
+    python3 -m pip install --upgrade setuptools && \
     python3 -m pip install --upgrade numpy 'pybind11<2.6' pytest && \
     python3 setup.py install && \
     cd /python-blosc2 && git submodule update --init --recursive && python3 setup.py build_ext --inplace -- -DDEACTIVATE_AVX2:STRING=ON
