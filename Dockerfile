@@ -15,7 +15,7 @@ RUN apt-get -o Acquire::Check-Valid-Until=false -o Acquire::Check-Date=false upd
     python3 -m pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org --upgrade -r /python-blosc2/requirements-build.txt && \
     python3 -m pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org --upgrade -r /python-blosc2/requirements-runtime.txt && \
     git clone --recurse-submodules https://github.com/deephealthproject/pyeddl.git && cd pyeddl && \
-    mkdir third_party && cd third_party && mkdir eddl && cd eddl && mkdir build && pushd build && cmake -D BUILD_SHARED_LIB=ON -D BUILD_PROTOBUF=ON -D BUILD_TESTS=OFF && \
+    cd third_party/eddl && mkdir build && pushd build && cmake -D BUILD_SHARED_LIB=ON -D BUILD_PROTOBUF=ON -D BUILD_TESTS=OFF && \
     make -j$(nproc) && make install && cd ../.. && \
     python3 -m pip install --upgrade setuptools pip && \
     python3 -m pip install --upgrade numpy 'pybind11<2.6' pytest && \
