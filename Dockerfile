@@ -8,6 +8,10 @@ ENV LC_ALL=C.UTF-8
 ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/include/eigen3/Eigen/
 ENV EDDL_DIR=/eddl
 ENV CPATH=/usr/include/eigen3/:$CPATH
+RUN git clone https://github.com/Blosc/python-blosc2/ /python-blosc2
+RUN python3 -m pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org --upgrade -r /python-blosc2/requirements-build.txt
+RUN python3 -m pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org --upgrade -r /python-blosc2/requirements-runtime.txt
+RUN cd /python-blosc2 && git submodule update --init --recursive && python3 setup.py build_ext --inplace -- -DDEACTIVATE_AVX2:STRING=ON
 RUN apt-get -o Acquire::Check-Valid-Until=false -o Acquire::Check-Date=false update && \
     apt-get install -y libeigen3-dev protobuf-compiler libprotobuf-dev zlib1g-dev libgtest-dev && \
     python3 -m pip install flake8 parameterized coverage
@@ -18,10 +22,6 @@ RUN git clone https://github.com/deephealthproject/eddl.git /eddl && \
     python3 -m pip install 'pybind11<2.6' pytest 'pluggy==1.4' iniconfig 'exceptiongroup>1.0.0rc8' && \
     git clone https://github.com/deephealthproject/pyeddl.git /pyeddl && cd /pyeddl && git checkout 1.2.0 && \
     python3 setup.py install
-RUN git clone https://github.com/Blosc/python-blosc2/ /python-blosc2
-RUN python3 -m pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org --upgrade -r /python-blosc2/requirements-build.txt
-RUN python3 -m pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org --upgrade -r /python-blosc2/requirements-runtime.txt
-RUN cd /python-blosc2 && git submodule update --init --recursive && python3 setup.py build_ext --inplace -- -DDEACTIVATE_AVX2:STRING=ON
 RUN python3 -m pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org --upgrade -r /dislib/requirements.txt
 
 
