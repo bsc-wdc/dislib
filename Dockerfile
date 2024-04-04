@@ -17,7 +17,7 @@ RUN git clone https://github.com/deephealthproject/eddl.git /eddl && \
     cd /eddl/build && make install && cd ../.. && \
     python3 -m pip install pybind11 && \
     git clone https://github.com/deephealthproject/pyeddl.git /pyeddl && cd /pyeddl && git checkout 1.2.0 && \
-    python3 setup.py install
+    python3 -m pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org
 RUN git clone https://github.com/Blosc/python-blosc2/ /python-blosc2
 RUN python3 -m pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org --upgrade -r /python-blosc2/requirements-build.txt
 RUN python3 -m pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org --upgrade -r /python-blosc2/requirements-runtime.txt
