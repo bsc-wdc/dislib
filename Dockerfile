@@ -15,7 +15,7 @@ RUN git clone https://github.com/deephealthproject/eddl.git /eddl && \
     cd /eddl && git checkout v1.0.4b && mkdir build && cd build && \
     cmake .. -DBUILD_HPC=OFF -DBUILD_TARGET=CPU -DBUILD_PROTOBUF=OFF && \
     cd /eddl/build && make install && cd ../.. && \
-    python3 -m pip install 'pybind11<2.6' pytest 'pluggy=1.4' iniconfig 'exceptiongroup>1.0.0rc8' && \
+    python3 -m pip install 'pybind11<2.6' pytest 'pluggy==1.4' iniconfig 'exceptiongroup>1.0.0rc8' && \
     git clone https://github.com/deephealthproject/pyeddl.git /pyeddl && cd /pyeddl && git checkout 1.2.0 && \
     python3 setup.py install
 RUN git clone https://github.com/Blosc/python-blosc2/ /python-blosc2
