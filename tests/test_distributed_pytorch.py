@@ -90,7 +90,9 @@ class TensorPytorchDistributed(unittest.TestCase):
         model.eval()
         total = 0
         running_accuracy = 0
-        for tensor, labels in zip(x_tensor.tensors, y_tensor.tensors):
+        y_tensor = y_tensor.collect()
+        x_tensor = x_tensor.collect()
+        for tensor, labels in zip(x_tensor, y_tensor):
             for images, in_labels in zip(tensor, labels):
                 outputs = in_labels
                 predicted_outputs = model(images.float())
@@ -133,7 +135,9 @@ class TensorPytorchDistributed(unittest.TestCase):
         model.eval()
         total = 0
         running_accuracy = 0
-        for tensor, labels in zip(x_tensor.tensors, y_tensor.tensors):
+        y_tensor = y_tensor.collect()
+        x_tensor = x_tensor.collect()
+        for tensor, labels in zip(x_tensor, y_tensor):
             for images, in_labels in zip(tensor, labels):
                 outputs = in_labels
                 predicted_outputs = model(images.float())
@@ -175,7 +179,9 @@ class TensorPytorchDistributed(unittest.TestCase):
         model.eval()
         total = 0
         running_accuracy = 0
-        for tensor, labels in zip(x_tensor.tensors, y_tensor.tensors):
+        y_tensor = y_tensor.collect()
+        x_tensor = x_tensor.collect()
+        for tensor, labels in zip(x_tensor, y_tensor):
             for images, in_labels in zip(tensor, labels):
                 outputs = in_labels
                 predicted_outputs = model(images.float())
@@ -219,7 +225,9 @@ class TensorPytorchDistributed(unittest.TestCase):
         model.eval()
         total = 0
         running_accuracy = 0
-        for tensor, labels in zip(x_tensor.tensors, y_tensor.tensors):
+        y_tensor = y_tensor.collect()
+        x_tensor = x_tensor.collect()
+        for tensor, labels in zip(x_tensor, y_tensor):
             for images, in_labels in zip(tensor, labels):
                 outputs = in_labels
                 predicted_outputs = model(images.float())
@@ -261,7 +269,9 @@ class TensorPytorchDistributed(unittest.TestCase):
         model.eval()
         total = 0
         running_accuracy = 0
-        for tensor, labels in zip(x_tensor.tensors, y_tensor.tensors):
+        y_tensor = y_tensor.collect()
+        x_tensor = x_tensor.collect()
+        for tensor, labels in zip(x_tensor, y_tensor):
             for images, in_labels in zip(tensor, labels):
                 outputs = in_labels
                 predicted_outputs = model(images.float())
@@ -303,7 +313,9 @@ class TensorPytorchDistributed(unittest.TestCase):
         model.eval()
         total = 0
         running_accuracy = 0
-        for tensor, labels in zip(x_tensor.tensors, y_tensor.tensors):
+        y_tensor = y_tensor.collect()
+        x_tensor = x_tensor.collect()
+        for tensor, labels in zip(x_tensor, y_tensor):
             for images, in_labels in zip(tensor, labels):
                 outputs = in_labels
                 predicted_outputs = model(images.float())
@@ -345,7 +357,9 @@ class TensorPytorchDistributed(unittest.TestCase):
         model.eval()
         total = 0
         running_accuracy = 0
-        for tensor, labels in zip(x_tensor.tensors, y_tensor.tensors):
+        y_tensor = y_tensor.collect()
+        x_tensor = x_tensor.collect()
+        for tensor, labels in zip(x_tensor, y_tensor):
             for images, in_labels in zip(tensor, labels):
                 outputs = in_labels
                 predicted_outputs = model(images.float())
@@ -388,7 +402,9 @@ class TensorPytorchDistributed(unittest.TestCase):
         model.eval()
         total = 0
         running_accuracy = 0
-        for tensor, labels in zip(x_tensor.tensors, y_tensor.tensors):
+        y_tensor = y_tensor.collect()
+        x_tensor = x_tensor.collect()
+        for tensor, labels in zip(x_tensor, y_tensor):
             for images, in_labels in zip(tensor, labels):
                 outputs = in_labels
                 predicted_outputs = model(images.float())
@@ -433,7 +449,9 @@ class TensorPytorchDistributed(unittest.TestCase):
         model.eval()
         total = 0
         running_accuracy = 0
-        for tensor, labels in zip(x_tensor.tensors, y_tensor.tensors):
+        y_tensor = y_tensor.collect()
+        x_tensor = x_tensor.collect()
+        for tensor, labels in zip(x_tensor, y_tensor):
             for images, in_labels in zip(tensor, labels):
                 outputs = in_labels
                 predicted_outputs = model(images.float())
