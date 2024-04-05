@@ -5,6 +5,9 @@ COPY . dislib/
 
 ENV PYTHONPATH=$PYTHONPATH:/dislib:/opt/COMPSs/Bindings/python/3/:/python-blosc2
 ENV LC_ALL=C.UTF-8
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/include/eigen3/Eigen/
+ENV EDDL_DIR=/eddl
+ENV CPATH="/usr/include/eigen3/:${CPATH}"
 RUN python3 -m pip install flake8 parameterized coverage
 RUN git clone https://github.com/Blosc/python-blosc2/ /python-blosc2
 RUN python3 -m pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org --upgrade -r /python-blosc2/requirements-build.txt
