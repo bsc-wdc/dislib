@@ -53,6 +53,33 @@ def pt_aggregateParameters(workers_parameters):
 
 
 class EncapsulatedFunctionsDistributedPytorch(object):
+    """
+    Object that encapsulates the different distributed trainings that can be
+    done using PyCOMPSs. Each function implements a different version, the
+    number of epochs and batches is specified in each of the functions.
+
+    There are mainly three different types of training.
+
+    - Synchronous training: At the end of each epoch, the weights are
+    synchronized and the update is computed.
+    - Partially asynchronous: The weights of each worker are updated
+    commutatively with the general weights and viceversa.
+    - Asynchronous training: A synchronization and update of the weigths is
+    done after executing all the epochs or each n specified epochs.
+
+    Attributes
+    ----------
+    model_parameters : tensor
+        weights and biases of the different layers of the network that
+        is being trained.
+    compss_object: list
+        List that contains objects of type PytorchDistributed, each of the
+        objects in this list makes a small part of the epoch training in
+        parallel to the rest.
+    num_workers: int
+        Number of parallel trainings existing.
+
+    """
     def __init__(self, num_workers=10):
         self.model_parameters = None
         self.num_workers = num_workers
@@ -66,7 +93,7 @@ class EncapsulatedFunctionsDistributedPytorch(object):
 
         Parameters
         ----------
-        net : eddl.Model
+        net : pytorch Model
             Neural network model to be used during the parallel training.
         optimizer: dict
             Dictionary containing the optimizer to be used and its parameters.
@@ -395,8 +422,7 @@ class EncapsulatedFunctionsDistributedPytorch(object):
                 parameters_for_workers[j] = \
                     self.compss_object[j].aggregate_parameters_async(
                         self.model_parameters,
-                        parameters_for_workers[j],
-                        (1 / self.num_workers))
+                        parameters_for_workers[j])
         parameters_for_workers = compss_wait_on(parameters_for_workers)
         self.model_parameters = pt_aggregateParameters(parameters_for_workers)
         return self.model_parameters
@@ -447,8 +473,7 @@ class EncapsulatedFunctionsDistributedPytorch(object):
                 parameters_for_workers[j] = \
                     self.compss_object[j].aggregate_parameters_async(
                         self.model_parameters,
-                        parameters_for_workers[j],
-                        (1 / self.num_workers))
+                        parameters_for_workers[j])
         parameters_for_workers = compss_wait_on(parameters_for_workers)
         self.model_parameters = pt_aggregateParameters(parameters_for_workers)
         return self.model_parameters
@@ -513,8 +538,7 @@ class EncapsulatedFunctionsDistributedPytorch(object):
                     parameters_for_workers[j] = \
                         self.compss_object[j].aggregate_parameters_async(
                             self.model_parameters,
-                            parameters_for_workers[j],
-                            (1 / self.num_workers))
+                            parameters_for_workers[j])
         parameters_for_workers = compss_wait_on(parameters_for_workers)
         self.model_parameters = pt_aggregateParameters(parameters_for_workers)
         return self.model_parameters
@@ -572,8 +596,7 @@ class EncapsulatedFunctionsDistributedPytorch(object):
                     parameters_for_workers[j] = \
                         self.compss_object[j].aggregate_parameters_async(
                             self.model_parameters,
-                            parameters_for_workers[j],
-                            (1 / self.num_workers))
+                            parameters_for_workers[j])
         parameters_for_workers = compss_wait_on(parameters_for_workers)
         self.model_parameters = pt_aggregateParameters(parameters_for_workers)
         return self.model_parameters
