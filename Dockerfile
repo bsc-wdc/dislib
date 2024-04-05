@@ -12,7 +12,7 @@ ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/include/eigen3/Eigen/
 ENV EDDL_DIR=/eddl
 ENV CPATH="/usr/include/eigen3/:${CPATH}"
 RUN python3 -m pip install flake8 parameterized coverage
-RUN git clone https://github.com/Blosc/python-blosc2/ /python-blosc2
+RUN git clone https://github.com/Blosc/python-blosc2/ /python-blosc2 && cd /python-blosc2 && git checkout v2.5.1
 RUN python3 -m pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org --upgrade -r /python-blosc2/requirements-build.txt
 RUN python3 -m pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org --upgrade -r /python-blosc2/requirements-runtime.txt
 RUN cd /python-blosc2 && git submodule update --init --recursive && python3 setup.py build_ext --inplace -- -DDEACTIVATE_AVX2:STRING=ON
@@ -21,7 +21,6 @@ RUN git clone --recurse-submodules https://github.com/deephealthproject/pyeddl.g
     make -j$(nproc) && make install && cd ../.. && \
     python3 -m pip install --upgrade numpy 'pybind11<2.6' pytest && cd /pyeddl && python3 setup.py install
 RUN python3 -m pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org --upgrade -r /dislib/requirements.txt
-
 
 ENV COMPSS_LOAD_SOURCE false
 
