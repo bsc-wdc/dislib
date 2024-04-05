@@ -11,7 +11,7 @@ ENV LC_ALL=C.UTF-8
 ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/include/eigen3/Eigen/
 ENV EDDL_DIR=/eddl
 ENV CPATH="/usr/include/eigen3/:${CPATH}"
-RUN python3 -m pip install flake8 parameterized coverage
+RUN python3 -m pip install flake8 parameterized coverage tensorflow
 RUN git clone https://github.com/Blosc/python-blosc2/ /python-blosc2 && cd /python-blosc2 && git checkout v2.5.1
 RUN python3 -m pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org --upgrade -r /python-blosc2/requirements-build.txt
 RUN python3 -m pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org --upgrade -r /python-blosc2/requirements-runtime.txt
