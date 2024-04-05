@@ -3,7 +3,7 @@ MAINTAINER COMPSs Support <support-compss@bsc.es>
 
 COPY . dislib/
 
-ENV PYTHONPATH=$PYTHONPATH:/dislib:/opt/COMPSs/Bindings/python/3/:/python-blosc2
+ENV PYTHONPATH=$PYTHONPATH:/dislib:/python-blosc2
 ENV LC_ALL=C.UTF-8
 ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/include/eigen3/Eigen/
 ENV EDDL_DIR=/eddl
