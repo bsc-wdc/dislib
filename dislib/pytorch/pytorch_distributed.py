@@ -153,7 +153,7 @@ class PytorchDistributed(object):
         {'processorType': 'CPU', 'computingUnits': '${ComputingUnits}'},
         {'processorType': 'GPU', 'computingUnits': '${ComputingUnitsGPUs}'}])
     @task(model_params=COMMUTATIVE, parameters_to_aggregate=IN,
-          mult_factor=IN, target_direction=IN)
+          target_direction=IN)
     def _aggregate_parameters_async(self, model_params,
                                     parameters_to_aggregate):
         final_weights = []
