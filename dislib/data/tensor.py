@@ -486,20 +486,23 @@ class Tensor(object):
             raise Exception(
                 "Axis must be [0|'rows'] or [1|'columns']. Got: %s" % axis)
 
-    @task()
-    def apply_to_tensor(self, func, i, j):
-        """
-        Applies the specified function to the tensor in (i, j)
-        """
-        self.tensors[i][j] = func(self.tensors[i][j])
-
     def apply_to_tensors(self, func):
         """
         Applies the specified function to the all the tensors
         """
+
+        out_tensors = [[object() for _ in range(self.shape[1])]
+                       for _ in range(self.shape[0])]
+
         for i in range(self.shape[0]):
             for j in range(self.shape[1]):
-                self.apply_to_tensor(func, i, j)
+                out_tensors[i][j] = apply_to_tensor(self.tensors[i][j], func)
+        if func == np.transpose or func == torch.transpose:
+            tensor_shape = self.tensor_shape[::-1]
+        else:
+            tensor_shape = self.tensor_shape
+        return Tensor(tensors=out_tensors, tensor_shape=tensor_shape,
+                      dtype=self.dtype)
 
 
 def from_array(np_array, shape=None):
@@ -719,6 +722,14 @@ def _apply_elementwise(func, x, *args, **kwargs):
                                           **kwargs)
 
     return Tensor(tensors, tensor_shape=x.tensor_shape, dtype=x.dtype)
+
+
+@task(returns=1)
+def apply_to_tensor(tensor, func):
+    """
+    Applies the specified function to the tensor in (i, j)
+    """
+    return func(tensor)
 
 
 @task(old_tensor={Type: COLLECTION_IN}, new_tensor={Type: COLLECTION_OUT})
