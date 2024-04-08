@@ -22,12 +22,16 @@ class TensorPytorchDistributed(unittest.TestCase):
         indices = np.random.permutation(x.size)
         x = x[indices]
         y = y[indices].astype(int)
+        x_tensor_original = ds.from_array(np_array=x,
+                                          shape=(2, 2))
         x_tensor = ds.from_array(np_array=x,
                                  shape=(2, 2))
         b = np.zeros((y.size, y.max() + 1))
         b[np.arange(y.size), y.flatten()] = 1
         y = b
         del b
+        y_tensor_original = ds.from_array(np_array=y,
+                                          shape=(2, 2))
         y_tensor = ds.from_array(np_array=y,
                                  shape=(2, 2))
         in_ = eddl.Input([1, 1, 1])
@@ -50,8 +54,8 @@ class TensorPytorchDistributed(unittest.TestCase):
             eddl.CS_CPU(),
         )
         eddl.set_parameters(net, parametersToEDDLTensor(parameters))
-        x_test = x_tensor.collect()
-        y_test = y_tensor.collect()
+        x_test = x_tensor_original.collect()
+        y_test = y_tensor_original.collect()
         x_test = Tensor.fromarray(x_test[0][0])
         y_test = Tensor.fromarray(y_test[0][0].astype(np.float32))
         x_test.div_(255.0)
@@ -164,12 +168,16 @@ class TensorPytorchDistributed(unittest.TestCase):
         indices = np.random.permutation(x.size)
         x = x[indices]
         y = y[indices].astype(int)
+        x_tensor_original = ds.from_array(np_array=x,
+                                          shape=(2, 2))
         x_tensor = ds.from_array(np_array=x,
                                  shape=(2, 2))
         b = np.zeros((y.size, y.max() + 1))
         b[np.arange(y.size), y.flatten()] = 1
         y = b
         del b
+        y_tensor_original = ds.from_array(np_array=y,
+                                          shape=(2, 2))
         y_tensor = ds.from_array(np_array=y,
                                  shape=(2, 2))
         in_ = eddl.Input([1, 1, 1])
@@ -191,8 +199,8 @@ class TensorPytorchDistributed(unittest.TestCase):
             eddl.CS_CPU(),
         )
         eddl.set_parameters(net, parametersToEDDLTensor(parameters))
-        x_test = x_tensor.collect()
-        y_test = y_tensor.collect()
+        x_test = x_tensor_original.collect()
+        y_test = y_tensor_original.collect()
         x_test = Tensor.fromarray(x_test[0][0])
         y_test = Tensor.fromarray(y_test[0][0].astype(np.float32))
         x_test.div_(255.0)
@@ -258,12 +266,16 @@ class TensorPytorchDistributed(unittest.TestCase):
         indices = np.random.permutation(x.size)
         x = x[indices]
         y = y[indices].astype(int)
+        x_tensor_original = ds.from_array(np_array=x,
+                                          shape=(2, 2))
         x_tensor = ds.from_array(np_array=x,
                                  shape=(2, 2))
         b = np.zeros((y.size, y.max() + 1))
         b[np.arange(y.size), y.flatten()] = 1
         y = b
         del b
+        y_tensor_original = ds.from_array(np_array=y,
+                                          shape=(2, 2))
         y_tensor = ds.from_array(np_array=y,
                                  shape=(2, 2))
         in_ = eddl.Input([1, 1, 1])
@@ -285,8 +297,8 @@ class TensorPytorchDistributed(unittest.TestCase):
             eddl.CS_CPU(),
         )
         eddl.set_parameters(net, parametersToEDDLTensor(parameters))
-        x_test = x_tensor.collect()
-        y_test = y_tensor.collect()
+        x_test = x_tensor_original.collect()
+        y_test = y_tensor_original.collect()
         x_test = Tensor.fromarray(x_test[0][0])
         y_test = Tensor.fromarray(y_test[0][0].astype(np.float32))
         x_test.div_(255.0)
@@ -352,12 +364,16 @@ class TensorPytorchDistributed(unittest.TestCase):
         indices = np.random.permutation(x.size)
         x = x[indices]
         y = y[indices].astype(int)
+        x_tensor_original = ds.from_array(np_array=x,
+                                          shape=(2, 2))
         x_tensor = ds.from_array(np_array=x,
                                  shape=(2, 2))
         b = np.zeros((y.size, y.max() + 1))
         b[np.arange(y.size), y.flatten()] = 1
         y = b
         del b
+        y_tensor_original = ds.from_array(np_array=y,
+                                          shape=(2, 2))
         y_tensor = ds.from_array(np_array=y,
                                  shape=(2, 2))
         in_ = eddl.Input([1, 1, 1])
@@ -380,8 +396,8 @@ class TensorPytorchDistributed(unittest.TestCase):
             eddl.CS_CPU(),
         )
         eddl.set_parameters(net, parametersToEDDLTensor(parameters))
-        x_test = x_tensor.collect()
-        y_test = y_tensor.collect()
+        x_test = x_tensor_original.collect()
+        y_test = y_tensor_original.collect()
         x_test = Tensor.fromarray(x_test[0][0])
         y_test = Tensor.fromarray(y_test[0][0].astype(np.float32))
         x_test.div_(255.0)

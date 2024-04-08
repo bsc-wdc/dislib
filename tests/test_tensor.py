@@ -344,28 +344,30 @@ class TensorTest(unittest.TestCase):
         x_train_tensor = ds.random_tensors("np", (2, 2, 4, 4, 4))
         x_train_tensor[0, 0, 0, 0, 1] = 8
         self.assertTrue(x_train_tensor.tensor_shape == (4, 4, 4))
-        self.assertTrue(compss_wait_on(
-            x_train_tensor.tensors[0][0]).shape == (4, 4, 4))
-        self.assertTrue(compss_wait_on(
-            x_train_tensor.tensors[0][0])[0, 0, 1] == 8)
+        x_train_tensor.tensors[0][0] = compss_wait_on(
+            x_train_tensor.tensors[0][0])
+        self.assertTrue(x_train_tensor.tensors[0][0].shape == (4, 4, 4))
+        self.assertTrue(x_train_tensor.tensors[0][0][0, 0, 1] == 8)
 
         x_train_tensor = ds.random_tensors("np", (2, 2, 4, 4, 4))
         tensor_to_assign = np.ones((4, 4))
         x_train_tensor[0, 0, [0, 1]] = tensor_to_assign
         self.assertTrue(x_train_tensor.tensor_shape == (4, 4, 4))
-        self.assertTrue(compss_wait_on(
-            x_train_tensor.tensors[0][0]).shape == (4, 4, 4))
-        self.assertTrue(compss_wait_on(
-            x_train_tensor.tensors[0][0]).all() == np.ones((4, 4)).all())
+        x_train_tensor.tensors[0][0] = compss_wait_on(
+            x_train_tensor.tensors[0][0])
+        self.assertTrue(x_train_tensor.tensors[0][0] == (4, 4, 4))
+        self.assertTrue(x_train_tensor.tensors[0][0].all() ==
+                        np.ones((4, 4)).all())
 
         x_train_tensor = ds.random_tensors("np", (2, 2, 4, 4, 4))
         tensor_to_assign = np.ones((4, 4))
         x_train_tensor[[0, 1], 0, [0, 1]] = tensor_to_assign
         self.assertTrue(x_train_tensor.tensor_shape == (4, 4, 4))
-        self.assertTrue(compss_wait_on(
-            x_train_tensor.tensors[0][0]).shape == (4, 4, 4))
-        self.assertTrue(compss_wait_on(
-            x_train_tensor.tensors[0][0]).all() == np.ones((4, 4)).all())
+        x_train_tensor.tensors[0][0] = \
+            compss_wait_on(x_train_tensor.tensors[0][0])
+        self.assertTrue(x_train_tensor.tensors[0][0].shape == (4, 4, 4))
+        self.assertTrue(x_train_tensor.tensors[0][0].all() ==
+                        np.ones((4, 4)).all())
         self.assertTrue(compss_wait_on(
             x_train_tensor.tensors[1][0]).all() == np.ones((4, 4)).all())
 
@@ -373,10 +375,11 @@ class TensorTest(unittest.TestCase):
         tensor_to_assign = np.ones((4, 4))
         x_train_tensor[0, [0, 1], [0, 1]] = tensor_to_assign
         self.assertTrue(x_train_tensor.tensor_shape == (4, 4, 4))
-        self.assertTrue(compss_wait_on(
-            x_train_tensor.tensors[0][0]).shape == (4, 4, 4))
-        self.assertTrue(compss_wait_on(
-            x_train_tensor.tensors[0][0]).all() == np.ones((4, 4)).all())
+        x_train_tensor.tensors[0][0] = \
+            compss_wait_on(x_train_tensor.tensors[0][0])
+        self.assertTrue(x_train_tensor.tensors[0][0].shape == (4, 4, 4))
+        self.assertTrue(x_train_tensor.tensors[0][0].all() ==
+                        np.ones((4, 4)).all())
         self.assertTrue(compss_wait_on(
             x_train_tensor.tensors[0][1]).all() == np.ones((4, 4)).all())
 
@@ -384,10 +387,11 @@ class TensorTest(unittest.TestCase):
         tensor_to_assign = np.ones((4, 4))
         x_train_tensor[[0, 1], [0, 1], [0, 1]] = tensor_to_assign
         self.assertTrue(x_train_tensor.tensor_shape == (4, 4, 4))
-        self.assertTrue(compss_wait_on(
-            x_train_tensor.tensors[0][0]).shape == (4, 4, 4))
-        self.assertTrue(compss_wait_on(
-            x_train_tensor.tensors[0][0]).all() == np.ones((4, 4)).all())
+        x_train_tensor.tensors[0][0] = \
+            compss_wait_on(x_train_tensor.tensors[0][0])
+        self.assertTrue(x_train_tensor.tensors[0][0].shape == (4, 4, 4))
+        self.assertTrue(x_train_tensor.tensors[0][0].all() ==
+                        np.ones((4, 4)).all())
         self.assertTrue(compss_wait_on(
             x_train_tensor.tensors[0][1]).all() == np.ones((4, 4)).all())
         self.assertTrue(compss_wait_on(
@@ -484,6 +488,7 @@ class TensorTest(unittest.TestCase):
         x_np = ds.from_array(np_array, shape=(2, 2))
         self.assertEqual(x_np.shape, (2, 2))
         self.assertEqual(x_np.tensor_shape, (3, 3, 3))
+        pt_tensor = torch.rand(2, 2, 3, 3, 3)
         x_np = ds.from_pt_tensor(pt_tensor)
         self.assertEqual(x_np.shape, (2, 2))
         self.assertEqual(x_np.tensor_shape, (3, 3, 3))
@@ -629,10 +634,8 @@ class TensorTest(unittest.TestCase):
 
     def test_apply_to_tensors(self):
         x_train_tensor = ds.random_tensors("np", (2, 2, 1, 2, 3))
-        x_train_tensor.apply_to_tensors(np.transpose)
-        x_train_tensor_2 = x_train_tensor.collect()
-        print(x_train_tensor_2[0][0].shape)
-        print(compss_wait_on(x_train_tensor.tensors[0][0]).shape)
+        x_train_tensor_2 = x_train_tensor.apply_to_tensors(np.transpose)
+        x_train_tensor_2 = x_train_tensor_2.collect()
         self.assertTrue(x_train_tensor_2[0][0].shape == (3, 2, 1))
         self.assertTrue(x_train_tensor_2[0][1].shape == (3, 2, 1))
         self.assertTrue(x_train_tensor_2[1][0].shape == (3, 2, 1))
