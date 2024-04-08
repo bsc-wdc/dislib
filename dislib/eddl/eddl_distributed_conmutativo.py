@@ -191,9 +191,9 @@ class EddlDistributedConmutativo(object):
 
     @constraint(processors=[
         {'processorType': 'CPU', 'computingUnits': '${ComputingUnits}'},
-        {'processorType': 'GPU', 'computingUnits': '${ComputingGPUs}'}])
+        {'processorType': 'GPU', 'computingUnits': '${ComputingUnitsGPUs}'}])
     @task(model_params=COMMUTATIVE, parameters_to_aggregate=IN,
-          mult_factor=IN, target_direction=IN)
+          target_direction=IN)
     def _aggregate_parameters_async(self, model_params,
                                     parameters_to_aggregate):
         for i in range(0, len(model_params)):
