@@ -1,10 +1,13 @@
+
 # Changelog
+
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [0.9.0] - 2023-11-10
+
 - New RandomSVD algorithm
 - New LanczosSVD algorithm
 - New distributed versions of Random Forest Classifier and Random Forest Regressor
@@ -12,7 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Included a version of TeraSort algorithm
 
 ## [0.8.0] - 2022-11-11
+
 ### Added
+
 - `save` and `load` methods for all models
 - Adding Muliclass CSVM
 - Adding TS-QR (Tall Skinny QR)
@@ -28,16 +33,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Train-Test-Split functionality
 - Add KNN Classifier
 - Better SVD columns pairing
-- GPU Support using CUDA/CuPy for algorithms: Kmeans, KNN, SVD, PCA, Matmul, Addition, Subtraction, QR, Kronecker
+- GPU Support using CUDA/CuPy for algorithms:
+  Kmeans, KNN, SVD, PCA, Matmul, Addition, Subtraction, QR, Kronecker
 
 ### Changed
+
 - New documentation for GPU, RandomForest, Scalers
 
 ### Fixed
+
 - Fix bug Scalers & tests
 
 ## [0.7.0] - 2021-11-10
+
 ### Added
+
 - New decomposition algorithm QR
 - New preprocessing algorithm MinMaxScaler
 - Jenkinsfile for CI automated tests
@@ -48,13 +58,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - More tests
 
 ### Changed
+
 - Move RandomForest from 'classification' to 'trees'
 
 ### Fixed
+
 - Some bugs in the ds-array
 
 ## [0.6.0] - 2020-10-09
+
 ### Added
+
 - User guide and glossary
 - Method to read from npy files
 - Support for one-dimensional data in ds-array
@@ -70,21 +84,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Daura clustering algorithm
 
 ### Changed
+
 - Improved performance testing scripts and added new tests
 - Allow executing applications with params using dislib exec
 - Extended and improved the tutorial notebook
 - Moved data loading routines to a different file as array.py was getting too big
 - apply_along_axis for sparse data now returns sparse ds-arrays
 - Updated dislib-base docker image
-- Replaced COLLECTION_INOUT parameters with COLLECTION_OUT when possible for improving performance
+- Replaced COLLECTION_INOUT parameters with COLLECTION_OUT when possible for
+  improving performance
 - Updated requirement PyCOMPSs >= 2.7
 
 ### Fixed
+
 - Some bugs in the ds-array
 - Internal inconsistencies in transformed_array of PCA
 
 ## [0.5.0] - 2019-11-25
+
 ### Added
+
 - Grid search and randomized search with cross-validation
 - K-fold splitter
 - Support for jupyter-notebooks from dislib docker image
@@ -97,15 +116,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - NOTICE file
 
 ### Changed
+
 - Estimators now extend sklearn BaseEstimator
 - Extended tutorial notebook with other examples
 - Added acknowledgements to README
 
 ### Removed
+
 - Pandas dependency in test_als
 - CODEOWNERS file
 
 ### Fixed
+
 - Small fixes to tutorial notebook
 - Small fixes to documentation
 - dislib executable now works even if PyCOMPSs is not installed
@@ -114,29 +136,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed dislib executable on MacOS
 
 ## [0.4.0] - 2019-09-16
+
 ### Added
+
 - Distributed array data structure
 - A basic tutorial notebook
 
 ### Changed
+
 - Updated docker image to PyCOMPSs 2.5
 - Modified the whole library to use distributed arrays instead of Datasets
-(including estimators, examples, etc.)
+  (including estimators, examples, etc.)
 - Added 'init' parameter to K-means
 - Updated the developer guide
 
 ### Removed
+
 - Dataset and Subset data structures
 - FFT estimator
 - Methods to load from multiple files
 
 ### Fixed
+
 - Fixed the usage of random state in K-means
 - Some issues in the performance tests
 - Other minor bug fixes
 
 ## [0.3.0] - 2019-06-28
+
 ### Added
+
 - The VERSION file
 - Test for duplicate support vectors in CSVM
 - Test for GaussianMixture with random initialization
@@ -147,10 +176,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added some tests for DBSCAN
 
 ### Changed
-- Dataset now does not check for duplicate samples (and does not build an 
-array of unique IDs). This improves performance signifcantly.
-- CSVM now checks and removes duplicate samples generated during the fit 
-process.
+
+- Dataset now does not check for duplicate samples (and does not build an
+  array of unique IDs). This improves performance significantly.
+- CSVM now checks and removes duplicate samples generated during the fit
+  process.
 - GaussianMixture now works with sparse data
 - GaussianMixture now removes partial results using compss_delete
 - Improved the performance of K-means' _partial_sum task
@@ -160,10 +190,13 @@ process.
 - Improved the performance of the shuffle method by using PyCOMPSs COLLECTIONS
 
 ### Fixed
+
 - A bug in DBSCAN that was generating incorrect results in certain cases
 
 ## [0.2.0] - 2019-03-01
+
 ### Added
+
 - This CHANGELOG file
 - Added badges to README file
 - Added tests for C-SVM and K-means
@@ -181,21 +214,25 @@ process.
 - Dataset apply function
 
 ### Changed
+
 - Refactored DBSCAN completely to make code more legible and fix several bugs
-- Fixed DBSCAN because it was producing wrong results in some scenarios. Changed the use of disjoint sets to connected components.
+- Fixed DBSCAN because it was producing wrong results in some scenarios.
+  Changed the use of disjoint sets to connected components.
 - Extended the installation instructions in the README file
 - The script classifier_comparison.py now includes Random Forest classifier
 - Tests are split into modules
 - The COMPSs docker image has been reworked
-- Changed the way random_state is used in the different algorithms to ensure proper randomization and reproducibility of different executions.
-- Unified the signatures of the different algorithms to fit, predict, and fit_predict. These methods now have the same arguments in all the algorithms.
+- Changed the way random_state is used in the different algorithms to ensure proper
+  randomization and reproducibility of different executions.
+- Unified the signatures of the different algorithms to fit, predict, and fit_predict.
+  These methods now have the same arguments in all the algorithms.
 - Changed license to Apache v2
 - Fixed some typos in README
 - load methods in the data module can take a delimiter argument now
 - Moved the quickstart guide to a separate file and included it in the documentation
 - Fixed several bugs
 
-[Unreleased]: https://github.com/bsc-wdc/dislib/compare/v0.6.0...HEAD
+<!-- [Unreleased]: https://github.com/bsc-wdc/dislib/compare/v0.6.0...HEAD -->
 [0.6.0]: https://github.com/bsc-wdc/dislib/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/bsc-wdc/dislib/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/bsc-wdc/dislib/compare/v0.3.0...v0.4.0
