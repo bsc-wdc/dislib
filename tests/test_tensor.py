@@ -355,7 +355,7 @@ class TensorTest(unittest.TestCase):
         self.assertTrue(x_train_tensor.tensor_shape == (4, 4, 4))
         x_train_tensor.tensors[0][0] = compss_wait_on(
             x_train_tensor.tensors[0][0])
-        self.assertTrue(x_train_tensor.tensors[0][0] == (4, 4, 4))
+        self.assertTrue(x_train_tensor.tensors[0][0].shape == (4, 4, 4))
         self.assertTrue(x_train_tensor.tensors[0][0].all() ==
                         np.ones((4, 4)).all())
 
