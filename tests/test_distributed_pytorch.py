@@ -120,13 +120,13 @@ class TensorPytorchDistributed(unittest.TestCase):
         x_tensor = ds.from_pt_tensor(tensor=x,
                                      shape=(2, 2))
         x_tensor_original = ds.from_pt_tensor(tensor=x,
-                                             shape=(2, 2))
+                                              shape=(2, 2))
         y = torch.nn.functional.one_hot(y.long(), num_classes=-1)
         y = y[:, 0, :].double()
         y_tensor = ds.from_pt_tensor(tensor=y,
                                      shape=(2, 2))
         y_tensor_original = ds.from_pt_tensor(tensor=y,
-                                             shape=(2, 2))
+                                              shape=(2, 2))
         model = TestsNetworkCNN(1, 2)
         model.apply(init_weights)
         encaps_function = EncapsulatedFunctionsDistributedPytorch(
