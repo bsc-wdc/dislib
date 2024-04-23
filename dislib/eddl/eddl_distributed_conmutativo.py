@@ -186,7 +186,7 @@ class EddlDistributedConmutativo(object):
             Updated weights and biases of the different layers of the main
             network.
         """
-        return self._aggregate_parameters_async(self, model_params,
+        return self._aggregate_parameters_async(model_params,
                                                 parameters_to_aggregate)
 
     @constraint(processors=[
