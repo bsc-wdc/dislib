@@ -69,10 +69,14 @@ class TensorPytorchDistributed(unittest.TestCase):
         y = y[indices]
         x_tensor = ds.from_pt_tensor(tensor=x,
                                      shape=(2, 2))
+        x_tensor_original = ds.from_pt_tensor(tensor=x,
+                                              shape=(2, 2))
         y = torch.nn.functional.one_hot(y.long(), num_classes=-1)
         y = y[:, 0, :].double()
         y_tensor = ds.from_pt_tensor(tensor=y,
                                      shape=(2, 2))
+        y_tensor_original = ds.from_pt_tensor(tensor=y,
+                                              shape=(2, 2))
         model = TestsNetwork(1, 10)
         model.apply(init_weights)
         encaps_function = EncapsulatedFunctionsDistributedPytorch(
@@ -90,8 +94,8 @@ class TensorPytorchDistributed(unittest.TestCase):
         model.eval()
         total = 0
         running_accuracy = 0
-        y_tensor = y_tensor.collect()
-        x_tensor = x_tensor.collect()
+        y_tensor = y_tensor_original.collect()
+        x_tensor = x_tensor_original.collect()
         for tensor, labels in zip(x_tensor, y_tensor):
             for images, in_labels in zip(tensor, labels):
                 outputs = in_labels
@@ -115,10 +119,14 @@ class TensorPytorchDistributed(unittest.TestCase):
         y = y[indices]
         x_tensor = ds.from_pt_tensor(tensor=x,
                                      shape=(2, 2))
+        x_tensor_original = ds.from_pt_tensor(tensor=x,
+                                             shape=(2, 2))
         y = torch.nn.functional.one_hot(y.long(), num_classes=-1)
         y = y[:, 0, :].double()
         y_tensor = ds.from_pt_tensor(tensor=y,
                                      shape=(2, 2))
+        y_tensor_original = ds.from_pt_tensor(tensor=y,
+                                             shape=(2, 2))
         model = TestsNetworkCNN(1, 2)
         model.apply(init_weights)
         encaps_function = EncapsulatedFunctionsDistributedPytorch(
@@ -135,8 +143,8 @@ class TensorPytorchDistributed(unittest.TestCase):
         model.eval()
         total = 0
         running_accuracy = 0
-        y_tensor = y_tensor.collect()
-        x_tensor = x_tensor.collect()
+        y_tensor = y_tensor_original.collect()
+        x_tensor = x_tensor_original.collect()
         for tensor, labels in zip(x_tensor, y_tensor):
             for images, in_labels in zip(tensor, labels):
                 outputs = in_labels
