@@ -1213,6 +1213,8 @@ def _combine_tensors(tensors, othertensors, func, out_tensors):
 @constraint(computing_units="${ComputingUnits}")
 @task(new_shape={Type: COLLECTION_IN}, returns=1)
 def _obtain_indexes_from_tensor(tensor, new_shape):
+    if isinstance(new_shape, list):
+        return tensor[tuple(new_shape)]
     return tensor[new_shape]
 
 
