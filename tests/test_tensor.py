@@ -1,6 +1,6 @@
 import unittest
 from dislib.data.tensor import Tensor
-from pycompss.api.api import compss_wait_on
+from pycompss.api.api import compss_wait_on, compss_barrier
 import numpy as np
 import dislib as ds
 import torch
@@ -8,7 +8,7 @@ import tensorflow as tf
 
 
 def _validate_tensor(x):
-    x.collect()
+    x_aux = x.collect()
     tl = x.tensors[0][0].shape
     br = x.tensors[-1][-1].shape
 
@@ -21,12 +21,12 @@ def _validate_tensor(x):
 
     br0 = x.shape[1] * x.tensor_shape[0] - \
         ((x.shape[1] - 1) * x.tensor_shape[0])
-    return (tl == x.tensor_shape and br0 == br[0] and x.n_tensors /
-            x.shape[0] == len(x.tensors[0]) and x.shape[0] == 1)
+    return x_aux, (tl == x.tensor_shape and br0 == br[0] and x.n_tensors /
+                   x.shape[0] == len(x.tensors[0]) and x.shape[0] == 1)
 
 
 def _validate_tensor_col(x):
-    x.collect()
+    x_aux = x.collect()
     tl = x.tensors[0][0].shape
     br = x.tensors[-1][-1].shape
 
@@ -39,8 +39,8 @@ def _validate_tensor_col(x):
 
     br0 = x.shape[1] * x.tensor_shape[0] - \
         ((x.shape[1] - 1) * x.tensor_shape[0])
-    return (tl == x.tensor_shape and br0 == br[0] and x.n_tensors /
-            x.shape[1] == len(x.tensors) and x.shape[1] == 1)
+    return x_aux, (tl == x.tensor_shape and br0 == br[0] and x.n_tensors /
+                   x.shape[1] == len(x.tensors) and x.shape[1] == 1)
 
 
 def _equal_valued_tensors(x1, x2):
@@ -102,55 +102,56 @@ class TensorTest(unittest.TestCase):
     def test_iterate_rows(self):
         """ Testing the row _iterator of the ds.tensor """
 
-        x_np = ds.random_tensors("np", (3, 3, 3, 11, 11))
-        x_torch = Tensor(tensors=x_np.tensors,
-                         tensor_shape=x_np.tensor_shape,
-                         shape=x_np.shape, dtype=x_np.dtype)
+        np_rand = np.random.rand(3, 3, 3, 11, 11)
+        x_np = ds.from_array(np_rand)
+        x_torch = ds.from_array(np_rand)
 
         for i, h_block in enumerate(x_np._iterator(axis='rows')):
             computed = h_block
             expected = x_torch[i: (i + 1)]
-            self.assertTrue(_validate_tensor(computed))
-            self.assertTrue(_equal_valued_tensors(computed.collect(),
+            computed, validated_tensor = _validate_tensor(computed)
+            self.assertTrue(validated_tensor)
+            self.assertTrue(_equal_valued_tensors(computed,
                                                   expected.collect()))
 
-        x_torch = ds.random_tensors("torch", (3, 3, 3, 11, 11))
-        x_np = Tensor(tensors=x_torch.tensors,
-                      tensor_shape=x_torch.tensor_shape,
-                      shape=x_torch.shape, dtype=x_torch.dtype)
+        torch_rand = torch.rand(3, 3, 3, 11, 11)
+        x_np = ds.from_pt_tensor(torch_rand)
+        x_torch = ds.from_pt_tensor(torch_rand)
 
         for i, h_block in enumerate(x_np._iterator(axis='rows')):
             computed = h_block
             expected = x_torch[i: (i + 1)]
-            self.assertTrue(_validate_tensor(computed))
-            self.assertTrue(_equal_valued_tensors(computed.collect(),
+            computed, validated_tensor = _validate_tensor(computed)
+            self.assertTrue(validated_tensor)
+            self.assertTrue(_equal_valued_tensors(computed,
                                                   expected.collect()))
 
     def test_iterate_cols(self):
         """ Testing the col _iterator of the ds.tensor """
-        x_np = ds.random_tensors("np", (3, 3, 3, 11, 11))
-        x_torch = Tensor(tensors=x_np.tensors,
-                         tensor_shape=x_np.tensor_shape,
-                         shape=x_np.shape, dtype=x_np.dtype)
+        np_rand = np.random.rand(3, 3, 3, 11, 11)
+        x_np = ds.from_array(np_rand)
+        x_torch = ds.from_array(np_rand)
 
         for i, v_block in enumerate(x_np._iterator(axis='columns')):
             expected = x_torch[:, i: (i + 1)]
-            self.assertTrue(_validate_tensor_col(v_block))
-            self.assertTrue(_equal_valued_tensors(v_block.collect(),
+            v_block, validated_tensor = _validate_tensor_col(v_block)
+            self.assertTrue(validated_tensor)
+            self.assertTrue(_equal_valued_tensors(v_block,
                                                   expected.collect()))
 
-        x_np = ds.random_tensors("torch", (3, 3, 3, 11, 11))
-        x_torch = Tensor(tensors=x_np.tensors,
-                         tensor_shape=x_np.tensor_shape,
-                         shape=x_np.shape, dtype=x_np.dtype)
+        torch_rand = torch.rand(3, 3, 3, 11, 11)
+        x_np = ds.from_pt_tensor(torch_rand)
+        x_torch = ds.from_pt_tensor(torch_rand)
 
         for i, v_block in enumerate(x_np._iterator(axis='columns')):
             expected = x_torch[:, i: (i + 1)]
-            self.assertTrue(_validate_tensor_col(v_block))
-            self.assertTrue(_equal_valued_tensors(v_block.collect(),
+            v_block, validated_tensor = _validate_tensor_col(v_block)
+            self.assertTrue(validated_tensor)
+            self.assertTrue(_equal_valued_tensors(v_block,
                                                   expected.collect()))
 
     def test_iterate_exception(self):
+        compss_barrier()
         x_np = ds.random_tensors("np", (3, 3, 3, 11, 11))
         with self.assertRaises(Exception):
             for i, v_block in enumerate(x_np._iterator(axis='diagonal')):
@@ -158,6 +159,7 @@ class TensorTest(unittest.TestCase):
 
     def test_invalid_indexing(self):
         """ Tests invalid indexing """
+        compss_barrier()
         x = ds.random_tensors("np", (3, 3, 3, 11, 11))
         with self.assertRaises(IndexError):
             x[8]
@@ -199,7 +201,8 @@ class TensorTest(unittest.TestCase):
             x[0, 0, 0, 2, 3, 0, 0, 0]
 
     def test_indexing(self):
-        x = ds.random_tensors("np", (3, 3, 3, 11, 11))
+        compss_barrier()
+        x = ds.random_tensors("np", (3, 3, 5, 11, 11))
         aux = x[0]
         self.assertEqual(aux.shape, (1, x.shape[1]))
         self.assertEqual(aux.tensor_shape, x.tensor_shape)
@@ -212,12 +215,15 @@ class TensorTest(unittest.TestCase):
         aux = x[[0, 1], 1]
         self.assertEqual(aux.shape, (2, 1))
         self.assertEqual(aux.tensor_shape, x.tensor_shape)
+        x = ds.random_tensors("np", (3, 3, 5, 11, 11))
         aux = x[0, [0, 1], 1:3, 2:4, 2:4]
         self.assertEqual(aux.shape, (1, 2))
         self.assertEqual(aux.tensor_shape, (2, 2, 2))
+        x = ds.random_tensors("np", (3, 3, 5, 11, 11))
         aux = x[0:1, 0:2, 1:3, 2:4, 2:4]
         self.assertEqual(aux.shape, (1, 2))
         self.assertEqual(aux.tensor_shape, (2, 2, 2))
+        x = ds.random_tensors("np", (3, 3, 5, 11, 11))
         aux = x[0:1, 0:2, [0, 2], [4, 6], [3, 7]]
         self.assertEqual(aux.shape, (1, 2))
         self.assertEqual(aux.tensor_shape, (2,))
@@ -232,18 +238,19 @@ class TensorTest(unittest.TestCase):
         self.assertEqual(aux.tensor_shape, (1, 11, 11))
         aux = x[1, 2]
         self.assertEqual(aux.shape, (1, 1))
-        self.assertEqual(aux.tensor_shape, (3, 11, 11))
+        self.assertEqual(aux.tensor_shape, (5, 11, 11))
         aux = x[0:0]
         self.assertEqual(aux.shape, (1, 1))
         self.assertEqual(aux.tensor_shape, (0, 0))
         aux = x[0:1, :4]
         self.assertEqual(aux.shape, (1, 3))
-        self.assertEqual(aux.tensor_shape, (3, 11, 11))
+        self.assertEqual(aux.tensor_shape, (5, 11, 11))
         aux = x[0:1, 0:0]
         self.assertEqual(aux.shape, (1, 1))
         self.assertEqual(aux.tensor_shape, (0, 0))
 
     def test_invalid_assignation(self):
+        compss_barrier()
         x_train_tensor = ds.random_tensors("np", (2, 2, 4, 4, 4))
         with self.assertRaises(ValueError):
             tensor_to_assign = np.array([[2, 3, 4, 5], [2, 3, 4, 5],
@@ -408,6 +415,7 @@ class TensorTest(unittest.TestCase):
                                     np.array([9, 4, 1])]]).all())
         with self.assertRaises(NotImplementedError):
             x_np**(2.21, 2)
+        x_np = ds.from_array(np.array([[[1, 2, 3], [3, 2, 1]]]))
         x_np_mul = x_np * 2
         x_np_mul = np.array(x_np_mul.collect())
         self.assertEqual(x_np_mul.all(),
@@ -423,11 +431,15 @@ class TensorTest(unittest.TestCase):
                                     np.array([4, 8, 16])]]).all())
         with self.assertRaises(NotImplementedError):
             x_np/(2.21, 2)
+        x_np = ds.from_array(np.array([[[1, 2, 3], [3, 2, 1]]]))
+        x_np_2 = ds.from_array(np.array([[[2, 4, 8], [8, 16, 32]]]))
         x_add = x_np + x_np_2
         x_add = np.array(x_add.collect())
         self.assertEqual(x_add.all(),
                          np.array([[np.array([3, 6, 11]),
                                     np.array([11, 18, 33])]]).all())
+        x_np = ds.from_array(np.array([[[1, 2, 3], [3, 2, 1]]]))
+        x_np_2 = ds.from_array(np.array([[[2, 4, 8], [8, 16, 32]]]))
         x_sub = x_np - x_np_2
         x_sub = np.array(x_sub.collect())
         self.assertEqual(x_sub.all(),
@@ -461,6 +473,8 @@ class TensorTest(unittest.TestCase):
         x_add = x_add.collect()
         self.assertEqual(x_add[0][0].all(), torch.tensor([3, 6, 11]).all())
         self.assertEqual(x_add[0][1].all(), torch.tensor([11, 18, 33]).all())
+        x_np = ds.from_pt_tensor(torch.tensor([[[1, 2, 3], [3, 2, 1]]]))
+        x_np_2 = ds.from_pt_tensor(torch.tensor([[[2, 4, 8], [8, 16, 32]]]))
         x_sub = x_np - x_np_2
         x_sub = x_sub.collect()
         self.assertEqual(x_sub[0][0].all(), torch.tensor([-1, -2, -5]).all())
@@ -549,6 +563,7 @@ class TensorTest(unittest.TestCase):
         self.assertEqual(new_tensor.shape, (2, 2))
 
     def test_change_shape(self):
+        compss_barrier()
         np_array = np.random.rand(2, 2, 3, 3, 3)
         x_np = ds.from_array(np_array)
         with self.assertRaises(ValueError):
@@ -569,6 +584,7 @@ class TensorTest(unittest.TestCase):
         self.assertEqual(tensor.tensor_shape, (8, 3, 3))
 
     def test_create_empty_tensor(self):
+        compss_barrier()
         empty_tensor = ds.data.tensor._empty_tensor((2, 2), (2, 3, 4))
         self.assertEqual(empty_tensor.shape, (2, 2))
         self.assertEqual((len(empty_tensor.tensors),
@@ -579,14 +595,14 @@ class TensorTest(unittest.TestCase):
         path = "tests/datasets/npy"
         x_train_tensor = ds.data.tensor.load_dataset(2, path)
         self.assertEqual(x_train_tensor.shape, (2, 2))
-        x_train_tensor.collect()
-        self.assertTrue(isinstance(x_train_tensor.tensors[0][0],
+        x_train_tensor = x_train_tensor.collect()
+        self.assertTrue(isinstance(x_train_tensor[0][0],
                                    (np.ndarray, np.generic)))
         path = "tests/datasets/pt"
         x_train_tensor = ds.data.tensor.load_dataset(2, path)
         self.assertEqual(x_train_tensor.shape, (2, 2))
-        x_train_tensor.collect()
-        self.assertTrue(torch.is_tensor(x_train_tensor.tensors[0][0]))
+        x_train_tensor = x_train_tensor.collect()
+        self.assertTrue(torch.is_tensor(x_train_tensor[0][0]))
         with self.assertRaises(NotImplementedError):
             path = "tests/datasets/other"
             ds.data.tensor.load_dataset(2, path)
@@ -607,30 +623,31 @@ class TensorTest(unittest.TestCase):
             ds.data.tensor.shuffle(x_train_tensor, y_train_tensor)
         x_train_tensor_2 = np.array(x_train_tensor_2.collect())
         y_train_tensor_2 = np.array(y_train_tensor_2.collect())
-        self.assertFalse((x_train_tensor_2 == np.array(
-            x_train_tensor.collect())).all())
-        self.assertFalse((y_train_tensor_2 == np.array(
-            y_train_tensor.collect())).all())
-
+        self.assertFalse(np.all(x_train_tensor_2 == np.array(
+            x_train_tensor.collect())))
+        self.assertFalse(np.all(y_train_tensor_2 == np.array(
+            y_train_tensor.collect())))
         x_train_tensor = ds.random_tensors("torch", (2, 2, 2, 2, 2, 2))
         x_train_tensor_2 = ds.data.tensor.shuffle(x_train_tensor)
         self.assertTrue(
             x_train_tensor_2.shape == (2, 2) ==
             (len(x_train_tensor_2.tensors),
              len(x_train_tensor_2.tensors[0])))
+        x_train_tensor = ds.random_tensors("torch", (2, 2, 2, 2, 2, 2))
+        x_train_tensor_2 = ds.data.tensor.shuffle(x_train_tensor)
         x_train_tensor_2 = np.array(x_train_tensor_2.collect())
-        self.assertFalse((x_train_tensor_2 ==
-                          np.array(x_train_tensor.collect())))
+        self.assertFalse(np.all((x_train_tensor_2 ==
+                                 np.array(x_train_tensor.collect()))))
         x_train_tensor = ds.random_tensors("torch", (2, 2, 16, 8, 11, 11))
         y_train_tensor = ds.random_tensors("torch", (2, 2, 16, 1))
         x_train_tensor_2, y_train_tensor_2 = \
             ds.data.tensor.shuffle(x_train_tensor, y_train_tensor)
         x_train_tensor_2 = np.array(x_train_tensor_2.collect())
         y_train_tensor_2 = np.array(y_train_tensor_2.collect())
-        self.assertFalse((x_train_tensor_2 ==
-                          np.array(x_train_tensor.collect())))
-        self.assertFalse((y_train_tensor_2 ==
-                          np.array(y_train_tensor.collect())))
+        self.assertFalse(np.all(x_train_tensor_2 ==
+                                np.array(x_train_tensor.collect())))
+        self.assertFalse(np.all(y_train_tensor_2 ==
+                                np.array(y_train_tensor.collect())))
 
     def test_apply_to_tensors(self):
         x_train_tensor = ds.random_tensors("np", (2, 2, 1, 2, 3))
