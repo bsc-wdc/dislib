@@ -11,7 +11,7 @@ import pyeddl
 from sklearn.metrics import accuracy_score
 
 
-class TensorPytorchDistributed(unittest.TestCase):
+class TensorEDDLDistributed(unittest.TestCase):
     def test_synchronous_shuffle_every_n_epochs_with_GPU_training(self):
         x = np.ones([1000, 1, 1, 1])
         y = np.ones([1000, 1])
