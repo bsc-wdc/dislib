@@ -20,14 +20,12 @@ RUN apt-get -o Acquire::Check-Valid-Until=false -o Acquire::Check-Date=false upd
     make && make install && cd ../.. && \
     python3 -m pip install --upgrade setuptools pip && \
     python3 -m pip install --upgrade numpy 'pybind11<2.6' pytest && cd /pyeddl && python3 setup.py install && \
-    python3 -m pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org --upgrade -r /dislib/requirements.txt
+    python3 -m pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org --upgrade -r /dislib/requirements.txt && \
+    python3 -m pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org --upgrade -r /dislib/requirements_gpu.txt && \
+    python3 -m pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org --upgrade -r /dislib/requirements_tests.txt
 
 ENV COMPSS_LOAD_SOURCE false
 
 # Expose SSH port and run SSHD
-# build-essential zlib1g-dev libeigen3-dev wget ca-certificates && \
-# wget -q https://github.com/protocolbuffers/protobuf/releases/download/v3.11.4/protobuf-all-3.11.4.tar.gz && tar xf protobuf-all-3.11.4.tar.gz && \
-# cd protobuf-3.11.4 && ./configure && \
-# make -j$(nproc) && make install && \
 EXPOSE 22
 CMD ["/usr/sbin/sshd","-D"]
