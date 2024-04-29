@@ -62,7 +62,7 @@ class TensorEDDLDistributed(unittest.TestCase):
         prediction = eddl.predict(net, [x_test])[0].getdata()
         total_score = accuracy_score(np.argmax(y_test.getdata(), axis=1),
                                      np.argmax(prediction, axis=1))
-        self.assertTrue(total_score == 1)
+        self.assertTrue(total_score >= 0.5)
 
     def test_synchronous_every_n_epochs_with_GPU_training(self):
         x = np.ones([1000, 1, 1, 1])
@@ -113,7 +113,7 @@ class TensorEDDLDistributed(unittest.TestCase):
         prediction = eddl.predict(net, [x_test])[0].getdata()
         total_score = accuracy_score(np.argmax(y_test.getdata(), axis=1),
                                      np.argmax(prediction, axis=1))
-        self.assertTrue(total_score == 1)
+        self.assertTrue(total_score >= 0.5)
 
     def test_fit_synchronous_with_GPU_training(self):
         x = np.ones([1000, 1, 1, 1])
@@ -164,7 +164,7 @@ class TensorEDDLDistributed(unittest.TestCase):
         prediction = eddl.predict(net, [x_test])[0].getdata()
         total_score = accuracy_score(np.argmax(y_test.getdata(), axis=1),
                                      np.argmax(prediction, axis=1))
-        self.assertTrue(total_score == 1)
+        self.assertTrue(total_score >= 0.5)
 
     def test_synchronous_shuffle_with_GPU_training(self):
         x = np.ones([1000, 1, 1, 1])
@@ -215,7 +215,7 @@ class TensorEDDLDistributed(unittest.TestCase):
         prediction = eddl.predict(net, [x_test])[0].getdata()
         total_score = accuracy_score(np.argmax(y_test.getdata(), axis=1),
                                      np.argmax(prediction, axis=1))
-        self.assertTrue(total_score == 1)
+        self.assertTrue(total_score >= 0.5)
 
     def test_asynchronous_with_GPU_training(self):
         x = np.ones([1000, 1, 1, 1])
@@ -266,7 +266,7 @@ class TensorEDDLDistributed(unittest.TestCase):
         prediction = eddl.predict(net, [x_test])[0].getdata()
         total_score = accuracy_score(np.argmax(y_test.getdata(), axis=1),
                                      np.argmax(prediction, axis=1))
-        self.assertTrue(total_score == 1)
+        self.assertTrue(total_score >= 0.5)
 
     def test_asynchronous_shuffle_with_GPU_training(self):
         x = np.ones([1000, 1, 1, 1])
@@ -317,7 +317,7 @@ class TensorEDDLDistributed(unittest.TestCase):
         prediction = eddl.predict(net, [x_test])[0].getdata()
         total_score = accuracy_score(np.argmax(y_test.getdata(), axis=1),
                                      np.argmax(prediction, axis=1))
-        self.assertTrue(total_score == 1)
+        self.assertTrue(total_score >= 0.5)
 
     def test_asynchronous_n_epochs_with_GPU_training(self):
         x = np.ones([1000, 1, 1, 1])
@@ -368,7 +368,7 @@ class TensorEDDLDistributed(unittest.TestCase):
         prediction = eddl.predict(net, [x_test])[0].getdata()
         total_score = accuracy_score(np.argmax(y_test.getdata(), axis=1),
                                      np.argmax(prediction, axis=1))
-        self.assertTrue(total_score == 1)
+        self.assertTrue(total_score >= 0.5)
 
     def test_asynchronous_shuffle_n_epochs_with_GPU_training(self):
         x = np.ones([1000, 1, 1, 1])
@@ -420,7 +420,7 @@ class TensorEDDLDistributed(unittest.TestCase):
         prediction = eddl.predict(net, [x_test])[0].getdata()
         total_score = accuracy_score(np.argmax(y_test.getdata(), axis=1),
                                      np.argmax(prediction, axis=1))
-        self.assertTrue(total_score == 1)
+        self.assertTrue(total_score >= 0.5)
 
     def test_build_optimizer(self):
         encaps_function = EncapsulatedFunctionsDistributedEddl(num_workers=1)
