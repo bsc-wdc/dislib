@@ -1,5 +1,5 @@
 dislib.trees.nested
-============================================
+===================
 
 .. autoclass:: dislib.trees.nested.DecisionTreeClassifier
     :members:

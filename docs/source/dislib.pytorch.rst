@@ -1,5 +1,5 @@
 dislib.pytorch
-====================
+==============
 
 .. automodule:: dislib.pytorch
     :members:

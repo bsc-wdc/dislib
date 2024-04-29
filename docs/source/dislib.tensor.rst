@@ -1,5 +1,5 @@
 dislib.tensor
-============
+=============
 
 .. autoclass:: dislib.data.tensor.Tensor
     :members:
