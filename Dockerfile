@@ -20,9 +20,7 @@ RUN apt-get -o Acquire::Check-Valid-Until=false -o Acquire::Check-Date=false upd
     make && make install && cd ../.. && \
     python3 -m pip install --upgrade setuptools pip && \
     python3 -m pip install --upgrade numpy 'pybind11<2.6' pytest && cd /pyeddl && python3 setup.py install && \
-    python3 -m pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org --upgrade -r /dislib/requirements.txt && \
-    python3 -m pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org --upgrade -r /dislib/requirements_gpu.txt && \
-    python3 -m pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org --upgrade -r /dislib/requirements_tests.txt
+    python3 -m pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org --upgrade -r /dislib/requirements.txt
 
 ENV COMPSS_LOAD_SOURCE false
 
