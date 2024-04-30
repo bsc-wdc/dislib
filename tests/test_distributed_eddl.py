@@ -2,7 +2,8 @@ import unittest
 import pyeddl.eddl as eddl
 from dislib.eddl import EncapsulatedFunctionsDistributedEddl
 from dislib.eddl.eddl_distributed_conmutativo import EddlDistributedConmutativo
-from dislib.eddl.models import TestsNetworkCNNEDDL, VGG19, VGG16
+from dislib.eddl.models import TestsNetworkCNNEDDL, TestsNetworkEDDL, \
+    VGG19, VGG16, MNIST
 import numpy as np
 import dislib as ds
 from dislib.eddl.utils import parametersToEDDLTensor
@@ -42,7 +43,7 @@ class TensorEDDLDistributed(unittest.TestCase):
         optimizer = {'optimizer': 'sgd', 'lr': 0.002}
         encaps_function.build(net, optimizer, "binary_cross_entropy",
                               "categorical_accuracy", num_nodes=1, num_gpu=0)
-        parameters = encaps_function.\
+        parameters = encaps_function. \
             fit_synchronous_shuffle_every_n_epochs_with_GPU(
               x_tensor, y_tensor, 25, 5, n_epocs_sync=2)
         net = eddl.Model([in_], [out])
@@ -400,7 +401,7 @@ class TensorEDDLDistributed(unittest.TestCase):
         optimizer = {'optimizer': 'sgd', 'lr': 0.002}
         encaps_function.build(net, optimizer, "binary_cross_entropy",
                               "categorical_accuracy", num_nodes=1, num_gpu=0)
-        parameters = encaps_function.\
+        parameters = encaps_function. \
             fit_asynchronous_shuffle_n_epochs_with_GPU(
               x_tensor, y_tensor, 25, 8, n_epocs_sync=2)
         net = eddl.Model([in_], [out])
@@ -518,6 +519,40 @@ class TensorEDDLDistributed(unittest.TestCase):
         self.assertTrue(eddldistrcon.__getstate__()["model"] is None)
         eddldistrcon.__setstate__(state)
         self.assertTrue(eddldistrcon.__getstate__()["model"] is not None)
+        comps_service = eddl.CS_CPU()
+        optimizer = {'optimizer': 'sgd', 'lr': 0.002}
+        eddl.build(
+            net,
+            eddldistrcon._build_optimizer(optimizer),
+            ['binary_cross_entropy'],
+            ['categorical_accuracy'],
+            comps_service
+        )
+        state = {"model": eddl.serialize_net_to_onnx_string(net,
+                                                            False),
+                 "initialized": True,
+                 'loss': 'binary_cross_entropy',
+                 'metric': 'categorical_accuracy',
+                 'num_gpu': 0,
+                 'optimizer': eddl.sgd}
+        eddldistrcon = EddlDistributedConmutativo()
+        eddldistrcon.__setstate__(state)
+        eddldistrcon.build(net, optimizer, "binary_cross_entropy",
+                           "categorical_accuracy")
+        self.assertTrue(eddldistrcon.__getstate__()["model"] is not None)
+
+    def test_exceptions_build(self):
+        encaps_function = EncapsulatedFunctionsDistributedEddl(num_workers=1)
+        with self.assertRaises(ValueError):
+            optimizer = {'optimizer': 'sgd', 'lr': 0.002}
+            encaps_function.build(None, optimizer, "triple_cross_entropy",
+                                  "categorical_accuracy",
+                                  num_nodes=1, num_gpu=0)
+        with self.assertRaises(ValueError):
+            optimizer = {'optimizer': 'sgd', 'lr': 0.002}
+            encaps_function.build(None, optimizer, "binary_cross_entropy",
+                                  "non_categorical_accuracy",
+                                  num_nodes=1, num_gpu=0)
 
     def test_initialize_model(self):
         in_ = eddl.Input([3, 224, 224])
@@ -526,6 +561,16 @@ class TensorEDDLDistributed(unittest.TestCase):
         net = eddl.Model([in_], [out])
         self.assertTrue(isinstance(net, pyeddl._core.Net))
         out = VGG16(in_)
+        out = eddl.Softmax(eddl.Dense(out, 2))
+        net = eddl.Model([in_], [out])
+        self.assertTrue(isinstance(net, pyeddl._core.Net))
+        in_ = eddl.Input([3, 28, 28])
+        out = MNIST(in_)
+        out = eddl.Softmax(eddl.Dense(out, 2))
+        net = eddl.Model([in_], [out])
+        self.assertTrue(isinstance(net, pyeddl._core.Net))
+        in_ = eddl.Input([3, 28, 28])
+        out = TestsNetworkEDDL(in_)
         out = eddl.Softmax(eddl.Dense(out, 2))
         net = eddl.Model([in_], [out])
         self.assertTrue(isinstance(net, pyeddl._core.Net))

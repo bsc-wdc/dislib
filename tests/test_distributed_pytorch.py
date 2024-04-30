@@ -5,7 +5,8 @@ import torch.nn as nn
 import dislib as ds
 from dislib.pytorch.encapsulated_functions_distributed import \
     EncapsulatedFunctionsDistributedPytorch
-from dislib.pytorch.model_pt import TestsNetwork, TestsNetworkCNN
+from dislib.pytorch.model_pt import TestsNetwork, TestsNetworkCNN, \
+    VGG19, MNIST_Network
 
 
 def init_weights(m):
@@ -41,6 +42,14 @@ def set_weights_neural_network(model, weights):
 
 
 class TensorPytorchDistributed(unittest.TestCase):
+    def test_initialization(self):
+        model = VGG19(3, 10)
+        model.apply(init_weights)
+        self.assertTrue(isinstance(model, VGG19))
+        model = MNIST_Network(728, 10)
+        model.apply(init_weights)
+        self.assertTrue(isinstance(model, MNIST_Network))
+
     def test_synchronous_training(self):
         x = torch.ones([1000, 1, 1, 1])
         y = torch.ones([1000, 1])
