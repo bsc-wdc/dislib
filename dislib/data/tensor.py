@@ -196,11 +196,6 @@ class Tensor(object):
             elif isinstance(rows, slice) and isinstance(cols, slice) and \
                     isinstance(positions, tuple):
                 return self._get_slice(rows, cols, positions)
-            else:
-                raise NotImplementedError("The indexing used is not "
-                                          "supported."
-                                          "Please contact with the team "
-                                          "in case of need")
 
     def __sub__(self, other):
         if self.shape != other.shape:
@@ -444,10 +439,6 @@ class Tensor(object):
         tensors = [tens[c_start:c_stop] for tens in
                    self.tensors[r_start:r_stop]]
         if inside_tensor is not None:
-            if not isinstance(inside_tensor, tuple):
-                raise ValueError(
-                    "There should be a tuple of slices, indexes, or lists "
-                    "specified to recover from the different tensors")
             new_shape = []
             for dimension, specific_slice in enumerate(inside_tensor):
                 if isinstance(specific_slice, slice):

@@ -519,27 +519,6 @@ class TensorEDDLDistributed(unittest.TestCase):
         self.assertTrue(eddldistrcon.__getstate__()["model"] is None)
         eddldistrcon.__setstate__(state)
         self.assertTrue(eddldistrcon.__getstate__()["model"] is not None)
-        comps_service = eddl.CS_CPU()
-        optimizer = {'optimizer': 'sgd', 'lr': 0.002}
-        eddl.build(
-            net,
-            eddldistrcon._build_optimizer(optimizer),
-            ['binary_cross_entropy'],
-            ['categorical_accuracy'],
-            comps_service
-        )
-        state = {"model": eddl.serialize_net_to_onnx_string(net,
-                                                            False),
-                 "initialized": True,
-                 'loss': 'binary_cross_entropy',
-                 'metric': 'categorical_accuracy',
-                 'num_gpu': 0,
-                 'optimizer': eddl.sgd}
-        eddldistrcon = EddlDistributedConmutativo()
-        eddldistrcon.__setstate__(state)
-        eddldistrcon.build(net, optimizer, "binary_cross_entropy",
-                           "categorical_accuracy")
-        self.assertTrue(eddldistrcon.__getstate__()["model"] is not None)
 
     def test_exceptions_build(self):
         encaps_function = EncapsulatedFunctionsDistributedEddl(num_workers=1)

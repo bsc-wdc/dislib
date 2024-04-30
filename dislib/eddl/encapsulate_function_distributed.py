@@ -5,7 +5,6 @@ from dislib.eddl.utils import getParameters, \
     aggregateParameters, parametersToNumpy
 from dislib.eddl.eddl_distributed_conmutativo import EddlDistributedConmutativo
 from pycompss.api.api import compss_wait_on, compss_delete_object
-import math
 from dislib.data.tensor import shuffle
 
 
@@ -589,14 +588,6 @@ class EncapsulatedFunctionsDistributedEddl(object):
         self.model_parameters = aggregateParameters(
             parameters_for_workers)
         return self.model_parameters
-
-    def divide_data_for_workers(self, x, y, num_workers):
-        if x.shape[0] != y.shape[0]:
-            raise ValueError("Both ds-arrays should contain the same "
-                             "number of instances")
-        num_instances_block = math.ceil(x.shape[0] / num_workers)
-        return x.rechunk((num_instances_block, x._reg_shape[1])), \
-            y.rechunk((num_instances_block, y._reg_shape[1]))
 
     def _build_optimizer(self, optimizer):
         if optimizer['optimizer'] == 'adam':

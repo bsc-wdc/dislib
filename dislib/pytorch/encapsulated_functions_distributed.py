@@ -3,7 +3,6 @@ import numpy as np
 import torch.nn as nn
 import copy
 from pycompss.api.api import compss_wait_on, compss_delete_object
-import math
 from dislib.data.tensor import shuffle
 from dislib.pytorch.pytorch_distributed import PytorchDistributed
 
@@ -600,11 +599,3 @@ class EncapsulatedFunctionsDistributedPytorch(object):
         parameters_for_workers = compss_wait_on(parameters_for_workers)
         self.model_parameters = pt_aggregateParameters(parameters_for_workers)
         return self.model_parameters
-
-    def divide_data_for_workers(self, x, y, num_workers):
-        if x.shape[0] != y.shape[0]:
-            raise ValueError("Both ds-arrays should contain the same "
-                             "number of instances")
-        num_instances_block = math.ceil(x.shape[0] / num_workers)
-        return x.rechunk((num_instances_block, x._reg_shape[1])), \
-            y.rechunk((num_instances_block, y._reg_shape[1]))
