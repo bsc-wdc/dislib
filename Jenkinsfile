@@ -27,7 +27,7 @@ pipeline {
                 sh 'docker rmi -f bscwdc/dislib &> /dev/null || true'
                 sh 'docker build --pull --no-cache --tag bscwdc/dislib .'
                 sh '''#!/bin/bash
-                docker run $(bash <(curl -s https://codecov.io/env)) -d --name dislib bscwdc/dislib'''
+                docker run $(bash <(curl -s https://codecov.io/env)) -v /home/jenkins/.ssh:/root/.ssh:ro -d --name dislib bscwdc/dislib'''
             }
         }
         stage('test') {
