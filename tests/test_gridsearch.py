@@ -14,6 +14,8 @@ from dislib.regression import LinearRegression
 from dislib.model_selection import GridSearchCV, KFold
 from dislib.utils import shuffle
 from tests import BaseTimedTestCase
+from sklearn.datasets import make_classification
+from sklearn.metrics import mean_squared_error
 
 
 class GridSearchCVTest(BaseTimedTestCase):
@@ -312,3 +314,34 @@ class GridSearchCVTest(BaseTimedTestCase):
         with self.assertRaises(ValueError):
             searcher = GridSearchCV(rf, param_grid, cv={})
             searcher.fit(x, y)
+
+    def test_gridsearch_sort(self):
+        """Tests two possible sortings of the rank of GridSearch"""
+        x, y = make_classification(
+            n_samples=3000,
+            n_features=10,
+            n_classes=3,
+            n_informative=4,
+            n_redundant=2,
+            n_repeated=1,
+            n_clusters_per_class=2,
+            shuffle=True,
+            random_state=0,
+        )
+        x_train = ds.array(x[::2], (300, 10))
+        y_train = ds.array(y[::2][:, np.newaxis] * 200, (300, 1))
+        param_grid = {'n_estimators': (2, 4)}
+        rf = RandomForestClassifier()
+
+        searcher = GridSearchCV(rf, param_grid, cv=3, sort="min",
+                                scoring=mean_squared_error,
+                                refit=False)
+        searcher.fit(x_train, y_train)
+        searcher2 = GridSearchCV(rf, param_grid, cv=3, sort="max",
+                                 scoring=mean_squared_error,
+                                 refit=False)
+        searcher2.fit(x_train, y_train)
+        results_min = searcher.cv_results_["rank_test_score"]
+        results_max = searcher2.cv_results_["rank_test_score"]
+        self.assertTrue(results_min[0] == results_max[-1])
+        self.assertTrue(results_min[-1] == results_max[0])
