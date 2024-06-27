@@ -79,7 +79,7 @@ def _score(estimator, x, y, scorers):
         try:
             score = scorer(estimator, x, y)
         except TypeError:
-            score = scorer(np.block(estimator.predict(x)._blocks),
+            score = scorer(np.block(estimator.predict(x).collect()),
                            np.block(y._blocks))
         scores[name] = score
     return scores
