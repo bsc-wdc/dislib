@@ -79,8 +79,13 @@ def _score(estimator, x, y, scorers):
         try:
             score = scorer(estimator, x, y)
         except TypeError:
-            score = scorer(np.block(estimator.predict(x).collect()),
-                           np.block(y._blocks))
+            prediction = estimator.predict(x)
+            if not isinstance(prediction, Array):
+                score = scorer(np.block(prediction), np.block(y))
+            else:
+                y = y.collect()
+                score = scorer(np.block(prediction.collect()),
+                               y)
         scores[name] = score
     return scores
 
