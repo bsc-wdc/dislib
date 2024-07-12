@@ -91,10 +91,44 @@ class GridSearchCVTest(BaseTimedTestCase):
         param_grid = {'n_estimators': (2, 4),
                       'max_depth': range(3, 5)}
         rf = SklearnRF()
-        print("ESTIMATOR TYPE")
-        print(str(type(rf)))
 
         searcher = GridSearchCV(rf, param_grid)
+        searcher.fit(x, y)
+
+        expected_keys = {'param_max_depth', 'param_n_estimators', 'params',
+                         'mean_test_score', 'std_test_score',
+                         'rank_test_score'}
+        split_keys = {'split%d_test_score' % i for i in range(5)}
+        expected_keys.update(split_keys)
+        self.assertSetEqual(set(searcher.cv_results_.keys()), expected_keys)
+
+        expected_params = [(3, 2), (3, 4), (4, 2), (4, 4)]
+        for params in searcher.cv_results_['params']:
+            m = params['max_depth']
+            n = params['n_estimators']
+            self.assertIn((m, n), expected_params)
+            expected_params.remove((m, n))
+        self.assertEqual(len(expected_params), 0)
+
+        self.assertTrue(hasattr(searcher, 'best_estimator_'))
+        self.assertTrue(hasattr(searcher, 'best_score_'))
+        self.assertTrue(hasattr(searcher, 'best_params_'))
+        self.assertTrue(hasattr(searcher, 'best_index_'))
+        self.assertTrue(hasattr(searcher, 'scorer_'))
+        self.assertEqual(searcher.n_splits_, 5)
+
+    def test_fit_sk_scoring(self):
+        """Tests GridSearchCV fit()."""
+        x_np, y_np = datasets.load_iris(return_X_y=True)
+        x = ds.array(x_np, (30, 4))
+        y = ds.array(y_np[:, np.newaxis], (30, 1))
+
+        param_grid = {'n_estimators': (2, 4),
+                      'max_depth': range(3, 5)}
+        rf = SklearnRF()
+
+        searcher = GridSearchCV(rf, param_grid,
+                                scoring=mean_squared_error,)
         searcher.fit(x, y)
 
         expected_keys = {'param_max_depth', 'param_n_estimators', 'params',
