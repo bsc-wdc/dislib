@@ -663,10 +663,10 @@ class RandomizedSearchCV(BaseSearchCV):
     n_splits_ : int
         The number of cross-validation splits (folds/iterations).
     """
-    def __init__(self, estimator, param_distributions, n_iter=10, sort="min",
+    def __init__(self, estimator, param_distributions, n_iter=10, sort="max",
                  scoring=None,
                  cv=None, refit=True, random_state=None):
-        super().__init__(estimator=estimator, scoring=scoring, sort="max",
+        super().__init__(estimator=estimator, scoring=scoring, sort=sort,
                          cv=cv,
                          refit=refit)
         self.param_distributions = param_distributions
