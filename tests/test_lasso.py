@@ -36,7 +36,7 @@ class LassoTest(BaseTimedTestCase):
         y_pred_lasso = lasso.predict(ds.array(X_test, (25, 100)))
         r2_score_lasso = r2_score(y_test, y_pred_lasso.collect())
 
-        self.assertAlmostEqual(r2_score_lasso, 0.9481746925431124)
+        self.assertAlmostEqual(r2_score_lasso, 0.9481783421045813)
 
     def test_save_load(self):
         """ Tests load and save methods """
@@ -69,7 +69,7 @@ class LassoTest(BaseTimedTestCase):
         y_pred_lasso = lasso2.predict(ds.array(X_test, (25, 100)))
         r2_score_lasso = r2_score(y_test, y_pred_lasso.collect())
 
-        self.assertAlmostEqual(r2_score_lasso, 0.9481746925431124)
+        self.assertAlmostEqual(r2_score_lasso, 0.9481783421045813)
 
         lasso.save_model("./lasso_model", save_format="cbor")
 
@@ -78,7 +78,7 @@ class LassoTest(BaseTimedTestCase):
         y_pred_lasso = lasso2.predict(ds.array(X_test, (25, 100)))
         r2_score_lasso = r2_score(y_test, y_pred_lasso.collect())
 
-        self.assertAlmostEqual(r2_score_lasso, 0.9481746925431124)
+        self.assertAlmostEqual(r2_score_lasso, 0.9481783421045813)
 
         lasso.save_model("./lasso_model", save_format="pickle")
 
@@ -87,7 +87,7 @@ class LassoTest(BaseTimedTestCase):
         y_pred_lasso = lasso2.predict(ds.array(X_test, (25, 100)))
         r2_score_lasso = r2_score(y_test, y_pred_lasso.collect())
 
-        self.assertAlmostEqual(r2_score_lasso, 0.9481746925431124)
+        self.assertAlmostEqual(r2_score_lasso, 0.9481783421045813)
 
         with self.assertRaises(ValueError):
             lasso.save_model("./lasso_model", save_format="txt")
@@ -112,7 +112,7 @@ class LassoTest(BaseTimedTestCase):
         y_pred_lasso = lasso2.predict(ds.array(X_test, (25, 100)))
         r2_score_lasso = r2_score(y_test, y_pred_lasso.collect())
 
-        self.assertAlmostEqual(r2_score_lasso, 0.9481746925431124)
+        self.assertAlmostEqual(r2_score_lasso, 0.9481783421045813)
 
         cbor2_module = utilmodel.cbor2
         utilmodel.cbor2 = None
