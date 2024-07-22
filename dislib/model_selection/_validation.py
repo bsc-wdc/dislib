@@ -76,7 +76,16 @@ def _score(estimator, x, y, scorers):
     scores = {}
 
     for name, scorer in scorers.items():
-        score = scorer(estimator, x, y)
+        try:
+            score = scorer(estimator, x, y)
+        except TypeError:
+            prediction = estimator.predict(x)
+            if not isinstance(prediction, Array):
+                score = scorer(np.block(prediction), np.block(y))
+            else:
+                y = y.collect()
+                score = scorer(np.block(prediction.collect()),
+                               y)
         scores[name] = score
     return scores
 

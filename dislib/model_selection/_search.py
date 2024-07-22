@@ -20,9 +20,11 @@ from dislib.model_selection._validation import check_scorer, \
 class BaseSearchCV(ABC):
     """Abstract base class for hyper parameter search with cross-validation."""
 
-    def __init__(self, estimator, scoring=None, cv=None, refit=True):
+    def __init__(self, estimator, scoring=None, sort="max",
+                 cv=None, refit=True):
         self.estimator = estimator
         self.scoring = scoring
+        self.sort = sort
         self.cv = cv
         self.refit = refit
         self.validation_data = []
@@ -162,9 +164,8 @@ class BaseSearchCV(ABC):
             for scorer_name, score in scores.items():
                 score = compss_wait_on(score)
                 scores[scorer_name] = validate_score(score, scorer_name)
-
         results = self._format_results(self.all_candidate_params, scorers,
-                                       self.n_splits_, self.all_out)
+                                       self.n_splits_, self.all_out, self.sort)
 
         # For multi-metric evaluation, store the best_index_, best_params_ and
         # best_score_ iff refit is one of the scorer names
@@ -202,7 +203,7 @@ class BaseSearchCV(ABC):
         return self
 
     @staticmethod
-    def _format_results(candidate_params, scorers, n_splits, out):
+    def _format_results(candidate_params, scorers, n_splits, out, sort):
         n_candidates = len(candidate_params)
 
         (test_score_dicts,) = zip(*out)
@@ -225,10 +226,13 @@ class BaseSearchCV(ABC):
             results['mean_%s' % key_name] = array_means
             array_stds = np.std(array, axis=1)
             results['std_%s' % key_name] = array_stds
-
             if rank:
-                results["rank_%s" % key_name] = np.asarray(
-                    rankdata(-array_means, method='min'), dtype=np.int32)
+                if sort == "max":
+                    results["rank_%s" % key_name] = np.asarray(
+                        rankdata(-array_means, method="min"), dtype=np.int32)
+                elif sort == "min":
+                    results["rank_%s" % key_name] = np.asarray(
+                        rankdata(array_means, method="min"), dtype=np.int32)
 
         # Use one MaskedArray and mask all the places where the param is not
         # applicable for that candidate. Use defaultdict as each candidate may
@@ -311,6 +315,10 @@ class GridSearchCV(BaseSearchCV):
         better). For evaluating multiple metrics, give a dict with names as
         keys and callables as values. If None, the estimator's score method is
         used.
+    sort : string, optional (default="max")
+        Specifies the order used for the rank of the results.
+        By default it sorts from highest value to lowest. The other
+        possible value to set is "min" and will sort from lowest to highest.
     cv : int or cv generator, optional (default=None)
         Determines the cross-validation splitting strategy.
         Possible inputs for cv are:
@@ -434,10 +442,10 @@ class GridSearchCV(BaseSearchCV):
         The number of cross-validation splits (folds/iterations).
     """
 
-    def __init__(self, estimator, param_grid, scoring=None, cv=None,
-                 refit=True):
-        super().__init__(estimator=estimator, scoring=scoring, cv=cv,
-                         refit=refit)
+    def __init__(self, estimator, param_grid, sort="max",
+                 scoring=None, cv=None, refit=True):
+        super().__init__(estimator=estimator, scoring=scoring,
+                         sort=sort, cv=cv, refit=refit)
         self.param_grid = param_grid
         self._check_param_grid(param_grid)
 
@@ -507,6 +515,11 @@ class RandomizedSearchCV(BaseSearchCV):
         better). For evaluating multiple metrics, give a dict with names as
         keys and callables as values. If None, the estimator's score method is
         used.
+
+    sort : string, optional (default="max")
+        Specifies the order used for the rank of the results.
+        By default it sorts from highest value to lowest. The other
+        possible value to set is "min" and will sort from lowest to highest.
 
     cv : int or cv generator, optional (default=None)
         Determines the cross-validation splitting strategy.
@@ -655,9 +668,11 @@ class RandomizedSearchCV(BaseSearchCV):
     n_splits_ : int
         The number of cross-validation splits (folds/iterations).
     """
-    def __init__(self, estimator, param_distributions, n_iter=10, scoring=None,
+    def __init__(self, estimator, param_distributions, n_iter=10, sort="max",
+                 scoring=None,
                  cv=None, refit=True, random_state=None):
-        super().__init__(estimator=estimator, scoring=scoring, cv=cv,
+        super().__init__(estimator=estimator, scoring=scoring, sort=sort,
+                         cv=cv,
                          refit=refit)
         self.param_distributions = param_distributions
         self.n_iter = n_iter

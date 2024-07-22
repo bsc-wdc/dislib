@@ -1,5 +1,5 @@
 dislib.trees
-============================================
+============
 
 .. autoclass:: dislib.trees.DecisionTreeClassifier
     :members:

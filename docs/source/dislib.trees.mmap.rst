@@ -1,5 +1,5 @@
 dislib.trees.mmap
-============================================
+=================
 
 .. autoclass:: dislib.trees.mmap.DecisionTreeClassifier
     :members:

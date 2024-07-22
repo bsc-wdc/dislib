@@ -1,8 +1,8 @@
 ## Quickstart guide
 
-There are two ways in which you can get started with dislib. You can perform 
-a [manual installation](#manual-installation), or you can download our 
-ready-to-use [docker image](#using-docker). 
+There are two ways in which you can get started with dislib. You can perform
+a [manual installation](#manual-installation), or you can download our
+ready-to-use [docker image](#using-docker).
 
 ### Manual installation
 
@@ -11,19 +11,21 @@ ready-to-use [docker image](#using-docker).
 dislib currently requires:
 
 * PyCOMPSs >= 2.8
-* Scikit-learn >= 1.1.1
-* Scipy >= 1.3.0
-* NumPy >= 1.18.1
+* scikit-learn >= 1.0.2
+* scipy >= 1.3.0
+* numpy == 1.23.1
 * cvxpy >= 1.1.5
+* cbor2 >= 5.4.0
 
-Some of the examples also require matplotlib >= 2.2.3 and pandas >= 0.24.2. 
-numpydoc >= 0.8.0 is requried to build the documentation.
+Some of the examples also require matplotlib >= 2.2.3 and pandas >= 0.24.2.
+numpydoc >= 0.8.0 is required to build the documentation.
+While in order to use GPUs, cupy and/or pytorch are also required.
 
-#### Installation steps 
+#### Installation steps
 
-1. Check which PyCOMPSs version to install. 
+1. Check which PyCOMPSs version to install.
     * Latest dislib release requires **PyCOMPSs 2.8** or greater (check [here](https://github.com/bsc-wdc/dislib/releases) for information about other releases).
-    
+
 2. Install PyCOMPSs following these [instructions](https://compss-doc.readthedocs.io/en/stable/Sections/01_Installation.html).
 
 3. Install the latest dislib version with ``pip3 install dislib``.
@@ -32,17 +34,17 @@ numpydoc >= 0.8.0 is requried to build the documentation.
 4. You can check that everything works fine by running one of our examples:
 
     * Download the latest source code [here](https://github.com/bsc-wdc/dislib/releases/latest).
-    
+
     * Extract the contents of the tar package.
-    
+
     ```bash
     tar xzvf dislib-X.Y.Z.tar.gz
     ```
-    
+
     * Run an example application.
-    
+
     ```bash
-    runcompss --python_interpreter=python3 dislib-X.Y.Z/examples/kmeans.py    
+    runcompss --python_interpreter=python3 dislib-X.Y.Z/examples/kmeans.py
     ```
 
 ### Using docker
@@ -51,38 +53,35 @@ numpydoc >= 0.8.0 is requried to build the documentation.
 
 **Warning:** requires docker version >= 17.12.0-ce
 
-
 1. Follow these instructions
 
-   - [Docker for Mac](https://store.docker.com/editions/community/docker-ce-desktop-mac). Or, if you prefer to use [Homebrew](https://brew.sh/).
+    * [Docker for Mac](https://store.docker.com/editions/community/docker-ce-desktop-mac). Or, if you prefer to use [Homebrew](https://brew.sh/).
+    * [Docker for Ubuntu](https://docs.docker.com/install/linux/docker-ce/ubuntu/#install-docker-ce-1).
+    * [Docker for Arch Linux](https://wiki.archlinux.org/index.php/Docker#Installation).
 
-   - [Docker for Ubuntu](https://docs.docker.com/install/linux/docker-ce/ubuntu/#install-docker-ce-1).
-
-   - [Docker for Arch Linux](https://wiki.archlinux.org/index.php/Docker#Installation).
-
-Be aware that for some distros the docker package has been renamed from `docker` to `docker-ce`. Make sure you install the new package.
+    Be aware that the docker package has been renamed from `docker` to `docker-ce` for some distributions.
+    Make sure you install the new package.
 
 2. Add user to docker group to run dislib as a non-root user.
 
-    - [Instructions](https://docs.docker.com/install/linux/linux-postinstall/)
+    * [Instructions](https://docs.docker.com/install/linux/linux-postinstall/)
 
+3. Check that docker is correctly installed.
 
-3. Check that docker is correctly installed
-
-```
-docker --version
-docker ps # this should be empty as no docker processes are yet running.
-```
+    ```bash
+    docker --version
+    docker ps # this should be empty as no docker processes are yet running.
+    ```
 
 4. Install [docker-py](https://docker-py.readthedocs.io/en/stable/)
 
-```
-pip3 install docker
-```
+    ```bash
+    pip3 install docker
+    ```
 
 #### 2. Install dislib
 
-```
+```bash
 pip3 install dislib
 ```
 
@@ -90,10 +89,12 @@ This should add the dislib executable to your path.
 
 #### 3. Start dislib in your development directory
 
-Initialize dislib where your source code will be (you can re-init anytime). This will allow docker to access your local code and run it inside the container.
+Initialize dislib where your source code will be (you can re-init anytime).
+This will allow docker to access your local code and run it inside the container.
 
 **Note** that the first time dislib needs to download the docker image from the registry, and it may take a while.
-```
+
+```bash
 # Without a path it operates on the current working directory.
 dislib init
 
@@ -112,7 +113,8 @@ git clone https://github.com/bsc-wdc/dislib.git
 ```
 
 Init the dislib environment in the root of the repo.
-The source files path are resolved from the init directory which sometimes can be confusing. As a rule of thumb, initialize the library in a current directory and check the paths are correct running the file with `python3 path_to/file.py` (in this case `python3 examples/rf_iris.py`).
+The source files path are resolved from the init directory which sometimes can be confusing.
+As a rule of thumb, initialize the library in a current directory and check the paths are correct running the file with `python3 path_to/file.py` (in this case `python3 examples/rf_iris.py`).
 
 ```bash
 cd dislib
@@ -122,7 +124,9 @@ dislib exec examples/rf_iris.py
 
 The log files of the execution can be found at $HOME/.COMPSs.
 
-You can also init the library inside the examples folder. This will mount the examples directory inside the container so you can execute it without adding the path:
+You can also init the library inside the examples folder.
+This will mount the examples directory inside the container so you can execute it without adding the path:
+
 ```bash
 cd dislib/examples
 dislib init
@@ -153,6 +157,7 @@ If the notebook process is not properly closed, you might get the following warn
 `The port 8888 is already in use, trying another port.`
 
 To fix it, just restart the dislib container with `dislib init`.
+
 #### 6. Adding more nodes
 
 
@@ -161,21 +166,23 @@ To fix it, just restart the dislib container with `dislib init`.
 To add more computing nodes, you can either let docker create more workers for you or manually create and config a custom node.
 
 For docker just issue the desired number of workers to be added. For example, to add 2 docker workers:
-```
+
+```bash
 dislib components add worker 2
 ```
 
 You can check that both new computing nodes are up with:
 
-```
+```bash
 dislib components list
 ```
 
-If you want to add a custom node it needs to be reachable through ssh without user. Moreover, dislib will try to copy the `working_dir` there, so it needs write permissions for the scp.
+If you want to add a custom node it needs to be reachable through ssh without user.
+Moreover, dislib will try to copy the `working_dir` there, so it needs write permissions for the scp.
 
 For example, to add the local machine as a worker node:
 
-```
+```bash
 dislib components add worker '127.0.0.1:6'
 ```
 
