@@ -264,12 +264,12 @@ class BaseRandomForest(BaseEstimator):
                 utilmodel.cbor2.dump(model_metadata, f,
                                      default=_encode_helper_cbor)
         elif save_format == "pickle":
-            if utilmodel.blosc2 is not None:
+            if utilmodel.blosc2() is not None:
                 for n_estimator in range(self.n_estimators):
                     for idx, node in enumerate(self.nodes_info[
                                                    str(n_estimator)]):
                         self.nodes_info[str(n_estimator)][idx] = (
-                            utilmodel.blosc2.compress2(pickle.dumps(
+                            utilmodel.blosc2().compress2(pickle.dumps(
                                 node)))
             with open(filepath, "wb") as f:
                 pickle.dump(model_metadata, f)
@@ -320,12 +320,12 @@ class BaseRandomForest(BaseEstimator):
         elif load_format == "pickle":
             with open(filepath, "rb") as f:
                 model_metadata = pickle.load(f)
-            if utilmodel.blosc2 is not None:
+            if utilmodel.blosc2() is not None:
                 for n_estimator in range(model_metadata["n_estimators"]):
                     for idx, node in enumerate(
                             model_metadata["nodes_info"][str(n_estimator)]):
                         model_metadata["nodes_info"][str(n_estimator)][idx] = \
-                            (pickle.loads(utilmodel.blosc2.decompress2(node)))
+                            (pickle.loads(utilmodel.blosc2().decompress2(node)))
         else:
             raise ValueError("Wrong load format.")
 
@@ -1015,8 +1015,8 @@ def _encode_helper(obj, cbor=False):
             "items": obj.__getstate__(),
         }
     elif isinstance(obj, (DecisionTreeClassifier, DecisionTreeRegressor)):
-        if cbor and utilmodel.blosc2 is not None:
-            items = utilmodel.blosc2.compress2(pickle.dumps(obj.__dict__))
+        if cbor and utilmodel.blosc2() is not None:
+            items = utilmodel.blosc2().compress2(pickle.dumps(obj.__dict__))
         else:
             items = obj.__dict__
         return {
