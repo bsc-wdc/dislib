@@ -325,7 +325,8 @@ class BaseRandomForest(BaseEstimator):
                     for idx, node in enumerate(
                             model_metadata["nodes_info"][str(n_estimator)]):
                         model_metadata["nodes_info"][str(n_estimator)][idx] = \
-                            (pickle.loads(utilmodel.blosc2().decompress2(node)))
+                            (pickle.loads(utilmodel.blosc2().decompress2(node)
+                                          ))
         else:
             raise ValueError("Wrong load format.")
 
