@@ -171,10 +171,10 @@ class BaseRandomForest(BaseEstimator):
                 utilmodel.cbor2.dump(model_metadata, f,
                                      default=_encode_helper_cbor)
         elif save_format == "pickle":
-            if utilmodel.blosc2 is not None:
+            if utilmodel.blosc2() is not None:
                 for tree in model_metadata["trees"]:
                     for idx in range(len(tree.subtrees)):
-                        tree.subtrees[idx] = utilmodel.blosc2.compress2(
+                        tree.subtrees[idx] = utilmodel.blosc2().compress2(
                             pickle.dumps(tree.subtrees[idx]))
             with open(filepath, "wb") as f:
                 pickle.dump(model_metadata, f)
@@ -224,11 +224,11 @@ class BaseRandomForest(BaseEstimator):
         elif load_format == "pickle":
             with open(filepath, "rb") as f:
                 model_metadata = pickle.load(f)
-            if utilmodel.blosc2 is not None:
+            if utilmodel.blosc2() is not None:
                 for tree in model_metadata["trees"]:
                     for idx in range(len(tree.subtrees)):
                         tree.subtrees[idx] = pickle.loads(
-                            utilmodel.blosc2.decompress2(tree.subtrees[idx]))
+                            utilmodel.blosc2().decompress2(tree.subtrees[idx]))
         else:
             raise ValueError("Wrong load format.")
 
@@ -754,8 +754,8 @@ def _encode_helper(obj, cbor=False):
             "items": obj.__getstate__(),
         }
     elif isinstance(obj, (DecisionTreeClassifier, DecisionTreeRegressor)):
-        if cbor and utilmodel.blosc2 is not None:
-            items = utilmodel.blosc2.compress2(pickle.dumps(obj.__dict__))
+        if cbor and utilmodel.blosc2() is not None:
+            items = utilmodel.blosc2().compress2(pickle.dumps(obj.__dict__))
         else:
             items = obj.__dict__
         return {
