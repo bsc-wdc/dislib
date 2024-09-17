@@ -1463,8 +1463,8 @@ def encode_forest_helper(obj):
 
 def decode_forest_helper(class_name, obj, cbor=False):
     if class_name in ('DecisionTreeClassifier', 'DecisionTreeRegressor'):
-        if cbor and utilmodel.blosc2 is not None:
-            obj = pickle.loads(utilmodel.blosc2.decompress2(obj))
+        if cbor and utilmodel.blosc2() is not None:
+            obj = pickle.loads(utilmodel.blosc2().decompress2(obj))
         model = eval(class_name)(
             try_features=obj.pop("try_features"),
             max_depth=obj.pop("max_depth"),
