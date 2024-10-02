@@ -1,5 +1,9 @@
 import operator
-import torch
+try:
+    import torch
+except ImportError as e:
+    raise Exception("ERROR: Pytorch is unavailable and "
+                    "tensors can not be used.") from e
 import os
 import numpy as np
 from pycompss.api.api import compss_wait_on, compss_delete_object
