@@ -591,6 +591,33 @@ class TensorTest(unittest.TestCase):
                           len(empty_tensor.tensors[0])), (2, 2))
         self.assertEqual(empty_tensor.tensor_shape, (2, 3, 4))
 
+    def test_from_ds_array(self):
+        ds_array = ds.array([[1, 2, 3, 4],
+                             [5, 6, 7, 8],
+                             [9, 10, 11, 12],
+                             [13, 14, 15, 16]], (2, 2))
+        ds_tensor = ds.from_ds_array(ds_array, shape=(2, 2))
+        np_array = np.array([[1, 2, 3, 4],
+                             [5, 6, 7, 8],
+                             [9, 10, 11, 12],
+                             [13, 14, 15, 16]])
+        for i_block, i_tensor in zip(ds_array._blocks,
+                                     ds_tensor.tensors):
+            for j_block, j_tensor in zip(i_block,
+                                         i_tensor):
+                self.assertTrue(np.all(compss_wait_on(j_block) ==
+                                       np.array(compss_wait_on(j_tensor))))
+        with self.assertRaises(TypeError):
+            ds.from_ds_array(np_array, (2, 2))
+        ds_array = ds.array([[1, 2, 3, 4],
+                             [5, 6, 7, 8],
+                             [9, 10, 11, 12],
+                             [13, 14, 15, 16]], (2, 2))
+        with self.assertRaises(ValueError):
+            ds.from_ds_array(ds_array, (6,))
+        with self.assertRaises(ValueError):
+            ds.from_ds_array(ds_array, (6, 2))
+
     def test_load_dataset(self):
         path = "tests/datasets/npy"
         x_train_tensor = ds.data.tensor.load_dataset(2, path)
