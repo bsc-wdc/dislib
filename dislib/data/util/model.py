@@ -12,7 +12,7 @@ except ImportError:
 def blosc2():
     try:
         import blosc2
-    except ImportError:
+    except (ImportError, ValueError):
         blosc2 = None
     return blosc2
 
