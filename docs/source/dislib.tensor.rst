@@ -21,6 +21,8 @@ Tensor creation routines
 
 .. autofunction:: dislib.from_pt_tensor
 
+.. autofunction:: dislib.from_ds_array
+
 .. _tensor-utility:
 
 Utility functions
