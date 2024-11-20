@@ -12,6 +12,7 @@ from pycompss.api.parameter import Type, Depth, \
     COLLECTION_OUT, INOUT, COLLECTION_IN, FILE_IN
 from pycompss.api.task import task
 import math
+from dislib.data.array import Array
 
 
 class Tensor(object):
@@ -587,6 +588,58 @@ def from_pt_tensor(tensor, shape=None):
                       dtype=tensor.dtype)
 
 
+def from_ds_array(ds_array, shape=None):
+    """
+    Creates the Tensor object from a ds_array.
+    This method can't generated Tensors that have more than two dimensions,
+    thus the output of this method can't be used in a Convolutional Neural
+    Network neither any Neural Network that requires data input with
+    more than two dimensions.
+
+    Parameters
+    ----------
+    ds_array : ds-array
+        The ds-array to transform into ds-tensor.
+    shape : tuple of two ints.
+        The organization of the number of tensors,
+        how many will be on axis=0 and how many will be on axis=1.
+        The total number of tensors should be the same as blocks
+        are in the input ds-array.
+
+    Returns
+    -------
+    tensor : ds-tensor
+    """
+    if not isinstance(ds_array, Array):
+        raise TypeError("The method expects to receive a ds-array.")
+    if shape is not None and (isinstance(shape, tuple) or
+                              isinstance(shape, list)):
+        if len(shape) != 2:
+            raise ValueError("The shape specified should have exactly "
+                             "two dimensions.")
+        if int(shape[0] * shape[1]) != \
+           int(ds_array._n_blocks[0] * ds_array._n_blocks[1]):
+            raise ValueError("The number of tensors specified in the "
+                             "shape should be equal to the number of "
+                             "blocks in the input ds-array")
+    new_tensor = Tensor._get_out_tensors([ds_array._n_blocks[0],
+                                          ds_array._n_blocks[1]])
+    for block_i, idx_i in zip(ds_array._blocks, range(len(new_tensor))):
+        for block_j, idx_j in zip(block_i, range(len(new_tensor[idx_i]))):
+            new_tensor[idx_i][idx_j] = _assign_blocks_to_tensors(block_j)
+    if shape is not None and (isinstance(shape, tuple) or
+                              isinstance(shape, list)):
+        return change_shape(Tensor(tensors=new_tensor,
+                            tensor_shape=(ds_array._reg_shape[0],
+                                          ds_array.shape[1]),
+                            dtype=np.float64, delete=ds_array._delete), shape)
+    else:
+        return Tensor(tensors=new_tensor,
+                      tensor_shape=(ds_array._reg_shape[0],
+                                    ds_array.shape[1]),
+                      dtype=np.float64, delete=ds_array._delete)
+
+
 def cat(tensors, dimension):
     """
     Concatenates the tensors inside the tensors list using the specified
@@ -719,6 +772,7 @@ def _apply_elementwise(func, x, *args, **kwargs):
     return Tensor(tensors, tensor_shape=x.tensor_shape, dtype=x.dtype)
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(returns=1)
 def apply_to_tensor(tensor, func):
     """
@@ -727,6 +781,7 @@ def apply_to_tensor(tensor, func):
     return func(tensor)
 
 
+@constraint(computing_units="${ComputingUnits}")
 @task(old_tensor={Type: COLLECTION_IN}, new_tensor={Type: COLLECTION_OUT})
 def _rechunk_tensor_row(old_tensor, new_tensor, dimension, new_tensors_shape):
     index_new_tensor = 0
@@ -1040,6 +1095,12 @@ def _partition_tensors(part_in, sizes_out, n_tensors):
                                       subsamples, subsample_sizes,
                                       cols, n_tensors, seed)
     return subsample_sizes, subsamples
+
+
+@constraint(computing_units="${ComputingUnits}")
+@task(returns=1)
+def _assign_blocks_to_tensors(block):
+    return torch.from_numpy(block)
 
 
 @constraint(computing_units="${ComputingUnits}")
