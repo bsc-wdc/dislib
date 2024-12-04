@@ -960,13 +960,13 @@ def apply_split_points_to_blocks_regression(x_block, y_block, best_attribute,
                                             optimal_value, indexes_to_try):
     if optimal_value is None:
         data_to_compress = np.block(y_block)
-        len_compress_l = np.array([0])
-        compress_l = np.array([0])
+        len_compress_l = 0
+        compress_l = 0
         if len(data_to_compress) > 0:
             compress_l = np.sum(data_to_compress)
             len_compress_l = len(data_to_compress)
         return (None, None, np.block(x_block), np.block(y_block),
-                np.array([0]), np.array([0]), compress_l, len_compress_l)
+                0, 0, compress_l, len_compress_l)
     if x_block is None:
         return (None, None, None, None, np.array([np.nan]),
                 np.array([np.nan]), np.array([np.nan]), np.array([np.nan]))
@@ -987,14 +987,14 @@ def apply_split_points_to_blocks_regression(x_block, y_block, best_attribute,
         compress_r = np.sum(data_to_compress)
         len_compress_r = len(data_to_compress)
     else:
-        compress_r = np.array([0])
-        len_compress_r = np.array([0])
+        compress_r = 0
+        len_compress_r = 0
     if len(data_to_compress_2) > 0:
         compress_l = np.sum(data_to_compress_2)
         len_compress_l = len(data_to_compress_2)
     else:
-        compress_l = np.array([0])
-        len_compress_l = np.array([0])
+        compress_l = 0
+        len_compress_l = 0
     del x_block
     del y_block
     return (right_x, right_y, left_x, left_y, compress_r,
@@ -1246,11 +1246,13 @@ def classes_per_split(x_block, y_block, split_points, number_classes_l,
             attribute_splittings_r = []
             for value in attribute_split_points:
                 attribute_splittings_l.append(np.array(
-                    [np.mean(y_block[x_block[:, idx] < value, 0]),
+                    [np.nan_to_num(np.mean(y_block[x_block[:, idx] <
+                                                   value, 0])),
                      np.sum(y_block[x_block[:, idx] < value, 0]),
                      len(y_block[x_block[:, idx] < value, 0])]))
                 attribute_splittings_r.append(np.array(
-                    [np.mean(y_block[x_block[:, idx] >= value, 0]),
+                    [np.nan_to_num(np.mean(y_block[x_block[:, idx] >=
+                                                   value, 0])),
                      np.sum(y_block[x_block[:, idx] >= value, 0]),
                      len(y_block[x_block[:, idx] >= value, 0])]))
             number_classes_l[idx] = attribute_splittings_l
@@ -1327,24 +1329,25 @@ def construct_subtree(x, y, actual_node, m_try, depth,
     else:
         sklearn_max_depth = max_depth - depth
 
-    if isinstance(actual_node, _ClassificationNode):
-        dt = SklearnDTClassifier(
-            max_features=m_try,
-            max_depth=sklearn_max_depth,
-            random_state=random_state,
-        )
-    elif isinstance(actual_node, _RegressionNode):
-        dt = SklearnDTRegressor(
-            max_features=m_try,
-            max_depth=sklearn_max_depth,
-            random_state=random_state,
-        )
     x = np.block(x)
     y = np.block(y)
     if y.size == 0 or np.all(y is None):
         actual_node.content = None
     else:
-        dt.fit(x, y.astype(int), check_input=False)
+        if isinstance(actual_node, _ClassificationNode):
+            dt = SklearnDTClassifier(
+                max_features=m_try,
+                max_depth=sklearn_max_depth,
+                random_state=random_state,
+            )
+            y = y.astype(int)
+        elif isinstance(actual_node, _RegressionNode):
+            dt = SklearnDTRegressor(
+                max_features=m_try,
+                max_depth=sklearn_max_depth,
+                random_state=random_state,
+            )
+        dt.fit(x, y, check_input=False)
         actual_node.content = _SkTreeWrapper(dt)
 
 
