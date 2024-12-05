@@ -33,7 +33,7 @@ class RandomForestRegressorTest(BaseTimedTestCase):
         y_test = ds.array(y[1::2][:, np.newaxis], (4000, 1))
 
         rf = RandomForestRegressor(distr_depth=2, random_state=0,
-                                   n_estimators=2, mmap=False)
+                                   n_estimators=3, mmap=False)
 
         rf.fit(x_train, y_train)
         accuracy1 = compss_wait_on(rf.score(x_test, y_test))
@@ -61,7 +61,7 @@ class RandomForestRegressorTest(BaseTimedTestCase):
         y_test = ds.array(y[1::2][:, np.newaxis], (1000, 1))
 
         rf = RandomForestRegressor(distr_depth=1, random_state=0,
-                                   n_estimators=2,
+                                   n_estimators=3,
                                    mmap=False)
 
         rf.fit(x_train, y_train)
@@ -89,7 +89,7 @@ class RandomForestRegressorTest(BaseTimedTestCase):
         x_test = ds.array(x[1::2], (1000, 10))
         y_test = ds.array(y[1::2][:, np.newaxis], (1000, 1))
 
-        rf = RandomForestRegressor(distr_depth=1, n_estimators=2,
+        rf = RandomForestRegressor(distr_depth=1, n_estimators=3,
                                    random_state=0, sklearn_max=10, mmap=False)
 
         rf.fit(x_train, y_train)
