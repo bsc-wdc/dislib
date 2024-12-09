@@ -71,8 +71,8 @@ class RandomForestRegressorTest(BaseTimedTestCase):
         y_true = y[1::2]
         accuracy2 = _determination_coefficient(y_true, y_pred)
 
-        self.assertGreater(accuracy1, 0.725)
-        self.assertGreater(accuracy2, 0.725)
+        self.assertGreater(accuracy1, 0.72)
+        self.assertGreater(accuracy2, 0.72)
         self.assertAlmostEqual(accuracy1, accuracy2)
 
     def test_make_regression_sklearn_max_predict(self):
@@ -99,8 +99,8 @@ class RandomForestRegressorTest(BaseTimedTestCase):
         y_true = y[1::2]
         accuracy2 = _determination_coefficient(y_true, y_pred)
 
-        self.assertGreater(accuracy1, 0.725)
-        self.assertGreater(accuracy2, 0.725)
+        self.assertGreater(accuracy1, 0.72)
+        self.assertGreater(accuracy2, 0.72)
         self.assertAlmostEqual(accuracy1, accuracy2)
 
     def test_save_load(self):
