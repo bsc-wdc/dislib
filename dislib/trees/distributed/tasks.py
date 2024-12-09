@@ -24,7 +24,7 @@ from pycompss.api.constraint import constraint
 import numpy as np
 
 
-@constraint(computing_units="$ComputingUnits")
+@constraint(computing_units="${ComputingUnits}")
 @task(fragment=COLLECTION_IN, fragment_buckets=COLLECTION_OUT,
       range_min=COLLECTION_IN, range_max=COLLECTION_IN)
 def filter_fragment(fragment, fragment_buckets, indexes_to_try,
