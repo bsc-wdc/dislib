@@ -37,6 +37,9 @@ class Tensor(object):
             Total number of tensors in the Tensor.
         dtype : np or torch object
             Numerical type elements inside the tensor have.
+        number_samples: int
+            Total number of samples contained in the different distributed
+            tensors.
         delete : boolean, optional (default=True)
             Whether to call compss_delete_object on the blocks when the garbage
             collector deletes this Tensor.
@@ -46,7 +49,8 @@ class Tensor(object):
         shape : tuple (int, int)
             Total number of elements in the array.
         """
-    def __init__(self, tensors, tensor_shape, dtype, shape=None, delete=True):
+    def __init__(self, tensors, tensor_shape, dtype, number_samples,
+                 shape=None, delete=True):
         self.tensors = tensors
         if shape:
             self.shape = shape
@@ -54,6 +58,7 @@ class Tensor(object):
             self.shape = (len(tensors), len(tensors[0]))
         self.n_tensors = len(tensors) * len(tensors[0])
         self.tensor_shape = tensor_shape
+        self.number_samples = number_samples
         self.dtype = dtype
         self._delete = delete
 
@@ -61,8 +66,10 @@ class Tensor(object):
         return "ds-tensor(tensors=(...), " \
                "tensors_shape=%r," \
                "n_tensors=%r," \
+               "num_samples=%r, " \
                "shape=%r)" % (self.tensor_shape,
                               self.n_tensors,
+                              self.number_samples,
                               self.shape)
 
     def __del__(self):
@@ -220,6 +227,7 @@ class Tensor(object):
             tensors.append(out_tensors)
 
         return Tensor(tensors=tensors, tensor_shape=self.tensor_shape,
+                      number_samples=self.number_samples,
                       dtype=self.dtype)
 
     def __add__(self, other):
@@ -240,6 +248,7 @@ class Tensor(object):
             tensors.append(out_tensors)
 
         return Tensor(tensors=tensors, tensor_shape=self.tensor_shape,
+                      number_samples=self.number_samples,
                       dtype=self.dtype)
 
     def __pow__(self, power, modulo=None):
@@ -314,6 +323,7 @@ class Tensor(object):
             tensor = [self.tensors[idx] for idx in i]
             return Tensor(tensors=tensor,
                           tensor_shape=self.tensor_shape,
+                          number_samples=len(i),
                           dtype=self.dtype)
         else:
             if len(i) == 1 and i[0] > self.shape[0]:
@@ -329,6 +339,7 @@ class Tensor(object):
                           idx in i]
                 return Tensor(tensors=tensor,
                               tensor_shape=self.tensor_shape,
+                              number_samples=len(i),
                               dtype=self.dtype)
 
     def _get_elements_from_tensors(self, i, j, positions):
@@ -362,6 +373,7 @@ class Tensor(object):
             definitive_tensors.append(tensor_out)
         return Tensor(tensors=definitive_tensors,
                       tensor_shape=tuple(new_shape),
+                      number_samples=len(i),
                       dtype=self.dtype)
 
     def _get_single_tensor(self, i, j):
@@ -376,6 +388,7 @@ class Tensor(object):
         # returns an list containing a single element
         # return tensor
         return Tensor(tensors=[[tensor]], tensor_shape=self.tensor_shape,
+                      number_samples=1,
                       dtype=self.dtype)
 
     def _get_slice(self, i=None, j=None, inside_tensor=None):
@@ -405,6 +418,7 @@ class Tensor(object):
         if n_rows <= 0:
             empty_tensor = np.empty((0, 0))
             res = Tensor(tensors=[[empty_tensor]], tensor_shape=(0, 0),
+                         number_samples=0,
                          dtype=self.dtype, delete=self._delete)
             return res
         if j is not None:
@@ -436,6 +450,7 @@ class Tensor(object):
             if n_cols <= 0:
                 empty_tensor = np.empty((0, 0))
                 res = Tensor(tensors=[[empty_tensor]], tensor_shape=(0, 0),
+                             number_samples=0,
                              dtype=self.dtype, delete=self._delete)
                 return res
         else:
@@ -463,9 +478,11 @@ class Tensor(object):
                 definitive_tensors.append(tensor_out)
             return Tensor(tensors=definitive_tensors,
                           tensor_shape=tuple(new_shape),
+                          number_samples=n_rows,
                           dtype=self.dtype, delete=self._delete)
         else:
             return Tensor(tensors=tensors, tensor_shape=self.tensor_shape,
+                          number_samples=n_rows,
                           dtype=self.dtype, delete=self._delete)
 
     def _iterator(self, axis=0):
@@ -498,6 +515,7 @@ class Tensor(object):
         else:
             tensor_shape = self.tensor_shape
         return Tensor(tensors=out_tensors, tensor_shape=tensor_shape,
+                      number_samples=self.number_samples,
                       dtype=self.dtype)
 
 
@@ -534,6 +552,7 @@ def from_array(np_array, shape=None):
             return Tensor(tensors=new_tensors,
                           tensor_shape=elements_per_tensor,
                           shape=tuple(shape),
+                          number_samples=np_array.shape[0],
                           dtype=np_array.dtype)
         raise ValueError("The shape should contain two values greater "
                          "than 0")
@@ -542,7 +561,9 @@ def from_array(np_array, shape=None):
         new_tensors = Tensor._get_out_tensors(shape_ds_tensor)
         _reallocate_tensors(np_array, new_tensors)
         return Tensor(tensors=new_tensors, tensor_shape=np_array.shape[2:],
-                      shape=shape_ds_tensor, dtype=np_array.dtype)
+                      shape=shape_ds_tensor,
+                      number_samples=np_array.shape[0],
+                      dtype=np_array.dtype)
 
 
 def from_pt_tensor(tensor, shape=None):
@@ -576,6 +597,7 @@ def from_pt_tensor(tensor, shape=None):
             elements_per_tensor = (elements_per_tensor, *tensor.shape[1:])
             return Tensor(tensors=new_tensors,
                           tensor_shape=elements_per_tensor,
+                          number_samples=shape[0],
                           shape=tuple(shape), dtype=tensor.dtype)
         raise ValueError("The shape should contain two values greater "
                          "than 0")
@@ -584,6 +606,7 @@ def from_pt_tensor(tensor, shape=None):
         new_tensors = Tensor._get_out_tensors(shape_ds_tensor)
         _reallocate_tensors(tensor, new_tensors)
         return Tensor(tensors=new_tensors, tensor_shape=tensor.shape[2:],
+                      number_samples=shape_ds_tensor[0],
                       shape=shape_ds_tensor,
                       dtype=tensor.dtype)
 
@@ -632,11 +655,13 @@ def from_ds_array(ds_array, shape=None):
         return change_shape(Tensor(tensors=new_tensor,
                             tensor_shape=(ds_array._reg_shape[0],
                                           ds_array.shape[1]),
+                            number_samples=ds_array.shape[0],
                             dtype=np.float64, delete=ds_array._delete), shape)
     else:
         return Tensor(tensors=new_tensor,
                       tensor_shape=(ds_array._reg_shape[0],
                                     ds_array.shape[1]),
+                      number_samples=ds_array.shape[0],
                       dtype=np.float64, delete=ds_array._delete)
 
 
@@ -686,6 +711,7 @@ def cat(tensors, dimension):
     tensor_shape[dimension] = new_dimension_shape
     return Tensor(tensors=cat_tensors, tensor_shape=tuple(tensor_shape),
                   shape=(len(cat_tensors), len(cat_tensors[0])),
+                  number_samples=(len(cat_tensors) + len(cat_tensors[0])),
                   dtype=tensors[0].dtype)
 
 
@@ -711,12 +737,14 @@ def change_shape(tensor, new_shape):
     new_tensors = Tensor._get_out_tensors(new_shape)
     _reallocate_tensors(tensor.tensors, new_tensors)
     return Tensor(tensors=new_tensors, tensor_shape=tensor.tensor_shape,
+                  number_samples=tensor.number_samples,
                   dtype=tensor.dtype)
 
 
 def _empty_tensor(shape, tensor_shape, dtype=np.float64):
     return Tensor(tensors=[[None for _ in range(shape[1])] for _ in
                            range(shape[0])], tensor_shape=tensor_shape,
+                  number_samples=0,
                   shape=shape, dtype=dtype)
 
 
@@ -757,6 +785,7 @@ def rechunk_tensor(tensor, new_tensors_shape, dimension=0):
         _rechunk_tensor_row(row, tensors_row, dimension, new_tensors_shape)
         tensors.append(tensors_row)
     return Tensor(tensors=tensors, tensor_shape=tuple(tensors_shape_new),
+                  number_samples=tensor.number_samples,
                   dtype=tensor.dtype)
 
 
@@ -769,7 +798,9 @@ def _apply_elementwise(func, x, *args, **kwargs):
             tensors[i][j] = _tensor_apply(func, x.tensors[i][j], *args,
                                           **kwargs)
 
-    return Tensor(tensors, tensor_shape=x.tensor_shape, dtype=x.dtype)
+    return Tensor(tensors, tensor_shape=x.tensor_shape,
+                  number_samples=x.number_samples,
+                  dtype=x.dtype)
 
 
 @constraint(computing_units="${ComputingUnits}")
@@ -835,7 +866,7 @@ def _rechunk_tensor_row(old_tensor, new_tensor, dimension, new_tensors_shape):
             index_new_tensor = index_new_tensor + 1
 
 
-def create_ds_tensor(tensors, tensors_shape, shape=None, dtype=np.float64):
+def create_ds_tensor(tensors, tensors_shape, shape, dtype=np.float64):
     """
     Function to create a ds-tensor from a list of lists of pytorch tensors
     or numpy arrays. If specified the shape it should match the number of
@@ -863,7 +894,9 @@ def create_ds_tensor(tensors, tensors_shape, shape=None, dtype=np.float64):
         raise ValueError("The ds-tensor shape should match the number of "
                          "tensors it contains in each direction.")
     return Tensor(tensors=tensors, tensor_shape=tensors_shape,
-                  shape=shape, dtype=dtype)
+                  shape=shape,
+                  number_samples=tensors_shape[0] * shape[0] * shape[1],
+                  dtype=dtype)
 
 
 def random_tensors(tensors_type, shape, dtype=None):
@@ -917,7 +950,9 @@ def _random_tensor_wrapper(tensor_type, shape, dtype=None):
             tensors.append(col_tensor)
         if dtype is None:
             dtype = np.float64
-        return Tensor(tensors=tensors, tensor_shape=shape[2:], dtype=dtype)
+        return Tensor(tensors=tensors, tensor_shape=shape[2:],
+                      number_samples=shape[0] * shape[1] * shape[3],
+                      dtype=dtype)
     elif tensor_type == "torch":
         tensors = []
         for _ in range(shape[0]):
@@ -928,7 +963,9 @@ def _random_tensor_wrapper(tensor_type, shape, dtype=None):
             tensors.append(col_tensor)
         if dtype is None:
             dtype = torch.float64
-        return Tensor(tensors=tensors, tensor_shape=shape[2:], dtype=dtype)
+        return Tensor(tensors=tensors, tensor_shape=shape[2:],
+                      number_samples=shape[0] * shape[1] * shape[3],
+                      dtype=dtype)
     else:
         raise NotImplementedError("Type of tensor not supported")
 
@@ -969,6 +1006,7 @@ def load_dataset(number_tensors_per_file, path):
             tensors.append(tensors_row)
         return Tensor(tensors=tensors, tensor_shape=(elements_per_tensor,
                                                      *x_train.shape[1:]),
+                      number_samples=x_train.shape[0],
                       dtype="np." + str(x_train.dtype))
     else:
         format_file = files[0][-3:]
@@ -989,6 +1027,7 @@ def load_dataset(number_tensors_per_file, path):
                 tensors.append(tensors_row)
             return Tensor(tensors=tensors, tensor_shape=(elements_per_tensor,
                                                          *x_train.shape[1:]),
+                          number_samples=x_train.shape[0],
                           dtype="torch." + str(x_train.dtype))
         else:
             raise NotImplementedError("Only supported numpy arrays or pytorch"
