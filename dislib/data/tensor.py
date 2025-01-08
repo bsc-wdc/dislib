@@ -64,8 +64,8 @@ class Tensor(object):
 
     def __str__(self):
         return "ds-tensor(tensors=(...), " \
-               "tensors_shape=%r," \
-               "n_tensors=%r," \
+               "tensors_shape=%r, " \
+               "n_tensors=%r, " \
                "num_samples=%r, " \
                "shape=%r)" % (self.tensor_shape,
                               self.n_tensors,

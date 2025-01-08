@@ -93,10 +93,12 @@ class TensorTest(unittest.TestCase):
     def test_string(self):
         x_np = ds.random_tensors("np", (3, 3, 3, 11, 11))
         self.assertEqual(str(x_np), "ds-tensor(tensors=(...), "
-                                    "tensors_shape=%r,"
-                                    "n_tensors=%r,"
+                                    "tensors_shape=%r, "
+                                    "n_tensors=%r, "
+                                    "num_samples=%r, "
                                     "shape=%r)" % ((3, 11, 11),
                                                    9,
+                                                   99,
                                                    (3, 3)))
 
     def test_iterate_rows(self):
@@ -481,7 +483,9 @@ class TensorTest(unittest.TestCase):
         self.assertEqual(x_sub[0][1].all(), torch.tensor([-5, -14, -31]).all())
 
         x_np_2 = Tensor(tensors=[["String1", "String2"]],
-                        tensor_shape=(2, 2), dtype=np.float64)
+                        tensor_shape=(2, 2),
+                        number_samples=4,
+                        dtype=np.float64)
 
         with self.assertRaises(ValueError):
             ds.data.tensor.Tensor._merge_tensors(x_np_2)
