@@ -648,6 +648,15 @@ class TensorTest(unittest.TestCase):
         self.assertFalse((x_train_tensor_2 == np.array(
             x_train_tensor.collect())).all())
         self.assertTrue(x_train_tensor_2.shape == (2, 2, 2, 2, 2, 2))
+        x_train_tensor = ds.random_tensors("np", (1, 3, 2, 2, 2, 2))
+        x_train_tensor_2 = ds.data.tensor.shuffle(x_train_tensor)
+        self.assertTrue(x_train_tensor_2.shape == (1, 3) ==
+                        (len(x_train_tensor_2.tensors),
+                         len(x_train_tensor_2.tensors[0])))
+        x_train_tensor_2 = np.array(x_train_tensor_2.collect())
+        self.assertFalse((x_train_tensor_2 == np.array(
+            x_train_tensor.collect())).all())
+        self.assertTrue(x_train_tensor_2.shape == (1, 3, 2, 2, 2, 2))
         x_train_tensor = ds.random_tensors("np", (2, 2, 16, 8, 11, 11))
         y_train_tensor = ds.random_tensors("np", (2, 2, 16, 1))
         x_train_tensor_2, y_train_tensor_2 = \
@@ -671,6 +680,16 @@ class TensorTest(unittest.TestCase):
                                  np.array(x_train_tensor.collect()))))
         x_train_tensor = ds.random_tensors("torch", (2, 2, 16, 8, 11, 11))
         y_train_tensor = ds.random_tensors("torch", (2, 2, 16, 1))
+        x_train_tensor_2, y_train_tensor_2 = \
+            ds.data.tensor.shuffle(x_train_tensor, y_train_tensor)
+        x_train_tensor_2 = np.array(x_train_tensor_2.collect())
+        y_train_tensor_2 = np.array(y_train_tensor_2.collect())
+        self.assertFalse(np.all(x_train_tensor_2 ==
+                                np.array(x_train_tensor.collect())))
+        self.assertFalse(np.all(y_train_tensor_2 ==
+                                np.array(y_train_tensor.collect())))
+        x_train_tensor = ds.random_tensors("torch", (1, 3, 16, 8, 11, 11))
+        y_train_tensor = ds.random_tensors("torch", (1, 3, 16, 1))
         x_train_tensor_2, y_train_tensor_2 = \
             ds.data.tensor.shuffle(x_train_tensor, y_train_tensor)
         x_train_tensor_2 = np.array(x_train_tensor_2.collect())
