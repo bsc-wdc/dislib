@@ -37,6 +37,9 @@ class Tensor(object):
             Total number of tensors in the Tensor.
         dtype : np or torch object
             Numerical type elements inside the tensor have.
+        number_samples: int
+            Total number of samples contained in the different distributed
+            tensors.
         delete : boolean, optional (default=True)
             Whether to call compss_delete_object on the blocks when the garbage
             collector deletes this Tensor.
@@ -46,7 +49,8 @@ class Tensor(object):
         shape : tuple (int, int)
             Total number of elements in the array.
         """
-    def __init__(self, tensors, tensor_shape, dtype, shape=None, delete=True):
+    def __init__(self, tensors, tensor_shape, dtype, number_samples,
+                 shape=None, delete=True):
         self.tensors = tensors
         if shape:
             self.shape = shape
@@ -54,15 +58,18 @@ class Tensor(object):
             self.shape = (len(tensors), len(tensors[0]))
         self.n_tensors = len(tensors) * len(tensors[0])
         self.tensor_shape = tensor_shape
+        self.number_samples = number_samples
         self.dtype = dtype
         self._delete = delete
 
     def __str__(self):
         return "ds-tensor(tensors=(...), " \
-               "tensors_shape=%r," \
-               "n_tensors=%r," \
+               "tensors_shape=%r, " \
+               "n_tensors=%r, " \
+               "num_samples=%r, " \
                "shape=%r)" % (self.tensor_shape,
                               self.n_tensors,
+                              self.number_samples,
                               self.shape)
 
     def __del__(self):
@@ -220,6 +227,7 @@ class Tensor(object):
             tensors.append(out_tensors)
 
         return Tensor(tensors=tensors, tensor_shape=self.tensor_shape,
+                      number_samples=self.number_samples,
                       dtype=self.dtype)
 
     def __add__(self, other):
@@ -240,6 +248,7 @@ class Tensor(object):
             tensors.append(out_tensors)
 
         return Tensor(tensors=tensors, tensor_shape=self.tensor_shape,
+                      number_samples=self.number_samples,
                       dtype=self.dtype)
 
     def __pow__(self, power, modulo=None):
@@ -314,6 +323,7 @@ class Tensor(object):
             tensor = [self.tensors[idx] for idx in i]
             return Tensor(tensors=tensor,
                           tensor_shape=self.tensor_shape,
+                          number_samples=len(i),
                           dtype=self.dtype)
         else:
             if len(i) == 1 and i[0] > self.shape[0]:
@@ -329,6 +339,7 @@ class Tensor(object):
                           idx in i]
                 return Tensor(tensors=tensor,
                               tensor_shape=self.tensor_shape,
+                              number_samples=len(i),
                               dtype=self.dtype)
 
     def _get_elements_from_tensors(self, i, j, positions):
@@ -362,6 +373,7 @@ class Tensor(object):
             definitive_tensors.append(tensor_out)
         return Tensor(tensors=definitive_tensors,
                       tensor_shape=tuple(new_shape),
+                      number_samples=len(i),
                       dtype=self.dtype)
 
     def _get_single_tensor(self, i, j):
@@ -376,6 +388,7 @@ class Tensor(object):
         # returns an list containing a single element
         # return tensor
         return Tensor(tensors=[[tensor]], tensor_shape=self.tensor_shape,
+                      number_samples=1,
                       dtype=self.dtype)
 
     def _get_slice(self, i=None, j=None, inside_tensor=None):
@@ -405,6 +418,7 @@ class Tensor(object):
         if n_rows <= 0:
             empty_tensor = np.empty((0, 0))
             res = Tensor(tensors=[[empty_tensor]], tensor_shape=(0, 0),
+                         number_samples=0,
                          dtype=self.dtype, delete=self._delete)
             return res
         if j is not None:
@@ -436,6 +450,7 @@ class Tensor(object):
             if n_cols <= 0:
                 empty_tensor = np.empty((0, 0))
                 res = Tensor(tensors=[[empty_tensor]], tensor_shape=(0, 0),
+                             number_samples=0,
                              dtype=self.dtype, delete=self._delete)
                 return res
         else:
@@ -463,9 +478,11 @@ class Tensor(object):
                 definitive_tensors.append(tensor_out)
             return Tensor(tensors=definitive_tensors,
                           tensor_shape=tuple(new_shape),
+                          number_samples=n_rows,
                           dtype=self.dtype, delete=self._delete)
         else:
             return Tensor(tensors=tensors, tensor_shape=self.tensor_shape,
+                          number_samples=n_rows,
                           dtype=self.dtype, delete=self._delete)
 
     def _iterator(self, axis=0):
@@ -498,6 +515,7 @@ class Tensor(object):
         else:
             tensor_shape = self.tensor_shape
         return Tensor(tensors=out_tensors, tensor_shape=tensor_shape,
+                      number_samples=self.number_samples,
                       dtype=self.dtype)
 
 
@@ -534,6 +552,7 @@ def from_array(np_array, shape=None):
             return Tensor(tensors=new_tensors,
                           tensor_shape=elements_per_tensor,
                           shape=tuple(shape),
+                          number_samples=np_array.shape[0],
                           dtype=np_array.dtype)
         raise ValueError("The shape should contain two values greater "
                          "than 0")
@@ -542,7 +561,9 @@ def from_array(np_array, shape=None):
         new_tensors = Tensor._get_out_tensors(shape_ds_tensor)
         _reallocate_tensors(np_array, new_tensors)
         return Tensor(tensors=new_tensors, tensor_shape=np_array.shape[2:],
-                      shape=shape_ds_tensor, dtype=np_array.dtype)
+                      shape=shape_ds_tensor,
+                      number_samples=np_array.shape[0],
+                      dtype=np_array.dtype)
 
 
 def from_pt_tensor(tensor, shape=None):
@@ -576,6 +597,7 @@ def from_pt_tensor(tensor, shape=None):
             elements_per_tensor = (elements_per_tensor, *tensor.shape[1:])
             return Tensor(tensors=new_tensors,
                           tensor_shape=elements_per_tensor,
+                          number_samples=shape[0],
                           shape=tuple(shape), dtype=tensor.dtype)
         raise ValueError("The shape should contain two values greater "
                          "than 0")
@@ -584,6 +606,7 @@ def from_pt_tensor(tensor, shape=None):
         new_tensors = Tensor._get_out_tensors(shape_ds_tensor)
         _reallocate_tensors(tensor, new_tensors)
         return Tensor(tensors=new_tensors, tensor_shape=tensor.shape[2:],
+                      number_samples=shape_ds_tensor[0],
                       shape=shape_ds_tensor,
                       dtype=tensor.dtype)
 
@@ -632,11 +655,13 @@ def from_ds_array(ds_array, shape=None):
         return change_shape(Tensor(tensors=new_tensor,
                             tensor_shape=(ds_array._reg_shape[0],
                                           ds_array.shape[1]),
+                            number_samples=ds_array.shape[0],
                             dtype=np.float64, delete=ds_array._delete), shape)
     else:
         return Tensor(tensors=new_tensor,
                       tensor_shape=(ds_array._reg_shape[0],
                                     ds_array.shape[1]),
+                      number_samples=ds_array.shape[0],
                       dtype=np.float64, delete=ds_array._delete)
 
 
@@ -686,6 +711,7 @@ def cat(tensors, dimension):
     tensor_shape[dimension] = new_dimension_shape
     return Tensor(tensors=cat_tensors, tensor_shape=tuple(tensor_shape),
                   shape=(len(cat_tensors), len(cat_tensors[0])),
+                  number_samples=(len(cat_tensors) + len(cat_tensors[0])),
                   dtype=tensors[0].dtype)
 
 
@@ -711,12 +737,14 @@ def change_shape(tensor, new_shape):
     new_tensors = Tensor._get_out_tensors(new_shape)
     _reallocate_tensors(tensor.tensors, new_tensors)
     return Tensor(tensors=new_tensors, tensor_shape=tensor.tensor_shape,
+                  number_samples=tensor.number_samples,
                   dtype=tensor.dtype)
 
 
 def _empty_tensor(shape, tensor_shape, dtype=np.float64):
     return Tensor(tensors=[[None for _ in range(shape[1])] for _ in
                            range(shape[0])], tensor_shape=tensor_shape,
+                  number_samples=0,
                   shape=shape, dtype=dtype)
 
 
@@ -757,6 +785,7 @@ def rechunk_tensor(tensor, new_tensors_shape, dimension=0):
         _rechunk_tensor_row(row, tensors_row, dimension, new_tensors_shape)
         tensors.append(tensors_row)
     return Tensor(tensors=tensors, tensor_shape=tuple(tensors_shape_new),
+                  number_samples=tensor.number_samples,
                   dtype=tensor.dtype)
 
 
@@ -769,7 +798,9 @@ def _apply_elementwise(func, x, *args, **kwargs):
             tensors[i][j] = _tensor_apply(func, x.tensors[i][j], *args,
                                           **kwargs)
 
-    return Tensor(tensors, tensor_shape=x.tensor_shape, dtype=x.dtype)
+    return Tensor(tensors, tensor_shape=x.tensor_shape,
+                  number_samples=x.number_samples,
+                  dtype=x.dtype)
 
 
 @constraint(computing_units="${ComputingUnits}")
@@ -835,7 +866,7 @@ def _rechunk_tensor_row(old_tensor, new_tensor, dimension, new_tensors_shape):
             index_new_tensor = index_new_tensor + 1
 
 
-def create_ds_tensor(tensors, tensors_shape, shape=None, dtype=np.float64):
+def create_ds_tensor(tensors, tensors_shape, shape, dtype=np.float64):
     """
     Function to create a ds-tensor from a list of lists of pytorch tensors
     or numpy arrays. If specified the shape it should match the number of
@@ -863,7 +894,9 @@ def create_ds_tensor(tensors, tensors_shape, shape=None, dtype=np.float64):
         raise ValueError("The ds-tensor shape should match the number of "
                          "tensors it contains in each direction.")
     return Tensor(tensors=tensors, tensor_shape=tensors_shape,
-                  shape=shape, dtype=dtype)
+                  shape=shape,
+                  number_samples=tensors_shape[0] * shape[0] * shape[1],
+                  dtype=dtype)
 
 
 def random_tensors(tensors_type, shape, dtype=None):
@@ -917,7 +950,9 @@ def _random_tensor_wrapper(tensor_type, shape, dtype=None):
             tensors.append(col_tensor)
         if dtype is None:
             dtype = np.float64
-        return Tensor(tensors=tensors, tensor_shape=shape[2:], dtype=dtype)
+        return Tensor(tensors=tensors, tensor_shape=shape[2:],
+                      number_samples=shape[0] * shape[1] * shape[3],
+                      dtype=dtype)
     elif tensor_type == "torch":
         tensors = []
         for _ in range(shape[0]):
@@ -928,7 +963,9 @@ def _random_tensor_wrapper(tensor_type, shape, dtype=None):
             tensors.append(col_tensor)
         if dtype is None:
             dtype = torch.float64
-        return Tensor(tensors=tensors, tensor_shape=shape[2:], dtype=dtype)
+        return Tensor(tensors=tensors, tensor_shape=shape[2:],
+                      number_samples=shape[0] * shape[1] * shape[3],
+                      dtype=dtype)
     else:
         raise NotImplementedError("Type of tensor not supported")
 
@@ -969,6 +1006,7 @@ def load_dataset(number_tensors_per_file, path):
             tensors.append(tensors_row)
         return Tensor(tensors=tensors, tensor_shape=(elements_per_tensor,
                                                      *x_train.shape[1:]),
+                      number_samples=x_train.shape[0],
                       dtype="np." + str(x_train.dtype))
     else:
         format_file = files[0][-3:]
@@ -989,6 +1027,7 @@ def load_dataset(number_tensors_per_file, path):
                 tensors.append(tensors_row)
             return Tensor(tensors=tensors, tensor_shape=(elements_per_tensor,
                                                          *x_train.shape[1:]),
+                          number_samples=x_train.shape[0],
                           dtype="torch." + str(x_train.dtype))
         else:
             raise NotImplementedError("Only supported numpy arrays or pytorch"
@@ -1015,172 +1054,248 @@ def shuffle(x, y=None, random_state=None):
     """
     if y is not None:
         assert y.shape[0] == x.shape[0] and y.shape[1] == x.shape[1]
-
     np.random.seed(random_state)
-    tensor_n_elements = round(x.tensor_shape[0] / x.shape[1])
-    sizes_out = [tensor_n_elements for _ in range(x.n_tensors)]
-    if y is None:
-        partition = x._iterator(axis=0)
-    else:
-        partition = _paired_partition(x, y)
+    if random_state is None:
+        random_state = 0
 
-    mapped_subsamples = []
-    for part_in in partition:
-        part_sizes, part_in_subsamples = _partition_tensors(part_in,
-                                                            sizes_out,
-                                                            x.n_tensors)
-        mapped_subsamples.append(part_in_subsamples)
-    part_out_x_tensors = []
-    if y is not None:
-        part_out_y_tensors = []
-    permutation = np.random.permutation(x.shape[0])
-    for j in permutation:
-        col_permutation = np.random.permutation(x.n_tensors)
-        part_out_subsamples = []
-        row_col_subsamples = [mapped_subsamples[j][idx] for idx in
-                              col_permutation]
-        part_out_subsamples.append(row_col_subsamples)
-        seed = np.random.randint(np.iinfo(np.int32).max)
-        if y is None:
-            part_x = [object() for _ in range(x.shape[1])]
-            _merge_shuffle_x(seed, row_col_subsamples,
-                             x.tensor_shape[0], part_x)
-            part_out_x_tensors.append(part_x)
+    permutation = np.random.permutation(x.n_tensors)
+    last_blocks_irregular = (x.number_samples % x.tensor_shape[0] != 0)
+    if y is None:
+        tensors = [object() for _ in range(x.n_tensors)]
+        if len(permutation) % 2 == 0:
+            number_elements_permutation_to_use = len(permutation)
         else:
-            part_x = [object() for _ in range(x.shape[1])]
-            part_y = [object() for _ in range(x.shape[1])]
-            _merge_shuffle_xy(seed, row_col_subsamples, x.tensor_shape[0],
-                              part_x, part_y)
-            part_out_x_tensors.append(part_x)
-            part_out_y_tensors.append(part_y)
-        for part in part_out_subsamples:
-            compss_delete_object(part)
-    x_shuffled = Tensor(tensors=part_out_x_tensors,
-                        tensor_shape=x.tensor_shape, shape=x.shape,
-                        dtype=x.dtype)
-    if y is None:
-        return x_shuffled
+            number_elements_permutation_to_use = len(permutation) - 1
+        auxiliar_indexes = []
+        for i in range(0, number_elements_permutation_to_use, 2):
+            last_row_ = (((permutation[i] % x.shape[0] + 1) == x.shape[0])
+                         and last_blocks_irregular)
+            last_row_second = (((permutation[i + 1] % x.shape[0] + 1) ==
+                                x.shape[0])
+                               and last_blocks_irregular)
+            tensor_out_1, tensor_out_2 = _merge_shuffle_tensors(
+                x.tensors[permutation[i] % x.shape[0]][
+                    math.floor(permutation[i]
+                               / x.shape[0])],
+                x.tensors[permutation[i + 1] % x.shape[0]][
+                    math.floor(permutation[i + 1]
+                               / x.shape[0])],
+                last_tensor=last_row_,
+                second_last_tensor=last_row_second,
+                random_state=random_state + i)
+            tensors[i] = tensor_out_1
+            tensors[i+1] = tensor_out_2
+            if last_row_ and last_blocks_irregular:
+                auxiliar_indexes.append(i)
+            if last_row_second and last_blocks_irregular:
+                auxiliar_indexes.append(i+1)
+        if not len(permutation) % 2 == 0:
+            tensor_out = _shuffle_last_tensor(x.tensors[
+                                                  permutation[-1] % x.shape[0]]
+                                              [math.floor(
+                                               permutation[-1]/x.shape[0])],
+                                              random_state=random_state)
+            tensors[-1] = tensor_out
+        tensors_auxiliar = [[object() for _ in range(x.shape[1])]
+                            for _ in range(x.shape[0])]
+        final_indexes = list(range(len(permutation)))
+        for index in auxiliar_indexes:
+            final_indexes.remove(index)
+        if not len(permutation) % 2 == 0:
+            final_indexes = (final_indexes[:-1] + auxiliar_indexes +
+                             [final_indexes[-1]])
+        else:
+            final_indexes = final_indexes + auxiliar_indexes
+        for idx, i in enumerate(final_indexes):
+            tensors_auxiliar[idx % x.shape[0]][math.floor(idx/x.shape[0])] = (
+                tensors)[i]
+        return Tensor(tensors=tensors_auxiliar, shape=x.shape,
+                      tensor_shape=x.tensor_shape,
+                      number_samples=x.number_samples, dtype=x.dtype)
     else:
-        y_shuffled = Tensor(tensors=part_out_y_tensors,
-                            tensor_shape=y.tensor_shape,
-                            shape=y.shape,
-                            dtype=y.dtype)
-        return x_shuffled, y_shuffled
+        tensors = [object() for _ in range(x.n_tensors)]
+        y_tensors = [object() for _ in range(y.n_tensors)]
+        if len(permutation) % 2 == 0:
+            number_elements_permutation_to_use = len(permutation)
+        else:
+            number_elements_permutation_to_use = len(permutation) - 1
+        auxiliar_indexes = []
+        for i in range(0, number_elements_permutation_to_use, 2):
+            last_row_ = (((math.floor(permutation[i] /
+                                      x.shape[0]) + 1) == x.shape[0])
+                         and last_blocks_irregular)
+            last_row_second = (((math.floor(permutation[i + 1] /
+                                            x.shape[0]) + 1) == x.shape[0])
+                               and last_blocks_irregular)
+            tensor_x_1, tensor_x_2, tensor_y_1, tensor_y_2 = (
+                _merge_shuffle_tensors_xy(x.tensors[
+                                              permutation[i] % x.shape[0]]
+                                          [math.floor(permutation[i]
+                                                      / x.shape[0])],
+                                          x.tensors[
+                                              permutation[i + 1] %
+                                              x.shape[0]][math.floor(
+                                                          permutation[i + 1]
+                                                          / x.shape[0])],
+                                          y.tensors[
+                                              permutation[i] % y.shape[0]]
+                                          [math.floor(permutation[i]
+                                                      / y.shape[0])],
+                                          y.tensors[
+                                              permutation[i + 1] %
+                                              y.shape[0]][math.floor(
+                                                          permutation[i + 1]
+                                                          / y.shape[0])],
+                                          last_tensor=last_row_,
+                                          second_last_tensor=last_row_second,
+                                          random_state=random_state + i))
+            tensors[i] = tensor_x_1
+            y_tensors[i] = tensor_y_1
+            tensors[i + 1] = tensor_x_2
+            y_tensors[i + 1] = tensor_y_2
+            if last_row_ and last_blocks_irregular:
+                auxiliar_indexes.append(i)
+            if last_row_second and last_blocks_irregular:
+                auxiliar_indexes.append(i+1)
+        if not len(permutation) % 2 == 0:
+            tensor_out, tensor_out_y = _shuffle_last_tensor_xy(
+                x.tensors[permutation[-1] % x.shape[0]]
+                [math.floor(permutation[-1]/x.shape[0])],
+                y.tensors[permutation[-1] % y.shape[0]]
+                [math.floor(permutation[-1]/y.shape[0])],
+                random_state=random_state)
+            tensors[-1] = tensor_out
+            y_tensors[-1] = tensor_out_y
+        tensors_x = [[object() for _ in range(x.shape[1])]
+                     for _ in range(x.shape[0])]
+        tensors_y = [[object() for _ in range(x.shape[1])]
+                     for _ in range(x.shape[0])]
+        final_indexes = list(range(len(permutation)))
+        for index in auxiliar_indexes:
+            final_indexes.remove(index)
+        if not len(permutation) % 2 == 0:
+            final_indexes = (final_indexes[:-1] +
+                             auxiliar_indexes + [final_indexes[-1]])
+        else:
+            final_indexes = final_indexes + auxiliar_indexes
+        for idx, i in enumerate(final_indexes):
+            tensors_x[idx % x.shape[0]][math.floor(idx/x.shape[0])] = (
+                tensors)[i]
+            tensors_y[idx % y.shape[0]][math.floor(idx/y.shape[0])] = (
+                y_tensors)[i]
+
+    return (Tensor(tensors=tensors_x, shape=x.shape,
+                   tensor_shape=x.tensor_shape,
+                   number_samples=x.number_samples, dtype=x.dtype),
+            Tensor(tensors=tensors_y, shape=y.shape,
+                   tensor_shape=y.tensor_shape,
+                   number_samples=y.number_samples, dtype=y.dtype))
 
 
-def _paired_partition(x, y):
-    for x_row, y_row in zip(x._iterator(axis=0),
-                            y._iterator(axis=0)):
-        yield x_row, y_row
-
-
-def _partition_tensors(part_in, sizes_out, n_tensors):
-    if isinstance(part_in, tuple):
-        x = part_in[0]
-        y = part_in[1]
+@constraint(computing_units="${ComputingUnits}")
+@task(returns=2)
+def _merge_shuffle_tensors(first_tensor, second_tensor,
+                           last_tensor=False,
+                           second_last_tensor=False,
+                           random_state=None):
+    number_elements = 0
+    if last_tensor:
+        number_elements = first_tensor.shape[0]
+    if second_last_tensor:
+        number_elements = second_tensor.shape[0]
+    if isinstance(first_tensor, np.ndarray):
+        merged_tensors = np.vstack([first_tensor, second_tensor])
+        np.random.seed(random_state)
+        p = np.random.permutation(len(merged_tensors))
+        merged_tensors = merged_tensors[p]
+    elif torch.is_tensor(first_tensor):
+        merged_tensors = torch.cat([first_tensor, second_tensor])
+        idx = torch.randperm(merged_tensors.shape[0])
+        merged_tensors = merged_tensors[idx]
     else:
-        x = part_in
-        y = None
-    subsample_sizes = np.zeros((n_tensors,), dtype=int)
-    subsamples = [object() for _ in range(n_tensors)]
-    seed = np.random.randint(np.iinfo(np.int32).max)
-    cols = x.shape[1]
-    for j in range(len(sizes_out)):
-        subsample_sizes[j] = sizes_out[j]
-    if y is None:
-        _choose_and_assign_tensors_x(x.tensors, subsamples,
-                                     subsample_sizes, cols, n_tensors, seed)
+        raise TypeError("This type of tensor is not supported.")
+    if last_tensor:
+        return (merged_tensors[:number_elements],
+                merged_tensors[number_elements:])
     else:
-        _choose_and_assign_tensors_xy(x.tensors, y.tensors,
-                                      subsamples, subsample_sizes,
-                                      cols, n_tensors, seed)
-    return subsample_sizes, subsamples
+        return (merged_tensors[:first_tensor.shape[0]],
+                merged_tensors[first_tensor.shape[0]:])
+
+
+@constraint(computing_units="${ComputingUnits}")
+@task(returns=1)
+def _shuffle_last_tensor(tensor, random_state=None):
+    if isinstance(tensor, np.ndarray):
+        np.random.seed(random_state)
+        p = np.random.permutation(len(tensor))
+        tensor = tensor[p]
+    elif torch.is_tensor(tensor):
+        idx = torch.randperm(tensor.shape[0])
+        tensor = tensor[idx]
+    else:
+        raise TypeError("This type of tensor is not supported.")
+    return tensor
+
+
+@constraint(computing_units="${ComputingUnits}")
+@task(returns=4)
+def _merge_shuffle_tensors_xy(x_tensor, x_tensor2, y_tensor, y_tensor2,
+                              last_tensor=False,
+                              second_last_tensor=False,
+                              random_state=None):
+    number_elements = 0
+    if last_tensor:
+        number_elements = x_tensor.shape[0]
+    if second_last_tensor:
+        number_elements = x_tensor2.shape[0]
+    if isinstance(x_tensor, np.ndarray):
+        merged_tensors = np.vstack([x_tensor, x_tensor2])
+        merged_tensors_y = np.vstack([y_tensor, y_tensor2])
+        np.random.seed(random_state)
+        p = np.random.permutation(len(merged_tensors))
+        merged_tensors = merged_tensors[p]
+        merged_tensors_y = merged_tensors_y[p]
+    elif torch.is_tensor(x_tensor):
+        merged_tensors = torch.cat([x_tensor, x_tensor2])
+        merged_tensors_y = torch.cat([y_tensor, y_tensor2])
+        idx = torch.randperm(merged_tensors.shape[0])
+        merged_tensors = merged_tensors[idx]
+        merged_tensors_y = merged_tensors_y[idx]
+    else:
+        raise TypeError("This type of tensor is not supported.")
+    if last_tensor:
+        return (merged_tensors[:number_elements],
+                merged_tensors[number_elements:],
+                merged_tensors_y[:number_elements],
+                merged_tensors_y[number_elements:])
+    else:
+        return (merged_tensors[:x_tensor.shape[0]],
+                merged_tensors[x_tensor.shape[0]:],
+                merged_tensors_y[:x_tensor.shape[0]],
+                merged_tensors_y[x_tensor.shape[0]:])
+
+
+@constraint(computing_units="${ComputingUnits}")
+@task(returns=2)
+def _shuffle_last_tensor_xy(tensor, tensor_y, random_state=None):
+    if isinstance(tensor, np.ndarray):
+        np.random.seed(random_state)
+        p = np.random.permutation(len(tensor))
+        tensor = tensor[p]
+        tensor_y = tensor_y[p]
+    elif torch.is_tensor(tensor):
+        idx = torch.randperm(tensor.shape[0])
+        tensor = tensor[idx]
+        tensor_y = tensor_y[idx]
+    else:
+        raise TypeError("This type of tensor is not supported.")
+    return tensor, tensor_y
 
 
 @constraint(computing_units="${ComputingUnits}")
 @task(returns=1)
 def _assign_blocks_to_tensors(block):
     return torch.from_numpy(block)
-
-
-@constraint(computing_units="${ComputingUnits}")
-@task(part_out_subsamples={Type: COLLECTION_IN},
-      part_x={Type: COLLECTION_OUT, Depth: 2})
-def _merge_shuffle_x(seed, part_out_subsamples, size, part_x):
-    np.random.seed(seed)
-    p = np.random.permutation(len(part_out_subsamples))
-    part_out_x = [part_out_subsamples[idx_p] for idx_p in p]
-    if isinstance(part_out_x[0][0], np.ndarray):
-        part_out_x = np.concatenate(part_out_x)
-        for i in range(len(part_x)):
-            part_x[i] = part_out_x[size * i: size * (i + 1)]
-    elif torch.is_tensor(part_out_x[0][0]):
-        part_out_x = torch.cat(part_out_x)
-        for i in range(len(part_x)):
-            part_x[i] = part_out_x[size * i: size * (i + 1)]
-
-
-@constraint(computing_units="${ComputingUnits}")
-@task(part_out_subsamples={Type: COLLECTION_IN},
-      part_x={Type: COLLECTION_OUT, Depth: 2},
-      part_y={Type: COLLECTION_OUT, Depth: 2})
-def _merge_shuffle_xy(seed, part_out_subsamples, size, part_x, part_y):
-    (x_subsamples, part_out_y) = zip(*part_out_subsamples)
-    np.random.seed(seed)
-    p = np.random.permutation(len(x_subsamples))
-    part_out_x = [x_subsamples[idx_p] for idx_p in p]
-    part_out_y = [part_out_y[idx_p] for idx_p in p]
-    if len(part_out_x[0]) > 0:
-        if isinstance(part_out_x[0][0], np.ndarray):
-            part_out_x = np.concatenate(part_out_x)
-            for i in range(len(part_x)):
-                part_x[i] = part_out_x[size * i: size * (i + 1)]
-        elif torch.is_tensor(part_out_x[0][0]):
-            part_out_x = torch.cat(part_out_x)
-            for i in range(len(part_x)):
-                part_x[i] = part_out_x[size * i: size * (i + 1)]
-    if len(part_out_y[0]) > 0:
-        if isinstance(part_out_y[0][0], np.ndarray):
-            part_out_y = np.concatenate(part_out_y)
-            for i in range(len(part_y)):
-                part_y[i] = part_out_y[size * i: size * (i + 1)]
-        elif torch.is_tensor(part_out_y[0][0]):
-            part_out_y = torch.cat(part_out_y)
-            for i in range(len(part_y)):
-                part_y[i] = part_out_y[size * i: size * (i + 1)]
-
-
-@constraint(computing_units="${ComputingUnits}")
-@task(x={Type: COLLECTION_IN}, subsamples=COLLECTION_OUT,
-      subsample_sizes=COLLECTION_IN)
-def _choose_and_assign_tensors_x(x, subsamples, subsample_sizes,
-                                 cols, n_tensors, seed):
-    np.random.seed(seed)
-    for j in range(cols):
-        indices = np.random.permutation(x[0][j].shape[0])
-        start = 0
-        for i in range(int(n_tensors / cols)):
-            end = start + subsample_sizes[j]
-            subsamples[i + j * int(n_tensors / cols)] = x[0][j][
-                indices[start:end]]
-            start = end
-
-
-@constraint(computing_units="${ComputingUnits}")
-@task(x={Type: COLLECTION_IN}, y={Type: COLLECTION_IN},
-      subsamples=COLLECTION_OUT, subsample_sizes=COLLECTION_IN)
-def _choose_and_assign_tensors_xy(x, y, subsamples,
-                                  subsample_sizes, cols, n_tensors, seed):
-    np.random.seed(seed)
-    for j in range(cols):
-        indices = np.random.permutation(x[0][j].shape[0])
-        start = 0
-        for i in range(int(n_tensors / cols)):
-            end = start + subsample_sizes[j]
-            subsamples[i + j * int(n_tensors / cols)] = \
-                (x[0][j][indices[start:end]],
-                 y[0][j][indices[start:end]])
-            start = end
 
 
 @constraint(computing_units="${ComputingUnits}")

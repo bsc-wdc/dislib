@@ -93,10 +93,12 @@ class TensorTest(unittest.TestCase):
     def test_string(self):
         x_np = ds.random_tensors("np", (3, 3, 3, 11, 11))
         self.assertEqual(str(x_np), "ds-tensor(tensors=(...), "
-                                    "tensors_shape=%r,"
-                                    "n_tensors=%r,"
+                                    "tensors_shape=%r, "
+                                    "n_tensors=%r, "
+                                    "num_samples=%r, "
                                     "shape=%r)" % ((3, 11, 11),
                                                    9,
+                                                   99,
                                                    (3, 3)))
 
     def test_iterate_rows(self):
@@ -481,7 +483,9 @@ class TensorTest(unittest.TestCase):
         self.assertEqual(x_sub[0][1].all(), torch.tensor([-5, -14, -31]).all())
 
         x_np_2 = Tensor(tensors=[["String1", "String2"]],
-                        tensor_shape=(2, 2), dtype=np.float64)
+                        tensor_shape=(2, 2),
+                        number_samples=4,
+                        dtype=np.float64)
 
         with self.assertRaises(ValueError):
             ds.data.tensor.Tensor._merge_tensors(x_np_2)
@@ -644,6 +648,15 @@ class TensorTest(unittest.TestCase):
         self.assertFalse((x_train_tensor_2 == np.array(
             x_train_tensor.collect())).all())
         self.assertTrue(x_train_tensor_2.shape == (2, 2, 2, 2, 2, 2))
+        x_train_tensor = ds.random_tensors("np", (1, 3, 2, 2, 2, 2))
+        x_train_tensor_2 = ds.data.tensor.shuffle(x_train_tensor)
+        self.assertTrue(x_train_tensor_2.shape == (1, 3) ==
+                        (len(x_train_tensor_2.tensors),
+                         len(x_train_tensor_2.tensors[0])))
+        x_train_tensor_2 = np.array(x_train_tensor_2.collect())
+        self.assertFalse((x_train_tensor_2 == np.array(
+            x_train_tensor.collect())).all())
+        self.assertTrue(x_train_tensor_2.shape == (1, 3, 2, 2, 2, 2))
         x_train_tensor = ds.random_tensors("np", (2, 2, 16, 8, 11, 11))
         y_train_tensor = ds.random_tensors("np", (2, 2, 16, 1))
         x_train_tensor_2, y_train_tensor_2 = \
@@ -667,6 +680,16 @@ class TensorTest(unittest.TestCase):
                                  np.array(x_train_tensor.collect()))))
         x_train_tensor = ds.random_tensors("torch", (2, 2, 16, 8, 11, 11))
         y_train_tensor = ds.random_tensors("torch", (2, 2, 16, 1))
+        x_train_tensor_2, y_train_tensor_2 = \
+            ds.data.tensor.shuffle(x_train_tensor, y_train_tensor)
+        x_train_tensor_2 = np.array(x_train_tensor_2.collect())
+        y_train_tensor_2 = np.array(y_train_tensor_2.collect())
+        self.assertFalse(np.all(x_train_tensor_2 ==
+                                np.array(x_train_tensor.collect())))
+        self.assertFalse(np.all(y_train_tensor_2 ==
+                                np.array(y_train_tensor.collect())))
+        x_train_tensor = ds.random_tensors("torch", (1, 3, 16, 8, 11, 11))
+        y_train_tensor = ds.random_tensors("torch", (1, 3, 16, 1))
         x_train_tensor_2, y_train_tensor_2 = \
             ds.data.tensor.shuffle(x_train_tensor, y_train_tensor)
         x_train_tensor_2 = np.array(x_train_tensor_2.collect())
