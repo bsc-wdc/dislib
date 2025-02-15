@@ -2,7 +2,7 @@ import os
 
 from dislib.data.array import random_array, apply_along_axis, array, zeros, \
     full, identity, eye, matmul, concat_rows, concat_columns, matadd, \
-    matsubtract
+    matsubtract, exp, log, gammaln
 try:
     from dislib.data.tensor import random_tensors, from_array, \
         from_pt_tensor, create_ds_tensor, from_ds_array  # noqa: F401
@@ -40,6 +40,7 @@ if imported_tensors:
     __all__ = ['array', 'random_array', 'zeros', 'full', 'identity', 'eye',
                'load_txt_file', 'load_svmlight_file', 'load_npy_file',
                'load_mdcrd_file', 'matmul', 'matadd', 'matsubtract',
+               'exp', 'log', 'gammaln',
                'random_tensors', 'from_array', 'from_pt_tensor',
                'create_ds_tensor', 'from_ds_array',
                'save_txt', 'concat_rows', 'concat_columns',
@@ -48,6 +49,7 @@ else:
     __all__ = ['array', 'random_array', 'zeros', 'full', 'identity', 'eye',
                'load_txt_file', 'load_svmlight_file', 'load_npy_file',
                'load_mdcrd_file', 'matmul', 'matadd', 'matsubtract',
+               'exp', 'log', 'gammaln',
                'save_txt', 'concat_rows', 'concat_columns',
                'apply_along_axis', 'kron', 'svd']
 

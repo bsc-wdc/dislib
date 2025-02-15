@@ -8,6 +8,7 @@ from pycompss.api.constraint import constraint
 from pycompss.api.parameter import Type, COLLECTION_IN, Depth, \
     COLLECTION_OUT, INOUT
 from pycompss.api.task import task
+import scipy
 from scipy import sparse as sp
 from scipy.sparse import issparse, csr_matrix
 from sklearn.utils import check_random_state
@@ -208,7 +209,11 @@ class Array(object):
         return _apply_elementwise(Array._power, self, power)
 
     def __sub__(self, other):
-        if self.shape[1] != other.shape[1] or other.shape[0] != 1:
+        if np.isscalar(other):
+            # matrix - scalar value
+            return _apply_elementwise(Array._subtract_scalar, self, other)
+
+        elif self.shape[1] != other.shape[1] or other.shape[0] != 1:
             raise NotImplementedError("Subtraction not implemented for the "
                                       "given objects")
 
@@ -277,7 +282,10 @@ class Array(object):
         return self
 
     def __add__(self, other):
-        if self.shape[1] != other.shape[1] or other.shape[0] != 1:
+        if np.isscalar(other):
+            # matrix + scalar
+            return _apply_elementwise(Array._add_scalar, self, other)
+        elif self.shape[1] != other.shape[1] or other.shape[0] != 1:
             raise NotImplementedError("Addition not implemented for the "
                                       "given objects")
 
@@ -348,7 +356,10 @@ class Array(object):
         return _apply_elementwise(operator.truediv, self, other)
 
     def __mul__(self, other):
-        if self.shape[1] != other.shape[1] or other.shape[0] != 1:
+        if np.isscalar(other):
+            # matrix * scalar
+            return _apply_elementwise(Array._mul, self, other)
+        elif self.shape[1] != other.shape[1] or other.shape[0] != 1:
             raise NotImplementedError("Multiplication not implemented for the "
                                       "given arrays")
 
@@ -361,6 +372,36 @@ class Array(object):
                             operator.mul, out_blocks)
             blocks.append(out_blocks)
 
+        return Array(blocks, self._top_left_shape, self._reg_shape,
+                     self.shape, self._sparse)
+
+    def __ne__(self, other):
+        if np.isscalar(other):
+            # matrix != scalar
+            return _apply_elementwise(Array._ne, self, other)
+        elif other.shape[0] == self.shape[0] and \
+                other._reg_shape[0] == self._reg_shape[0]:
+            if self._reg_shape[1] != other._reg_shape[1]:
+                raise ValueError("incorrect block sizes for the requested "
+                                 f"addition ("
+                                 f"{self._reg_shape[0]}"", "
+                                 f"{self._reg_shape[1]} !="
+                                 f"{other._reg_shape[0]}"", "
+                                 f"{other._reg_shape[1]})")
+
+            if self._top_left_shape != other._top_left_shape:
+                raise ValueError("Incompatible block sizes of the "
+                                 "top left block of the matrices"
+                                 "b._top_left_shape != b._top_left_shape")
+            # matrix != matrix
+            blocks = []
+
+            for hblock, others in zip(self._iterator("rows"),
+                                      other._iterator("rows")):
+                out_blocks = [object() for _ in range(hblock._n_blocks[1])]
+                _combine_blocks(hblock._blocks, others._blocks,
+                                operator.ne, out_blocks)
+                blocks.append(out_blocks)
         return Array(blocks, self._top_left_shape, self._reg_shape,
                      self.shape, self._sparse)
 
@@ -377,6 +418,10 @@ class Array(object):
         return self.transpose()
 
     @staticmethod
+    def _subtract_scalar(x_np, b):
+        return x_np - b
+
+    @staticmethod
     def _subtract(a, b):
         sparse = issparse(a)
 
@@ -391,6 +436,10 @@ class Array(object):
             return csr_matrix(a - b)
         else:
             return a - b
+
+    @staticmethod
+    def _add_scalar(x_np, b):
+        return x_np + b
 
     @staticmethod
     def _add(a, b):
@@ -414,6 +463,22 @@ class Array(object):
             return sp.csr_matrix.power(x_np, power)
         else:
             return x_np ** power
+
+    @staticmethod
+    def _exp(x_np):
+        return np.exp(x_np)
+
+    @staticmethod
+    def _ne(a, b):
+        return a != b
+
+    @staticmethod
+    def _log(x_np):
+        return np.log(x_np)
+
+    @staticmethod
+    def _gammaln(x_np):
+        return scipy.special.gammaln(x_np)
 
     @staticmethod
     def _validate_blocks(blocks):
@@ -1806,6 +1871,78 @@ def matsubtract(a: Array, b: Array):
                  reg_shape=new_block_size, shape=new_shape, sparse=a._sparse)
 
 
+def exp(a: Array):
+    '''
+    Parameters
+    ----------
+    a : ds-array
+        Matrix to apply the exponent
+
+    Returns
+    -------
+    ds-array
+    Matrix with the exponent applied to its values.
+    Examples
+    --------
+    >>> import dislib as ds
+    >>>
+    >>>
+    >>> if __name__ == "__main__":
+    >>>     x = ds.random_array((8, 4), block_size=(2, 2))
+    >>>     x = ds.exp(x)
+    >>>     print(x)
+    '''
+    return _apply_elementwise(Array._exp, a)
+
+
+def log(a: Array):
+    '''
+    Parameters
+    ----------
+    a : ds-array
+        Matrix to apply the log.
+
+    Returns
+    -------
+    ds-array
+    Matrix with the log applied to its values.
+    Examples
+    --------
+    >>> import dislib as ds
+    >>>
+    >>>
+    >>> if __name__ == "__main__":
+    >>>     x = ds.random_array((8, 4), block_size=(2, 2))
+    >>>     x = ds.log(x)
+    >>>     print(x)
+    '''
+    return _apply_elementwise(Array._log, a)
+
+
+def gammaln(a: Array):
+    '''
+    Parameters
+    ----------
+    a : ds-array
+        Matrix to apply the gammaln
+
+    Returns
+    -------
+    ds-array
+    Matrix with the gamma ln applied to its values
+    Examples
+    --------
+    >>> import dislib as ds
+    >>>
+    >>>
+    >>> if __name__ == "__main__":
+    >>>     x = ds.random_array((8, 4), block_size=(2, 2))
+    >>>     x = ds.gammaln(x)
+    >>>     print(x)
+    '''
+    return _apply_elementwise(Array._gammaln, a)
+
+
 @constraint(processors=[
                 {"processorType": "CPU", "computingUnits": "1"},
                 {"processorType": "GPU", "computingUnits": "1"},
@@ -2641,7 +2778,6 @@ def _copy_block(block):
 def _combine_blocks(blocks, other, func, out_blocks):
     x = Array._merge_blocks(blocks)
     y = Array._merge_blocks(other)
-
     res = func(x, y)
 
     bsize = blocks[0][0].shape[1]
