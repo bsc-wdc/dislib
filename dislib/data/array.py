@@ -8,7 +8,7 @@ from pycompss.api.constraint import constraint
 from pycompss.api.parameter import Type, COLLECTION_IN, Depth, \
     COLLECTION_OUT, INOUT
 from pycompss.api.task import task
-from scipy.special import gammaln
+from scipy.special import gammaln as gammasp
 from scipy import sparse as sp
 from scipy.sparse import issparse, csr_matrix
 from sklearn.utils import check_random_state
@@ -478,7 +478,7 @@ class Array(object):
 
     @staticmethod
     def _gammaln(x_np):
-        return gammaln(x_np)
+        return gammasp(x_np)
 
     @staticmethod
     def _validate_blocks(blocks):
