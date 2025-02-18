@@ -5,6 +5,7 @@ import shutil
 import numpy as np
 from parameterized import parameterized
 from scipy import sparse as sp
+from scipy.special import gammaln
 from sklearn.datasets import load_svmlight_file
 import pandas as pd
 import dislib as ds
@@ -1154,6 +1155,15 @@ class ArrayTest(BaseTimedTestCase):
 
         self.assertTrue(_equal_arrays(expected, b.collect()))
 
+        orig = np.array([[1, 2, 3], [4, 5, 6]])
+        x = ds.array(orig, block_size=(2, 1))
+        scalar_value = 2
+        b = x + scalar_value
+        self.assertTrue(_validate_array(b))
+        expected = np.array([[3, 4, 5], [6, 7, 8]])
+
+        self.assertTrue(_equal_arrays(expected, b.collect()))
+
         with self.assertRaises(NotImplementedError):
             orig = np.array([[1, 2, 3], [4, 5, 6]])
             x = ds.array(orig, block_size=(2, 1))
@@ -1170,6 +1180,15 @@ class ArrayTest(BaseTimedTestCase):
         b = x - vector
         self.assertTrue(_validate_array(b))
         expected = np.array([[0, 0, 0], [3, 3, 3]])
+
+        self.assertTrue(_equal_arrays(expected, b.collect()))
+
+        orig = np.array([[1, 2, 3], [4, 5, 6]])
+        x = ds.array(orig, block_size=(2, 1))
+        scalar_value = 2
+        b = x - scalar_value
+        self.assertTrue(_validate_array(b))
+        expected = np.array([[-1, 0, 1], [2, 3, 4]])
 
         self.assertTrue(_equal_arrays(expected, b.collect()))
 
@@ -1301,6 +1320,81 @@ class ArrayTest(BaseTimedTestCase):
             orig_vector = np.array([[1, 2, 3], [4, 5, 6]])
             vector = ds.array(orig_vector, block_size=(2, 2))
             x -= vector
+
+    def test_ne(self):
+        orig = np.array([[1, 2, 3], [4, 5, 6]])
+        x = ds.array(orig, block_size=(2, 1))
+        matrix_orig = np.array([[1, 2, 3], [5, 6, 7]])
+        b = ds.array(matrix_orig, block_size=(2, 1))
+        c = x != b
+        self.assertTrue(_equal_arrays(orig != matrix_orig,
+                                      c.collect()))
+        orig = np.array([[1, 2, 3], [4, 5, 6], [4, 5, 6]])
+        x = ds.array(orig, block_size=(2, 2))
+        matrix_orig = np.array([[1, 2, 3], [5, 5, 7], [4, 5, 6]])
+        b = ds.array(matrix_orig, block_size=(2, 2))
+        c = x != b
+        self.assertTrue(_equal_arrays(orig != matrix_orig,
+                                      c.collect()))
+        b = 5
+        c = x != b
+        self.assertTrue(_equal_arrays(orig != b,
+                                      c.collect()))
+
+        with self.assertRaises(ValueError):
+            orig = np.array([[1, 2, 3], [4, 5, 6]])
+            x = ds.array(orig, block_size=(2, 1))
+            orig_vector = np.array([[1, 2, 3], [4, 5, 6]])
+            vector = ds.array(orig_vector, block_size=(2, 2))
+            x != vector
+
+        with self.assertRaises(ValueError):
+            orig = np.array([[1, 2, 3], [4, 5, 6]])
+            x = ds.array(orig, block_size=(2, 2))
+            orig_vector = np.array([[1, 2, 3], [4, 5, 6]])
+            vector = ds.array(orig_vector, block_size=(2, 2))
+            vector._top_left_shape = (1, 1)
+            x != vector
+
+    def test_exp(self):
+        orig = np.array([[1, 2, 3], [4, 5, 6]])
+        x = ds.array(orig, block_size=(2, 1))
+        x = ds.exp(x)
+        self.assertTrue(_equal_arrays(np.exp(orig),
+                                      x.collect()))
+        orig = np.array([[1, 2, 3], [4, 5, 6],
+                         [7, 8, 9]])
+        x = ds.array(orig, block_size=(2, 2))
+        x = ds.exp(x)
+        self.assertTrue(_equal_arrays(np.exp(orig),
+                                      x.collect()))
+
+    def test_log(self):
+        orig = np.array([[1, 2, 3], [4, 5, 6]])
+        x = ds.array(orig, block_size=(2, 1))
+        x = ds.array(orig, block_size=(2, 1))
+        x = ds.log(x)
+        self.assertTrue(_equal_arrays(np.log(orig),
+                                      x.collect()))
+        orig = np.array([[1, 2, 3], [4, 5, 6],
+                         [7, 8, 9]])
+        x = ds.array(orig, block_size=(2, 2))
+        x = ds.log(x)
+        self.assertTrue(_equal_arrays(np.log(orig),
+                                      x.collect()))
+
+    def test_gammaln(self):
+        orig = np.array([[1, 2, 3], [4, 5, 6]])
+        x = ds.array(orig, block_size=(2, 1))
+        x = ds.gammaln(x)
+        self.assertTrue(_equal_arrays(gammaln(orig),
+                                      x.collect()))
+        orig = np.array([[1, 2, 3], [4, 5, 6],
+                         [7, 8, 9]])
+        x = ds.array(orig, block_size=(2, 2))
+        x = ds.gammaln(x)
+        self.assertTrue(_equal_arrays(gammaln(orig),
+                                      x.collect()))
 
     def test_norm(self):
         """ Tests the norm """
