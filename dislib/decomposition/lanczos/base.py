@@ -343,27 +343,27 @@ def lanczos_svd(a: Array, k, bs, rank, num_sv, tolerance,
         this defines a limit on the iterations executed.
 
     Returns
-        -------
-        U : ds-array
-            The U of the matrix, Unitary array returned as ds-array, the shape
-            is A.shape[0] x rank, and the block size is the block size of
-            A in the row axis x bs.
-        S : ds-array
-            The S of the matrix. It is represented as a 2-dimensional matrix,
-            the diagonal of this matrix is the vector with the singular
-            values. Its shape is rank x rank and the block size is bs x bs
-        V : ds-array
-            The V of the matrix, Unitary array returned as ds-array,
-            the shape is A.shape[1] x rank, and the block size is bs x bs
+    -------
+    U : ds-array
+        The U of the matrix, Unitary array returned as ds-array, the shape
+        is A.shape[0] x rank, and the block size is the block size of
+        A in the row axis x bs.
+    S : ds-array
+        The S of the matrix. It is represented as a 2-dimensional matrix,
+        the diagonal of this matrix is the vector with the singular
+        values. Its shape is rank x rank and the block size is bs x bs
+    V : ds-array
+        The V of the matrix, Unitary array returned as ds-array,
+        the shape is A.shape[1] x rank, and the block size is bs x bs
 
-        Raises
-        ------
-        ValueError
-            If num_sv is bigger than the number of columns
-            or
-            If rank < num_nsv
-            or
-            If k <= rank
+    Raises
+    ------
+    ValueError
+        If num_sv is bigger than the number of columns
+        or
+        If rank < num_nsv
+        or
+        If k <= rank
 
     Examples
     --------
