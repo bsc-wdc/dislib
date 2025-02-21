@@ -45,6 +45,19 @@ def qr(a: Array, mode='full', overwrite_a=False):
         If top left shape is different than regular
         or
         If bottom right block is different than regular
+    Examples
+    --------
+    >>> import dislib as ds
+    >>> import numpy as np
+    >>> from dislib.decomposition import qr
+    >>>
+    >>> def main():
+    >>>     a = ds.random_array(shape=(125000, 12500), block_size=(2500, 2500))
+    >>>     q, r = qr(a, mode="economic")
+    >>>     print(np.allclose(np.dot(q.collect(), r.collect()), a.collect()))
+    >>>
+    >>> if __name__ == "__main__":
+    >>>     main()
     """
 
     _validate_ds_array(a)
