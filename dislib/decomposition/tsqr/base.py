@@ -62,9 +62,11 @@ def tsqr(a: Array, mode="complete", indexes=None):
         >>> from dislib.decomposition import tsqr
         >>>
         >>> def main():
-        >>>     a = ds.random_array(shape=(125000, 12500), block_size=(2500, 2500))
+        >>>     a = ds.random_array(shape=(125000, 12500),
+        >>>                         block_size=(2500, 2500))
         >>>     q, r = tsqr(a, mode="reduced")
-        >>>     print(np.allclose(np.dot(q.collect(), r.collect()), a.collect()))
+        >>>     print(np.allclose(np.dot(q.collect(),
+        >>>                              r.collect()), a.collect()))
         >>>
         >>> if __name__ == "__main__":
         >>>     main()
