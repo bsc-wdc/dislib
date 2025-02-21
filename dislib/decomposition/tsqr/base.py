@@ -55,6 +55,19 @@ def tsqr(a: Array, mode="complete", indexes=None):
             or
             If the mode is reduced_inverse and the number of blocks is
             not a power of 2
+        Examples
+        --------
+        >>> import dislib as ds
+        >>> import numpy as np
+        >>> from dislib.decomposition import tsqr
+        >>>
+        >>> def main():
+        >>>     a = ds.random_array(shape=(125000, 12500), block_size=(2500, 2500))
+        >>>     q, r = tsqr(a, mode="reduced")
+        >>>     print(np.allclose(np.dot(q.collect(), r.collect()), a.collect()))
+        >>>
+        >>> if __name__ == "__main__":
+        >>>     main()
         """
 
     if a._reg_shape != a._top_left_shape:
