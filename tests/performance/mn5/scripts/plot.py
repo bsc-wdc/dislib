@@ -50,7 +50,7 @@ def main():
     fig, ax = plt.subplots()  # Create a figure containing a single axes.
     ax.bar(ind - width / 2, times_g, width=width, label="gpfs")
     ax.bar(ind + width/2, times_s, width=width, label="scratch")
-    plt.xticks(ind, xlabels, rotation=45, ha="right")#ax.get_sticks(), rotation=45, ha="right")
+    plt.xticks(ind, xlabels, rotation=45, ha="right")
     ax.set_xlabel("Algorithm")
     ax.set_ylabel("Time (s)")
 
@@ -60,6 +60,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-

@@ -10,6 +10,7 @@ scripts_dir = os.path.join(base_dir, "scripts")
 exec_time = 120
 scheduler = "es.bsc.compss.scheduler.orderstrict.fifo.FifoTS"
 
+
 def main():
     cmd = ("enqueue_compss"
            " --exec_time=" + str(exec_time) +
@@ -58,9 +59,9 @@ def main():
     subprocess.run(final_cmd)
 
 
-
 def run_job(cmd):
-    os.environ['PRELOAD_PYTHON_LIBRARIES'] = "/gpfs/projects/bsc19/PERFORMANCE/dislib/scripts/preimports.txt"
+    os.environ['PRELOAD_PYTHON_LIBRARIES'] = \
+        "/gpfs/projects/bsc19/PERFORMANCE/dislib/scripts/preimports.txt"
     proc = subprocess.run(args=cmd, stdout=PIPE, env=os.environ.copy())
     job_id = str(proc.stdout).split(" ")[-1][:-3]
     return job_id
@@ -68,4 +69,3 @@ def run_job(cmd):
 
 if __name__ == "__main__":
     main()
-
