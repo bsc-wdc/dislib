@@ -134,9 +134,9 @@ def _obtain_blocks_of_columns(A, initial_block, final_block):
                  reg_shape=A._reg_shape, sparse=False)
 
 
-def svd_lanczos_t_conv_criteria(A, P, Q, k=None, b=1,
-                                rank=2, max_it=None,
-                                singular_values=1, tol=1e-8):
+def _svd_lanczos_t_conv_criteria(A, P, Q, k=None, b=1,
+                                 rank=2, max_it=None,
+                                 singular_values=1, tol=1e-8):
     m, n = A.shape
     if k is None:
         k = min(m, n)
@@ -343,27 +343,61 @@ def lanczos_svd(a: Array, k, bs, rank, num_sv, tolerance,
         this defines a limit on the iterations executed.
 
     Returns
-        -------
-        U : ds-array
-            The U of the matrix, Unitary array returned as ds-array, the shape
-            is A.shape[0] x rank, and the block size is the block size of
-            A in the row axis x bs.
-        S : ds-array
-            The S of the matrix. It is represented as a 2-dimensional matrix,
-            the diagonal of this matrix is the vector with the singular
-            values. Its shape is rank x rank and the block size is bs x bs
-        V : ds-array
-            The V of the matrix, Unitary array returned as ds-array,
-            the shape is A.shape[1] x rank, and the block size is bs x bs
+    -------
+    U : ds-array
+        The U of the matrix, Unitary array returned as ds-array, the shape
+        is A.shape[0] x rank, and the block size is the block size of
+        A in the row axis x bs.
+    S : ds-array
+        The S of the matrix. It is represented as a 2-dimensional matrix,
+        the diagonal of this matrix is the vector with the singular
+        values. Its shape is rank x rank and the block size is bs x bs
+    V : ds-array
+        The V of the matrix, Unitary array returned as ds-array,
+        the shape is A.shape[1] x rank, and the block size is bs x bs
 
-        Raises
-        ------
-        ValueError
-            If num_sv is bigger than the number of columns
-            or
-            If rank < num_nsv
-            or
-            If k <= rank
+    Raises
+    ------
+    ValueError
+        If num_sv is bigger than the number of columns
+        or
+        If rank < num_nsv
+        or
+        If k <= rank
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> import dislib as ds
+    >>> from dislib.decomposition import lanczos_svd
+    >>>
+    >>> def create_matrix(m, n):
+    >>>     # Define the range of exponents for the singular values
+    >>>     min_exp = -14
+    >>>     max_exp = 3
+    >>>     # Generate a set of logarithmically spaced singular values between
+    >>>     # 10^min_exp and 10^max_exp
+    >>>     singular_values = np.logspace(min_exp, max_exp, num=min(m, n))
+    >>>     # Generate a matrix with shape (m, n)
+    >>>     A = np.zeros((m, n))
+    >>>     # Set the singular values of A
+    >>>     np.fill_diagonal(A, singular_values)
+    >>>     # Apply the SVD to A to ensure that it has
+    >>>     # the correct singular values
+    >>>     U, s, Vt = np.linalg.svd(A, full_matrices=False)
+    >>>     A = U.dot(np.diag(s)).dot(Vt)
+    >>>     return A, singular_values[::-1]
+    >>>
+    >>> def main():
+    >>>     A, sing_values = create_matrix(50000, 150)
+    >>>     A = ds.array(A, block_size=(50000, 20))
+    >>>     u, s, v = lanczos_svd(A, k=40, bs=20, rank=20, num_sv=15,
+    >>>     tolerance=1e-3, epsilon=1e-3, max_num_iterations=1)
+    >>>     s = s.collect()
+    >>>     print("Singular values computed: " + str(s), flush=True)
+    >>>
+    >>> if __name__ == '__main__':
+    >>>     main()
     """
     m, n = a.shape
     if num_sv > n:
@@ -387,11 +421,11 @@ def lanczos_svd(a: Array, k, bs, rank, num_sv, tolerance,
     q, w = tsqr(q, mode='reduced')
     for i in range(Q._n_blocks[0]):
         assign_blocks(Q._blocks[i], q._blocks[i], 0, 0)
-    u, s, v, P, Q = svd_lanczos_t_conv_criteria(a, P, Q, k=k, b=bs,
-                                                rank=rank,
-                                                max_it=max_num_iterations,
-                                                singular_values=num_sv,
-                                                tol=tolerance)
+    u, s, v, P, Q = _svd_lanczos_t_conv_criteria(a, P, Q, k=k, b=bs,
+                                                 rank=rank,
+                                                 max_it=max_num_iterations,
+                                                 singular_values=num_sv,
+                                                 tol=tolerance)
     s_blocks = s.collect()
     s = s_blocks.diagonal()
     while not check_tolerance(a.shape[0], a.shape[1], nsv=num_sv, S=s,
@@ -408,11 +442,11 @@ def lanczos_svd(a: Array, k, bs, rank, num_sv, tolerance,
         k = k + bs
         rank = rank + bs
         num_sv = num_sv + bs
-        u, s, v, P, Q = svd_lanczos_t_conv_criteria(a, P, Q, k=k, b=bs,
-                                                    rank=rank,
-                                                    max_it=max_num_iterations,
-                                                    singular_values=num_sv,
-                                                    tol=tolerance)
+        u, s, v, P, Q = _svd_lanczos_t_conv_criteria(a, P, Q, k=k, b=bs,
+                                                     rank=rank,
+                                                     max_it=max_num_iterations,
+                                                     singular_values=num_sv,
+                                                     tol=tolerance)
         s_blocks = s.collect()
         s = s_blocks.diagonal()
 

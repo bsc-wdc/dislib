@@ -219,27 +219,60 @@ def random_svd(a, iters, epsilon, tol, nsv=None, k=None, verbose=False):
         for each iteration.
 
     Returns
-        -------
-        U : ds-array
-            The U of the matrix, Unitary array returned as ds-array, the shape
-            is A.shape[0] x rank, and the block size is the block size of
-            A in the row axis x bs.
-        S : ds-array
-            The S of the matrix. It is represented as a 2-dimensional matrix,
-            the diagonal of this matrix is the vector with the singular
-            values. Its shape is rank x rank and the block size is bs x bs
-        V : ds-array
-            The V of the matrix, Unitary array returned as ds-array,
-            the shape is A.shape[1] x rank, and the block size is bs x bs
+    -------
+    U : ds-array
+        The U of the matrix, Unitary array returned as ds-array, the shape
+        is A.shape[0] x rank, and the block size is the block size of
+        A in the row axis x bs.
+    S : ds-array
+        The S of the matrix. It is represented as a 2-dimensional matrix,
+        the diagonal of this matrix is the vector with the singular
+        values. Its shape is rank x rank and the block size is bs x bs
+    V : ds-array
+        The V of the matrix, Unitary array returned as ds-array,
+        the shape is A.shape[1] x rank, and the block size is bs x bs
 
-        Raises
-        ------
-        ValueError
-            If num_sv is bigger than the number of columns
-            or
-            If k < num_nsv
-            or
-            If k % b != 0
+    Raises
+    ------
+    ValueError
+        If num_sv is bigger than the number of columns
+        or
+        If k < num_nsv
+        or
+        If k % b != 0
+    Examples
+    --------
+    >>> import numpy as np
+    >>> import dislib as ds
+    >>> from dislib.decomposition import lanczos_svd
+    >>>
+    >>> def create_matrix(m, n):
+    >>>     # Define the range of exponents for the singular values
+    >>>     min_exp = -14
+    >>>     max_exp = 3
+    >>>     # Generate a set of logarithmically spaced singular values between
+    >>>     # 10^min_exp and 10^max_exp
+    >>>     singular_values = np.logspace(min_exp, max_exp, num=min(m, n))
+    >>>     # Generate a matrix with shape (m, n)
+    >>>     A = np.zeros((m, n))
+    >>>     # Set the singular values of A
+    >>>     np.fill_diagonal(A, singular_values)
+    >>>     # Apply the SVD to A to ensure that it has
+    >>>     # the correct singular values
+    >>>     U, s, Vt = np.linalg.svd(A, full_matrices=False)
+    >>>     A = U.dot(np.diag(s)).dot(Vt)
+    >>>     return A, singular_values[::-1]
+    >>>
+    >>> def main():
+    >>>     A, sing_values = create_matrix(50000, 150)
+    >>>     A = ds.array(A, block_size=(50000, 20))
+    >>>     u, s, v = lanczos_svd(A, iters=5, epsilon=0.5, tol=1e-3,
+    >>>                           nsv=15, k=40, verbose=True)
+    >>>     s = s.collect()
+    >>>     print("Singular values computed: " + str(s), flush=True)
+    >>>
+    >>> if __name__ == '__main__':
+    >>>     main()
     """
     m, n = a.shape
     b = a._reg_shape[1]
