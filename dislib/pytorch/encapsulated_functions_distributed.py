@@ -84,7 +84,7 @@ class EncapsulatedFunctionsDistributedPytorch(object):
         self.num_workers = num_workers
 
     def build(self, net, optimizer, loss, optimizer_parameters,
-              num_gpu=0, num_nodes=0):
+              scheduler=None, T_max=1, eta_min=0.0, num_gpu=0, num_nodes=0):
         """
         Builds the model to obtain the initial parameters of the training
         and it also builds the model in each worker in order to be ready
@@ -114,9 +114,17 @@ class EncapsulatedFunctionsDistributedPytorch(object):
                                             copy.deepcopy(optimizer),
                                             optimizer_parameters)
 
+        self.optimizer_parameters = optimizer_parameters
         self.num_gpu = num_gpu
         self.num_gpus_per_worker = int(num_nodes*num_gpu/self.num_workers)
         self.model_parameters = net
+        self.optimizer = optimizer(self.model_parameters.parameters(),
+                                   **optimizer_parameters)
+        if scheduler is not None:
+            self.scheduler = scheduler(self.optimizer,
+                                       T_max=T_max, eta_min=eta_min)
+        else:
+            self.scheduler = None
 
     def get_parameters(self):
         """
@@ -181,6 +189,17 @@ class EncapsulatedFunctionsDistributedPytorch(object):
                 parameters_for_workers = [copy.deepcopy(self.model_parameters)
                                           for _ in
                                           range(len(parameters_for_workers))]
+            if self.scheduler is not None:
+                self.scheduler.step()
+                self.optimizer_parameters = {}
+                self.optimizer_parameters["lr"] = \
+                    self.optimizer.param_groups[0]["lr"]
+                if "momentum" in self.optimizer.param_groups[0]:
+                    self.optimizer_parameters["momentum"] = \
+                            self.optimizer.param_groups[0]["momentum"]
+                if "weight_decay" in self.optimizer.param_groups[0]:
+                    self.optimizer_parameters["weight_decay"] = \
+                            self.optimizer.param_groups[0]["weight_decay"]
         parameters_for_workers = compss_wait_on(parameters_for_workers)
         self.model_parameters = pt_aggregateParameters(
             parameters_for_workers)
@@ -249,6 +268,17 @@ class EncapsulatedFunctionsDistributedPytorch(object):
                 parameters_for_workers = [
                     copy.deepcopy(self.model_parameters) for _
                     in range(len(parameters_for_workers))]
+            if self.scheduler is not None:
+                self.scheduler.step()
+                self.optimizer_parameters = {}
+                self.optimizer_parameters["lr"] = \
+                    self.optimizer.param_groups[0]["lr"]
+                if "momentum" in self.optimizer.param_groups[0]:
+                    self.optimizer_parameters["momentum"] = \
+                            self.optimizer.param_groups[0]["momentum"]
+                if "weight_decay" in self.optimizer.param_groups[0]:
+                    self.optimizer_parameters["weight_decay"] = \
+                            self.optimizer.param_groups[0]["weight_decay"]
         parameters_for_workers = compss_wait_on(parameters_for_workers)
         self.model_parameters = pt_aggregateParameters(
             parameters_for_workers)
@@ -305,6 +335,17 @@ class EncapsulatedFunctionsDistributedPytorch(object):
                     j = j + 1
                     if j == self.num_workers:
                         j = 0
+            if self.scheduler is not None:
+                self.scheduler.step()
+                self.optimizer_parameters = {}
+                self.optimizer_parameters["lr"] = \
+                    self.optimizer.param_groups[0]["lr"]
+                if "momentum" in self.optimizer.param_groups[0]:
+                    self.optimizer_parameters["momentum"] = \
+                            self.optimizer.param_groups[0]["momentum"]
+                if "weight_decay" in self.optimizer.param_groups[0]:
+                    self.optimizer_parameters["weight_decay"] = \
+                            self.optimizer.param_groups[0]["weight_decay"]
             parameters_for_workers = compss_wait_on(parameters_for_workers)
             self.model_parameters = pt_aggregateParameters(
                 parameters_for_workers)
@@ -356,6 +397,17 @@ class EncapsulatedFunctionsDistributedPytorch(object):
                     j = j + 1
                     if j == self.num_workers:
                         j = 0
+            if self.scheduler is not None:
+                self.scheduler.step()
+                self.optimizer_parameters = {}
+                self.optimizer_parameters["lr"] = \
+                    self.optimizer.param_groups[0]["lr"]
+                if "momentum" in self.optimizer.param_groups[0]:
+                    self.optimizer_parameters["momentum"] = \
+                            self.optimizer.param_groups[0]["momentum"]
+                if "weight_decay" in self.optimizer.param_groups[0]:
+                    self.optimizer_parameters["weight_decay"] = \
+                            self.optimizer.param_groups[0]["weight_decay"]
             parameters_for_workers = compss_wait_on(parameters_for_workers)
             self.model_parameters = \
                 pt_aggregateParameters(parameters_for_workers)
@@ -417,6 +469,17 @@ class EncapsulatedFunctionsDistributedPytorch(object):
                     j = j + 1
                     if j == self.num_workers:
                         j = 0
+            if self.scheduler is not None:
+                self.scheduler.step()
+                self.optimizer_parameters = {}
+                self.optimizer_parameters["lr"] = \
+                    self.optimizer.param_groups[0]["lr"]
+                if "momentum" in self.optimizer.param_groups[0]:
+                    self.optimizer_parameters["momentum"] = \
+                            self.optimizer.param_groups[0]["momentum"]
+                if "weight_decay" in self.optimizer.param_groups[0]:
+                    self.optimizer_parameters["weight_decay"] = \
+                            self.optimizer.param_groups[0]["weight_decay"]
             for j in range(self.num_workers):
                 parameters_for_workers[j] = \
                     self.compss_object[j].aggregate_parameters_async(
@@ -468,6 +531,17 @@ class EncapsulatedFunctionsDistributedPytorch(object):
                     j = j + 1
                     if j == self.num_workers:
                         j = 0
+            if self.scheduler is not None:
+                self.scheduler.step()
+                self.optimizer_parameters = {}
+                self.optimizer_parameters["lr"] = \
+                    self.optimizer.param_groups[0]["lr"]
+                if "momentum" in self.optimizer.param_groups[0]:
+                    self.optimizer_parameters["momentum"] = \
+                            self.optimizer.param_groups[0]["momentum"]
+                if "weight_decay" in self.optimizer.param_groups[0]:
+                    self.optimizer_parameters["weight_decay"] = \
+                            self.optimizer.param_groups[0]["weight_decay"]
             for j in range(self.num_workers):
                 parameters_for_workers[j] = \
                     self.compss_object[j].aggregate_parameters_async(
@@ -532,6 +606,17 @@ class EncapsulatedFunctionsDistributedPytorch(object):
                     j = j + 1
                     if j == self.num_workers:
                         j = 0
+            if self.scheduler is not None:
+                self.scheduler.step()
+                self.optimizer_parameters = {}
+                self.optimizer_parameters["lr"] = \
+                    self.optimizer.param_groups[0]["lr"]
+                if "momentum" in self.optimizer.param_groups[0]:
+                    self.optimizer_parameters["momentum"] = \
+                            self.optimizer.param_groups[0]["momentum"]
+                if "weight_decay" in self.optimizer.param_groups[0]:
+                    self.optimizer_parameters["weight_decay"] = \
+                            self.optimizer.param_groups[0]["weight_decay"]
             if (i + 1) % n_epocs_sync == 0:
                 for j in range(self.num_workers):
                     parameters_for_workers[j] = \
