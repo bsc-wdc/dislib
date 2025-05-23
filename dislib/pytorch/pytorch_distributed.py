@@ -75,11 +75,30 @@ class PytorchDistributed(object):
         {'processorType': 'GPU', 'computingUnits': '${ComputingUnitsGPUs}'}])
     @task()
     def _train_cnn_batch_GPU(self, model_parameters, x_train,
-                             y_train, num_batches, shuffle_block_data):
+                             y_train, num_batches, shuffle_block_data,
+                             transformations=None,
+                             gradient_clipping=None):
         if shuffle_block_data:
             idx = torch.randperm(x_train.shape[0])
-            x_train = x_train[idx].view(x_train.size())
-            y_train = y_train[idx].view(y_train.size())
+            if not isinstance(x_train.size, int):
+                x_train = x_train[idx].view(x_train.size())
+            else:
+                if not torch.is_tensor(x_train):
+                    x_train = x_train[idx]
+                else:
+                    x_train = torch.from_numpy(x_train)
+                    x_train = x_train[idx].view(x_train.size())
+            if not isinstance(y_train.size, int):
+                if len(y_train.size()) > 1:
+                    y_train = y_train[idx].view(y_train.size())
+                else:
+                    y_train = y_train[idx]
+            else:
+                if not torch.is_tensor(y_train):
+                    y_train = y_train[idx]
+                else:
+                    y_train = torch.from_numpy(y_train)
+                    y_train = y_train[idx].view(y_train.size())
         if hasattr(self.model, 'neural_network_layers'):
             len_nn = len(self.model.neural_network_layers)
             for i in range(len_nn):
@@ -89,10 +108,17 @@ class PytorchDistributed(object):
                         nn.Parameter(
                             model_parameters.neural_network_layers[i].
                             weight.float())
+                if hasattr(model_parameters.neural_network_layers[i],
+                           'bias'):
                     self.model.neural_network_layers[i].bias = \
                         nn.Parameter(
                             model_parameters.neural_network_layers[i].bias.
                             float())
+                if hasattr(self.model.neural_network_layers[i],
+                           'alpha'):
+                    self.model.neural_network_layers[i].alpha = \
+                        nn.Parameter(model_parameters.
+                                     neural_network_layers[i].alpha)
         if hasattr(self.model, 'dense_neural_network_layers'):
             len_nn = len(model_parameters.dense_neural_network_layers)
             for i in range(len_nn):
@@ -103,23 +129,37 @@ class PytorchDistributed(object):
                         nn.Parameter(
                             model_parameters.dense_neural_network_layers[i].
                             weight.float())
+                if hasattr(model_parameters.dense_neural_network_layers[i],
+                           'bias'):
                     self.model.dense_neural_network_layers[i].bias = \
                         nn.Parameter(
                             model_parameters.dense_neural_network_layers[i].
                             bias.float())
+                if hasattr(self.model.neural_network_layers[i],
+                           'alpha'):
+                    self.model.neural_network_layers[i].alpha = \
+                        nn.Parameter(model_parameters.
+                                     neural_network_layers[i].alpha)
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model = self.model.to(device)
         optimizer = self.optimizer(self.model.parameters(),
                                    **self.optimizer_parameters)
         x_train = x_train.float().to(device)
-        true_labels = y_train.to(device)
         indexes = int(x_train.shape[0] / num_batches)
+        if isinstance(self.loss, nn.CrossEntropyLoss):
+            y_train = y_train.long()
+        true_labels = y_train.to(device)
         for idx in range(num_batches):
             optimizer.zero_grad()
-            outputs = self.model(x_train[idx*indexes:(idx+1)*indexes])
+            inputs = x_train[idx*indexes:(idx + 1)*indexes]
+            if transformations is not None:
+                inputs = transformations(inputs)
+            outputs = self.model(inputs)
             loss = self.loss(outputs,
                              true_labels[idx*indexes:(idx+1)*indexes])
             loss.backward()
+            if gradient_clipping is not None:
+                gradient_clipping(self.model)
             optimizer.step()
         self.model = self.model.to("cpu")
         return self.model
@@ -181,9 +221,16 @@ class PytorchDistributed(object):
                     model_params.neural_network_layers[i].weight = \
                         nn.Parameter(final_added_parameters[j].float())
                     j += 1
+                if hasattr(model_params.neural_network_layers[i],
+                           'bias'):
                     model_params.neural_network_layers[i].bias = \
                         nn.Parameter(final_added_parameters[j].float())
                     j += 1
+                if hasattr(self.model.neural_network_layers[i],
+                           'alpha'):
+                    self.model.neural_network_layers[i].alpha = \
+                        nn.Parameter(model_params.
+                                     neural_network_layers[i].alpha)
         if hasattr(model_params, 'dense_neural_network_layers'):
             len_nn = len(model_params.dense_neural_network_layers)
             aux_j = 0
@@ -193,7 +240,14 @@ class PytorchDistributed(object):
                     model_params.dense_neural_network_layers[i].weight = \
                         nn.Parameter(final_added_parameters[aux_j + j].float())
                     aux_j += 1
+                if hasattr(model_params.dense_neural_network_layers[i],
+                           'bias'):
                     model_params.dense_neural_network_layers[i].bias = \
                         nn.Parameter(final_added_parameters[aux_j + j].float())
                     aux_j += 1
+                if hasattr(self.model.dense_neural_network_layers[i],
+                           'alpha'):
+                    self.model.dense_neural_network_layers[i].alpha = \
+                        nn.Parameter(model_params.
+                                     neural_network_layers[i].alpha)
         return model_params
