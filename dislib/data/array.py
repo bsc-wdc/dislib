@@ -14,6 +14,8 @@ from scipy.sparse import issparse, csr_matrix
 from sklearn.utils import check_random_state
 import math
 
+# This is used in order to recognize persistent blocks
+from storage.api import StorageObject
 
 class Array(object):
     """ A distributed 2-dimensional array divided in blocks.
@@ -499,6 +501,11 @@ class Array(object):
         """
         sparse = None
         b0 = blocks[0][0]
+
+        # If block is persistent, then retrieve the actual content
+        if isinstance(b0, StorageObject):
+            b0 = b0.block_data
+
         if sparse is None:
             sparse = issparse(b0)
 
@@ -1358,7 +1365,7 @@ class Array(object):
                      shape=shape, sparse=False)
 
 
-def array(x, block_size):
+def array(x, block_size, persistent_block=False):
     """
     Loads data into a Distributed Array.
 
@@ -1368,6 +1375,9 @@ def array(x, block_size):
         Array of samples.
     block_size : (int, int)
         Block sizes in number of samples.
+    persistent_block : bool
+        Make the blocks persistent (through dataClay PersistentStorage)
+
 
     Returns
     -------
@@ -1398,9 +1408,20 @@ def array(x, block_size):
 
     bn, bm = block_size
 
+    from storage.api import PersistentBlock
+
     blocks = []
     for i in range(0, x.shape[0], bn):
-        row = [x[i: i + bn, j: j + bm] for j in range(0, x.shape[1], bm)]
+        # row = [x[i: i + bn, j: j + bm] for j in range(0, x.shape[1], bm)]
+        row = list()
+        for j in range(0, x.shape[1], bm):
+            block_data = x[i: i + bn, j: j + bm]
+            if persistent_block:
+                b = PersistentBlock(block_data)
+                b.make_persistent()
+                row.append(b)
+            else:
+                row.append(block_data)
         blocks.append(row)
 
     sparse = issparse(x)
