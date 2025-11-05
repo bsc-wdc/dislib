@@ -1,5 +1,5 @@
 import numpy as np
-from pylab import scatter, plot, show
+from matplotlib.pyplot import scatter, plot, show
 
 import dislib as ds
 from dislib.regression import LinearRegression

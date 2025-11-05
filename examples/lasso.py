@@ -63,25 +63,22 @@ def main():
     print("r^2 on test data : %f" % r2_score_enet)
 
     m, s, _ = plt.stem(np.where(enet.coef_)[0], enet.coef_[enet.coef_ != 0],
-                       markerfmt='x', label='Elastic net coefficients',
-                       use_line_collection=True)
+                       markerfmt='x', label='Elastic net coefficients')
     plt.setp([m, s], color="#2ca02c")
 
     m, s, _ = plt.stem(np.where(lasso_sk.coef_)[0], lasso_sk.coef_[
         lasso_sk.coef_ != 0],
-                       markerfmt='x', label='Lasso (SK) coefficients',
-                       use_line_collection=True)
+                       markerfmt='x', label='Lasso (SK) coefficients')
     plt.setp([m, s], color='#af1b32')
 
     lasso_coef = lasso.coef_.collect()
 
     m, s, _ = plt.stem(np.where(lasso_coef)[0], lasso_coef[lasso_coef != 0],
-                       markerfmt='x', label='Lasso (dislib) coefficients',
-                       use_line_collection=True)
+                       markerfmt='x', label='Lasso (dislib) coefficients')
     plt.setp([m, s], color='#ff7f0e')
 
     plt.stem(np.where(coef)[0], coef[coef != 0], label='true coefficients',
-             markerfmt='bx', use_line_collection=True)
+             markerfmt='bx')
 
     plt.legend(loc='best')
     plt.title("Lasso (ds) $R^2$: %.3f, Lasso (sk) $R^2$: %.3f, Elastic Net "

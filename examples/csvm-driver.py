@@ -3,7 +3,7 @@ import csv
 import os
 import time
 
-from pycompss.api.api import barrier, compss_wait_on
+from pycompss.api.api import compss_barrier, compss_wait_on
 
 import dislib as ds
 from dislib.classification import CascadeSVM
@@ -82,7 +82,7 @@ def main():
         x, y = shuffle(x, y)
 
     if args.detailed_times:
-        barrier()
+        compss_barrier()
         read_time = time.time() - s_time
         s_time = time.time()
 
@@ -92,7 +92,7 @@ def main():
 
     csvm.fit(x, y)
 
-    barrier()
+    compss_barrier()
     fit_time = time.time() - s_time
 
     out = [args.kernel, args.arity, args.part_size, csvm._clf_params["gamma"],
