@@ -8,9 +8,6 @@ compss/runtime/config/xml/projects/src/main/java/es/bsc/compss/types/project/jax
 compss/runtime/config/xml/resources/src/main/java/META-INF/
 compss/runtime/config/xml/resources/src/main/java/es/bsc/compss/types/resources/jaxb/
 
-# Ignore virtual environment files
-venv/
-
 # Ignore eclipse files
 .classpath
 .settings/
@@ -173,7 +170,12 @@ dkms.conf
 *.smod
 
 # Ignore log files
-*.log
+**/*.log
+**/*.err
+**/*.out
+**/.COMPSs
+**/logs*/
 
 # Ignore virtual environments
-venv
+venv*/
+.venv*/
