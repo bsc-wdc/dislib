@@ -96,6 +96,85 @@ class TensorPytorchDistributed(unittest.TestCase):
         encaps_function.build(model, optimizer,
                               criterion, optimizer_parameters,
                               num_gpu=1, num_nodes=1)
+        y_tensor = y_tensor_original.collect()
+        x_tensor = x_tensor_original.collect()
+        y_tensor_function = torch.cat([tens for tensor in y_tensor
+                                      for tens in tensor])
+        trained_weights, train_loss, train_acc, validation_loss, \
+            validation_acc = encaps_function.\
+            fit_synchronous_with_GPU_train_curves(x_tensor,
+                                                  y_tensor, 10, 64,
+                                                  x_test=x_tensor,
+                                                  y_test=y_tensor_function)
+        self.assertTrue(torch.is_tensor(train_loss[0]))
+        self.assertTrue(torch.is_tensor(train_acc[0]))
+        self.assertTrue(torch.is_tensor(validation_loss[0]))
+        self.assertTrue(torch.is_tensor(validation_acc[0]))
+        self.assertTrue(len(train_loss) == 10)
+        self.assertTrue(len(train_acc) == 10)
+        self.assertTrue(len(validation_loss) == 10)
+        self.assertTrue(len(validation_acc) == 10)
+        model = set_weights_neural_network(model, trained_weights)
+        model.eval()
+        total = 0
+        running_accuracy = 0
+        for tensor, labels in zip(x_tensor, y_tensor):
+            for images, in_labels in zip(tensor, labels):
+                outputs = in_labels
+                predicted_outputs = model(images.float())
+                preds, predicted = torch.max(predicted_outputs, 1)
+                outs, outputs = torch.max(outputs, 1)
+                total += predicted_outputs.shape[0]
+                running_accuracy += (predicted == outputs).sum().item()
+        # Check predictions are better than random
+        self.assertTrue((running_accuracy / total) > 0.1)
+
+    def test_synchronous_training_training_curves(self):
+        x = torch.ones([1000, 1, 1, 1])
+        y = torch.ones([1000, 1])
+        x[:100] = torch.ones([100, 1, 1, 1])
+        y[:100] = 0
+        x[100:200] = torch.ones([100, 1, 1, 1]) * 2
+        y[100:200] = 1
+        x[200:300] = torch.ones([100, 1, 1, 1])*4
+        y[200:300] = 2
+        x[300:400] = torch.ones([100, 1, 1, 1])*8
+        y[300:400] = 3
+        x[400:500] = torch.ones([100, 1, 1, 1]) * 16
+        y[400:500] = 4
+        x[500:600] = torch.ones([100, 1, 1, 1]) * 32
+        y[500:600] = 5
+        x[600:700] = torch.ones([100, 1, 1, 1]) * 64
+        y[600:700] = 6
+        x[700:800] = torch.ones([100, 1, 1, 1]) * 128
+        y[700:800] = 7
+        x[800:900] = torch.ones([100, 1, 1, 1]) * 256
+        y[800:900] = 8
+        x[900:] = torch.ones([100, 1, 1, 1]) * 512
+        y[900:] = 9
+        indices = torch.randperm(x.size()[0])
+        x = x[indices]
+        y = y[indices]
+        x_tensor = ds.from_pt_tensor(tensor=x,
+                                     shape=(2, 2))
+        x_tensor_original = ds.from_pt_tensor(tensor=x,
+                                              shape=(2, 2))
+        y = torch.nn.functional.one_hot(y.long(), num_classes=-1)
+        y = y[:, 0, :].double()
+        y_tensor = ds.from_pt_tensor(tensor=y,
+                                     shape=(2, 2))
+        y_tensor_original = ds.from_pt_tensor(tensor=y,
+                                              shape=(2, 2))
+        model = TestsNetwork(1, 10)
+        model.apply(init_weights)
+        encaps_function = EncapsulatedFunctionsDistributedPytorch(
+            num_workers=1)
+        criterion = nn.CrossEntropyLoss
+        optimizer = optim.SGD
+        optimizer_parameters = {"lr": 0.002, "momentum": 0.9}
+        encaps_function.build(model, optimizer,
+                              criterion, optimizer_parameters,
+                              num_gpu=1, num_nodes=1)
         trained_weights = encaps_function.\
             fit_synchronous_with_GPU(x_tensor,
                                      y_tensor, 10, 64)
@@ -348,6 +427,71 @@ class TensorPytorchDistributed(unittest.TestCase):
                 outs, outputs = torch.max(outputs, 1)
                 total += predicted_outputs.shape[0]
                 running_accuracy += (predicted == outputs).sum().item()
+        self.assertTrue((running_accuracy / total) >= 0.5)
+
+    def test_asynchronous_training_training_curves(self):
+        x = torch.ones([1000, 1, 1, 1])
+        y = torch.ones([1000, 1])
+        x[:500] = torch.ones([500, 1, 1, 1])
+        y[:500] = 0
+        x[500:] = torch.ones([500, 1, 1, 1]) * 32
+        y[500:] = 1
+        indices = torch.randperm(x.size()[0])
+        x = x[indices]
+        y = y[indices]
+        x_tensor = ds.from_pt_tensor(tensor=x,
+                                     shape=(2, 2))
+        x_tensor_original = ds.from_pt_tensor(tensor=x,
+                                              shape=(2, 2))
+        y = torch.nn.functional.one_hot(y.long(), num_classes=-1)
+        y = y[:, 0, :].double()
+        y_tensor = ds.from_pt_tensor(tensor=y,
+                                     shape=(2, 2))
+        y_tensor_original = ds.from_pt_tensor(tensor=y,
+                                              shape=(2, 2))
+        model = TestsNetwork(1, 10)
+        model.apply(init_weights)
+        encaps_function = EncapsulatedFunctionsDistributedPytorch(
+            num_workers=1)
+        criterion = nn.CrossEntropyLoss
+        optimizer = optim.SGD
+        x_tensor_original = x_tensor_original.collect()
+        y_tensor_original = y_tensor_original.collect()
+        y_test_local = torch.cat([tens for tensor in
+                                  y_tensor_original for tens in
+                                  tensor])
+        optimizer_parameters = {"lr": 0.002, "momentum": 0.9}
+        encaps_function.build(model, optimizer,
+                              criterion, optimizer_parameters,
+                              num_gpu=1, num_nodes=1)
+        trained_weights, train_loss, train_acc, validation_loss, \
+            validation_acc = encaps_function.\
+            fit_asynchronous_with_GPU_train_curves(x_tensor,
+                                                   y_tensor, 10, 64,
+                                                   x_test=x_tensor_original,
+                                                   y_test=y_test_local)
+        model = set_weights_neural_network(model, trained_weights)
+        self.assertTrue(torch.is_tensor(train_loss[0]))
+        self.assertTrue(torch.is_tensor(train_acc[0]))
+        self.assertTrue(torch.is_tensor(validation_loss[0]))
+        self.assertTrue(torch.is_tensor(validation_acc[0]))
+        self.assertTrue(len(train_loss) == 10)
+        self.assertTrue(len(train_acc) == 10)
+        self.assertTrue(len(validation_loss) == 10)
+        self.assertTrue(len(validation_acc) == 10)
+        model.eval()
+        total = 0
+        running_accuracy = 0
+        for tensor, labels in zip(x_tensor_original,
+                                  y_tensor_original):
+            for images, in_labels in zip(tensor, labels):
+                outputs = in_labels
+                predicted_outputs = model(images.float())
+                preds, predicted = torch.max(predicted_outputs, 1)
+                outs, outputs = torch.max(outputs, 1)
+                total += predicted_outputs.shape[0]
+                running_accuracy += (predicted == outputs).sum().item()
+        # Check predictions are better than random
         self.assertTrue((running_accuracy / total) >= 0.5)
 
     def test_asynchronous_shuffle_with_GPU_cnn(self):

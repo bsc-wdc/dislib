@@ -72,6 +72,16 @@ class Tensor(object):
                               self.number_samples,
                               self.shape)
 
+    def __repr__(self):
+        return "ds-tensor(tensors=(...), " \
+               "tensors_shape=%r, " \
+               "n_tensors=%r, " \
+               "num_samples=%r, " \
+               "shape=%r)" % (self.tensor_shape,
+                              self.n_tensors,
+                              self.number_samples,
+                              self.shape)
+
     def __del__(self):
         if self._delete:
             [compss_delete_object(tensor) for tensors in self.tensors for
@@ -611,10 +621,10 @@ def from_pt_tensor(tensor, shape=None):
                       dtype=tensor.dtype)
 
 
-def from_ds_array(ds_array, shape=None):
+def from_ds_array(ds_array, shape=None, one_column=False):
     """
     Creates the Tensor object from a ds_array.
-    This method can't generated Tensors that have more than two dimensions,
+    This method can't generate Tensors that have more than two dimensions,
     thus the output of this method can't be used in a Convolutional Neural
     Network neither any Neural Network that requires data input with
     more than two dimensions.
@@ -623,11 +633,15 @@ def from_ds_array(ds_array, shape=None):
     ----------
     ds_array : ds-array
         The ds-array to transform into ds-tensor.
-    shape : tuple of two ints.
+    shape : tuple of two ints. Optional, if used with
+            one_column=True this will be ignored
         The organization of the number of tensors,
         how many will be on axis=0 and how many will be on axis=1.
         The total number of tensors should be the same as blocks
         are in the input ds-array.
+    one_column : boolean
+        If the ds-tensor will have one unique column of tensors or
+        as many as column blocks are in the ds-array
 
     Returns
     -------
@@ -645,24 +659,36 @@ def from_ds_array(ds_array, shape=None):
             raise ValueError("The number of tensors specified in the "
                              "shape should be equal to the number of "
                              "blocks in the input ds-array")
-    new_tensor = Tensor._get_out_tensors([ds_array._n_blocks[0],
-                                          ds_array._n_blocks[1]])
-    for block_i, idx_i in zip(ds_array._blocks, range(len(new_tensor))):
-        for block_j, idx_j in zip(block_i, range(len(new_tensor[idx_i]))):
-            new_tensor[idx_i][idx_j] = _assign_blocks_to_tensors(block_j)
-    if shape is not None and (isinstance(shape, tuple) or
-                              isinstance(shape, list)):
-        return change_shape(Tensor(tensors=new_tensor,
-                            tensor_shape=(ds_array._reg_shape[0],
-                                          ds_array.shape[1]),
-                            number_samples=ds_array.shape[0],
-                            dtype=np.float64, delete=ds_array._delete), shape)
+    if not one_column:
+        new_tensor = Tensor._get_out_tensors([ds_array._n_blocks[0],
+                                              ds_array._n_blocks[1]])
+        for block_i, idx_i in zip(ds_array._blocks, range(len(new_tensor))):
+            for block_j, idx_j in zip(block_i, range(len(new_tensor[idx_i]))):
+                new_tensor[idx_i][idx_j] = _assign_blocks_to_tensors(block_j)
+        if shape is not None and (isinstance(shape, tuple) or
+                                  isinstance(shape, list)):
+            return change_shape(Tensor(tensors=new_tensor,
+                                tensor_shape=(ds_array._reg_shape[0],
+                                              ds_array._reg_shape[1]),
+                                number_samples=ds_array.shape[0],
+                                dtype=np.float64,
+                                delete=ds_array._delete), shape)
+        else:
+            return Tensor(tensors=new_tensor,
+                          tensor_shape=(ds_array._reg_shape[0],
+                                        ds_array._reg_shape[1]),
+                          number_samples=ds_array.shape[0],
+                          dtype=np.float64, delete=ds_array._delete)
     else:
-        return Tensor(tensors=new_tensor,
-                      tensor_shape=(ds_array._reg_shape[0],
-                                    ds_array.shape[1]),
-                      number_samples=ds_array.shape[0],
-                      dtype=np.float64, delete=ds_array._delete)
+        new_tensor = Tensor._get_out_tensors(
+                [ds_array._n_blocks[0], 1])
+        for block_i, tensor_i in zip(ds_array._blocks, new_tensor):
+            _assign_various_blocks_to_tensor(block_i, tensor_i)
+        return Tensor(tensors=new_tensor, tensor_shape=(
+            ds_array._reg_shape[0], ds_array.shape[1]),
+            dtype=np.float64,
+            number_samples=ds_array.shape[0],
+            delete=ds_array._delete)
 
 
 def cat(tensors, dimension):
@@ -1290,6 +1316,15 @@ def _shuffle_last_tensor_xy(tensor, tensor_y, random_state=None):
     else:
         raise TypeError("This type of tensor is not supported.")
     return tensor, tensor_y
+
+
+@constraint(computing_units="${ComputingUnits}")
+@task(blocks={Type: COLLECTION_IN, Depth: 1},
+      out_tensors={Type: COLLECTION_OUT, Depth: 1})
+def _assign_various_blocks_to_tensor(blocks, out_tensors):
+    block = np.block(blocks)
+    out_tensor = torch.from_numpy(block)
+    out_tensors[0] = out_tensor
 
 
 @constraint(computing_units="${ComputingUnits}")

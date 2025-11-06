@@ -611,6 +611,7 @@ class TensorTest(unittest.TestCase):
                                          i_tensor):
                 self.assertTrue(np.all(compss_wait_on(j_block) ==
                                        np.array(compss_wait_on(j_tensor))))
+        self.assertTrue(ds_tensor.tensor_shape == (2, 2))
         with self.assertRaises(TypeError):
             ds.from_ds_array(np_array, (2, 2))
         ds_array = ds.array([[1, 2, 3, 4],
@@ -621,6 +622,22 @@ class TensorTest(unittest.TestCase):
             ds.from_ds_array(ds_array, (6,))
         with self.assertRaises(ValueError):
             ds.from_ds_array(ds_array, (6, 2))
+
+    def test_from_ds_array_single_column(self):
+        ds_array = ds.array([[1, 2, 3, 4],
+                             [5, 6, 7, 8],
+                             [9, 10, 11, 12],
+                             [13, 14, 15, 16]], (2, 2))
+        ds_tensor = ds.from_ds_array(ds_array, shape=(2, 2), one_column=True)
+        first_tensor = ds_tensor.tensors[0][0]
+        second_tensor = ds_tensor.tensors[1][0]
+        self.assertTrue(np.all(compss_wait_on(first_tensor) ==
+                        np.block(compss_wait_on(
+                                 ds_array._blocks[0]))))
+        self.assertTrue(np.all(compss_wait_on(second_tensor) ==
+                        np.block(compss_wait_on(
+                                 ds_array._blocks[1]))))
+        self.assertTrue(ds_tensor.tensor_shape == (2, 4))
 
     def test_load_dataset(self):
         path = "tests/datasets/npy"
