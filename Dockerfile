@@ -1,4 +1,4 @@
-FROM compss/compss-tutorial:latest
+FROM compss/compss-tutorial:3.3.3
 MAINTAINER COMPSs Support <support-compss@bsc.es>
 
 COPY . dislib/
@@ -14,7 +14,8 @@ RUN apt-get -o Acquire::Check-Valid-Until=false -o Acquire::Check-Date=false upd
     git clone https://github.com/Blosc/python-blosc2/ /python-blosc2 && cd /python-blosc2 && git checkout v2.5.1 && \
     python3 -m pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org --upgrade -r /python-blosc2/requirements-build.txt && \
     python3 -m pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org --upgrade -r /python-blosc2/requirements-runtime.txt && \
-    cd /python-blosc2 && git submodule update --init --recursive && python3 setup.py build_ext --inplace -- -DDEACTIVATE_AVX2:STRING=ON && \
+    python3 -m pip install "cmake==3.31.2" && \
+    cd /python-blosc2 && git submodule update --init --recursive && export CXXFLAGS="-Wno-error=maybe-uninitialized" && python3 setup.py build_ext --inplace -- -DDEACTIVATE_AVX2:STRING=ON && \
     git clone --recurse-submodules https://github.com/deephealthproject/pyeddl.git /pyeddl && cd /pyeddl && \
     cd third_party/eddl && mkdir build && cd build && cmake .. -D CMAKE_INSTALL_PREFIX=/pyeddl/third_party/eddl -D BUILD_TARGET=CPU -D BUILD_SHARED_LIB=ON -D BUILD_SUPERBUILD=ON -D BUILD_PROTOBUF=ON -D BUILD_TESTS=OFF && \
     make && make install && cd ../.. && \
