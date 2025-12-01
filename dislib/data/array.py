@@ -2735,7 +2735,10 @@ def _block_apply_axis(func, axis, blocks, *args, **kwargs):
 @constraint(computing_units="${ComputingUnits}")
 @task(returns=1)
 def _block_apply(func, block, *args, **kwargs):
-    return func(block, *args, **kwargs)
+    if isinstance(block, StorageObject):
+        return block.block_apply(func, args, kwargs)
+    else:
+        return func(block, *args, **kwargs)
 
 
 @constraint(computing_units="${ComputingUnits}")
