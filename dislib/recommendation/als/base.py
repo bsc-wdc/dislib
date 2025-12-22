@@ -175,7 +175,7 @@ class ALS(BaseEstimator):
 
         items[:, 0] = average_ratings
 
-        rmse, last_rmse = np.inf, np.NaN
+        rmse, last_rmse = np.inf, np.nan
         i = 0
         while not self._has_finished(i):
             last_rmse = rmse
@@ -394,7 +394,7 @@ def _get_rmse(blocks, users, items):
     x_idxs, y_idxs, recs = sparse.find(test)
     indices = zip(x_idxs, y_idxs)
 
-    rmse = np.NaN
+    rmse = np.nan
     if len(recs) > 0:
         preds = [users[x].dot(items[y].T) for x, y in indices]
         rmse = sqrt(mean_squared_error(recs, preds))

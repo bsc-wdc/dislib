@@ -193,7 +193,7 @@ class GaussianMixture(BaseEstimator):
         random_state = validation.check_random_state(self.random_state)
 
         self._initialize_parameters(x, random_state)
-        self.lower_bound_ = -np.infty
+        self.lower_bound_ = -np.inf
         if self.verbose:
             print("GaussianMixture EM algorithm start")
         for self.n_iter in range(1, self.max_iter + 1):
