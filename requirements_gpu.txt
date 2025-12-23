@@ -1,2 +1,2 @@
 cupy
-torch==1.13.0
+torch>2.0
