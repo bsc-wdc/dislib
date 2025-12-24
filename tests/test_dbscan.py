@@ -14,6 +14,20 @@ from dislib.cluster.dbscan.base import _arrange_samples, _rearrange_labels
 from tests import BaseTimedTestCase
 
 
+def flatten_index_arrays(nested_list_of_tuples):
+    """
+    Flatten a nested list-of-lists structure containing 1-tuples of 1-D arrays
+    into a single 1-D NumPy array, ignoring empty arrays.
+    """
+    arrays_to_concat = [
+        arr
+        for row in nested_list_of_tuples
+        for (arr,) in row
+        if arr.size > 0
+    ]
+    return np.concatenate(arrays_to_concat)
+
+
 class ArrangeTest(BaseTimedTestCase):
 
     def test_arrange(self):
@@ -61,14 +75,19 @@ class ArrangeTest(BaseTimedTestCase):
 
         arranged = compss_wait_on(arranged)
         arranged = np.vstack(arranged)
-        sorting = np.asarray(compss_wait_on(sorting))
+        sorting = compss_wait_on(sorting)
+        print("sorting:\n", compss_wait_on(sorting), flush=True)
+        print("\n\nsorting type", type(compss_wait_on(sorting)))
 
         indices = np.empty(x.shape[0], dtype=int)
         oldidx = 0
 
+        # 'sorting' is a list of lists of tuples, each containing a 1-D array
+        dim0 = len(sorting)
+        dim1 = max(len(sorting[i]) for i in range(dim0))
         # generate new indices based on sorting
-        for j in range(sorting.shape[1]):
-            for i in range(sorting.shape[0]):
+        for j in range(dim1):
+            for i in range(dim0):
                 if sorting[i][j][0].size > 0:
                     newidx = sorting[i][j][0] + 3 * i
                     indices[newidx] = oldidx
@@ -151,9 +170,9 @@ class ArrangeTest(BaseTimedTestCase):
         self.assertFalse(issparse(arranged_d[0]))
         self.assertTrue(issparse(arranged_sp[0]))
 
-        self.assertTrue(
-            np.array_equal(np.concatenate(np.concatenate(sort_sp).flatten()),
-                           np.concatenate(np.concatenate(sort_d).flatten())))
+        idx_sp = flatten_index_arrays(sort_sp)
+        idx_d = flatten_index_arrays(sort_d)
+        self.assertTrue(np.array_equal(idx_sp, idx_d))
 
         for index in range(len(arranged_sp)):
             samples_sp = arranged_sp[index].toarray()

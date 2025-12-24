@@ -413,7 +413,7 @@ def _merge_labels(labels_list, indices):
     labels = np.vstack(labels_list)
 
     # idx contains the original position of each label in labels
-    idx = np.hstack(np.asarray(indices).flatten())
+    idx = np.concatenate(indices, axis=1)
 
     return np.take(labels, idx).reshape(-1, 1)
 
