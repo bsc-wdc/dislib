@@ -2687,9 +2687,23 @@ def _random_block(shape, seed):
     return np.random.random(shape).astype(np.float64)
 
 
+
+@constraint(computing_units="${ComputingUnits}")
+@task(returns=1)
+def _random_persistent_block(shape, seed, backend_id):
+    from storage.api import PersistentBlock
+
+    np.random.seed(seed)
+    block = np.random.random(shape)
+    b = PersistentBlock(block)
+    b.make_persistent(backend_id=backend_id)
+
+    return b
+
 @constraint(computing_units="${ComputingUnits}")
 @task(returns=1)
 def _eye_block(block_size, n, m, reg_shape, i, j, dtype):
+    from storage.api import PersistentBlock
     block = np.zeros(block_size, dtype)
 
     i_values = np.arange(i * reg_shape[0], min(n, (i + 1) * reg_shape[0]))
@@ -2701,7 +2715,10 @@ def _eye_block(block_size, n, m, reg_shape, i, j, dtype):
     j_ones = indices - (j * reg_shape[1])
 
     block[i_ones, j_ones] = 1
-    return block
+    b = PersistentBlock(block)
+    b.make_persistent()
+
+    return b
 
 
 @constraint(computing_units="${ComputingUnits}")
