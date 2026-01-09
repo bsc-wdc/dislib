@@ -14,8 +14,22 @@ from scipy.sparse import issparse, csr_matrix
 from sklearn.utils import check_random_state
 import math
 
+from itertools import cycle
+from storage.api import get_client
+
 # This is used in order to recognize persistent blocks
 from storage.api import StorageObject
+
+class DCRoundRobinRandomBlockWrapper:
+    """Create random blocks, and store them in RoundRobin fashion on dataClay."""
+    def __init__(self):
+        # We cycle through the available backend IDs
+        self.backend_iterator = cycle(list(get_client().get_backends().keys()))
+    
+    def __call__(self, block_size, r_state):
+        seed = r_state.randint(np.iinfo(np.int32).max)
+        # Call the existing task _random_persistent_block
+        return _random_persistent_block(block_size, seed, next(self.backend_iterator))
 
 class Array(object):
     """ A distributed 2-dimensional array divided in blocks.
@@ -1431,7 +1445,7 @@ def array(x, block_size, persistent_block=False):
     return arr
 
 
-def random_array(shape, block_size, random_state=None):
+def random_array(shape, block_size, random_state=None, persistent_block=False):
     """ Returns a distributed array of random floats in the open interval [0.0,
     1.0). Values are from the "continuous uniform" distribution over the
     stated interval.
@@ -1445,6 +1459,8 @@ def random_array(shape, block_size, random_state=None):
     random_state : int or RandomState, optional (default=None)
         Seed or numpy.random.RandomState instance to generate the random
         numbers.
+    persistent_block : bool, optional (default=False)
+        Whether to store the blocks in dataClay (Round-Robin distribution).
 
     Returns
     -------
@@ -1452,7 +1468,13 @@ def random_array(shape, block_size, random_state=None):
         Distributed array of random floats.
     """
     r_state = check_random_state(random_state)
-    return _full(shape, block_size, False, _random_block_wrapper, r_state)
+    
+    if persistent_block:
+        # Use the Round Robin wrapper to distribute blocks across backends
+        return _full(shape, block_size, False, DCRoundRobinRandomBlockWrapper(), r_state)
+    else:
+        # Standard behavior
+        return _full(shape, block_size, False, _random_block_wrapper, r_state)
 
 
 def identity(n, block_size, dtype=None):
@@ -1479,6 +1501,29 @@ def identity(n, block_size, dtype=None):
     """
     return eye(n, n, block_size, dtype)
 
+
+def identity_by_cols(n, block_size):
+    """Returns an identity matrix, but use column based blocking.
+    
+    Blocksize information is only used for column wide. Number of rows will
+    be n (total size of the output matrix).
+
+    This return a list of PersistentBlock, each of those being a "column"-block.
+    """
+    n_cols = (int(ceil(n / block_size[1])))
+
+    from storage.api import PersistentBlock
+    
+    backends = get_client().get_backends().keys()
+    cols = list()
+
+    for i, backend in zip(range(n_cols), cycle(backends)):
+        # Create identity chunk
+        b = PersistentBlock(np.eye(n, block_size[1], -i * block_size[1]))
+        b.make_persistent(backend_id=backend)
+        cols.append(b)
+
+    return cols
 
 def eye(n, m, block_size, dtype=None):
     """ Returns a matrix filled with ones on the diagonal and zeros elsewhere.
