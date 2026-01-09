@@ -113,7 +113,19 @@ class KMeans(BaseEstimator):
             partials = []
 
             for row in x._iterator(axis=0):
-                partial = partial_sum_func(row._blocks, old_centers)
+                # CHECK IF DATA IS PERSISTENT
+                # This assumes row._blocks contains PersistentBlocks
+                # (You might need logic to handle mixed types or multiple blocks per row)
+                first_block = row._blocks[0][0] # Simplified access
+                
+                if hasattr(first_block, "partial_sum"):
+                     # USE DATACLAY ACTIVE METHOD
+                     # This creates a task that runs closer to the data
+                     partial = first_block.partial_sum(old_centers)
+                else:
+                     # STANDARD DISLIB BEHAVIOR
+                     partial = partial_sum_func(row._blocks, old_centers)
+                
                 partials.append(partial)
 
             self._recompute_centers(partials)
