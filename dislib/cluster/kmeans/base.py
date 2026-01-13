@@ -9,7 +9,7 @@ from pycompss.api.api import compss_wait_on
 from pycompss.api.constraint import constraint
 from pycompss.api.parameter import COLLECTION_IN, Depth, Type
 from pycompss.api.task import task
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_matrix, issparse
 from sklearn.base import BaseEstimator
 from sklearn.metrics import pairwise_distances
 from sklearn.metrics.pairwise import paired_distances
@@ -169,7 +169,17 @@ class KMeans(BaseEstimator):
         if old_centers is None:
             return False
 
-        diff = np.sum(paired_distances(self.centers, old_centers))
+        # Normalize centers to dense arrays
+        # (paired_distances does not accept sparse input)
+        X = self.centers
+        Y = old_centers
+
+        if issparse(X):
+            X = X.toarray()
+        if issparse(Y):
+            Y = Y.toarray()
+
+        diff = np.sum(paired_distances(X, Y))
 
         if self.verbose:
             print("Iteration %s - Convergence crit. = %s" % (iteration, diff))
