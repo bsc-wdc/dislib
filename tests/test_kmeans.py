@@ -74,7 +74,7 @@ class KMeansTest(BaseTimedTestCase):
         kmeans = KMeans(n_clusters=3, random_state=170)
         labels = kmeans.fit_predict(x_train).collect()
 
-        skmeans = SKMeans(n_clusters=3, random_state=170)
+        skmeans = SKMeans(n_clusters=3, random_state=170, n_init=10,)
         sklabels = skmeans.fit_predict(x_filtered)
 
         centers = np.array([[-8.941375656533449, -5.481371322614891],
