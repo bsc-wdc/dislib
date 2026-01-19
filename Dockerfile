@@ -6,7 +6,7 @@ COPY . dislib/
 ENV PYTHONPATH=$PYTHONPATH:/dislib:/opt/COMPSs/Bindings/python/3/:/python-blosc2
 ENV LC_ALL=C.UTF-8
 RUN apt-get -o Acquire::Check-Valid-Until=false -o Acquire::Check-Date=false update && \
-    apt-get install -y --no-install-recommends libeigen3-dev protobuf-compiler libprotobuf-dev zlib1g-dev libgtest-dev git && \
+    apt-get install -y --no-install-recommends libeigen3-dev protobuf-compiler libprotobuf-dev zlib1g-dev libgtest-dev git curl && \
     rm -rf /var/lib/apt/lists/* && \
     python3 -m pip install tensorflow torch && \
     git clone https://github.com/Blosc/python-blosc2/ /python-blosc2 && cd /python-blosc2 && git checkout v2.5.1 && \
