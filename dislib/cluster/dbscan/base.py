@@ -273,7 +273,7 @@ def _arrange_data(x, g_shape, bins, dims, total_regions):
 
     # the ith element of each element in lol contains the samples of
     # the ith region.
-    reg_arr = np.asarray(reg_lists)
+    reg_arr = np.asarray(reg_lists, dtype=object)
     arranged_samples = list()
     sizes = list()
 
@@ -301,10 +301,11 @@ def _rearrange_labels(labels, indices, n_blocks):
 
         # blocks_list[i][j] contains the labels of region i that belong to
         # row block j in the original arrangement of the data
-        _rearrange_region(arr, np.asarray(indices)[:, i].tolist(), blocks)
+        indices_arr = np.array(indices, dtype=object)
+        _rearrange_region(arr, indices_arr[:, i].tolist(), blocks)
         blocks_list.append(blocks)
 
-    blocks_arr = np.asarray(blocks_list)
+    blocks_arr = np.array(blocks_list, dtype=object)
     sorted_blocks = list()
 
     # merge and sort the rearranged labels to build the final array of labels

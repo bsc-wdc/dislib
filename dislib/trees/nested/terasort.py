@@ -25,7 +25,8 @@ def terasorting(dataset, indexes_to_try, num_buckets,
                                                  (idx) * reg_shape] %
                             reg_shape)
             total_fragments.append(fragment_buckets)
-        total_fragments = np.array(compss_wait_on(total_fragments))
+        total_fragments = np.array(compss_wait_on(total_fragments),
+                                   dtype=object)
         for index in range(len(indexes_to_try)):
             buckets = {}
             for i in range(num_buckets):
@@ -43,7 +44,8 @@ def terasorting(dataset, indexes_to_try, num_buckets,
                             range_max=range_max._blocks,
                             indexes_selected=np.array([0]))
             total_fragments.append(fragment_buckets)
-        total_fragments = np.array(compss_wait_on(total_fragments))
+        total_fragments = np.array(compss_wait_on(total_fragments),
+                                   dtype=object)
         for index in range(len(indexes_to_try)):
             buckets = {}
             for i in range(num_buckets):
@@ -88,8 +90,8 @@ def terasort(dataset, indexes_to_try, range_min=0, range_max=1,
                              range_max=range_max,
                              indexes_selected=indexes_selected,
                              reg_shape=dataset._reg_shape[0])
-        return np.array(result)
+        return np.array(result, dtype=object)
     else:
         result = terasorting(dataset, indexes_to_try, num_buckets,
                              range_min=range_min, range_max=range_max)
-        return np.array(result)
+        return np.array(result, dtype=object)

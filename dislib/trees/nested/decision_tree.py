@@ -517,9 +517,9 @@ def _compute_split_regressor(x, y, num_buckets=4,
                     partial_results_left[idx].append(left_class)
                     partial_results_right[idx].append(right_class)
         partial_results_right_array = np.array(compss_wait_on(
-            partial_results_right))
+            partial_results_right), dtype=object)
         partial_results_left_array = np.array(compss_wait_on(
-            partial_results_left))
+            partial_results_left), dtype=object)
         store_mse_values = []
         evaluation_of_splits = []
         for idx in range(partial_results_right_array.shape[0]):
@@ -593,6 +593,10 @@ def _compute_split_regressor(x, y, num_buckets=4,
         final_rights_y[0] = rights_y
         final_lefts_x[0] = lefts_x
         final_lefts_y[0] = lefts_y
+        left_lengths = np.array(left_lengths, dtype=object)
+        right_lengths = np.array(right_lengths, dtype=object)
+        left_sums = np.array(left_sums, dtype=object)
+        right_sums = np.array(right_sums, dtype=object)
         if (np.sum(left_lengths) + np.sum(right_lengths)) <= 4:
             node_info.set(_compute_leaf_info((np.sum(left_sums) +
                                               np.sum(right_sums)) /
@@ -715,9 +719,9 @@ def _compute_split(x, y, n_classes=None, num_buckets=4,
                     partial_results_left[idx].append(left_class)
                     partial_results_right[idx].append(right_class)
         partial_results_right_array = np.array(compss_wait_on(
-            partial_results_right))
+            partial_results_right), dtype=object)
         partial_results_left_array = np.array(compss_wait_on(
-            partial_results_left))
+            partial_results_left), dtype=object)
         store_gini_values = []
         evaluation_of_splits = []
         for idx in range(partial_results_right_array.shape[0]):
@@ -1079,8 +1083,11 @@ def merge_partial_results_compute_mse_both_sides(partial_results_l,
     mse_values = []
     for individual_values, value in zip(value_to_compute_mse,
                                         concatted_values_l):
-        mse_values.append(np.sum(np.square(np.subtract(individual_values,
-                                                       value[0] / value[1]))))
+        if value[1] == 0:
+            mse_values.append(np.nan)
+        else:
+            mse_values.append(np.sum(np.square(np.subtract(
+                individual_values, value[0] / value[1]))))
         del value
     del concatted_values_l
     if partial_results_r[0] is None or len(partial_results_r[0]) < 1:
@@ -1105,8 +1112,11 @@ def merge_partial_results_compute_mse_both_sides(partial_results_l,
     mse_values_r = []
     for individual_values, value in zip(value_to_compute_mse,
                                         concatted_values_r):
-        mse_values_r.append(np.sum(np.square(np.subtract(
-            individual_values, value[0] / value[1]))))
+        if value[1] == 0:
+            mse_values_r.append(np.nan)
+        else:
+            mse_values_r.append(np.sum(np.square(np.subtract(
+                individual_values, value[0] / value[1]))))
         del value
     del concatted_values_r
     if mse_values is None:
