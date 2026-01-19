@@ -3,11 +3,12 @@
 base_app_dir="$(pwd)/tests_nesting/"
 COMPSs_log_folder="/tmp/COMPSsWorker01"
 target_log_folder="$(pwd)"
+COMPSS_HOME="/opt/COMPSs"
 retry_num=1
 
-echo $base_app_dir
-echo $COMPSs_log_folder
-echo $target_log_folder
+echo "base_app_dir: $base_app_dir"
+echo "COMPSs_log_folder: $COMPSs_log_folder"
+echo "target_log_folder: $target_log_folder"
 
 AGENT_PIDS=""
 exit_value=0
@@ -40,8 +41,9 @@ port_offset=100
 
 for file in "${base_app_dir}"test_*; do
 
-  corresponding_file=$(echo "${file}" | cut -d '/' -f4)
-  corresponding_file=$(echo "${corresponding_file}" | cut -d '.' -f1)
+  corresponding_file=$(basename "${file}")
+  echo "Running nested tests for file: $file"
+  corresponding_file="${corresponding_file%%.*}"
 
   log_dir="${COMPSs_log_folder}/${app_name}_0${retry_num}/"
   mkdir -p "${log_dir}"
@@ -58,7 +60,7 @@ for file in "${base_app_dir}"test_*; do
 
   rest_port=$(( 46000 + port_offset + 1))
   comm_port=$(( 46000 + port_offset + 2))
-  which compss_agent_start
+  
   compss_agent_start \
     --hostname="COMPSsWorker01" \
     --classpath="${base_app_dir}" \
