@@ -1,10 +1,47 @@
-# Ignore
+# Python virtual environments
+.venv
+.venv*/
+venv
+env
+ENV
 
-## .cache folders
+# Git metadata
+.git
+.gitmodules
+.github
 
-.cache
+# IDEs and editors
+.idea
+.vscode
+*.iml
 
-## python files
-
+# Python caches and tooling junk
+__pycache__/
 **/*.pyc
 **/*.pyo
+.pytest_cache
+.ruff_cache
+.mypy_cache
+.cache
+
+# Build and packaging artifacts
+dislib.egg-info
+build
+dist
+*.egg-info
+
+# Logs and outputs
+*.log
+output.log
+
+# Saved models and large artifacts (runtime-generated)
+model_*
+model_saved_*
+saved_*
+
+# Docs not needed at runtime
+docs
+
+# OS junk
+.DS_Store
+Thumbs.db
