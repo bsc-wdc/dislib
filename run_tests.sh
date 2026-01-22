@@ -1,8 +1,21 @@
 #!/bin/bash -e
 
+# Declare paths
+COMPSS_HOME="/opt/COMPSs"
+resources_file="${COMPSS_HOME}/Runtime/configuration/xml/resources/default_resources.xml"
+
 # Default process per worker
 export ComputingUnits=4
 export ComputingUnitsGPUs=0
+
+# Total computing units used by COMPSs
+TotalComputingUnits=8
+
+# Increase available number of computing units
+sed -i "s|<ComputingUnits>[^<]*</ComputingUnits>|<ComputingUnits>$TotalComputingUnits</ComputingUnits>|" $resources_file
+ActualComputingUnits=$(sed -n 's|.*<ComputingUnits>\([^<]*\)</ComputingUnits>.*|\1|p' $resources_file)
+echo "Using a total of $ActualComputingUnits computing units"
+
 # Run the tests/__main__.py file which calls all the tests named test_*.py
 runcompss \
     --pythonpath=$(pwd) \
