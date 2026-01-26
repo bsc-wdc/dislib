@@ -1,5 +1,6 @@
 scikit-learn>=1.7
 scipy>=1.13
 numpy>=2.0
-cvxpy>=1.1.5
+cvxpy>=1.4.2
 cbor2>=5.4.0
+pyarrow>=16.0.0
