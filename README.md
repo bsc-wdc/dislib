@@ -31,7 +31,7 @@
     <a href="https://dislib.bsc.es">Website</a> •
     <a href="https://dislib.bsc.es/en/stable/api-reference.html">Documentation</a> •
     <a href="https://github.com/bsc-wdc/dislib/releases">Releases</a> •
-    <a href="https://bit.ly/bsc-wdc-community">Slack</a>
+    <a href="https://bsc-wdc.slack.com/archives/CFGD3K8BG">Slack</a>
 </b></p>
 
 ## Introduction

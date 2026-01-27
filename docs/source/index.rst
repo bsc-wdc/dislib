@@ -84,7 +84,7 @@ Support
 -------
 
 If you have questions or issues about the dislib you can join us in `Slack
-<https://bit.ly/bsc-wdc-community>`_.
+<https://bsc-wdc.slack.com/archives/CFGD3K8BG>`_.
 
 Alternatively, you can send us an e-mail to `support-compss@bsc.es
 <mailto:support-compss@bsc.es>`_.
