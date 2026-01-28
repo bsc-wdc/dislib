@@ -5,7 +5,7 @@ COMPSS_HOME="/opt/COMPSs"
 resources_file="${COMPSS_HOME}/Runtime/configuration/xml/resources/default_resources.xml"
 
 # Default process per worker
-export ComputingUnits=4
+export ComputingUnits=1
 export ComputingUnitsGPUs=0
 
 # Total computing units used by COMPSs
