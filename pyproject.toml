@@ -63,9 +63,6 @@ Repository = "https://github.com/bsc-wdc/dislib"
 Issues = "https://github.com/bsc-wdc/dislib/issues"
 Changelog = "https://github.com/bsc-wdc/dislib/blob/master/CHANGELOG.md"
 
-# [project.scripts]
-# dislib-cli = "dislib:main_cli"
-
 # [tool.bandit]
 # exclude_dirs = ["notebooks/",
 #                 "scripts/"]
