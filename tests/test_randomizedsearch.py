@@ -1,3 +1,5 @@
+import unittest
+
 import scipy.stats as stats
 import numpy as np
 
@@ -39,3 +41,7 @@ class RandomizedSearchCVTest(BaseTimedTestCase):
         self.assertTrue(hasattr(searcher, 'best_index_'))
         self.assertTrue(hasattr(searcher, 'scorer_'))
         self.assertEqual(searcher.n_splits_, k)
+
+
+if __name__ == "__main__":
+    unittest.main()
