@@ -46,7 +46,6 @@ The Distributed Computing Library (dislib) provides distributed algorithms ready
 - [Availability](#availability)
 - [Contributing](#contributing)
 - [Citing dislib](#citing-dislib)
-  - [Bibtex:](#bibtex)
 - [Acknowledgements](#acknowledgements)
 - [License](#license)
 
@@ -83,7 +82,7 @@ If you use dislib in a scientific publication, we would appreciate you citing th
 
 J. Álvarez Cid-Fuentes, S. Solà, P. Álvarez, A. Castro-Ginard, and R. M. Badia, "dislib: Large Scale High Performance Machine Learning in Python," in *Proceedings of the 15th International Conference on eScience*, 2019, pp. 96-105
 
-### Bibtex:
+### Bibtex
 
 ```latex
 @inproceedings{dislib,
