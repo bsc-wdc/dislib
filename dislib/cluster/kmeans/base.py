@@ -358,6 +358,10 @@ def _partial_sum_gpu(blocks, centers):
 
     partials = np.zeros((centers.shape[0], 2), dtype=object)
     arr = Array._merge_blocks(blocks).astype(np.float32)
+    if issparse(arr):
+        arr = arr.toarray()
+    if issparse(centers):
+        centers = centers.toarray()
     arr_gpu = cp.asarray(arr)
     centers_gpu = cp.asarray(centers).astype(cp.float32)
 

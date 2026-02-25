@@ -6,6 +6,7 @@ from pycompss.api.task import task
 from sklearn.base import BaseEstimator
 from sklearn.neighbors import NearestNeighbors as SKNeighbors
 from sklearn.utils import validation
+from scipy.sparse import issparse
 
 from dislib.data.array import Array
 import dislib
@@ -163,6 +164,12 @@ def _get_kneighbors_gpu(x_blocks, q_blocks, n_neighbors, offset):
 
     x_samples = Array._merge_blocks(x_blocks)
     q_samples = Array._merge_blocks(q_blocks)
+
+    if issparse(x_samples):
+        x_samples = x_samples.toarray()
+
+    if issparse(q_samples):
+        q_samples = q_samples.toarray()
 
     x_samples_gpu = cp.asarray(x_samples).astype(cp.float64)
     q_samples_gpu = cp.asarray(q_samples).astype(cp.float64)

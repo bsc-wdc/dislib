@@ -1763,6 +1763,12 @@ def _add_cpu(block1, block2):
 def _matmul_gpu(a, b, transpose_a, transpose_b):
     import cupy as cp
 
+    if issparse(a):
+        a = a.toarray()
+
+    if issparse(b):
+        b = b.toarray()
+
     a_gpu, b_gpu = cp.asarray(a), cp.asarray(b)
 
     if transpose_a:
