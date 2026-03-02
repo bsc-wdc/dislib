@@ -1,6 +1,7 @@
 import unittest
 import os
 import shutil
+import importlib
 
 import numpy as np
 from parameterized import parameterized
@@ -11,6 +12,9 @@ import pandas as pd
 import dislib as ds
 from math import ceil
 from tests import BaseTimedTestCase
+
+
+cupy_available = importlib.util.find_spec("cupy") is not None
 
 
 def _sum_and_mult(arr, a=0, axis=0, b=1):
@@ -1033,6 +1037,30 @@ class ArrayTest(BaseTimedTestCase):
         expected = a_np @ b_np
         computed = a @ b
         self.assertTrue(_equal_arrays(expected, computed.collect(False)))
+
+    @unittest.skipIf(not cupy_available, "cupy not installed")
+    def test_matmul_gpu_sparse_dense(self):
+        """ Test matmul in GPU with sparse matrices """
+        from dislib.data.array import _matmul_gpu
+
+        # Dense input
+        a = np.random.rand(10, 5)
+        b = np.random.rand(5, 8)
+        res = _matmul_gpu(a, b, False, False)
+        np_res = np.matmul(a, b)
+        self.assertTrue(np.allclose(res, np_res))
+
+        # Sparse input
+        a_sparse = sp.csr_matrix(a)
+        b_sparse = sp.csr_matrix(b)
+        res_sparse = _matmul_gpu(a_sparse, b_sparse, False, False)
+        self.assertTrue(np.allclose(res_sparse, np_res))
+
+        # Mixed input
+        res_mixed = _matmul_gpu(a_sparse, b, False, False)
+        self.assertTrue(np.allclose(res_mixed, np_res))
+        res_mixed2 = _matmul_gpu(a, b_sparse, False, False)
+        self.assertTrue(np.allclose(res_mixed2, np_res))
 
     def test_matmul_error(self):
         """ Tests matmul not implemented cases """

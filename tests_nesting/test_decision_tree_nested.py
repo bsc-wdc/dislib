@@ -225,6 +225,31 @@ def test_decision_tree_classifier():
     y_pred_proba = np.argmax(np.vstack(y_pred_proba), axis=1)
     condition = condition and accuracy_score(y_train,
                                              y_pred_proba) > 0.6
+
+    # Cover prediction on empty input (regression/classification)
+    # Minimal tree with 1 feature, 1 class
+    x = np.array([[0.0]])
+    y = np.array([0])
+    x_ds = ds.array(x, (1, 1))
+    y_ds = ds.array(y[:, np.newaxis], (1, 1))
+    tree = DecisionTreeClassifier(
+        try_features=1,
+        max_depth=1,
+        distr_depth=1,
+        sklearn_max=1e8,
+        bootstrap=False,
+        random_state=0,
+        n_classes=1,
+        sync_after_fit=True,
+        mmap=False,
+        nested=True
+    )
+    tree.fit(x_ds, y_ds)
+    # Empty input
+    x_empty = ds.array(np.empty((1, 1)), (1, 1))
+    y_pred = tree.predict(x_empty)
+    y_pred = compss_wait_on(y_pred)
+    condition = condition and (y_pred[0].shape == (1, 1))
     return condition
 
 
