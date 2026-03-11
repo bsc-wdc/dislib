@@ -7,10 +7,12 @@ coverage:
   range: "90..100"
   status:
     project:
-      diff_coverage:
-        target: 90%
       default:
+        target: 90%
         threshold: 1%
+    patch:
+      default:
+        target: 90%
 
 parsers:
   gcov:
