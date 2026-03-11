@@ -24,10 +24,12 @@ pipeline {
                 setGithubCommitStatus('pending', 'The Jenkins build is in progress')
                 sh 'git pull origin'
                 sh 'docker rm -f dislib &> /dev/null || true'
-                sh 'docker rmi -f bscwdc/dislib &> /dev/null || true'
-                sh 'docker build --pull --no-cache --tag bscwdc/dislib .'
+                sh 'docker rmi -f bscwdc/dislib:latest bscwdc/dislib:torch bscwdc/dislib:ci &> /dev/null || true'
+                sh 'docker build --pull --no-cache --tag bscwdc/dislib:latest -f docker/Dockerfile.base .'
+                sh 'docker build --no-cache --tag bscwdc/dislib:torch -f docker/Dockerfile.torch .'
+                sh 'docker build --no-cache --tag bscwdc/dislib:ci -f docker/Dockerfile.ci .'
                 sh '''#!/bin/bash
-                docker run $(bash <(curl -s https://codecov.io/env)) -d --name dislib bscwdc/dislib'''
+                docker run $(bash <(curl -s https://codecov.io/env)) -d --name dislib bscwdc/dislib:ci'''
             }
         }
         stage('test') {
@@ -43,8 +45,8 @@ pipeline {
                 withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId:'dockerhub_compss', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD']]) {
                     sh 'docker login -u "$USERNAME" -p "$PASSWORD"'
                 }
-                sh 'docker tag bscwdc/dislib bscwdc/dislib:latest'
                 sh 'docker push bscwdc/dislib:latest'
+                sh 'docker push bscwdc/dislib:torch'
             }
         }
     }
@@ -52,7 +54,7 @@ pipeline {
         always {
             sh 'docker images'
             sh 'docker rm -f dislib &> /dev/null || true'
-            sh 'docker rmi -f bscwdc/dislib &> /dev/null || true'
+            sh 'docker rmi -f bscwdc/dislib:latest bscwdc/dislib:torch bscwdc/dislib:ci &> /dev/null || true'
         }
         success {
             setGithubCommitStatus('success', 'Build Successful')

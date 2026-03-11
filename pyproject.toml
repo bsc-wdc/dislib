@@ -54,7 +54,7 @@ dependencies = { file = ["requirements.txt"] }
 
 [tool.setuptools.dynamic.optional-dependencies]
 tests = { file = ["requirements_tests.txt"] }
-gpu = { file = ["requirements_gpu.txt"] }
+torch = { file = ["requirements_torch.txt"] }
 
 [project.urls]
 Homepage = "http://dislib.bsc.es"

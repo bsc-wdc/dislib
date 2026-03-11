@@ -19,7 +19,7 @@ dislib currently requires:
 
 Some of the examples also require matplotlib >= 2.2.3 and pandas >= 0.24.2.
 numpydoc >= 0.8.0 is required to build the documentation.
-While in order to use GPUs, cupy and/or pytorch are also required.
+GPU-accelerated algorithms require both [PyTorch](https://pytorch.org/) and [CuPy](https://cupy.dev/). CuPy must match your CUDA version, so install the right variant for your system (e.g. `pip install cupy-cuda12x` for CUDA 12). Check the [CuPy installation guide](https://docs.cupy.dev/en/stable/install.html) for details.
 
 #### Installation steps
 
@@ -86,6 +86,14 @@ pip3 install dislib
 ```
 
 This should add the dislib executable to your path.
+
+By default, the `bscwdc/dislib` image is used. If you need PyTorch support, use the torch variant by setting the image tag:
+
+```bash
+dislib init --image bscwdc/dislib:torch
+```
+
+For GPU support, also install CuPy matching your CUDA version (e.g. `pip install cupy-cuda12x`). Check the [CuPy installation guide](https://docs.cupy.dev/en/stable/install.html) for details.
 
 #### 3. Start dislib in your development directory
 
