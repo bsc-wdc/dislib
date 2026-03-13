@@ -11,8 +11,8 @@ matplotlib.use("pdf")
 def main():
     import matplotlib.pyplot as plt
 
-    plot_path = "/gpfs/projects/bsc19/PERFORMANCE/dislib/plots_FVN"
-    res_path = "/gpfs/projects/bsc19/PERFORMANCE/dislib/results_FVN"
+    plot_path = "/gpfs/projects/bsc19/PERFORMANCE/dislib/dislib/plots"
+    res_path = "/gpfs/projects/bsc19/PERFORMANCE/dislib/dislib/results"
 
     os.makedirs(plot_path, exist_ok=True)
     out = os.path.join(plot_path, sys.argv[1])
@@ -56,6 +56,7 @@ def main():
 
     plt.legend(loc="best", ncol=2)
     plt.savefig(out + ".pdf", dpi=1200, pad_inches=0.1, bbox_inches="tight")
+    plt.savefig(out + ".png", dpi=1200, pad_inches=0.1, bbox_inches="tight")
 
 
 if __name__ == "__main__":

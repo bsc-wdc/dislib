@@ -4,7 +4,6 @@ from pycompss.api.api import compss_wait_on, compss_barrier
 import numpy as np
 import dislib as ds
 import torch
-import tensorflow as tf
 
 
 def _validate_tensor(x):
@@ -319,11 +318,6 @@ class TensorTest(unittest.TestCase):
                                          [2, 3, 4, 5], [2, 3, 4, 5]])
             x_train_tensor[0] = tensor_to_assign
         x_train_tensor = ds.random_tensors("np", (2, 2, 4, 4))
-        with self.assertRaises(ValueError):
-            x_train_tensor[0, 0] = tf.constant(np.array([[2, 3, 4, 5],
-                                                         [2, 3, 4, 5],
-                                                         [2, 3, 4, 5],
-                                                         [2, 3, 4, 5]]))
 
     def test_assignation(self):
         x_train_tensor = ds.random_tensors("np", (2, 2, 4, 4, 4))
@@ -716,3 +710,11 @@ class TensorTest(unittest.TestCase):
                         compss_wait_on(x_train_tensor.tensors[1][0]).all())
         self.assertTrue(x_train_tensor_2[1][1].all() ==
                         compss_wait_on(x_train_tensor.tensors[1][1]).all())
+
+
+def main():
+    unittest.main()
+
+
+if __name__ == '__main__':
+    main()

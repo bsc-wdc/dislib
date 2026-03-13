@@ -26,7 +26,7 @@ def terasorting(dataset, indexes_to_try, num_buckets, range_min=0,
                             top_left_shape=top_left_shape,
                             indexes_selected=indexes_selected)
             total_fragments.append(fragment_buckets)
-        total_fragments = np.array(total_fragments)
+        total_fragments = np.array(total_fragments, dtype=object)
         # The terasort is made by attributes (in each split a random group of
         # attributes is selected
         for index in range(len(indexes_to_try)):
@@ -45,7 +45,7 @@ def terasorting(dataset, indexes_to_try, num_buckets, range_min=0,
                             range_min=range_min._blocks,
                             range_max=range_max._blocks)
             total_fragments.append(fragment_buckets)
-        total_fragments = np.array(total_fragments)
+        total_fragments = np.array(total_fragments, dtype=object)
         for index in range(len(indexes_to_try)):
             buckets = {}
             for i in range(num_buckets):
@@ -93,8 +93,8 @@ def terasort(dataset, indexes_to_try, range_min=0, range_max=1,
                              indexes_selected=indexes_selected,
                              reg_shape=dataset._reg_shape[0],
                              top_left_shape=dataset._top_left_shape[0])
-        return np.array(result)
+        return np.array(result, dtype=object)
     else:
         result = terasorting(dataset, indexes_to_try, num_buckets,
                              range_min=range_min, range_max=range_max)
-        return np.array(result)
+        return np.array(result, dtype=object)

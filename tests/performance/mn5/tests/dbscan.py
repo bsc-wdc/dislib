@@ -5,7 +5,7 @@ from dislib.cluster import DBSCAN
 
 
 def main():
-    data = ds.load_txt_file("/gpfs/projects/bsc19/MN4/bsc19/COMPSs_DATASETS"
+    data = ds.load_txt_file("/gpfs/projects/bsc19/COMPSs_DATASETS"
                             "/dislib/gaia"
                             "/dbscan/data_scaled.csv", block_size=(10000, 5))
 

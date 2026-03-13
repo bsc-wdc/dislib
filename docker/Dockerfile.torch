@@ -1,0 +1,5 @@
+FROM bscwdc/dislib:latest
+LABEL maintainer="COMPSs Support <support-compss@bsc.es>"
+
+RUN python3 -m pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org --upgrade -r /dislib/requirements_torch.txt && \
+    rm -rf /root/.cache

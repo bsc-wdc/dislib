@@ -83,8 +83,10 @@ The source code of dislib is available online at `Github <https://github
 Support
 -------
 
-If you have questions or issues about the dislib you can join us in `Slack
-<https://bit.ly/bsc-wdc-community>`_.
+If you have questions or issues about dislib, you can contact us via email_ to request access to the Workflows and Distributed Computing Slack workspace.
+
+.. _email: mailto:support-compss@bsc.es?subject=Request%20to%20join%20Workflows%20and%20Distributed%20Computing%20Slack&body=Hello%2C%0D%0A%0D%0AI%20would%20like%20to%20request%20access%20to%20the%20Workflows%20and%20Distributed%20Computing%20Slack%20workspace.%20In%20particular%2C%20could%20you%20please%20add%20me%20to%20the%20dislib%20channel%20so%20I%20can%20ask%20for%20support%20and%20stay%20informed%20about%20important%20announcements%3F%0D%0A%0D%0AThank%20you%20very%20much.
+
 
 Alternatively, you can send us an e-mail to `support-compss@bsc.es
 <mailto:support-compss@bsc.es>`_.

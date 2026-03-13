@@ -1,17 +1,23 @@
 import unittest
-import pyeddl.eddl as eddl
-from dislib.eddl import EncapsulatedFunctionsDistributedEddl
-from dislib.eddl.eddl_distributed_conmutativo import EddlDistributedConmutativo
-from dislib.eddl.models import TestsNetworkCNNEDDL, TestsNetworkEDDL, \
-    VGG19, VGG16, MNIST
+try:
+    import pyeddl
+    import pyeddl.eddl as eddl
+    from pyeddl.tensor import Tensor
+    from dislib.eddl import EncapsulatedFunctionsDistributedEddl
+    from dislib.eddl.eddl_distributed_conmutativo import \
+        EddlDistributedConmutativo
+    from dislib.eddl.models import TestsNetworkCNNEDDL, TestsNetworkEDDL, \
+        VGG19, VGG16, MNIST
+    from dislib.eddl.utils import parametersToEDDLTensor
+    HAS_OPTIONAL_DEP = True
+except ImportError:
+    HAS_OPTIONAL_DEP = False
 import numpy as np
 import dislib as ds
-from dislib.eddl.utils import parametersToEDDLTensor
-from pyeddl.tensor import Tensor
-import pyeddl
 from sklearn.metrics import accuracy_score
 
 
+@unittest.skipUnless(HAS_OPTIONAL_DEP, "pyeddl is required to run these tests")
 class TensorEDDLDistributed(unittest.TestCase):
     def test_synchronous_shuffle_every_n_epochs_with_GPU_training(self):
         x = np.ones([1000, 1, 1, 1])

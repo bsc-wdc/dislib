@@ -175,7 +175,7 @@ class ALS(BaseEstimator):
 
         items[:, 0] = average_ratings
 
-        rmse, last_rmse = np.inf, np.NaN
+        rmse, last_rmse = np.inf, np.nan
         i = 0
         while not self._has_finished(i):
             last_rmse = rmse
@@ -381,8 +381,7 @@ def _update_chunk(blocks, x, params):
         a_i = x_xt + lambda_ * n_c[element] * np.eye(n_f)
         v_i = x[indices].T.dot(r_chunk[element, indices].toarray().T)
 
-        # TODO: decide if atol should be changed when default is changed
-        y[element] = sparse.linalg.cg(a_i, v_i, atol='legacy')[0].reshape(-1)
+        y[element] = sparse.linalg.cg(a_i, v_i, atol=0)[0].reshape(-1)
 
     return y
 
@@ -394,7 +393,7 @@ def _get_rmse(blocks, users, items):
     x_idxs, y_idxs, recs = sparse.find(test)
     indices = zip(x_idxs, y_idxs)
 
-    rmse = np.NaN
+    rmse = np.nan
     if len(recs) > 0:
         preds = [users[x].dot(items[y].T) for x, y in indices]
         rmse = sqrt(mean_squared_error(recs, preds))

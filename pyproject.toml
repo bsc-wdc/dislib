@@ -54,7 +54,7 @@ dependencies = { file = ["requirements.txt"] }
 
 [tool.setuptools.dynamic.optional-dependencies]
 tests = { file = ["requirements_tests.txt"] }
-gpu = { file = ["requirements_gpu.txt"] }
+torch = { file = ["requirements_torch.txt"] }
 
 [project.urls]
 Homepage = "http://dislib.bsc.es"
@@ -62,9 +62,6 @@ Documentation = "https://dislib.readthedocs.io"
 Repository = "https://github.com/bsc-wdc/dislib"
 Issues = "https://github.com/bsc-wdc/dislib/issues"
 Changelog = "https://github.com/bsc-wdc/dislib/blob/master/CHANGELOG.md"
-
-# [project.scripts]
-# dislib-cli = "dislib:main_cli"
 
 # [tool.bandit]
 # exclude_dirs = ["notebooks/",

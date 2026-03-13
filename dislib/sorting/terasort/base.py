@@ -167,7 +167,7 @@ class TeraSort:
                                 else:
                                     not_ended = False
                     attribute_blocks.append(out_blocks)
-                attribute_blocks = np.array(attribute_blocks)
+                attribute_blocks = np.array(attribute_blocks, dtype=object)
                 used_indexes = 0
                 number_columns = x._reg_shape[1] if \
                     x._reg_shape[1] < len(self.column_indexes) \

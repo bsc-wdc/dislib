@@ -47,7 +47,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--num_subsets", type=int, default=48)
     parser.add_argument("--num_factors", type=int, default=100)
-    parser.add_argument("--data_path", type=str, default='./tests/files/')
+    parser.add_argument("--data_path", type=str, default='./tests/datasets/')
 
     args = parser.parse_args()
 

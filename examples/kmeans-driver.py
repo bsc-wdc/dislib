@@ -1,7 +1,7 @@
 import argparse
 import time
 
-from pycompss.api.api import barrier
+from pycompss.api.api import compss_barrier
 
 import dislib as ds
 from dislib.cluster import KMeans
@@ -62,7 +62,7 @@ def main():
         x = x[:, :n_features - 1]
 
     if args.detailed_times:
-        barrier()
+        compss_barrier()
         read_time = time.time() - s_time
         s_time = time.time()
 
@@ -70,7 +70,7 @@ def main():
                     arity=args.arity, verbose=True)
     kmeans.fit(x)
 
-    barrier()
+    compss_barrier()
     fit_time = time.time() - s_time
 
     out = [args.clusters, args.arity, args.part_size, read_time, fit_time]

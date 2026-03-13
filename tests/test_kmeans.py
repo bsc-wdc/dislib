@@ -74,7 +74,7 @@ class KMeansTest(BaseTimedTestCase):
         kmeans = KMeans(n_clusters=3, random_state=170)
         labels = kmeans.fit_predict(x_train).collect()
 
-        skmeans = SKMeans(n_clusters=3, random_state=170)
+        skmeans = SKMeans(n_clusters=3, random_state=170, n_init=10,)
         sklabels = skmeans.fit_predict(x_filtered)
 
         centers = np.array([[-8.941375656533449, -5.481371322614891],
@@ -205,6 +205,33 @@ class KMeansTest(BaseTimedTestCase):
         with self.assertRaises(ModuleNotFoundError):
             km2.load_model("./model_saved_kmeans", load_format="cbor")
         utilmodel.cbor2 = cbor2_module
+
+    def test_converged_sparse_dense(self):
+        """Tests _converged with sparse and dense centers."""
+        import numpy as np
+        from scipy.sparse import csr_matrix
+        from dislib.cluster.kmeans.base import KMeans
+
+        # Create equivalent dense and sparse centers
+        dense = np.array([[1.0, 2.0], [3.0, 4.0]])
+        sparse = csr_matrix(dense)
+
+        km = KMeans(n_clusters=2)
+        km.centers = dense.copy()
+        # Should not be converged if old_centers is None
+        self.assertFalse(km._converged(None, 0))
+
+        # Should work for dense
+        self.assertTrue(km._converged(dense.copy(), 1), bool)
+
+        # Should work for sparse
+        self.assertTrue(km._converged(sparse.copy(), 1), bool)
+
+        # Should produce same result for equivalent data
+        km.centers = sparse.copy()
+        result_dense = km._converged(dense.copy(), 1)
+        result_sparse = km._converged(sparse.copy(), 1)
+        self.assertEqual(result_dense, result_sparse)
 
 
 def main():

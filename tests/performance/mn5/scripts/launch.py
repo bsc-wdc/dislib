@@ -3,10 +3,19 @@ import os
 import subprocess
 from subprocess import PIPE
 
-base_dir = "/gpfs/projects/bsc19/PERFORMANCE/dislib"
-tests_dir = os.path.join(base_dir, "tests_mn5_failed")
-logs_dir = os.path.join(base_dir, "logs_FVN")
-scripts_dir = os.path.join(base_dir, "scripts")
+base_dir = "/gpfs/projects/bsc19/PERFORMANCE/dislib/dislib"
+
+try:
+    import dislib
+    print("Using already loaded dislib:", dislib.__version__)
+    dislib_lib_path = ""
+except ImportError:
+    dislib_lib_path = ":" + base_dir
+
+tests_dir = os.path.join(base_dir, "tests/performance/mn5/tests")
+logs_dir = os.path.join(base_dir, "logs")
+scripts_dir = os.path.join(base_dir, "tests/performance/mn5/scripts")
+preimports_path = os.path.join(scripts_dir, "preimports.txt")
 exec_time = 120
 scheduler = "es.bsc.compss.scheduler.orderstrict.fifo.FifoTS"
 
@@ -18,7 +27,7 @@ def main():
            " --project_name=bsc19" +
            " --qos=gp_debug" +
            " --tracing" +
-           " --pythonpath=" + scripts_dir + ":" + tests_dir +
+           " --pythonpath=" + scripts_dir + ":" + tests_dir + dislib_lib_path +
            " --lang=python"
            " --worker_in_master_cpus=48"
            " --max_tasks_per_node=112"
@@ -55,13 +64,13 @@ def main():
                 dependencies = dependencies + ":" + job_id
 
     final_cmd = ["sbatch", "-n1", "--dependency=" + dependencies,
-                 os.path.join(scripts_dir, "postprocess_mn5.sh"), out]
+                 os.path.join(scripts_dir, "postprocess.sh"), out]
     subprocess.run(final_cmd)
 
 
 def run_job(cmd):
-    os.environ['PRELOAD_PYTHON_LIBRARIES'] = \
-        "/gpfs/projects/bsc19/PERFORMANCE/dislib/scripts/preimports.txt"
+    os.environ['PRELOAD_PYTHON_LIBRARIES'] = preimports_path
+    print("Running command:\n", " ".join(cmd))
     proc = subprocess.run(args=cmd, stdout=PIPE, env=os.environ.copy())
     job_id = str(proc.stdout).split(" ")[-1][:-3]
     return job_id

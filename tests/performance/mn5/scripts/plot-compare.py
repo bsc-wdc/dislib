@@ -26,8 +26,8 @@ def main():
     name2 = sys.argv[3]
     ts2 = sys.argv[4]
 
-    plot_path = "/gpfs/projects/bsc19/PERFORMANCE/dislib/plots"
-    res_path = "/gpfs/projects/bsc19/PERFORMANCE/dislib/results"
+    plot_path = "/gpfs/projects/bsc19/PERFORMANCE/dislib/dislib/plots"
+    res_path = "/gpfs/projects/bsc19/PERFORMANCE/dislib/dislib/results"
 
     os.makedirs(plot_path, exist_ok=True)
     out = os.path.join(plot_path, name1 + "-vs-" + name2)

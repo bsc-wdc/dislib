@@ -114,7 +114,7 @@ class TensorPytorchDistributed(unittest.TestCase):
                 total += predicted_outputs.shape[0]
                 running_accuracy += (predicted == outputs).sum().item()
         # Check predictions are better than random
-        self.assertTrue((running_accuracy / total) > 0.1)
+        self.assertGreaterEqual(running_accuracy / total, 0.1)
 
     def test_synchronous_training_cnn(self):
         x = torch.ones([1000, 1, 1, 1])
@@ -162,7 +162,7 @@ class TensorPytorchDistributed(unittest.TestCase):
                 outs, outputs = torch.max(outputs, 1)
                 total += predicted_outputs.shape[0]
                 running_accuracy += (predicted == outputs).sum().item()
-        self.assertTrue((running_accuracy / total) >= 0.5)
+        self.assertGreaterEqual(running_accuracy / total, 0.5)
 
     def test_synchronous_shuffle_training_cnn(self):
         x = torch.ones([1000, 1, 1, 1])
@@ -210,7 +210,7 @@ class TensorPytorchDistributed(unittest.TestCase):
                 outs, outputs = torch.max(outputs, 1)
                 total += predicted_outputs.shape[0]
                 running_accuracy += (predicted == outputs).sum().item()
-        self.assertTrue((running_accuracy / total) >= 0.5)
+        self.assertGreaterEqual(running_accuracy / total, 0.5)
 
     def test_synchronous_shuffle_every_n_epochs_with_GPU_cnn(self):
         x = torch.ones([1000, 1, 1, 1])
@@ -260,7 +260,7 @@ class TensorPytorchDistributed(unittest.TestCase):
                 outs, outputs = torch.max(outputs, 1)
                 total += predicted_outputs.shape[0]
                 running_accuracy += (predicted == outputs).sum().item()
-        self.assertTrue((running_accuracy / total) >= 0.5)
+        self.assertGreaterEqual(running_accuracy / total, 0.5)
 
     def test_synchronous_every_n_epochs_with_GPU_cnn(self):
         x = torch.ones([1000, 1, 1, 1])
@@ -304,7 +304,7 @@ class TensorPytorchDistributed(unittest.TestCase):
                 outs, outputs = torch.max(outputs, 1)
                 total += predicted_outputs.shape[0]
                 running_accuracy += (predicted == outputs).sum().item()
-        self.assertTrue((running_accuracy / total) >= 0.5)
+        self.assertGreaterEqual(running_accuracy / total, 0.5)
 
     def test_synchronous_with_GPU_cnn(self):
         x = torch.ones([1000, 1, 1, 1])
@@ -348,7 +348,7 @@ class TensorPytorchDistributed(unittest.TestCase):
                 outs, outputs = torch.max(outputs, 1)
                 total += predicted_outputs.shape[0]
                 running_accuracy += (predicted == outputs).sum().item()
-        self.assertTrue((running_accuracy / total) >= 0.5)
+        self.assertGreaterEqual(running_accuracy / total, 0.5)
 
     def test_asynchronous_shuffle_with_GPU_cnn(self):
         x = torch.ones([1000, 1, 1, 1])
@@ -396,7 +396,7 @@ class TensorPytorchDistributed(unittest.TestCase):
                 outs, outputs = torch.max(outputs, 1)
                 total += predicted_outputs.shape[0]
                 running_accuracy += (predicted == outputs).sum().item()
-        self.assertTrue((running_accuracy / total) >= 0.5)
+        self.assertGreaterEqual(running_accuracy / total, 0.5)
 
     def test_asynchronous_n_epochs_with_GPU_cnn(self):
         x = torch.ones([1000, 1, 1, 1])
@@ -441,7 +441,7 @@ class TensorPytorchDistributed(unittest.TestCase):
                 outs, outputs = torch.max(outputs, 1)
                 total += predicted_outputs.shape[0]
                 running_accuracy += (predicted == outputs).sum().item()
-        self.assertTrue((running_accuracy / total) >= 0.5)
+        self.assertGreaterEqual(running_accuracy / total, 0.5)
 
     def test_asynchronous_shuffle_n_epochs_with_GPU_cnn(self):
         x = torch.ones([1000, 1, 1, 1])
@@ -492,4 +492,12 @@ class TensorPytorchDistributed(unittest.TestCase):
                 outs, outputs = torch.max(outputs, 1)
                 total += predicted_outputs.shape[0]
                 running_accuracy += (predicted == outputs).sum().item()
-        self.assertTrue((running_accuracy / total) >= 0.5)
+        self.assertGreaterEqual(running_accuracy / total, 0.5)
+
+
+def main():
+    unittest.main(verbosity=2)
+
+
+if __name__ == '__main__':
+    main()

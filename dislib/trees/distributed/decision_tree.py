@@ -516,8 +516,8 @@ def _compute_split_regressor(x, y, num_buckets=4, range_min=0,
                                   regression=True)
                 partial_results_left[idx].append(left_class)
                 partial_results_right[idx].append(right_class)
-    partial_results_right_array = np.array(partial_results_right)
-    partial_results_left_array = np.array(partial_results_left)
+    partial_results_right_array = np.array(partial_results_right, dtype=object)
+    partial_results_left_array = np.array(partial_results_left, dtype=object)
     store_mse_values = []
     evaluation_of_splits = []
     for idx in range(partial_results_right_array.shape[0]):
@@ -673,8 +673,8 @@ def _compute_split(x, y, n_classes=None, num_buckets=4, range_min=0,
                                   right_class, indexes_to_try)
                 partial_results_left[idx].append(left_class)
                 partial_results_right[idx].append(right_class)
-    partial_results_right_array = np.array(partial_results_right)
-    partial_results_left_array = np.array(partial_results_left)
+    partial_results_right_array = np.array(partial_results_right, dtype=object)
+    partial_results_left_array = np.array(partial_results_left, dtype=object)
     store_gini_values = []
     evaluation_of_splits = []
     for idx in range(partial_results_right_array.shape[0]):

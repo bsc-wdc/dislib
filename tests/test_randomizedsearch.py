@@ -1,3 +1,5 @@
+import unittest
+
 import scipy.stats as stats
 import numpy as np
 
@@ -13,8 +15,11 @@ class RandomizedSearchCVTest(BaseTimedTestCase):
     def test_fit(self):
         """Tests RandomizedSearchCV fit()."""
         x_np, y_np = datasets.load_iris(return_X_y=True)
-        p = np.random.permutation(len(x_np))  # Pre-shuffling required for CSVM
+        # Fix seed to avoid single-class CV partitions
+        rng = np.random.default_rng(0)
+        p = rng.permutation(len(x_np))  # Pre-shuffling required for CSVM
         x = ds.array(x_np[p], (30, 4))
+        # Convert into binary classification problem
         y = ds.array((y_np[p] == 0)[:, np.newaxis], (30, 1))
         param_distributions = {'c': stats.expon(scale=0.5),
                                'gamma': stats.expon(scale=1)}
@@ -39,3 +44,7 @@ class RandomizedSearchCVTest(BaseTimedTestCase):
         self.assertTrue(hasattr(searcher, 'best_index_'))
         self.assertTrue(hasattr(searcher, 'scorer_'))
         self.assertEqual(searcher.n_splits_, k)
+
+
+if __name__ == "__main__":
+    unittest.main()

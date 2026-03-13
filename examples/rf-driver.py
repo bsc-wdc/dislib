@@ -2,7 +2,7 @@ import argparse
 import time
 
 import numpy as np
-from pycompss.api.api import barrier, compss_wait_on
+from pycompss.api.api import compss_barrier, compss_wait_on
 
 import dislib as ds
 from dislib.classification import RandomForestClassifier
@@ -57,7 +57,7 @@ def main():
         x = x[:, :x.shape[1] - 1]
 
     if args.detailed_times:
-        barrier()
+        compss_barrier()
         read_time = time.time() - s_time
         s_time = time.time()
 
@@ -76,7 +76,7 @@ def main():
                                     distr_depth=dist_depth)
     forest.fit(x, y)
 
-    barrier()
+    compss_barrier()
     fit_time = time.time() - s_time
 
     out = [forest.n_estimators, forest.distr_depth, forest.max_depth,
