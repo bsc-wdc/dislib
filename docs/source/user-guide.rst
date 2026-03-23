@@ -244,7 +244,7 @@ Currently, these are the supported slicing methods:
   returns a set of elements, where i, j, m, and n are optional.
 
 Resource allocation
---------------
+-------------------
 
 All dislib tasks are allocated a specific number of computational resources.
 By default, each task receives one CPU. This number can be adjusted according
@@ -261,22 +261,23 @@ higher number of computing units.
 .. _gpu-support-label:
 
 Using GPUs with CuPy
---------------
+--------------------
 
 In the version 0.8 of dislib has been added support for GPU using CuPy (CUDA) in the
 following algorithms:
- - KMeans
- - NearestNeighbors
- - KNeighborsClassifier
- - PCA
- - QR
- - SVD
- - Matmul
- - Addition
- - Subtraction
- - Kronecker
 
-In order to enable dislib to use GPUs for this algorithms the user must 
+- KMeans
+- NearestNeighbors
+- KNeighborsClassifier
+- PCA
+- QR
+- SVD
+- Matmul
+- Addition
+- Subtraction
+- Kronecker
+
+In order to enable dislib to use GPUs for these algorithms the user must 
 set the environment variable DISLIB_GPU_AVAILABLE before executing the script:
 
 ``export DISLIB_GPU_AVAILABLE=True``
@@ -690,8 +691,8 @@ RandomState inside the task.
 
   .. [Chan79] `Updating Formulae and a Pairwise Algorithm for Computing Sample Variances.
      <http://i.stanford.edu/pub/cstr/reports/cs/tr/79/773/CS-TR-79-773.pdf>`_
-      T. F. Chan, G. H. Golub, R. J. LeVeque, 1979
-      Technical Report STAN-CS-79-773, Department of Computer Science, Stanford University.
+     T. F. Chan, G. H. Golub, R. J. LeVeque, 1979
+     Technical Report STAN-CS-79-773, Department of Computer Science, Stanford University.
   .. [Tor99] `Inductive Learning of Tree-based Regression Models
      <https://www.dcc.fc.up.pt/~ltorgo/PhD/th3.pdf>`_
      L. Torgo, 1999

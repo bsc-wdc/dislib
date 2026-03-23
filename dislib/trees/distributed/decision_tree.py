@@ -213,16 +213,6 @@ class DecisionTreeClassifier(BaseDecisionTree):
         order as obtained in the fit() method, up to ``distr_depth`` depth.
         After fit(), it is a pycompss.runtime.Future object.
 
-    Methods
-    -------
-    fit(dataset)
-        Fits the DecisionTreeClassifier.
-    predict(x_row)
-        Predicts classes for the given samples using a fitted tree.
-    predict_proba(x_row)
-        Predicts class probabilities for the given smaples using a
-        fitted tree.
-
     """
 
     def __init__(
@@ -340,12 +330,6 @@ class DecisionTreeRegressor(BaseDecisionTree):
         order as obtained in the fit() method, up to ``distr_depth`` depth.
         After fit(), it is a pycompss.runtime.Future object.
 
-    Methods
-    -------
-    fit(dataset)
-        Fits the DecisionTreeRegressor.
-    predict(x_row)
-        Predicts target values for the given samples using a fitted tree.
     """
 
     def __init__(

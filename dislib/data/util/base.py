@@ -9,17 +9,17 @@ import numpy as np
 
 
 def pad(a: Array, pad_width, **kwargs):
-    """
-        Pad array blocks with the desired value.
-        Parameters
-        ----------
-        a : array_like of rank N
-            The array to pad.
-        pad_width : ((top, bottom), (left, right))
-            Number of values padded to the edges of each axis.
-        constant_value : scalar, optional
-            The value to set in the padded rows and columns.
-            Default is 0.
+    """Pad array blocks with the desired value.
+
+    Parameters
+    ----------
+    a : array_like of rank N
+        The array to pad.
+    pad_width : ((top, bottom), (left, right))
+        Number of values padded to the edges of each axis.
+    constant_value : scalar, optional
+        The value to set in the padded rows and columns.
+        Default is 0.
     """
     pad_top = pad_width[0][0]
     pad_bottom = pad_width[0][1]
@@ -141,14 +141,14 @@ def compute_bottom_right_shape(a: Array):
 
 
 def remove_last_rows(a: Array, n_rows):
-    """
-        Removes last rows from the bottom blocks of the ds-array.
-        Parameters
-        ----------
-        a : ds-array
-            The array to pad.
-        n_rows : int
-            The array to pad.
+    """Removes last rows from the bottom blocks of the ds-array.
+
+    Parameters
+    ----------
+    a : ds-array
+        The array to remove rows from.
+    n_rows : int
+        The number of rows to remove.
     """
     if n_rows <= 0:
         return
@@ -185,18 +185,19 @@ def remove_last_rows(a: Array, n_rows):
 
 
 def remove_last_columns(a: Array, n_columns):
-    """
-        Removes last columns from the right-most blocks of the ds-array.
-        Parameters
-        ----------
-        a : ds-array
-            The array to pad.
-        n_columns : int
-            The number of columns to remove
-        Raises
-        ------
-        ValueError
-            if n_columns >= the width of the right-most blocks
+    """Removes last columns from the right-most blocks of the ds-array.
+
+    Parameters
+    ----------
+    a : ds-array
+        The array to remove columns from.
+    n_columns : int
+        The number of columns to remove.
+
+    Raises
+    ------
+    ValueError
+        if n_columns >= the width of the right-most blocks
     """
     if n_columns >= compute_bottom_right_shape(a)[1]:
         raise ValueError("Number of columns to remove needs to be less than "

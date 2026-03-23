@@ -1,1 +1,2 @@
-.. mdinclude:: ../../QUICKSTART.md
+.. include:: ../../QUICKSTART.md
+   :parser: myst_parser.sphinx_

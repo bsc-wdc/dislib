@@ -210,15 +210,6 @@ class DecisionTreeClassifier(BaseDecisionTree):
         fit() method. After fit(), it is a list of pycompss.runtime.Future
         objects.
 
-    Methods
-    -------
-    fit(dataset)
-        Fits the DecisionTreeClassifier.
-    predict(x_row)
-        Predicts classes for the given samples using a fitted tree.
-    predict_proba(x_row)
-        Predicts class probabilities for the given smaples using a fitted tree.
-
     """
 
     def __init__(
@@ -272,7 +263,7 @@ class DecisionTreeClassifier(BaseDecisionTree):
             Thus the length of the list is the same
             as the number of blocks the ds-array contains.
             The shape inside each prediction is (len(x.reg_shape[0]),
-             self.n_classes).
+            self.n_classes).
             The returned object can be a
             pycompss.runtime.Future object.
         """
@@ -332,12 +323,6 @@ class DecisionTreeRegressor(BaseDecisionTree):
         fit() method. After fit(), it is a list of pycompss.runtime.Future
         objects.
 
-    Methods
-    -------
-    fit(dataset)
-        Fits the DecisionTreeRegressor.
-    predict(x_row)
-        Predicts target values for the given samples using a fitted tree.
     """
 
     def __init__(

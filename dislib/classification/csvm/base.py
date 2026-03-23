@@ -52,8 +52,8 @@ class CascadeSVM(BaseEstimator):
         max_iter iterations. Checking for convergence adds a synchronization
         point after each iteration.
 
-        If ``check_convergence=False'' synchronization does not happen until
-        a call to ``predict'' or ``decision_function''. This can be useful to
+        If ``check_convergence=False`` synchronization does not happen until
+        a call to ``predict`` or ``decision_function``. This can be useful to
         fit multiple models in parallel.
     random_state : int, RandomState instance or None, optional (default=None)
         The seed of the pseudo random number generator used when shuffling the
@@ -405,6 +405,7 @@ class CascadeSVM(BaseEstimator):
         The model is synchronized before saving and can be reinstantiated in
         the exact same state, without any of the code used for model
         definition or fitting.
+
         Parameters
         ----------
         filepath : str
@@ -466,6 +467,7 @@ class CascadeSVM(BaseEstimator):
         """Loads a model from a file.
         The model is reinstantiated in the exact same state in which it was
         saved, without any of the code used for model definition or fitting.
+
         Parameters
         ----------
         filepath : str

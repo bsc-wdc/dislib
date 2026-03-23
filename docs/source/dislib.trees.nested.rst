@@ -5,18 +5,22 @@ dislib.trees.nested
     :members:
     :undoc-members:
     :show-inheritance:
+    :inherited-members:
 
 .. autoclass:: dislib.trees.nested.DecisionTreeRegressor
     :members:
     :undoc-members:
     :show-inheritance:
+    :inherited-members:
 
 .. autoclass:: dislib.trees.nested.RandomForestClassifier
     :members:
     :undoc-members:
     :show-inheritance:
+    :inherited-members:
 
 .. autoclass:: dislib.trees.nested.RandomForestRegressor
     :members:
     :undoc-members:
     :show-inheritance:
+    :inherited-members:

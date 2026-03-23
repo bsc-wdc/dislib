@@ -4,8 +4,7 @@ Glossary of terms
 This page lists alphabetically the meaning of various terms used in
 dislib's documentation:
 
-.. these terms can be referenced across the documentation using the
-:term: environment
+.. these terms can be referenced across the documentation using the :term: role
 
 .. glossary::
 
