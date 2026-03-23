@@ -23,7 +23,7 @@
       <img src="https://badge.fury.io/py/dislib.svg" alt="PyPI version" height="18">
   </a>
   <a href="https://badge.fury.io/py/dislib">
-      <img src="https://img.shields.io/badge/python-3.6-blue.svg" alt="Python version" height="18">
+      <img src="https://img.shields.io/badge/python-3.10-blue.svg" alt="Python version" height="18">
   </a>
 </p>
 
@@ -57,15 +57,29 @@ Get started with dislib following our [quickstart guide](https://github.com/bsc-
 
 Currently, the following supercomputers already have PyCOMPSs installed and ready to use. If you need help configuring your own cluster or supercomputer, drop us an email and we will be pleased to help.
 
-- Marenostrum 4 - Barcelona Supercomputing Center (BSC)
-- Minotauro - Barcelona Supercomputing Center (BSC)
-- Nord 3 - Barcelona Supercomputing Center (BSC)
-- Cobi - Barcelona Supercomputing Center (BSC)
-- Juron - Jülich Supercomputing Centre (JSC)
-- Jureca - Jülich Supercomputing Centre (JSC)
-- Ultraviolet - The Genome Analysis Center (TGAC)
-- Archer - University of Edinburgh’s Advanced Computing Facility (ACF)
-- Axiom - University of Novi Sad, Faculty of Sciences (UNSPMF)
+- MareNostrum 5 - Barcelona Supercomputing Center (BSC)
+- MareNostrum Ona - Barcelona Supercomputing Center (BSC)
+- Nord4 - Barcelona Supercomputing Center (BSC)
+- JURECA - Jülich Supercomputing Centre (JSC)
+- JUSUF - Jülich Supercomputing Centre (JSC)
+- JUWELS - Jülich Supercomputing Centre (JSC)
+- Barbora - IT4Innovations National Supercomputing Center (IT4I)
+- Karolina - IT4Innovations National Supercomputing Center (IT4I)
+- Galileo100 - CINECA (CINECA)
+- Leonardo - CINECA (CINECA)
+- Dardel - PDC Center for High-Performance Computing, KTH (PDC)
+- Fugaku - RIKEN Center for Computational Science (R-CCS)
+- Hawk - High-Performance Computing Center Stuttgart (HLRS)
+- Irene - CEA/TGCC (TGCC)
+- Levante - German Climate Computing Centre (DKRZ)
+- Mahti - CSC - IT Center for Science (CSC)
+- NextGenIO Prototype - EPCC, University of Edinburgh (EPCC)
+- Shaheen - King Abdullah University of Science and Technology (KAUST)
+- Snellius - SURF (SURF)
+- Tirant - University of Valencia (UV)
+- Frontier - Oak Ridge National Laboratory (ORNL)
+- Jean Zay - IDRIS, CNRS (IDRIS)
+- Qmio - Galicia Supercomputing Center (CESGA)
 
 Supported architectures:
 - [Intel SSF architectures](https://www.intel.com/content/www/us/en/high-performance-computing/ssf-architecture-specification.html)
