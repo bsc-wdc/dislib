@@ -36,7 +36,7 @@ class ALS(BaseEstimator):
         Regularization parameters value.
     check_convergence : boolean, optional (default=True)
         Whether to test for convergence at the end of each iteration.
-    random_state : int, orNone, optional (default=None)
+    random_state : int or None, optional (default=None)
         The seed of the pseudo random number generator used to initialize the
         items matrix I.
     arity : int, optional (default=5)

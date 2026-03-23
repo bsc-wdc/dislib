@@ -51,7 +51,7 @@ GPU-accelerated algorithms require both [PyTorch](https://pytorch.org/) and [CuP
 
 ### 1. Install Docker
 
-1. Follow these instructions
+1. Follow these instructions:
 
     * [Docker for Mac](https://store.docker.com/editions/community/docker-ce-desktop-mac). Or, if you prefer to use [Homebrew](https://brew.sh/).
     * [Docker for Ubuntu](https://docs.docker.com/install/linux/docker-ce/ubuntu/#install-docker-ce-1).
@@ -131,7 +131,7 @@ jupyter-notebook --ip=0.0.0.0 --allow-root /tutorial_apps/python/notebooks/synta
 Access your notebook by ctrl-clicking or copy-pasting into the browser the link shown in the terminal (e.g. `http://127.0.0.1:8888/?token=TOKEN_VALUE`).
 
 
-Finally, choose a notebook to test dislib. For instance: 
+Finally, choose a notebook to test dislib. For instance:
 
 ```
 9_Dislib_demo.ipynb

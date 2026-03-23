@@ -36,7 +36,7 @@ class DBSCAN(BaseEstimator):
         Integer indices of the dimensions of the feature space that should be
         divided. If None, all dimensions are divided.
     max_samples : int, optional (default=None)
-        Setting max_samples to an integer results in the paralellization of
+        Setting max_samples to an integer results in the parallelization of
         the computation of distances inside each region of the grid. That
         is, each region is processed using various parallel tasks, where each
         task finds the neighbours of max_samples samples.
@@ -175,7 +175,7 @@ class DBSCAN(BaseEstimator):
 
         Returns
         -------
-        y : ds-array, shape=(n_samples  , 1)
+        y : ds-array, shape=(n_samples, 1)
             Cluster labels.
         """
         self.fit(x)
