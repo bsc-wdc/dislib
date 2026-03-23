@@ -7,6 +7,7 @@
 #SBATCH --qos=gp_debug
 #SBATCH -t 00:05:00
 
+module load latex  # For additional matplotlib features
 
 python /gpfs/projects/bsc19/PERFORMANCE/dislib/dislib/tests/performance/mn5/scripts/postprocess.py $1
 python /gpfs/projects/bsc19/PERFORMANCE/dislib/dislib/tests/performance/mn5/scripts/plot.py $1
