@@ -30,9 +30,9 @@ class Array(object):
         - ``A[:, i:j]`` : returns a set of columns (with ``i`` and ``j``
           optional)
         - ``A[[i,j,k]]`` : returns a set of non-consecutive rows. Rows are
-        returned ordered by their index in the input array.
+          returned ordered by their index in the input array.
         - ``A[:, [i,j,k]]`` : returns a set of non-consecutive columns.
-        Columns are returned ordered by their index in the input array.
+          Columns are returned ordered by their index in the input array.
         - ``A[i:j, k:m]`` : returns a set of elements (with ``i``, ``j``,
           ``k``, and ``m`` optional)
 

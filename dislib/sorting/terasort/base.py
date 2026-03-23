@@ -11,18 +11,18 @@ class TeraSort:
     """TeraSort algorithm for ordering ds_arrays
     by columns, or the whole values.
 
-        Parameters
-        ----------
-        range_min : int or list, optional (default=0)
-            Minimum value for attribute (if int) or for columns (if list)
-        range_max : int or list, optional (default=100)
-            Maximum value for attribute (if int) or for columns (if list)
-        column_indexes : np.ndarray, list or None, optional (default=None)
-            Column indexes to sort independtly of the rest of columns.
-        num_buckets : int, optional
-            Number of buckets to divide the data in the ds.array and do the
-            sorting. A big number of num_buckets may lead to slower execution.
-        """
+    Parameters
+    ----------
+    range_min : int or list, optional (default=0)
+        Minimum value for attribute (if int) or for columns (if list)
+    range_max : int or list, optional (default=100)
+        Maximum value for attribute (if int) or for columns (if list)
+    column_indexes : np.ndarray, list or None, optional (default=None)
+        Column indexes to sort independently of the rest of columns.
+    num_buckets : int, optional
+        Number of buckets to divide the data in the ds.array and do the
+        sorting. A big number of num_buckets may lead to slower execution.
+    """
 
     def __init__(self, range_min=0, range_max=100, column_indexes=None,
                  num_buckets=None):

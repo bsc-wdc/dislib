@@ -17,11 +17,11 @@ class EncapsulatedFunctionsDistributedEddl(object):
     There are mainly three different types of training.
 
     - Synchronous training: At the end of each epoch, the weights are
-    synchronized and the update is computed.
+      synchronized and the update is computed.
     - Partially asynchronous: The weights of each worker are updated
-    commutatively with the general weights and viceversa.
+      commutatively with the general weights and viceversa.
     - Asynchronous training: A synchronization and update of the weigths is
-    done after executing all the epochs or each n specified epochs.
+      done after executing all the epochs or each n specified epochs.
 
     Attributes
     ----------
@@ -249,7 +249,7 @@ class EncapsulatedFunctionsDistributedEddl(object):
         """
         Training of the neural network performing a syncrhonization of
         the weights at the end of each epoch, it performs a total shuffle
-         of the tensors on the ds_tensor and the elements inside each tensor
+        of the tensors on the ds_tensor and the elements inside each tensor
 
         Parameters
         ----------

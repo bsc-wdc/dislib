@@ -29,7 +29,7 @@ class LinearRegression(BaseEstimator):
     fit_intercept : bool, optional (default=True)
         Whether to calculate the intercept parameter for this model.
         If set to False, no intercept will be used in calculations
-        (self.intercept_ will be 0).
+        (``self.intercept_`` will be 0).
     arity : int, optional (default=50)
         Arity of the reductions.
 
@@ -138,6 +138,7 @@ class LinearRegression(BaseEstimator):
         The model is synchronized before saving and can be reinstantiated in
         the exact same state, without any of the code used for model
         definition or fitting.
+
         Parameters
         ----------
         filepath : str
@@ -190,6 +191,7 @@ class LinearRegression(BaseEstimator):
         """Loads a model from a file.
         The model is reinstantiated in the exact same state in which it was
         saved, without any of the code used for model definition or fitting.
+
         Parameters
         ----------
         filepath : str

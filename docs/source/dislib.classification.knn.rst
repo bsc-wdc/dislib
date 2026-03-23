@@ -1,5 +1,5 @@
 dislib.classification.KNeighborsClassifier
-================================
+==========================================
 
 .. automodule:: dislib.classification.knn.base
     :members:

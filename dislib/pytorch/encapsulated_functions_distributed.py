@@ -60,11 +60,11 @@ class EncapsulatedFunctionsDistributedPytorch(object):
     There are mainly three different types of training.
 
     - Synchronous training: At the end of each epoch, the weights are
-    synchronized and the update is computed.
+      synchronized and the update is computed.
     - Partially asynchronous: The weights of each worker are updated
-    commutatively with the general weights and viceversa.
+      commutatively with the general weights and viceversa.
     - Asynchronous training: A synchronization and update of the weigths is
-    done after executing all the epochs or each n specified epochs.
+      done after executing all the epochs or each n specified epochs.
 
     Attributes
     ----------
@@ -432,7 +432,7 @@ class EncapsulatedFunctionsDistributedPytorch(object):
         """
         Training of the neural network performing an asyncrhonous
         update of the weights every epoch, it performs a total shuffle
-         of the dataset
+        of the dataset
 
         Parameters
         ----------

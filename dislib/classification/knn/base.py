@@ -27,15 +27,16 @@ class KNeighborsClassifier(BaseEstimator):
     n_neighbors : int, default=5
         Number of neighbors to use by default for :meth:`kneighbors` queries.
     weights : {'uniform', 'distance'} or callable, default='uniform'
-        Weight function used in prediction.  Possible values:
-        - 'uniform' : uniform weights.  All points in each neighborhood
+        Weight function used in prediction. Possible values:
+
+        - ``'uniform'``: uniform weights. All points in each neighborhood
           are weighted equally.
-        - 'distance' : weight points by the inverse of their distance.
-          in this case, closer neighbors of a query point will have a
+        - ``'distance'``: weight points by the inverse of their distance.
+          In this case, closer neighbors of a query point will have a
           greater influence than neighbors which are further away.
-        - [callable] : a user-defined function which accepts an
-          array of distances, and returns an array of the same shape
-          containing the weights.
+        - callable: a user-defined function which accepts an array of
+          distances, and returns an array of the same shape containing
+          the weights.
     random_state : int, RandomState instance or None, optional (default=None)
         The seed of the pseudo random number generator used when shuffling the
         data for probability estimates. If int, random_state is the seed used
@@ -45,14 +46,15 @@ class KNeighborsClassifier(BaseEstimator):
 
     Notes
     -----
-    See :ref:`Nearest Neighbors <neighbors>` in the online documentation
-    for a discussion of the choice of ``algorithm`` and ``leaf_size``.
+    See the online documentation for a discussion of the choice of
+    ``algorithm`` and ``leaf_size``.
+
     .. warning::
        Regarding the Nearest Neighbors algorithms, if it is found that two
        neighbors, neighbor `k+1` and `k`, have identical distances
        but different labels, the results will depend on the ordering of the
        training data.
-    https://en.wikipedia.org/wiki/K-nearest_neighbor_algorithm
+
     Examples
     --------
     >>> import dislib as ds
@@ -151,6 +153,7 @@ class KNeighborsClassifier(BaseEstimator):
         The model is synchronized before saving and can be reinstantiated
         in the exact same state, without any of the code used for model
         definition or fitting.
+
         Parameters
         ----------
         filepath : str
@@ -201,6 +204,7 @@ class KNeighborsClassifier(BaseEstimator):
         """Loads a model from a file.
         The model is reinstantiated in the exact same state in which it was
         saved, without any of the code used for model definition or fitting.
+
         Parameters
         ----------
         filepath : str

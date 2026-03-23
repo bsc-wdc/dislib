@@ -1,0 +1,22 @@
+dislib.trees
+============
+
+.. autoclass:: dislib.trees.decision_tree.DecisionTreeClassifier
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+.. autoclass:: dislib.trees.decision_tree.DecisionTreeRegressor
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+.. autoclass:: dislib.trees.forest.RandomForestClassifier
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+.. autoclass:: dislib.trees.forest.RandomForestRegressor
+    :members:
+    :undoc-members:
+    :show-inheritance:
