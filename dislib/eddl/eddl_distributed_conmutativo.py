@@ -14,7 +14,7 @@ import os
 
 class EddlDistributedConmutativo(object):
     """
-    PytorchDistributed object. It is in charge of executing in parallel the
+    EddlDistributed object. It is in charge of executing in parallel the
     small trainings inside each epoch of the main training.
     """
 

@@ -48,7 +48,7 @@ Performance
 
 The following plot shows fit time of some dislib models on the
 `MareNostrum 5 <https://www.bsc.es/marenostrum/marenostrum>`_ supercomputer
-(using 8 worker nodes == 896 computing units):
+(using 8 worker nodes = 896 computing units):
 
 .. image:: ./_static/img/performance.png
     :align: center
@@ -76,7 +76,7 @@ and:
 - 100M and 300M = 100 and 300 million random samples, with 100 features each.
 - mnist = The `mnist <https://www.csie.ntu.edu
   .tw/~cjlin/libsvmtools/datasets/multiclass.html#mnist>`_ dataset.
-- 20K = Square matrix of 20 thousand rows and 20 thousand columns, with random values.
+- 20K = square matrix of 20 thousand rows and 20 thousand columns, with random values.
 
 
 Source code
@@ -101,7 +101,7 @@ Citing dislib
 
 If you use dislib in a scientific publication, we would appreciate citations to the following paper:
 
-\J. Álvarez Cid-Fuentes, S. Solà, P. Álvarez, A. Castro-Ginard, and R. M. Badia, "dislib: Large Scale High Performance Machine Learning in Python," in *Proceedings of the 15th International Conference on eScience*, 2019, pp. 96-105
+J. Álvarez Cid-Fuentes, S. Solà, P. Álvarez, A. Castro-Ginard, and R. M. Badia, "dislib: Large Scale High Performance Machine Learning in Python," in *Proceedings of the 15th International Conference on eScience*, 2019, pp. 96-105
 
 Bibtex
 .......

@@ -75,7 +75,7 @@ class StandardScaler(object):
 
     def transform(self, x):
         """
-        Standarize data.
+        Standardize data.
 
         Parameters
         ----------

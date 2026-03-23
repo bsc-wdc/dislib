@@ -47,7 +47,7 @@ clustering with dislib is as follows:
         cluster_centers = kmeans.centers
 
 It is worth noting that, although the code above looks completely sequential,
-all dislib algorithms and operations are paralellized using `PyCOMPSs
+all dislib algorithms and operations are parallelized using `PyCOMPSs
 <https://www.bsc.es/research-and-development/software-and-apps/software-list/comp-superscalar/>`_.
 
 How to run dislib
@@ -158,7 +158,7 @@ cost. Thus, long tasks (big blocks) are typically more efficient than short
 tasks (small blocks).
 
 For example, if the cost of scheduling a task in a remote computer is 5ms
-and the duration of that task is 2ms, running that task in a remotely
+and the duration of that task is 2ms, running that task remotely
 is simply not worth the effort as we would be spending more time
 communicating than computing. Since task duration is directly related to
 block size, it is in general recommended to use big blocks rather than small
@@ -181,7 +181,7 @@ Irregular blocks
 
 Usually a ds-array cannot be divided into blocks of equal size. In this case,
 bottom-most blocks can be shorter than the regular block size, and right-most blocks
-can be narrower. When both dimension are not divisible by the desired block height/weight,
+can be narrower. When both dimensions are not divisible by the desired block height/width,
 bottom-right block is both shorter and narrower.
 
 However, there is also a special case for sliced ds-arrays. If the performed slicing begins
@@ -307,7 +307,7 @@ class labels for the training samples. The ``predict`` method takes a single
 ds-array with the samples to be classified. These ds-arrays can be loaded
 using one of the ``dislib.data`` methods.
 
-Comparision of classification methods:
+Comparison of classification methods:
 
 |
 
@@ -370,9 +370,9 @@ describes the following method for classification problems:
     same size, obtained by drawing with replacement (this method is called
     bootstrap aggregating or bagging). At each tree node, a certain number of
     random features is selected (random feature selection). The sample set
-    is splitted in two according to the values of these features, and a
+    is split in two according to the values of these features, and a
     metric called 'Gini impurity' is computed for every split. The Gini
-    impurity measures how heterogeneous is one sample set with respect to the
+    impurity measures how heterogeneous a sample set is with respect to the
     target variable. The split with the lowest 'Gini impurity' is selected, and
     the subsamples are propagated to the children nodes. The trees grown are
     not pruned.
@@ -381,7 +381,7 @@ Ensemble estimators can be implemented in an embarrassingly parallel pattern.
 You can do this with scikit-learn's RandomForestClassifier using a
 ``joblib.parallel_backend`` and setting the ``n_jobs`` parameter. However, you
 need to be able to load your data into memory for each processor or to use
-memory mapped arrays, which can be tricky specially with a distributed backend.
+memory mapped arrays, which can be tricky especially with a distributed backend.
 
 In our implementation, the samples as a whole are written into a binary file
 and accessed using memory maps (the COMPSs runtime manages the transfers to
@@ -430,10 +430,10 @@ the different clusters over the training data.
 
 Usually, the input is an array of shape ``[n_samples, n_features]``,
 representing your data, that can be loaded using one of the dislib.data
-methods. For the future Daura algorithm, the input will be a ds-array of
+methods. For the Daura algorithm, the input is a ds-array of
 pair-wise distances of shape ``[n_samples, n_samples]``.
 
-Comparision of clustering methods:
+Comparison of clustering methods:
 
 |
 
@@ -660,7 +660,7 @@ Ensemble estimators can be implemented in an embarrassingly parallel pattern.
 You can do this with scikit-learn's RandomForestClassifier using a
 ``joblib.parallel_backend`` and setting the ``n_jobs`` parameter. However, you
 need to be able to load your data into memory for each processor or to use
-memory mapped arrays, which can be tricky specially with a distributed backend.
+memory mapped arrays, which can be tricky especially with a distributed backend.
 
 In our implementation, the samples as a whole are written into a binary file
 and accessed using memory maps (the COMPSs runtime manages the transfers to
