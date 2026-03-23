@@ -1,39 +1,39 @@
-## Quickstart guide
+# Quickstart guide
 
 There are two ways in which you can get started with dislib. You can perform
 a [manual installation](#manual-installation), or you can download our
 ready-to-use [docker image](#using-docker).
 
-### Manual installation
+## Manual installation
 
-#### Dependencies
+### Dependencies
 
 dislib currently requires:
 
-* PyCOMPSs >= 2.8
-* scikit-learn >= 1.0.2
-* scipy >= 1.3.0
-* numpy == 1.23.1
-* cvxpy >= 1.1.5
+* PyCOMPSs >= 3.2
+* scikit-learn >= 1.7
+* scipy >= 1.13
+* numpy >= 2.0
+* cvxpy >= 1.4.2
 * cbor2 >= 5.4.0
 
-Some of the examples also require matplotlib >= 2.2.3 and pandas >= 0.24.2.
-numpydoc >= 0.8.0 is required to build the documentation.
+Some of the examples also require matplotlib and pandas.
+numpydoc is required to build the documentation.
 GPU-accelerated algorithms require both [PyTorch](https://pytorch.org/) and [CuPy](https://cupy.dev/). CuPy must match your CUDA version, so install the right variant for your system (e.g. `pip install cupy-cuda12x` for CUDA 12). Check the [CuPy installation guide](https://docs.cupy.dev/en/stable/install.html) for details.
 
-#### Installation steps
+### Installation steps
 
 1. Check which PyCOMPSs version to install.
-    * Latest dislib release requires **PyCOMPSs 2.8** or greater (check [here](https://github.com/bsc-wdc/dislib/releases) for information about other releases).
+    * Latest dislib release requires **PyCOMPSs 3.2** or greater (check [the releases page](https://github.com/bsc-wdc/dislib/releases) for information about other releases).
 
-2. Install PyCOMPSs following these [instructions](https://compss-doc.readthedocs.io/en/stable/Sections/01_Installation.html).
+2. Install PyCOMPSs following these [installation instructions](https://compss-doc.readthedocs.io/en/stable/Sections/01_Installation_Configuration/02_Installation.html).
 
 3. Install the latest dislib version with ``pip3 install dislib``.
-   * **IMPORTANT:** dislib requires the ``pycompss`` Python module. However, this command will **NOT** install the module automatically. The module should be available after manually installing PyCOMPSs following the instructions in step 2. For more information on this, see [here](https://github.com/bsc-wdc/dislib/issues/190).
+   * **IMPORTANT:** dislib requires the ``pycompss`` Python module. However, this command will **NOT** install the module automatically. The module should be available after manually installing PyCOMPSs following the instructions in step 2. For more information on this, see [issue #190](https://github.com/bsc-wdc/dislib/issues/190).
 
 4. You can check that everything works fine by running one of our examples:
 
-    * Download the latest source code [here](https://github.com/bsc-wdc/dislib/releases/latest).
+    * Download the latest source code from the [latest release](https://github.com/bsc-wdc/dislib/releases/latest).
 
     * Extract the contents of the tar package.
 
@@ -47,11 +47,9 @@ GPU-accelerated algorithms require both [PyTorch](https://pytorch.org/) and [CuP
     runcompss --python_interpreter=python3 dislib-X.Y.Z/examples/kmeans.py
     ```
 
-### Using docker
+## Using docker
 
-#### 1. Install Docker and docker-py
-
-**Warning:** requires docker version >= 17.12.0-ce
+### 1. Install Docker
 
 1. Follow these instructions
 
@@ -62,7 +60,7 @@ GPU-accelerated algorithms require both [PyTorch](https://pytorch.org/) and [CuP
     Be aware that the docker package has been renamed from `docker` to `docker-ce` for some distributions.
     Make sure you install the new package.
 
-2. Add user to docker group to run dislib as a non-root user.
+2. Add the user to the docker group to run dislib as a non-root user.
 
     * [Instructions](https://docs.docker.com/install/linux/linux-postinstall/)
 
@@ -73,128 +71,68 @@ GPU-accelerated algorithms require both [PyTorch](https://pytorch.org/) and [CuP
     docker ps # this should be empty as no docker processes are yet running.
     ```
 
-4. Install [docker-py](https://docker-py.readthedocs.io/en/stable/)
-
-    ```bash
-    pip3 install docker
-    ```
-
-#### 2. Install dislib
+### 2. Pull the image
 
 ```bash
-pip3 install dislib
+docker pull bscwdc/dislib
 ```
 
-This should add the dislib executable to your path.
-
-By default, the `bscwdc/dislib` image is used. If you need PyTorch support, use the torch variant by setting the image tag:
+If you need PyTorch support, use the torch variant instead:
 
 ```bash
-dislib init --image bscwdc/dislib:torch
+docker pull bscwdc/dislib:torch
 ```
 
-For GPU support, also install CuPy matching your CUDA version (e.g. `pip install cupy-cuda12x`). Check the [CuPy installation guide](https://docs.cupy.dev/en/stable/install.html) for details.
+### 3. Running applications
 
-#### 3. Start dislib in your development directory
-
-Initialize dislib where your source code will be (you can re-init anytime).
-This will allow docker to access your local code and run it inside the container.
-
-**Note** that the first time dislib needs to download the docker image from the registry, and it may take a while.
+Start an interactive container:
 
 ```bash
-# Without a path it operates on the current working directory.
-dislib init
-
-# You can also provide a path
-dislib init /home/user/replace/path/
+docker run -it --rm -d --name dislib bscwdc/dislib
+docker exec -it dislib bash
 ```
 
-#### 4. Running applications
-
-**Note**: running the docker dislib does not work with applications with GUI or with visual plots such as `examples/clustering_comparison.py`).
-
-First clone dislib repo and checkout release branch vX.Y.Z (docker version and dislib code should preferably be the same to avoid inconsistencies):
+Inside the container, install any specific dependency required by the application you want to run, for instance:
 
 ```bash
-git clone https://github.com/bsc-wdc/dislib.git
+pip install matplotlib pandas
 ```
 
-Init the dislib environment in the root of the repo.
-The source files path are resolved from the init directory which sometimes can be confusing.
-As a rule of thumb, initialize the library in a current directory and check the paths are correct running the file with `python3 path_to/file.py` (in this case `python3 examples/rf_iris.py`).
+Run any example using `runcompss`:
 
 ```bash
-cd dislib
-dislib init
-dislib exec examples/rf_iris.py
+runcompss --python_interpreter=python3 /dislib/examples/rf_iris.py
 ```
 
-The log files of the execution can be found at $HOME/.COMPSs.
+The log files of the execution can be found at `$HOME/.COMPSs` inside the container.
 
-You can also init the library inside the examples folder.
-This will mount the examples directory inside the container so you can execute it without adding the path:
+### 4. Running Jupyter notebooks
+
+Clone the COMPSs tutorial apps repository to access more notebooks:
 
 ```bash
-cd dislib/examples
-dislib init
-dislib exec rf_iris.py
+git clone https://github.com/bsc-wdc/tutorial_apps.git
 ```
 
-#### 5. Running Jupyter notebooks
-
-Notebooks can be run using the `dislib jupyter` command. Run the
-following snippet from the root of the project:
+Start a container with port 8888 exposed and your notebooks directory mounted:
 
 ```bash
-dislib init
-dislib jupyter ./notebooks
+docker run -it --rm -p 8888:8888 --name dislib -v "$(pwd)/tutorial_apps":/tutorial_apps bscwdc/dislib
+docker exec -it dislib bash
 ```
 
-An alternative and more flexible way of starting jupyter is using the
-`dislib run` command in the following way:
+Install Jupyter with pip inside the container and start Jupyter:
 
 ```bash
-dislib run jupyter-notebook ./notebooks --ip=0.0.0.0  --allow-root
+pip install jupyter tabulate matplotlib
+jupyter-notebook --ip=0.0.0.0 --allow-root /tutorial_apps/python/notebooks/syntax/
 ```
 
-Access your notebook by ctrl-clicking or copy pasting into the browser the link shown on the CLI (e.g. http://127.0.0.1:8888/?token=TOKEN_VALUE).
-
-If the notebook process is not properly closed, you might get the following warning when trying to start jupyter notebooks again:
-
-`The port 8888 is already in use, trying another port.`
-
-To fix it, just restart the dislib container with `dislib init`.
-
-#### 6. Adding more nodes
+Access your notebook by ctrl-clicking or copy-pasting into the browser the link shown in the terminal (e.g. `http://127.0.0.1:8888/?token=TOKEN_VALUE`).
 
 
-**Note**: adding more nodes is still in beta phase. Please report issues, suggestions, or feature requests on [Github](https://github.com/bsc-wdc/dislib).
+Finally, choose a notebook to test dislib. For instance: 
 
-To add more computing nodes, you can either let docker create more workers for you or manually create and config a custom node.
-
-For docker just issue the desired number of workers to be added. For example, to add 2 docker workers:
-
-```bash
-dislib components add worker 2
 ```
-
-You can check that both new computing nodes are up with:
-
-```bash
-dislib components list
+9_Dislib_demo.ipynb
 ```
-
-If you want to add a custom node it needs to be reachable through ssh without user.
-Moreover, dislib will try to copy the `working_dir` there, so it needs write permissions for the scp.
-
-For example, to add the local machine as a worker node:
-
-```bash
-dislib components add worker '127.0.0.1:6'
-```
-
-* '127.0.0.1': is the IP used for ssh (can also be a hostname like 'localhost' as long as it can be resolved).
-* '6': desired number of available computing units for the new node.
-
-**Please be aware** that `dislib components` will not list your custom nodes because they are not docker processes and thus it can't be verified if they are up and running.
