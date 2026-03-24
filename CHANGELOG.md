@@ -6,6 +6,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] - 2026-03-23
+
+### Added
+
+- Support for PyTorch and PyEDDL neural network distributed training
+- Support for COMPSs 3.4
+- Support for NumPy 2.x
+  - Updated array handling and type naming for compatibility with stricter coercion rules
+
+### Changed
+
+- `train_test_split` moved to `model_selection` subpackage
+- PyEddl tests are now non-mandatory when the dependency is not available
+- Split Docker image into flavors: base, torch, and ci 
+- Updated Dockerfile base image (pinned COMPSs version) and reduced image size
+- Improved documentation files for a clean build and updated sphynx theme
+
+### Fixed
+
+- Several minor fixes in `examples/` for outdated API usages
+
 ## [0.9.0] - 2023-11-10
 
 - New RandomSVD algorithm
