@@ -38,7 +38,8 @@ class PCA(BaseEstimator):
     ----------
     components_ : ds-array, shape (n_components, n_features)
         Principal axes in feature space, representing the directions of maximum
-        variance in the data. The components are sorted by ``explained_variance_``.
+        variance in the data. The components are sorted by
+        ``explained_variance_``.
 
         Equal to the n_components eigenvectors of the covariance matrix with
         greater eigenvalues.
