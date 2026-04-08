@@ -1,15 +1,16 @@
 import os
 import sys
 
-import matplotlib
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import scienceplots
 
-matplotlib.use("pdf")
+plt.style.use('science')
+print("Using scienceplots", scienceplots.__version__)
 
 
 def main():
-    import matplotlib.pyplot as plt
 
     plot_path = "/gpfs/projects/bsc19/PERFORMANCE/dislib/dislib/plots"
     res_path = "/gpfs/projects/bsc19/PERFORMANCE/dislib/dislib/results"
@@ -47,7 +48,7 @@ def main():
             times_s[index] = df_s[df_s["name"] == name]["time"].iloc[0]
     ind = np.arange(names.shape[0])
     xlabels = names["name"].values
-    fig, ax = plt.subplots()  # Create a figure containing a single axes.
+    _, ax = plt.subplots(figsize=[6.4, 4.8])
     ax.bar(ind - width / 2, times_g, width=width, label="gpfs")
     ax.bar(ind + width/2, times_s, width=width, label="scratch")
     plt.xticks(ind, xlabels, rotation=45, ha="right")

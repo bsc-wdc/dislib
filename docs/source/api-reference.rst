@@ -1,6 +1,107 @@
 API Reference
 =============
 
+.. toctree::
+   :hidden:
+   :caption: Arrays
+
+   dislib.array
+   dislib.tensor
+   dislib.data.util
+
+.. toctree::
+   :hidden:
+   :caption: Classification
+
+   dislib.classification.csvm
+   dislib.classification.knn
+
+.. toctree::
+   :hidden:
+   :caption: Clustering
+
+   dislib.cluster.daura
+   dislib.cluster.dbscan
+   dislib.cluster.gm
+   dislib.cluster.kmeans
+
+.. toctree::
+   :hidden:
+   :caption: Decomposition
+
+   dislib.decomposition
+
+.. toctree::
+   :hidden:
+   :caption: Math
+
+   dislib.math
+
+.. toctree::
+   :hidden:
+   :caption: Neural Networks
+
+   dislib.pytorch
+   dislib.eddl
+
+.. toctree::
+   :hidden:
+   :caption: Model Selection
+
+   dislib.model_selection
+
+.. toctree::
+   :hidden:
+   :caption: Neighbors
+
+   dislib.neighbors
+
+.. toctree::
+   :hidden:
+   :caption: Optimization
+
+   dislib.optimization.admm
+
+.. toctree::
+   :hidden:
+   :caption: Preprocessing
+
+   dislib.preprocessing
+
+.. toctree::
+   :hidden:
+   :caption: Recommendation
+
+   dislib.recommendation.als
+
+.. toctree::
+   :hidden:
+   :caption: Regression
+
+   dislib.regression.lasso
+   dislib.regression.linear
+
+.. toctree::
+   :hidden:
+   :caption: Sorting
+
+   dislib.sorting.terasort
+
+.. toctree::
+   :hidden:
+   :caption: Trees
+
+   dislib.trees
+   dislib.trees.distributed
+   dislib.trees.mmap
+   dislib.trees.nested
+
+.. toctree::
+   :hidden:
+   :caption: Utilities
+
+   dislib.utils
+
 dislib.array: Distributed array
 -------------------------------
 
@@ -70,13 +171,33 @@ Removes last rows from the bottom blocks of the ds-array.
 Tensor creation routines
 ........................
 
+:meth:`dislib.from_array <dislib.from_array>` - Build a ds-tensor from a NumPy array.
+
+:meth:`dislib.from_pt_tensor <dislib.from_pt_tensor>` - Build a ds-tensor from a PyTorch tensor.
+
+:meth:`dislib.from_ds_array <dislib.from_ds_array>` - Build a ds-tensor from a ds-array.
+
+:meth:`dislib.create_ds_tensor <dislib.create_ds_tensor>` - Build a ds-tensor from a list of tensors.
+
+:meth:`dislib.random_tensors <dislib.random_tensors>` - Build a ds-tensor with random contents.
+
+:meth:`dislib.data.tensor.load_dataset <dislib.data.tensor.load_dataset>` - Build a ds-tensor from a dataset of files.
+
 
 Tensor utility functions
 ........................
 
+:meth:`dislib.data.tensor.cat <dislib.data.tensor.cat>` - Concatenate ds-tensors along a dimension.
+
+:meth:`dislib.data.tensor.change_shape <dislib.data.tensor.change_shape>` - Change the shape of a ds-tensor.
+
+:meth:`dislib.data.tensor.rechunk_tensor <dislib.data.tensor.rechunk_tensor>` - Rechunk a ds-tensor along a dimension.
+
+:meth:`dislib.data.tensor.shuffle <dislib.data.tensor.shuffle>` - Randomly shuffle a ds-tensor.
+
 
 Other functions
----------------
+...............
 
 :meth:`dislib.apply_along_axis <dislib.apply_along_axis>` - Applies a
 function to a ds-array along a given axis.
@@ -136,6 +257,12 @@ ds-arrays.
 
 :meth:`dislib.svd <dislib.svd>` - Singular value decomposition of a ds-array.
 
+dislib.pytorch and dislib.eddl: Distributed neural network training
+--------------------------------------------------------------------
+
+:class:`pytorch.EncapsulatedFunctionsDistributedPytorch <dislib.pytorch.encapsulated_functions_distributed.EncapsulatedFunctionsDistributedPytorch>` - Distributed training of neural networks using PyTorch backend.
+
+:class:`eddl.EncapsulatedFunctionsDistributedEddl <dislib.eddl.encapsulate_function_distributed.EncapsulatedFunctionsDistributedEddl>` - Distributed training of neural networks using EDDL backend.
 
 dislib.model_selection: Model selection
 ---------------------------------------
@@ -151,6 +278,9 @@ Exhaustive search over estimator parameters sampled from given distributions.
 
 :class:`model_selection.KFold <dislib.model_selection.KFold>` -
 K-fold splitter for cross-validation.
+
+:meth:`model_selection.train_test_split <dislib.model_selection.train_test_split>` -
+Split arrays or matrices into random train and test subsets.
 
 
 dislib.neighbors: Neighbor queries

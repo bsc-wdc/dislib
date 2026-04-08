@@ -1,4 +1,4 @@
-FROM compss/compss:3.3.3
+FROM compss/compss:3.4
 LABEL maintainer="COMPSs Support <support-compss@bsc.es>"
 
 COPY . dislib/

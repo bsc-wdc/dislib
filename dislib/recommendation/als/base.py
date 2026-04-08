@@ -36,7 +36,7 @@ class ALS(BaseEstimator):
         Regularization parameters value.
     check_convergence : boolean, optional (default=True)
         Whether to test for convergence at the end of each iteration.
-    random_state : int, orNone, optional (default=None)
+    random_state : int or None, optional (default=None)
         The seed of the pseudo random number generator used to initialize the
         items matrix I.
     arity : int, optional (default=5)
@@ -224,6 +224,7 @@ class ALS(BaseEstimator):
         The model is synchronized before saving and can be reinstantiated
         in the exact same state, without any of the code used for model
         definition or fitting.
+
         Parameters
         ----------
         filepath : str
@@ -275,6 +276,7 @@ class ALS(BaseEstimator):
         The model is reinstantiated in the exact same state in which it
         was saved, without any of the code used for model definition or
         fitting.
+
         Parameters
         ----------
         filepath : str

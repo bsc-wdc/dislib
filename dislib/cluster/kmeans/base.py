@@ -220,6 +220,7 @@ class KMeans(BaseEstimator):
         The model is synchronized before saving and can be reinstantiated in
         the exact same state, without any of the code used for model
         definition or fitting.
+
         Parameters
         ----------
         filepath : str
@@ -276,6 +277,7 @@ class KMeans(BaseEstimator):
         """Loads a model from a file.
         The model is reinstantiated in the exact same state in which it was
         saved, without any of the code used for model definition or fitting.
+
         Parameters
         ----------
         filepath : str

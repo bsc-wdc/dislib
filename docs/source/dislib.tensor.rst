@@ -15,7 +15,7 @@ Tensor creation routines
 
 .. autofunction:: dislib.random_tensors
 
-.. autofunction:: dislib.load_dataset
+.. autofunction:: dislib.data.tensor.load_dataset
 
 .. autofunction:: dislib.from_array
 
@@ -28,11 +28,11 @@ Tensor creation routines
 Utility functions
 -----------------
 
-.. autofunction:: dislib.shuffle
+.. autofunction:: dislib.data.tensor.shuffle
 
-.. autofunction:: dislib.rechunk
+.. autofunction:: dislib.data.tensor.rechunk_tensor
 
-.. autofunction:: dislib.change_shape
+.. autofunction:: dislib.data.tensor.change_shape
 
-.. autofunction:: dislib.cat
+.. autofunction:: dislib.data.tensor.cat
 

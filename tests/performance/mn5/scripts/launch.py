@@ -29,7 +29,7 @@ def main():
            " --tracing" +
            " --pythonpath=" + scripts_dir + ":" + tests_dir + dislib_lib_path +
            " --lang=python"
-           " --worker_in_master_cpus=48"
+           " --worker_in_master_cpus=100"
            " --max_tasks_per_node=112"
            " --num_nodes=4 ").split(" ")
 

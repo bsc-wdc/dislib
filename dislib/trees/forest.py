@@ -159,6 +159,7 @@ class BaseRandomForest(BaseEstimator):
         The model is synchronized before saving and can be reinstantiated in
         the exact same state, without any of the code used for model
         definition or fitting.
+
         Parameters
         ----------
         filepath : str
@@ -198,6 +199,7 @@ class BaseRandomForest(BaseEstimator):
         The model is reinstantiated in the exact same state in which it
         was saved, without any of the code used for model definition or
         fitting.
+
         Parameters
         ----------
         filepath : str
@@ -504,6 +506,7 @@ class RandomForestClassifier(BaseRandomForest):
         The model is reinstantiated in the exact same state in which it
         was saved, without any of the code used for model definition or
         fitting.
+
         Parameters
         ----------
         filepath : str
@@ -536,6 +539,7 @@ class RandomForestClassifier(BaseRandomForest):
         The model is synchronized before saving and can be reinstantiated in
         the exact same state, without any of the code used for model
         definition or fitting.
+
         Parameters
         ----------
         filepath : str
@@ -763,6 +767,7 @@ class RandomForestRegressor(BaseRandomForest):
         The model is reinstantiated in the exact same state in which it
         was saved, without any of the code used for model definition or
         fitting.
+
         Parameters
         ----------
         filepath : str
@@ -795,6 +800,7 @@ class RandomForestRegressor(BaseRandomForest):
         The model is synchronized before saving and can be reinstantiated in
         the exact same state, without any of the code used for model
         definition or fitting.
+
         Parameters
         ----------
         filepath : str

@@ -30,7 +30,7 @@ Follow these steps when drafting a new release:
    <https://github.com/bsc-wdc/dislib/blob/master/CHANGELOG.md>`_.
 
 7. Update the `performance plot <https://github
-   .com/bsc-wdc/dislib/blob/master/docs/source/performance.png>`_ in the
+   .com/bsc-wdc/dislib/blob/master/docs/source/_static/img/performance.png>`_ in the
    documentation if necessary.
 
 8. Push the release branch with the changes.

@@ -23,7 +23,7 @@
       <img src="https://badge.fury.io/py/dislib.svg" alt="PyPI version" height="18">
   </a>
   <a href="https://badge.fury.io/py/dislib">
-      <img src="https://img.shields.io/badge/python-3.6-blue.svg" alt="Python version" height="18">
+      <img src="https://img.shields.io/badge/python-3.10-blue.svg" alt="Python version" height="18">
   </a>
 </p>
 
@@ -36,7 +36,7 @@
 
 ## Introduction
 
-The Distributed Computing Library (dislib) provides distributed algorithms ready to use as a library. So far, dislib is highly focused on machine learning algorithms, and it is greatly inspired by [scikit-learn](https://scikit-learn.org/). However, other types of numerical algorithms might be added in the future. The library has been implemented on top of [PyCOMPSs programming model](http://compss.bsc.es), and it is being developed by the [Workflows and Distributed Computing group](https://github.com/bsc-wdc) of the [Barcelona Supercomputing Center](https://www.bsc.es/). dislib allows easy local development through docker. Once the code is finished, it can be run directly on any distributed platform without any further changes. This includes clusters, supercomputers, clouds, and containerized platforms.
+The Distributed Computing Library (dislib) provides distributed algorithms ready to use as a library. So far, dislib is highly focused on machine learning algorithms, and it is greatly inspired by [scikit-learn](https://scikit-learn.org/) and, more recently, by [PyTorch](https://pytorch.org/). However, other types of numerical algorithms might be added in the future. The library has been implemented on top of [PyCOMPSs programming model](http://compss.bsc.es), and it is being developed by the [Workflows and Distributed Computing group](https://github.com/bsc-wdc) of the [Barcelona Supercomputing Center](https://www.bsc.es/). dislib allows easy local development through docker. Once the code is finished, it can be run directly on any distributed platform without any further changes. This includes clusters, supercomputers, clouds, and containerized platforms.
 
 ## Contents
 
@@ -55,17 +55,31 @@ Get started with dislib following our [quickstart guide](https://github.com/bsc-
 
 ## Availability
 
-Currently, the following supercomputers have already PyCOMPSs installed and ready to use. If you need help configuring your own cluster or supercomputer, drop us an email and we will be pleased to help.
+Currently, the following supercomputers already have PyCOMPSs installed and ready to use. If you need help configuring your own cluster or supercomputer, drop us an email and we will be pleased to help.
 
-- Marenostrum 4 - Barcelona Supercomputing Center (BSC)
-- Minotauro - Barcelona Supercomputing Center (BSC)
-- Nord 3 - Barcelona Supercomputing Center (BSC)
-- Cobi - Barcelona Supercomputing Center (BSC)
-- Juron - Jülich Supercomputing Centre (JSC)
-- Jureca - Jülich Supercomputing Centre (JSC)
-- Ultraviolet - The Genome Analysis Center (TGAC)
-- Archer - University of Edinburgh’s Advanced Computing Facility (ACF)
-- Axiom - University of Novi Sad, Faculty of Sciences (UNSPMF)
+- MareNostrum 5 - Barcelona Supercomputing Center (BSC)
+- MareNostrum Ona - Barcelona Supercomputing Center (BSC)
+- Nord4 - Barcelona Supercomputing Center (BSC)
+- JURECA - Jülich Supercomputing Centre (JSC)
+- JUSUF - Jülich Supercomputing Centre (JSC)
+- JUWELS - Jülich Supercomputing Centre (JSC)
+- Barbora - IT4Innovations National Supercomputing Center (IT4I)
+- Karolina - IT4Innovations National Supercomputing Center (IT4I)
+- Galileo100 - CINECA (CINECA)
+- Leonardo - CINECA (CINECA)
+- Dardel - PDC Center for High-Performance Computing, KTH (PDC)
+- Fugaku - RIKEN Center for Computational Science (R-CCS)
+- Hawk - High-Performance Computing Center Stuttgart (HLRS)
+- Irene - CEA/TGCC (TGCC)
+- Levante - German Climate Computing Centre (DKRZ)
+- Mahti - CSC - IT Center for Science (CSC)
+- NextGenIO Prototype - EPCC, University of Edinburgh (EPCC)
+- Shaheen - King Abdullah University of Science and Technology (KAUST)
+- Snellius - SURF (SURF)
+- Tirant - University of Valencia (UV)
+- Frontier - Oak Ridge National Laboratory (ORNL)
+- Jean Zay - IDRIS, CNRS (IDRIS)
+- Qmio - Galicia Supercomputing Center (CESGA)
 
 Supported architectures:
 - [Intel SSF architectures](https://www.intel.com/content/www/us/en/high-performance-computing/ssf-architecture-specification.html)
@@ -74,7 +88,7 @@ Supported architectures:
 ## Contributing
 
 Contributions are **welcome and very much appreciated**. We are also open to starting research collaborations or mentoring if you are interested in or need assistance implementing new algorithms.
-Please refer [to our Contribution Guide](CONTRIBUTING.md) for more details.
+Please refer to [our Contribution Guide](CONTRIBUTING.md) for more details.
 
 ## Citing dislib
 
@@ -100,12 +114,12 @@ This work has received funding from the European Union’s Horizon 2020 research
 
 This work has also received funding from the collaboration project between the Barcelona Supercomputing Center (BSC) and Fujitsu Ltd.
 
-In addition, the development of this software has been also supported by the following institutions:
+In addition, the development of this software has also been supported by the following institutions:
 
 - Spanish Government under contracts SEV2015-0493, TIN2015-65316 and PID2019-107255G.
 
 - Generalitat de Catalunya under contract 2017-SGR-01414 and the CECH project, co-funded with 50% by the European Regional Development Fund under the
-framework of the ERFD Operative Programme for Catalunya 2014-2020.
+framework of the ERDF Operative Programme for Catalunya 2014-2020.
 
 - European Commission's through the following R&D projects:
   - H2020 I-BiDaaS project (Contract 780787)

@@ -52,6 +52,7 @@ Utility functions
     :members:
     :undoc-members:
     :show-inheritance:
+    :no-index:
 
 
 Other functions
@@ -59,7 +60,7 @@ Other functions
 
 .. autofunction:: dislib.save_txt
 
-.. autofunction:: dislib.data.array.apply_along_axis
+.. autofunction:: dislib.apply_along_axis
 
 
 

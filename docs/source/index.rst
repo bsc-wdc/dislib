@@ -2,16 +2,21 @@
    :width: 600px
    :align: left
 
+.. raw:: html
+
+   <div style="clear: both;"></div>
+
 .. toctree::
+   :hidden:
    :maxdepth: 2
    :caption: Contents:
-|
-|
-|
-|
-|
-|
-|
+
+   quickstart
+   user-guide
+   api-reference
+   development
+   glossary
+
 
 The Distributed Computing Library (dislib) provides distributed algorithms ready
 to use as a library. So far, dislib is highly focused on machine learning
@@ -42,20 +47,20 @@ Performance
 -----------
 
 The following plot shows fit time of some dislib models on the
-`MareNostrum 4 <https://www.bsc.es/marenostrum/marenostrum>`_ supercomputer
-(using 8 worker nodes):
+`MareNostrum 5 <https://www.bsc.es/marenostrum/marenostrum>`_ supercomputer
+(using 8 worker nodes = 896 computing units):
 
 .. image:: ./_static/img/performance.png
     :align: center
-    :width: 500px
+    :width: 70%
 
 Labels on the horizontal axis represent algorithm-dataset, where:
 
-- ALS = AlternatingLeastSquares
-- CSVM = CascadeSVM
-- GMM = GaussianMixture
+- ALS = :class:`AlternatingLeastSquares <dislib.recommendation.als.base.ALS>`
+- CSVM = :class:`CascadeSVM <dislib.classification.csvm.base.CascadeSVM>`
+- GMM = :class:`GaussianMixture <dislib.cluster.gm.base.GaussianMixture>`
 - Load = :meth:`load_svmlight_file <dislib.load_svmlight_file>`
-- RF = RandomForestClassifier
+- RF = :class:`RandomForestClassifier <dislib.trees.RandomForestClassifier>`
 - Shuf = :meth:`shuffle <dislib.utils.base.shuffle>`
 - TR = :meth:`Array.transpose <dislib.data.array.Array.transpose>`
 
@@ -71,7 +76,7 @@ and:
 - 100M and 300M = 100 and 300 million random samples, with 100 features each.
 - mnist = The `mnist <https://www.csie.ntu.edu
   .tw/~cjlin/libsvmtools/datasets/multiclass.html#mnist>`_ dataset.
-- 20K = Square matrix of 20 thousand rows and 20 thousand columns, with random values.
+- 20K = square matrix of 20 thousand rows and 20 thousand columns, with random values.
 
 
 Source code
@@ -96,9 +101,9 @@ Citing dislib
 
 If you use dislib in a scientific publication, we would appreciate citations to the following paper:
 
-\J. Álvarez Cid-Fuentes, S. Solà, P. Álvarez, A. Castro-Ginard, and R. M. Badia, "dislib: Large Scale High Performance Machine Learning in Python," in *Proceedings of the 15th International Conference on eScience*, 2019, pp. 96-105
+J. Álvarez Cid-Fuentes, S. Solà, P. Álvarez, A. Castro-Ginard, and R. M. Badia, "dislib: Large Scale High Performance Machine Learning in Python," in *Proceedings of the 15th International Conference on eScience*, 2019, pp. 96-105
 
-Bibtex:
+Bibtex
 .......
 
 .. code:: latex

@@ -37,14 +37,22 @@ extensions = [
     'sphinx.ext.linkcode',
     'sphinx.ext.napoleon',
     'sphinx.ext.autosummary',
-    'm2r',
+    'myst_parser',
 ]
 
 napoleon_google_docstring = False
 napoleon_use_param = False
 napoleon_use_ivar = True
 
-autodoc_mock_imports = ['pycompss']
+autodoc_mock_imports = ['pycompss', 'pyeddl', 'eddl']
+
+autodoc_default_options = {
+    'exclude-members': (
+        'set_fit_request,set_score_request,set_predict_request,'
+        'set_transform_request,set_partial_fit_request,'
+        'set_predict_proba_request,set_decision_function_request'
+    )
+}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -52,17 +60,17 @@ templates_path = ['_templates']
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
 # source_suffix = ['.rst', '.md']
-source_suffix = '.rst'
-
-# The encoding of source files.
-# source_encoding = 'utf-8-sig'
+source_suffix = {
+    '.rst': 'restructuredtext',
+    '.md': 'myst',
+}
 
 # The master toctree document.
 master_doc = 'index'
 
 # General information about the project.
 project = 'dislib'
-copyright = '2019, Barcelona Supercomputing Center (BSC)'
+copyright = '2026, Barcelona Supercomputing Center (BSC)'
 author = 'Barcelona Supercomputing Center (BSC)'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -80,7 +88,7 @@ version = ".".join(release.split(".")[:-1])
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = None
+language = 'en'
 
 # There are two options for replacing |today|: either, you set today to some
 # non-false value, then it is used:
@@ -119,24 +127,27 @@ pygments_style = 'sphinx'
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = False
 
+# Suppress cross-reference warnings from sklearn's own docstrings pulled in
+# via autodoc (metadata_routing, meta-estimator, etc. are sklearn-internal),
+# and from ambiguous short names across the 4 trees implementations
+# (DecisionTreeClassifier/Regressor each exist in base, distributed, mmap,
+# nested — Sphinx can't disambiguate the short name; the full path is correct).
+suppress_warnings = ['ref.ref', 'ref.term', 'ref.citation', 'ref.python']
+
+# Enable auto-generated heading anchors for myst-parser (needed for internal
+# links like #manual-installation in QUICKSTART.md)
+myst_heading_anchors = 4
+
 # -- Options for HTML output ----------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-html_theme = 'scipy'
+html_theme = 'pydata_sphinx_theme'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
-html_theme_options = {
-    "edit_link": False,
-    "sidebar": "right",
-    "scipy_org_logo": False,
-    "rootlinks": []
-}
-
-# Add any paths that contain custom themes here, relative to this directory.
-html_theme_path = [os.path.join(os.pardir, 'scipy-sphinx-theme', '_theme')]
+html_theme_options = {}
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
@@ -147,7 +158,7 @@ html_theme_path = [os.path.join(os.pardir, 'scipy-sphinx-theme', '_theme')]
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
-# html_logo = '../logos/dislib-logo-full.png'
+html_logo = '../logos/dislib-logo-full.png'
 
 # The name of an image file (relative to this directory) to use as a favicon of
 # the docs.  This file should be a Windows icon file (.ico) being 16x16 or
@@ -323,7 +334,10 @@ def linkcode_resolve(domain, info):
     except AttributeError:
         pass
     else:
-        obj = unwrap(obj)
+        try:
+            obj = unwrap(obj)
+        except Exception:
+            pass
 
     try:
         fn = inspect.getsourcefile(obj)
@@ -345,16 +359,13 @@ def linkcode_resolve(domain, info):
     modname = inspect.getmodule(obj).__name__
 
     try:
-        branch = subp.getoutput(["git branch"]).split()[4]
-
-        # branch is origin/name or a hash in the case of the stable version
-        if "origin" in branch:
-            branch = branch.split("/")[1][:-1]
-        else:
-            branch = branch[:-1]
-
-    except subp.CalledProcessError as e:
-        print("Error getting branch name. I will use master:\n", e.output)
+        branch = subp.check_output(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            stderr=subp.DEVNULL
+        ).decode().strip()
+        if not branch:
+            branch = "master"
+    except Exception:
         branch = "master"
 
     return "http://github.com/bsc-wdc/dislib/blob/%s/%s.py%s" \
@@ -386,4 +397,6 @@ texinfo_documents = [
 
 
 # Example configuration for intersphinx: refer to the Python standard library.
-intersphinx_mapping = {'https://docs.python.org/': None}
+intersphinx_mapping = {
+    'python': ('https://docs.python.org/3/', None)
+}
