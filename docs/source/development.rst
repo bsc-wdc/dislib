@@ -64,16 +64,27 @@ Follow these steps when drafting a new release:
 
 12. Create a pip package and upload it to PyPi:
 
-    - Ensure that you have the latest version of ``setuptools``,
+    - Ensure that you have the latest version of
       ``wheel``, and ``twine`` installed:
 
       .. code:: bash
 
-        pip3 install --upgrade setuptools wheel twine
+        pip3 install --upgrade build twine
+
+    - Build the package:
+
+      .. code:: bash
+
+       python3 -m build
+
+    - Validate befoe uploading:
+
+      .. code:: bash
+
+       twine check dist/*
 
     - Create and upload the pip package:
 
       .. code:: bash
 
-       python3 setup.py sdist bdist_wheel
        python3 -m twine upload dist/dislib-X.Y.Z*
