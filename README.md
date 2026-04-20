@@ -130,6 +130,7 @@ framework of the ERDF Operative Programme for Catalunya 2014-2020.
   - H2020 PerMedCoE  Center of Excellence (Contract 951773)
   - Horizon Europe CAELESTIS project (Contract 101056886)
   - Horizon Europe DT-Geo project (Contract 101058129)
+  - Horizon Europe CyclOps project (Contract 101135513)
 
 ## License
 

@@ -9,10 +9,11 @@ if [[ "$1" == "--versioned" ]]; then
     VERSION=$(cat "$ROOT_DIR/VERSION")
 fi
 
-docker login -u "${dh_username}" -p "${dh_password}"
 docker push bscwdc/dislib:latest
 docker push bscwdc/dislib:torch
 if $VERSIONED; then
-    docker push bscwdc/dislib:${VERSION}
-    docker push bscwdc/dislib:${VERSION}-torch
+    docker tag bscwdc/dislib:latest bscwdc/dislib:v${VERSION}
+    docker tag bscwdc/dislib:torch bscwdc/dislib:v${VERSION}-torch
+    docker push bscwdc/dislib:v${VERSION}
+    docker push bscwdc/dislib:v${VERSION}-torch
 fi
