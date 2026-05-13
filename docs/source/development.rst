@@ -42,38 +42,46 @@ Follow these steps when drafting a new release:
     .com/bsc-wdc/dislib/blob/master/.github/RELEASE_TEMPLATE.md>`_ using tag
     name ``vX.Y.Z``.
 
-11. Create and tag a docker image for the release running the following at the
-    repo's root:
+11. Create and tag docker images for the release using the scripts under
+    ``docker/``:
 
-    - Create the image:
-     
+    - Build the base, torch, and CI images (tagged with the version from the
+      ``VERSION`` file and as ``latest``):
+
       .. code:: bash
-     
-       docker build -t bscwdc/dislib:vX.Y.Z .
-       
-       # Create also new 'latest' tag using newly created image
-       docker tag bscwdc/dislib:vX.Y.Z bscwdc/dislib:latest
-   
-    - Log in and push it to dockerhub
-   
+
+       ./docker/build.sh --versioned
+
+    - Log in and push all images to dockerhub:
+
       .. code:: bash
 
        docker login -u DOCKERHUB_USER -p DOCKERHUB_PASSWORD
-       docker push bscwdc/dislib:vX.Y.Z
-       docker push bscwdc/dislib:latest
+       ./docker/push.sh --versioned
 
 12. Create a pip package and upload it to PyPi:
 
-    - Ensure that you have the latest version of ``setuptools``,
+    - Ensure that you have the latest version of
       ``wheel``, and ``twine`` installed:
 
       .. code:: bash
 
-        pip3 install --upgrade setuptools wheel twine
+        pip3 install --upgrade build twine
+
+    - Build the package:
+
+      .. code:: bash
+
+       python3 -m build
+
+    - Validate befoe uploading:
+
+      .. code:: bash
+
+       twine check dist/*
 
     - Create and upload the pip package:
 
       .. code:: bash
 
-       python3 setup.py sdist bdist_wheel
        python3 -m twine upload dist/dislib-X.Y.Z*

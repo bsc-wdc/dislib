@@ -19,8 +19,8 @@ class EncapsulatedFunctionsDistributedEddl(object):
     - Synchronous training: At the end of each epoch, the weights are
       synchronized and the update is computed.
     - Partially asynchronous: The weights of each worker are updated
-      commutatively with the general weights and viceversa.
-    - Asynchronous training: A synchronization and update of the weigths is
+      commutatively with the general weights and vice versa.
+    - Asynchronous training: A synchronization and update of the weights is
       done after executing all the epochs or each n specified epochs.
 
     Attributes
@@ -29,8 +29,8 @@ class EncapsulatedFunctionsDistributedEddl(object):
         weights and biases of the different layers of the network that
         is being trained.
     compss_object: list
-        List that contains objects of type PytorchDistributed, each of the
-        objects in this list makes a small part of the epoch training in
+        List that contains objects of type EddlDistributedConmutativo, each of
+        the objects in this list makes a small part of the epoch training in
         parallel to the rest.
     num_workers: int
         Number of parallel trainings existing.
@@ -41,9 +41,8 @@ class EncapsulatedFunctionsDistributedEddl(object):
 
     def build(self, net, optimizer, loss, metric, num_gpu=0, num_nodes=0):
         """
-        Builds the model to obtain the initial parameters of the training
-        and it also builds the model in each worker
-        in order to be ready to start the training.
+        Builds the model to obtain the initial training parameters and
+        prepares a copy in each worker, ready to start the training.
 
         Parameters
         ----------
@@ -120,8 +119,8 @@ class EncapsulatedFunctionsDistributedEddl(object):
                                                         num_epochs,
                                                         n_epocs_sync=1):
         """
-        Training of the neural network performing a syncrhonization every n
-        specified epochs, it performs a total shuffle of the dataset used.
+        Training of the neural network performing a synchronization every n
+        specified epochs, performing a total shuffle of the dataset.
 
         Parameters
         ----------
@@ -135,7 +134,7 @@ class EncapsulatedFunctionsDistributedEddl(object):
         num_epochs: int
             Total number of epochs to train the model
         n_epocs_sync: int
-            Number of epochs to train before performing a syncrhonization
+            Number of epochs to train before performing a synchronization
             and between synchronizations
         Returns
         -------
@@ -180,9 +179,9 @@ class EncapsulatedFunctionsDistributedEddl(object):
                                                 shuffle_blocks=True,
                                                 shuffle_block_data=True):
         """
-        Training of the neural network performing a syncrhonization every
-        n specified epochs, it performs a total shuffle of the tensors on
-        the ds_tensor and the elements inside each tensor
+        Training of the neural network performing a synchronization every
+        n specified epochs, shuffling the tensors of the ds_tensor and the
+        elements inside each tensor
 
         Parameters
         ----------
@@ -196,7 +195,7 @@ class EncapsulatedFunctionsDistributedEddl(object):
         num_epochs: int
             Total number of epochs to train the model
         n_epocs_sync: int
-            Number of epochs to train before performing a syncrhonization
+            Number of epochs to train before performing a synchronization
             and between synchronizations
         shuffle_blocks: boolean
             Variable specifying to shuffle the blocks of the ds_tensor or not
@@ -247,9 +246,9 @@ class EncapsulatedFunctionsDistributedEddl(object):
                                  num_epochs, shuffle_blocks=True,
                                  shuffle_block_data=True):
         """
-        Training of the neural network performing a syncrhonization of
-        the weights at the end of each epoch, it performs a total shuffle
-        of the tensors on the ds_tensor and the elements inside each tensor
+        Training of the neural network performing a synchronization of
+        the weights at the end of each epoch, shuffling the tensors of the
+        ds_tensor and the elements inside each tensor
 
         Parameters
         ----------
@@ -306,8 +305,8 @@ class EncapsulatedFunctionsDistributedEddl(object):
                                          num_batches_per_worker,
                                          num_epochs):
         """
-        Training of the neural network performing a syncrhonization of
-        the weights every epoch, it performs a total shuffle of the dataset
+        Training of the neural network performing a synchronization of
+        the weights every epoch, performing a total shuffle of the dataset
 
         Parameters
         ----------
@@ -359,10 +358,9 @@ class EncapsulatedFunctionsDistributedEddl(object):
                                   shuffle_blocks=True,
                                   shuffle_block_data=True):
         """
-        Training of the neural network performing an asyncrhonous update of
-        the weights every epoch,
-        it performs a shuffle of the tensors on the ds_tensor and a local
-        shuffle of the elements inside each tensor
+        Training of the neural network performing an asynchronous update of
+        the weights every epoch, shuffling the tensors of the ds_tensor and
+        locally shuffling the elements inside each tensor
 
         Parameters
         ----------
@@ -417,9 +415,8 @@ class EncapsulatedFunctionsDistributedEddl(object):
                                           num_batches_per_worker,
                                           num_epochs):
         """
-        Training of the neural network performing an asyncrhonous update of
-        the weights every epoch,
-        it performs a total shuffle of the dataset
+        Training of the neural network performing an asynchronous update of
+        the weights every epoch, performing a total shuffle of the dataset
 
         Parameters
         ----------
@@ -471,10 +468,9 @@ class EncapsulatedFunctionsDistributedEddl(object):
                                            shuffle_blocks=True,
                                            shuffle_block_data=True):
         """
-        Training of the neural network performing an asyncrhonous update of
-        the weights every n epochs,
-        it performs a shuffle of the tensors and locally a shuffle of the
-        elements inside each tensor
+        Training of the neural network performing an asynchronous update of
+        the weights every n epochs, shuffling the tensors and locally
+        shuffling the elements inside each tensor
 
         Parameters
         ----------
@@ -488,7 +484,7 @@ class EncapsulatedFunctionsDistributedEddl(object):
         num_epochs: int
             Total number of epochs to train the model
         n_epocs_sync: int
-            Number of epochs to train before performing an asyncrhonous
+            Number of epochs to train before performing an asynchronous
             update of the weights and between the following updates
         shuffle_blocks: boolean
             Variable specifying to shuffle the blocks of the ds_tensor or not
@@ -537,9 +533,8 @@ class EncapsulatedFunctionsDistributedEddl(object):
                                                    num_epochs,
                                                    n_epocs_sync=0):
         """
-        Training of the neural network performing an asyncrhonous update of
-        the weights every n epochs,
-        it performs a total shuffle of the dataset
+        Training of the neural network performing an asynchronous update of
+        the weights every n epochs, performing a total shuffle of the dataset
 
         Parameters
         ----------
@@ -553,7 +548,7 @@ class EncapsulatedFunctionsDistributedEddl(object):
         num_epochs: int
             Total number of epochs to train the model
         n_epocs_sync: int
-            Number of epochs to train before performing an asyncrhonous
+            Number of epochs to train before performing an asynchronous
             update of the weights and between the following updates
         Returns
         -------
