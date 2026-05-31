@@ -59,6 +59,10 @@ class BaseSearchCV(ABC):
 
     def train_candidates(self, x, y, **fit_params):
         """Run fit with all sets of parameters.
+        This method does not generate the scores. By not generating
+        the scores we avoid the syncrhonization of the GridSearch.
+        It is useful if several GridSearchs are used. To generate the
+        scores it will be needed to use score function.
 
         Parameters
         ----------
@@ -137,6 +141,7 @@ class BaseSearchCV(ABC):
 
     def score(self, x=None, y=None, **fit_params):
         """Compute score for the trained sets of parameters.
+        To compute the score a synchronization is needed.
 
         Parameters
         ----------
