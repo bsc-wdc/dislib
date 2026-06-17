@@ -244,7 +244,7 @@ def random_svd(a, iters, epsilon, tol, nsv=None, k=None, verbose=False):
     --------
     >>> import numpy as np
     >>> import dislib as ds
-    >>> from dislib.decomposition import lanczos_svd
+    >>> from dislib.decomposition import random_svd
     >>>
     >>> def create_matrix(m, n):
     >>>     # Define the range of exponents for the singular values
@@ -266,7 +266,7 @@ def random_svd(a, iters, epsilon, tol, nsv=None, k=None, verbose=False):
     >>> def main():
     >>>     A, sing_values = create_matrix(50000, 150)
     >>>     A = ds.array(A, block_size=(50000, 20))
-    >>>     u, s, v = lanczos_svd(A, iters=5, epsilon=0.5, tol=1e-3,
+    >>>     u, s, v = random_svd(A, iters=5, epsilon=0.5, tol=1e-3,
     >>>                           nsv=15, k=40, verbose=True)
     >>>     s = s.collect()
     >>>     print("Singular values computed: " + str(s), flush=True)
