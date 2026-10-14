@@ -5,10 +5,18 @@ import pickle
 from collections import Counter
 
 import numpy as np
-from pycompss.api.api import compss_wait_on
-from pycompss.api.constraint import constraint
-from pycompss.api.parameter import Type, COLLECTION_IN, Depth
-from pycompss.api.task import task
+try:
+    from pycompss.api.api import compss_wait_on
+    from pycompss.api.constraint import constraint
+    from pycompss.api.parameter import Type, COLLECTION_IN, Depth
+    from pycompss.api.task import task
+except ImportError:
+    from dataclay.contrib.pycompss_dummy.api import compss_wait_on
+    from dataclay.contrib.pycompss_dummy.task import task
+    from dataclay.contrib.pycompss_dummy.parameter import COLLECTION_IN
+    from dataclay.contrib.pycompss_dummy.parameter import Depth
+    from dataclay.contrib.pycompss_dummy.parameter import Type
+    from dataclay.contrib.pycompss_dummy.constraint import constraint
 from sklearn.base import BaseEstimator
 from sklearn.utils import check_random_state
 
@@ -835,7 +843,7 @@ def _resolve_try_features(try_features, n_features):
     elif try_features == "third":
         return max(1, n_features // 3)
     else:
-        return int(try_features)
+        return int(try_features*n_features)
 
 
 @constraint(computing_units="${ComputingUnits}")
