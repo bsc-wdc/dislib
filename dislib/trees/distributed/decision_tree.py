@@ -4,16 +4,31 @@ import pickle
 import numpy as np
 from sklearn.tree import DecisionTreeClassifier as SklearnDTClassifier
 from sklearn.tree import DecisionTreeRegressor as SklearnDTRegressor
-from pycompss.api.parameter import INOUT, COLLECTION_INOUT, COLLECTION_IN
-from sklearn.utils import check_random_state
-from pycompss.api.api import (compss_delete_object,
+try:
+    from pycompss.api.parameter import INOUT, COLLECTION_INOUT, COLLECTION_IN
+    from pycompss.api.api import (compss_delete_object,
                               compss_wait_on, compss_barrier)
+    from pycompss.api.task import task
+    from pycompss.api.on_failure import on_failure
+    from pycompss.api.constraint import constraint
+    from pycompss.api.parameter import Depth, Type
+except ImportError:
+    from dataclay.contrib.pycompss_dummy.api import compss_wait_on
+    from dataclay.contrib.pycompss_dummy.api import compss_delete_object
+    from dataclay.contrib.pycompss_dummy.task import task
+    from dataclay.contrib.pycompss_dummy.dummy_pycompss import INOUT
+    from dataclay.contrib.pycompss_dummy.parameter import COLLECTION_IN
+    from dataclay.contrib.pycompss_dummy.parameter import COLLECTION_INOUT
+    from dataclay.contrib.pycompss_dummy.parameter import Depth
+    from dataclay.contrib.pycompss_dummy.parameter import Type
+    from dataclay.contrib.pycompss_dummy.constraint import constraint
+    from dataclay.contrib.pycompss_dummy.on_failure import on_failure
+from sklearn.utils import check_random_state
+
 from dislib.data.array import Array
-from pycompss.api.task import task
-from pycompss.api.on_failure import on_failure
-from pycompss.api.constraint import constraint
+
 import scipy
-from pycompss.api.parameter import Depth, Type
+
 from dislib.trees.distributed.terasort import terasort
 import dislib.data.util.model as utilmodel
 

@@ -2,8 +2,10 @@ import numpy as np
 from dislib.trees.distributed.tasks import (filter_fragment,
                                             combine_and_sort_bucket_elements)
 from dislib.data.array import Array
-from pycompss.api.api import compss_delete_object
-
+try:
+    from pycompss.api.api import compss_delete_object
+except ImportError:
+    from dataclay.contrib.pycompss_dummy.api import compss_delete_object
 
 def terasorting(dataset, indexes_to_try, num_buckets, range_min=0,
                 range_max=1, indexes_selected=None, reg_shape=None,

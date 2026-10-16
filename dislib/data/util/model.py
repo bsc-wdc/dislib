@@ -1,7 +1,10 @@
 import numpy as np
 from dislib.data.array import Array
 
-from pycompss.api.api import compss_wait_on
+try:
+    from pycompss.api.api import compss_wait_on
+except ImportError:
+    from dataclay.contrib.pycompss_dummy.api import compss_wait_on
 
 try:
     import cbor2

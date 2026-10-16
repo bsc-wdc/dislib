@@ -1,8 +1,15 @@
-from pycompss.api.constraint import constraint
-from pycompss.api.parameter import IN, COMMUTATIVE
+try:
+    from pycompss.api.constraint import constraint
+    from pycompss.api.parameter import IN, COMMUTATIVE
+    from pycompss.api.task import task
+except ImportError:
+    from dataclay.contrib.pycompss_dummy.task import task
+    from dataclay.contrib.pycompss_dummy.constraint import constraint
+    from dataclay.contrib.pycompss_dummy.parameter import IN
+    from dataclay.contrib.pycompss_dummy.parameter import COMMUTATIVE
 
 from sklearn.utils import shuffle
-from pycompss.api.task import task
+
 import numpy as np
 import pyeddl.eddl as eddl
 from pyeddl.tensor import Tensor

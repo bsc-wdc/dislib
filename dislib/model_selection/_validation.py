@@ -1,8 +1,15 @@
 import numbers
 
 from dislib.data.array import Array
-from pycompss.api.task import task
-from pycompss.api.parameter import INOUT, Depth, Type, COLLECTION_IN
+try:
+    from pycompss.api.task import task
+    from pycompss.api.parameter import INOUT, Depth, Type, COLLECTION_IN
+except ImportError:
+    from dataclay.contrib.pycompss_dummy.task import task
+    from dataclay.contrib.pycompss_dummy.parameter import COLLECTION_IN
+    from dataclay.contrib.pycompss_dummy.dummy_pycompss import INOUT
+    from dataclay.contrib.pycompss_dummy.parameter import Type
+    from dataclay.contrib.pycompss_dummy.parameter import Depth
 import numpy as np
 
 

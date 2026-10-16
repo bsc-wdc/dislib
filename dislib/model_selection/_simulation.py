@@ -1,4 +1,7 @@
-from pycompss.api.api import compss_wait_on
+try:
+    from pycompss.api.api import compss_wait_on
+except ImportError:
+    from dataclay.contrib.pycompss_dummy.api import compss_wait_on
 from sklearn.model_selection import ParameterGrid
 from dislib.model_selection._validation import simulation_execution
 from collections import defaultdict

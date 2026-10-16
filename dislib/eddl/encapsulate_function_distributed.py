@@ -4,7 +4,11 @@ import numpy as np
 from dislib.eddl.utils import getParameters, \
     aggregateParameters, parametersToNumpy
 from dislib.eddl.eddl_distributed_conmutativo import EddlDistributedConmutativo
-from pycompss.api.api import compss_wait_on, compss_delete_object
+try:
+    from pycompss.api.api import compss_wait_on, compss_delete_object
+except ImportError:
+    from dataclay.contrib.pycompss_dummy.api import compss_wait_on
+    from dataclay.contrib.pycompss_dummy.api import compss_delete_object
 from dislib.data.tensor import shuffle
 
 

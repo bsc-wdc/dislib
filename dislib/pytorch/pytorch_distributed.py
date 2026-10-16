@@ -1,7 +1,13 @@
 import os
-from pycompss.api.task import task
-from pycompss.api.parameter import IN, COMMUTATIVE
-from pycompss.api.constraint import constraint
+try:
+    from pycompss.api.task import task
+    from pycompss.api.parameter import IN, COMMUTATIVE
+    from pycompss.api.constraint import constraint
+except ImportError:
+    from dataclay.contrib.pycompss_dummy.task import task
+    from dataclay.contrib.pycompss_dummy.parameter import COMMUTATIVE
+    from dataclay.contrib.pycompss_dummy.parameter import IN
+    from dataclay.contrib.pycompss_dummy.constraint import constraint
 import torch.nn as nn
 import torch
 

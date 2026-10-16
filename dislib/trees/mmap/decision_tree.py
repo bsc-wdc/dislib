@@ -3,10 +3,19 @@ from sys import float_info
 
 import numpy as np
 from numpy.random.mtrand import RandomState
-from pycompss.api.api import compss_delete_object
-from pycompss.api.constraint import constraint
-from pycompss.api.parameter import FILE_IN, Type, COLLECTION_IN, Depth
-from pycompss.api.task import task
+try:
+    from pycompss.api.api import compss_delete_object
+    from pycompss.api.constraint import constraint
+    from pycompss.api.parameter import FILE_IN, Type, COLLECTION_IN, Depth
+    from pycompss.api.task import task
+except ImportError:
+    from dataclay.contrib.pycompss_dummy.api import compss_delete_object
+    from dataclay.contrib.pycompss_dummy.task import task
+    from dataclay.contrib.pycompss_dummy.parameter import COLLECTION_IN
+    from dataclay.contrib.pycompss_dummy.parameter import FILE_IN
+    from dataclay.contrib.pycompss_dummy.parameter import Depth
+    from dataclay.contrib.pycompss_dummy.parameter import Type
+    from dataclay.contrib.pycompss_dummy.constraint import constraint
 from sklearn.tree import DecisionTreeClassifier as SklearnDTClassifier
 from sklearn.tree import DecisionTreeRegressor as SklearnDTRegressor
 import dislib.data.util.model as utilmodel

@@ -1,10 +1,22 @@
 import numpy as np
 from numpy.lib import format
-from pycompss.api.api import compss_wait_on
-from pycompss.api.constraint import constraint
-from pycompss.api.parameter import Depth, COLLECTION_INOUT, COLLECTION_OUT, \
-    Type, FILE_IN, IN_DELETE, COLLECTION_FILE_IN
-from pycompss.api.task import task
+try:
+    from pycompss.api.api import compss_wait_on
+    from pycompss.api.constraint import constraint
+    from pycompss.api.parameter import Depth, COLLECTION_INOUT, COLLECTION_OUT, \
+        Type, FILE_IN, IN_DELETE, COLLECTION_FILE_IN
+    from pycompss.api.task import task
+except ImportError:
+    from dataclay.contrib.pycompss_dummy.api import compss_wait_on
+    from dataclay.contrib.pycompss_dummy.constraint import constraint
+    from dataclay.contrib.pycompss_dummy.parameter import Type
+    from dataclay.contrib.pycompss_dummy.parameter import COLLECTION_OUT
+    from dataclay.contrib.pycompss_dummy.parameter import COLLECTION_INOUT
+    from dataclay.contrib.pycompss_dummy.parameter import FILE_IN
+    from dataclay.contrib.pycompss_dummy.parameter import IN_DELETE
+    from dataclay.contrib.pycompss_dummy.parameter import COLLECTION_FILE_IN
+    from dataclay.contrib.pycompss_dummy.parameter import Depth
+    from dataclay.contrib.pycompss_dummy.task import task
 import os
 
 from dislib.data.array import Array

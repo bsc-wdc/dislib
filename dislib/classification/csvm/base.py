@@ -4,11 +4,20 @@ import pickle
 from uuid import uuid4
 
 import numpy as np
-from pycompss.api.api import compss_delete_object
-from pycompss.api.api import compss_wait_on
-from pycompss.api.constraint import constraint
-from pycompss.api.parameter import COLLECTION_IN, Depth, Type
-from pycompss.api.task import task
+try:
+    from pycompss.api.api import compss_delete_object
+    from pycompss.api.api import compss_wait_on
+    from pycompss.api.constraint import constraint
+    from pycompss.api.parameter import COLLECTION_IN, Depth, Type
+    from pycompss.api.task import task
+except ImportError:
+    from dataclay.contrib.pycompss_dummy.api import compss_wait_on
+    from dataclay.contrib.pycompss_dummy.api import compss_delete_object
+    from dataclay.contrib.pycompss_dummy.constraint import constraint
+    from dataclay.contrib.pycompss_dummy.parameter import COLLECTION_IN
+    from dataclay.contrib.pycompss_dummy.parameter import Type
+    from dataclay.contrib.pycompss_dummy.parameter import Depth
+    from dataclay.contrib.pycompss_dummy.task import task
 from scipy.sparse import hstack as hstack_sp
 from scipy.sparse import issparse
 from sklearn.base import BaseEstimator

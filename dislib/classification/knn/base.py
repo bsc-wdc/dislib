@@ -1,8 +1,17 @@
 import numpy as np
-from pycompss.api.api import compss_wait_on
-from pycompss.api.constraint import constraint
-from pycompss.api.parameter import COLLECTION_IN, COLLECTION_OUT, Depth, Type
-from pycompss.api.task import task
+try:
+    from pycompss.api.api import compss_wait_on
+    from pycompss.api.constraint import constraint
+    from pycompss.api.parameter import COLLECTION_IN, COLLECTION_OUT, Depth, Type
+    from pycompss.api.task import task
+except ImportError:
+    from dataclay.contrib.pycompss_dummy.api import compss_wait_on
+    from dataclay.contrib.pycompss_dummy.constraint import constraint
+    from dataclay.contrib.pycompss_dummy.parameter import COLLECTION_IN
+    from dataclay.contrib.pycompss_dummy.parameter import COLLECTION_OUT
+    from dataclay.contrib.pycompss_dummy.parameter import Type
+    from dataclay.contrib.pycompss_dummy.parameter import Depth
+    from dataclay.contrib.pycompss_dummy.task import task
 from sklearn.base import BaseEstimator
 from dislib.data.array import Array
 from dislib.neighbors import NearestNeighbors

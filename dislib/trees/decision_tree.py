@@ -14,7 +14,10 @@ from sklearn.tree import DecisionTreeClassifier as SklearnDTClassifier
 from sklearn.tree import DecisionTreeRegressor as SklearnDTRegressor
 from dislib.trees.distributed.decision_tree import (_RegressionNode,
                                                     _ClassificationNode)
-from pycompss.api.api import compss_wait_on
+try:
+    from pycompss.api.api import compss_wait_on
+except ImportError:
+    from dataclay.contrib.pycompss_dummy.api import compss_wait_on
 
 
 class BaseDecisionTree:

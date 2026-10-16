@@ -6,11 +6,23 @@ except ImportError as e:
                     "tensors can not be used.") from e
 import os
 import numpy as np
-from pycompss.api.api import compss_wait_on, compss_delete_object
-from pycompss.api.constraint import constraint
-from pycompss.api.parameter import Type, Depth, \
-    COLLECTION_OUT, INOUT, COLLECTION_IN, FILE_IN
-from pycompss.api.task import task
+try:
+    from pycompss.api.api import compss_wait_on, compss_delete_object
+    from pycompss.api.constraint import constraint
+    from pycompss.api.parameter import Type, Depth, \
+        COLLECTION_OUT, INOUT, COLLECTION_IN, FILE_IN
+    from pycompss.api.task import task
+except ImportError:
+    from dataclay.contrib.pycompss_dummy.api import compss_wait_on
+    from dataclay.contrib.pycompss_dummy.api import compss_delete_object
+    from dataclay.contrib.pycompss_dummy.constraint import constraint
+    from dataclay.contrib.pycompss_dummy.parameter import Type
+    from dataclay.contrib.pycompss_dummy.parameter import COLLECTION_OUT
+    from dataclay.contrib.pycompss_dummy.parameter import COLLECTION_IN
+    from dataclay.contrib.pycompss_dummy.dummy_pycompss import INOUT
+    from dataclay.contrib.pycompss_dummy.parameter import FILE_IN
+    from dataclay.contrib.pycompss_dummy.parameter import Depth
+    from dataclay.contrib.pycompss_dummy.task import task
 import math
 from dislib.data.array import Array
 

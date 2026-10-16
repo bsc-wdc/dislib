@@ -5,7 +5,10 @@ from functools import partial
 from itertools import product
 
 import numpy as np
-from pycompss.api.api import compss_wait_on
+try:
+    from pycompss.api.api import compss_wait_on
+except ImportError:
+    from dataclay.contrib.pycompss_dummy.api import compss_wait_on
 from scipy.stats import rankdata
 from sklearn import clone
 from sklearn.model_selection import ParameterGrid, ParameterSampler

@@ -7,7 +7,19 @@ ADMM Lasso
 This work is supported by the I-BiDaaS project, funded by the European
 Commission under Grant Agreement No. 780787.
 """
-from pycompss.api.constraint import constraint
+try:
+    from pycompss.api.constraint import constraint
+    from pycompss.api.api import compss_wait_on
+    from pycompss.api.parameter import Type, Depth, COLLECTION_IN, COLLECTION_OUT
+    from pycompss.api.task import task
+except ImportError:
+    from dataclay.contrib.pycompss_dummy.task import task
+    from dataclay.contrib.pycompss_dummy.api import compss_wait_on
+    from dataclay.contrib.pycompss_dummy.parameter import COLLECTION_OUT
+    from dataclay.contrib.pycompss_dummy.parameter import COLLECTION_IN
+    from dataclay.contrib.pycompss_dummy.parameter import Type
+    from dataclay.contrib.pycompss_dummy.parameter import Depth
+    from dataclay.contrib.pycompss_dummy.constraint import constraint
 
 try:
     import cvxpy as cp
@@ -15,9 +27,7 @@ except ImportError:
     import warnings
     warnings.warn('Cannot import cvxpy module. ADMM estimator will not work.')
 import numpy as np
-from pycompss.api.api import compss_wait_on
-from pycompss.api.parameter import Type, Depth, COLLECTION_IN, COLLECTION_OUT
-from pycompss.api.task import task
+
 from sklearn.base import BaseEstimator
 
 import dislib as ds

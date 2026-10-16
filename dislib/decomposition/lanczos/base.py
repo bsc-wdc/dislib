@@ -1,11 +1,23 @@
 import numpy as np
 import dislib as ds
-from pycompss.api.task import task
-from pycompss.api.parameter import (Type, COLLECTION_IN, Depth,
-                                    COLLECTION_INOUT, COLLECTION_OUT)
-from pycompss.api.api import compss_barrier
-from pycompss.api.constraint import constraint
-from pycompss.api.on_failure import on_failure
+try:
+    from pycompss.api.task import task
+    from pycompss.api.parameter import (Type, COLLECTION_IN, Depth,
+                                        COLLECTION_INOUT, COLLECTION_OUT)
+    from pycompss.api.api import compss_barrier
+    from pycompss.api.constraint import constraint
+    from pycompss.api.on_failure import on_failure
+except ImportError:
+    from dataclay.contrib.pycompss_dummy.api import compss_barrier
+    from dataclay.contrib.pycompss_dummy.task import task
+    from dataclay.contrib.pycompss_dummy.parameter import COLLECTION_OUT
+    from dataclay.contrib.pycompss_dummy.parameter import COLLECTION_IN
+    from dataclay.contrib.pycompss_dummy.parameter import COLLECTION_INOUT
+    from dataclay.contrib.pycompss_dummy.parameter import Type
+    from dataclay.contrib.pycompss_dummy.parameter import Depth
+    from dataclay.contrib.pycompss_dummy.constraint import constraint
+    from dataclay.contrib.pycompss_dummy.on_failure import on_failure
+
 from dislib.decomposition import tsqr
 from dislib.data.array import Array, concat_columns
 import math

@@ -3,11 +3,22 @@ from collections import defaultdict, deque
 from math import ceil
 import dislib
 import numpy as np
-from pycompss.api.api import compss_wait_on, compss_delete_object
-from pycompss.api.constraint import constraint
-from pycompss.api.parameter import Type, COLLECTION_IN, Depth, \
-    COLLECTION_OUT, INOUT
-from pycompss.api.task import task
+try:
+    from pycompss.api.api import compss_wait_on, compss_delete_object
+    from pycompss.api.constraint import constraint
+    from pycompss.api.parameter import Type, COLLECTION_IN, Depth, \
+        COLLECTION_OUT, INOUT
+    from pycompss.api.task import task
+except ImportError:
+    from dataclay.contrib.pycompss_dummy.api import compss_wait_on
+    from dataclay.contrib.pycompss_dummy.api import compss_delete_object
+    from dataclay.contrib.pycompss_dummy.constraint import constraint
+    from dataclay.contrib.pycompss_dummy.parameter import Type
+    from dataclay.contrib.pycompss_dummy.parameter import COLLECTION_IN
+    from dataclay.contrib.pycompss_dummy.parameter import COLLECTION_OUT
+    from dataclay.contrib.pycompss_dummy.dummy_pycompss import INOUT
+    from dataclay.contrib.pycompss_dummy.parameter import Depth
+    from dataclay.contrib.pycompss_dummy.task import task
 from scipy.special import gammaln as gammasp
 from scipy import sparse as sp
 from scipy.sparse import issparse, csr_matrix
@@ -88,10 +99,11 @@ class Array(object):
 
         self._delete = delete
 
-    def __del__(self):
+    """def __del__(self):
         if self._delete:
             [compss_delete_object(b) for r_block in self._blocks for b in
              r_block]
+    """
 
     def __str__(self):
         return "ds-array(blocks=(...), top_left_shape=%r, reg_shape=%r, " \
@@ -2798,7 +2810,7 @@ def _block_apply_axis(func, axis, blocks, *args, **kwargs):
 @task(returns=1)
 def _block_apply(func, block, *args, **kwargs):
     if isinstance(block, StorageObject):
-        return block.block_apply(func, args, kwargs)
+        return block.block_apply(func, *args, **kwargs)
     else:
         return func(block, *args, **kwargs)
 

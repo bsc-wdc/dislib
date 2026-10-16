@@ -2,9 +2,14 @@ import numpy as np
 from collections import deque
 import warnings
 
-from pycompss.api.api import compss_delete_object
-from pycompss.api.constraint import constraint
-from pycompss.api.task import task
+try:
+    from pycompss.api.api import compss_delete_object
+    from pycompss.api.constraint import constraint
+    from pycompss.api.task import task
+except ImportError:
+    from dataclay.contrib.pycompss_dummy.api import compss_delete_object
+    from dataclay.contrib.pycompss_dummy.task import task
+    from dataclay.contrib.pycompss_dummy.constraint import constraint
 import dislib
 
 from dislib.data.array import Array, full, eye

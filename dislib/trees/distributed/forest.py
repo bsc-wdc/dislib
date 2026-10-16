@@ -2,7 +2,19 @@ from sklearn.base import BaseEstimator
 from sklearn.utils import check_random_state
 import math
 import numpy as np
-from pycompss.api.parameter import Depth, Type, COLLECTION_IN
+try:
+    from pycompss.api.parameter import Depth, Type, COLLECTION_IN
+    from pycompss.api.api import compss_wait_on, compss_barrier
+    from pycompss.api.constraint import constraint
+    from pycompss.api.task import task
+except ImportError:
+    from dataclay.contrib.pycompss_dummy.api import compss_wait_on
+    from dataclay.contrib.pycompss_dummy.api import compss_barrier
+    from dataclay.contrib.pycompss_dummy.task import task
+    from dataclay.contrib.pycompss_dummy.parameter import COLLECTION_IN
+    from dataclay.contrib.pycompss_dummy.parameter import Depth
+    from dataclay.contrib.pycompss_dummy.parameter import Type
+    from dataclay.contrib.pycompss_dummy.constraint import constraint
 
 from dislib.trees.distributed.decision_tree import (
     DecisionTreeClassifier,
@@ -11,9 +23,7 @@ from dislib.trees.distributed.decision_tree import (
     _compute_split_regressor, construct_subtree, _NodeInfo,
     _LeafInfo, _InnerNodeInfo
 )
-from pycompss.api.api import compss_wait_on, compss_barrier
-from pycompss.api.constraint import constraint
-from pycompss.api.task import task
+
 from dislib.data.array import Array
 from dislib.utils.base import _paired_partition
 from dislib.data.util import decoder_helper, encoder_helper, sync_obj

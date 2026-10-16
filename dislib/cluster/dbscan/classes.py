@@ -3,8 +3,13 @@ from collections import defaultdict
 from itertools import chain
 
 import numpy as np
-from pycompss.api.constraint import constraint
-from pycompss.api.task import task
+try:
+    from pycompss.api.constraint import constraint
+    from pycompss.api.task import task
+except ImportError:
+    from dataclay.contrib.pycompss_dummy.constraint import constraint
+    from dataclay.contrib.pycompss_dummy.task import task
+
 from scipy.sparse import lil_matrix, vstack as vstack_sparse
 from scipy.sparse.csgraph import connected_components
 from sklearn.neighbors import NearestNeighbors

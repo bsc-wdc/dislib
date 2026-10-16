@@ -1,7 +1,13 @@
-from pycompss.api.api import compss_delete_object
-from pycompss.api.constraint import constraint
-from pycompss.api.parameter import IN
-from pycompss.api.task import task
+try:
+    from pycompss.api.api import compss_delete_object
+    from pycompss.api.constraint import constraint
+    from pycompss.api.parameter import IN
+    from pycompss.api.task import task
+except ImportError:
+    from dataclay.contrib.pycompss_dummy.api import compss_delete_object
+    from dataclay.contrib.pycompss_dummy.constraint import constraint
+    from dataclay.contrib.pycompss_dummy.parameter import IN
+    from dataclay.contrib.pycompss_dummy.task import task
 
 from dislib.data.array import Array
 

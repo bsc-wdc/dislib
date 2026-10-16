@@ -3,9 +3,17 @@ import math
 import numpy as np
 from numpy.linalg import qr
 
-from pycompss.api.task import task
-from pycompss.api.parameter import Type, COLLECTION_IN, COLLECTION_OUT, Depth
-from pycompss.api.constraint import constraint
+try:
+    from pycompss.api.task import task
+    from pycompss.api.parameter import Type, COLLECTION_IN, COLLECTION_OUT, Depth
+    from pycompss.api.constraint import constraint
+except ImportError:
+    from dataclay.contrib.pycompss_dummy.task import task
+    from dataclay.contrib.pycompss_dummy.parameter import COLLECTION_OUT
+    from dataclay.contrib.pycompss_dummy.parameter import COLLECTION_IN
+    from dataclay.contrib.pycompss_dummy.parameter import Type
+    from dataclay.contrib.pycompss_dummy.parameter import Depth
+    from dataclay.contrib.pycompss_dummy.constraint import constraint
 
 
 def tsqr(a: Array, mode="complete", indexes=None):

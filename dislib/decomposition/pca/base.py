@@ -3,9 +3,17 @@ import os
 import pickle
 
 import numpy as np
-from pycompss.api.constraint import constraint
-from pycompss.api.parameter import COLLECTION_IN, Depth, Type, COLLECTION_OUT
-from pycompss.api.task import task
+try:
+    from pycompss.api.constraint import constraint
+    from pycompss.api.parameter import COLLECTION_IN, Depth, Type, COLLECTION_OUT
+    from pycompss.api.task import task
+except ImportError:
+    from dataclay.contrib.pycompss_dummy.task import task
+    from dataclay.contrib.pycompss_dummy.parameter import COLLECTION_OUT
+    from dataclay.contrib.pycompss_dummy.parameter import COLLECTION_IN
+    from dataclay.contrib.pycompss_dummy.parameter import Type
+    from dataclay.contrib.pycompss_dummy.parameter import Depth
+    from dataclay.contrib.pycompss_dummy.constraint import constraint
 from scipy.sparse import issparse, csr_matrix
 from sklearn.base import BaseEstimator
 

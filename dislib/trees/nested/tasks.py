@@ -1,7 +1,13 @@
-from pycompss.api.task import task
-from pycompss.api.parameter import COLLECTION_IN
-from pycompss.api.parameter import COLLECTION_OUT
-from pycompss.api.constraint import constraint
+try:
+    from pycompss.api.task import task
+    from pycompss.api.parameter import COLLECTION_IN
+    from pycompss.api.parameter import COLLECTION_OUT
+    from pycompss.api.constraint import constraint
+except ImportError:
+    from dataclay.contrib.pycompss_dummy.task import task
+    from dataclay.contrib.pycompss_dummy.parameter import COLLECTION_IN
+    from dataclay.contrib.pycompss_dummy.parameter import COLLECTION_OUT
+    from dataclay.contrib.pycompss_dummy.constraint import constraint
 import numpy as np
 
 

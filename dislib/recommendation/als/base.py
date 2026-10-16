@@ -4,10 +4,18 @@ import pickle
 from math import sqrt
 
 import numpy as np
-from pycompss.api.api import compss_wait_on
-from pycompss.api.constraint import constraint
-from pycompss.api.parameter import COLLECTION_IN, Depth, Type
-from pycompss.api.task import task
+try:
+    from pycompss.api.api import compss_wait_on
+    from pycompss.api.constraint import constraint
+    from pycompss.api.parameter import COLLECTION_IN, Depth, Type
+    from pycompss.api.task import task
+except ImportError:
+    from dataclay.contrib.pycompss_dummy.api import compss_wait_on
+    from dataclay.contrib.pycompss_dummy.task import task
+    from dataclay.contrib.pycompss_dummy.parameter import COLLECTION_IN
+    from dataclay.contrib.pycompss_dummy.parameter import Depth
+    from dataclay.contrib.pycompss_dummy.parameter import Type
+    from dataclay.contrib.pycompss_dummy.constraint import constraint
 from scipy import sparse
 from sklearn.base import BaseEstimator
 from sklearn.metrics import mean_squared_error

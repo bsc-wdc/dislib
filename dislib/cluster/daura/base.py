@@ -1,9 +1,16 @@
 from itertools import chain
 
-from pycompss.api.api import compss_wait_on
-from pycompss.api.constraint import constraint
-from pycompss.api.parameter import COLLECTION_IN, INOUT
-from pycompss.api.task import task
+try:
+    from pycompss.api.api import compss_wait_on
+    from pycompss.api.constraint import constraint
+    from pycompss.api.parameter import COLLECTION_IN, INOUT
+    from pycompss.api.task import task
+except ImportError:
+    from dataclay.contrib.pycompss_dummy.api import compss_wait_on
+    from dataclay.contrib.pycompss_dummy.constraint import constraint
+    from dataclay.contrib.pycompss_dummy.parameter import COLLECTION_IN
+    from dataclay.contrib.pycompss_dummy.dummy_pycompss import INOUT
+    from dataclay.contrib.pycompss_dummy.task import task
 from sklearn.base import BaseEstimator
 
 import numpy as np

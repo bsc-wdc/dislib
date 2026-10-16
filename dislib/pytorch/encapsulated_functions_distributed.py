@@ -2,7 +2,11 @@ import numpy as np
 
 import torch.nn as nn
 import copy
-from pycompss.api.api import compss_wait_on, compss_delete_object
+try:
+    from pycompss.api.api import compss_wait_on, compss_delete_object
+except ImportError:
+    from dataclay.contrib.pycompss_dummy.api import compss_wait_on
+    from dataclay.contrib.pycompss_dummy.api import compss_delete_object
 from dislib.data.tensor import shuffle
 from dislib.pytorch.pytorch_distributed import PytorchDistributed
 
